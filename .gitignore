@@ -8,5 +8,7 @@ sysroot
 iso
 *.old
 
+obj/**/*.o
+
 bin/**/*.elf
 bin/**/*.cfg

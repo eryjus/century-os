@@ -1,0 +1,32 @@
+#####################################################################################################################
+##                                                                                                                 
+##  kernel Tupfile -- An alternative to the 'make' build system -- i686 kernel objects
+##
+##        Copyright (c)  2017-2018 -- Adam Clark
+##
+## ----------------------------------------------------------------------------------------------------------------- 
+##                                                                                                                 
+##     Date     Tracker  Version  Pgmr  Description                                                                         
+##  ----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2017-05-13  Initial   0.0.0   ADCL  Initial version
+##  2018-05-24  Initial   0.1.0   ADCL  Copy this file from century to century-os
+## 
+#####################################################################################################################
+
+
+#
+# -- The following 2 macros are used to build the object files
+#    ---------------------------------------------------------
+!i686-kernel-as = |> i686-elf-gcc -fpic -ffreestanding -x assembler-with-cpp \
+        -Wa,-I -Wa,../../../modules/kernel/src/i686 -Wa,-I -Wa,../../../modules/kernel/inc \
+        -Wa,-I -Wa,../../../inc -Wall -Werror -c -o %o %f |> %B.o
+
+!i686-kernel-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/kernel/src/i686 \
+        -I ../../../modules/kernel/inc -I ../../../modules/kernel/inc/i686 -I ../../../inc \
+        -Wall -Werror -c -o %o %f |> %B.o
+
+#
+# -- These are the implicit build rules for the i686 kernel object files
+#    -------------------------------------------------------------------
+: foreach ../../../modules/kernel/src/i686/*.s |> !i686-kernel-as |>
+: foreach ../../../modules/kernel/src/*.cc |> !i686-kernel-cc |>
