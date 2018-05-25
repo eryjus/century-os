@@ -1,0 +1,12 @@
+.directory
+.settings
+.project
+.cproject
+.vscode
+.tup
+sysroot
+iso
+*.old
+
+bin/**/*.elf
+bin/**/*.cfg
