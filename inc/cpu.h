@@ -1,38 +1,26 @@
 //===================================================================================================================
 //
-// inc/types.h -- Common type definitions for all architectures
-// 
-// These types are architecture independent.  In the end, we add the architecture-specific types with the proper 
-// size.
+// inc/cpu.h -- Standard CPU functions
 //
+// These are the common functions that need to be implemented to manage the CPU resource by the OS.
+// 
 // ------------------------------------------------------------------------------------------------------------------
 //                                                                                                                 
 //     Date     Tracker  Version  Pgmr  Description                                                                         
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-24  Initial   0.1.0   ADCL  Initial version
+//  2018-05-25  Initial   0.1.0   ADCL  Initial version as I move functions from century32
 //
 //===================================================================================================================
 
 
-#ifndef __TYPES_H__
-#define __TYPES_H__
-
-#include <stdint.h>
+#ifndef __CPU_H__
+#define __CPU_H__
 
 
 //
-// -- Define UNUSED, based on which parser we are using
-//    -------------------------------------------------
-#ifdef UNUSED
-#elif defined(__GNUC__)
-# define UNUSED(x) x __attribute__((unused))
-#elif defined(__LCLINT__)
-# define UNUSED(x) /*@unused@*/ x
-#else
-# define UNUSED(x) x
-#endif
+// -- Enable interrupts if they are disabled; assembly language function
+//    ------------------------------------------------------------------
+extern "C" void EnableInterrupts(void);
 
-
-#include "arch-types.h"
 
 #endif

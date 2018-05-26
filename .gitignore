@@ -10,5 +10,5 @@ iso
 
 obj/**/*.o
 
-bin/**/*.elf
 bin/**/*.cfg
+bin/**/*.elf
