@@ -1,25 +1,25 @@
 ;====================================================================================================================
 ;
-;  kernel/src/x86-common/EnableInterrupts.s -- Enable Interrupts
+;  kernel/src/i686/DisableInterrupts.s -- Disables Interrupts and returns the previous value
 ;
-;  Enable Interrupts
+;  Disable Interrupts, returning the value of flags in eax.  Note that this function is architecture dependent as
+;  eflags is a 32-bit field and that field is returned to the caller.
 ;
 ; ------------------------------------------------------------------------------------------------------------------
 ;                                                                                                                 
 ;     Date     Tracker  Version  Pgmr  Description                                                                         
 ;  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-;  2012-05-28  Initial           	   Initial version
+;  2012-05-28  Initial                 Initial version
 ;  2012-09-16  Initial                 Leveraged from Century
-;  2018-05-25  Initial   0.1.0   ADCL  Copied this file from century23 to century-os
+;  2018-05-25  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 ;
 ;====================================================================================================================
-
 
 
 ;
 ; -- Expose labels to fucntions that the linker can pick up
 ;    ------------------------------------------------------
-global EnableInterrupts
+global DisableInterrupts
 
 
 ;
@@ -30,8 +30,10 @@ cpu		586
 
 
 ;--------------------------------------------------------------------------------------------------------------------
-; EnableInterrupts() -- Enable Interrupts for the x86 CPU family
+; DisableInterrupts() -- Disable interrupts for the x86 family and return the eflags register (32-bit)
 ;--------------------------------------------------------------------------------------------------------------------
-EnableInterrupts:
-	sti														; enable interrupts -- trivial
+DisableInterrupts:
+	pushfd					                                ; push the flags into the stack
+	pop		eax				                                ; restore the flags for return to caller
+	cli						                                ; clear the interrupts flag
 	ret

@@ -17,8 +17,8 @@
 #
 # -- The following 2 macros are used to build the object files
 #    ---------------------------------------------------------
-!nasm = |> nasm -felf -g -w+all -i../../../modules/kernel/src/i686 \
-        -i../../../modules/kernel/inc -i../../../modules/kernel/inc/i686 -i../../../inc \
+!nasm = |> nasm -felf -g -w+all -i../../../modules/kernel/src/i686/ \
+        -i../../../modules/kernel/inc/ -i../../../modules/kernel/inc/i686/ -i../../../inc/ \
         -o %o %f |> %B.o
 
 !i686-kernel-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/kernel/src/i686 \
@@ -30,4 +30,6 @@
 #    -------------------------------------------------------------------
 : foreach ../../../modules/kernel/src/i686/*.s |> !nasm |>
 : foreach ../../../modules/kernel/src/x86-common/*.s |> !nasm |>
+
 : foreach ../../../modules/kernel/src/*.cc |> !i686-kernel-cc |>
+: foreach ../../../modules/kernel/src/x86-common/*.cc |> !i686-kernel-cc |>

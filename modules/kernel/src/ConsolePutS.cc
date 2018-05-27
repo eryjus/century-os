@@ -1,24 +1,25 @@
 //===================================================================================================================
-//
-// kernel/inc/i686/types.h -- Type definitions specific to i686 architectures
+// kernel/src/ConsolePutS.cc -- Put a string to the console screen and append a newline
 // 
-// These types are architecture dependent.  
+// This is an implementation of puts(), which is deliberately named differently to prevent confusion over whether
+// the standard library routines are included.  They are not.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //                                                                                                                 
 //     Date     Tracker  Version  Pgmr  Description                                                                         
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-25  Initial   0.1.0   ADCL  Initial version
+//  2018-05-27  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#ifndef __TYPES_H__
-#error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
-#endif
+#include "console.h"
 
 
 //
-// -- This is the size of a general purpose register in this architecture
-//    -------------------------------------------------------------------
-typedef uint32_t regval_t;
+// -- Loop through the string and put each character to the screen, then follow it up with a newline.
+//    -----------------------------------------------------------------------------------------------
+void ConsolePutS(const char *str) {
+    while (*str) ConsolePutChar(*str ++);
+    ConsolePutChar('\n');
+}

@@ -23,4 +23,16 @@
 extern "C" void EnableInterrupts(void);
 
 
+//
+// -- Disable interrupts and return the current flags state; assembly language function
+//    ---------------------------------------------------------------------------------
+extern "C" regval_t DisableInterrupts(void);
+
+
+//
+// -- Restore the flags state back to the provided state; note all flags are updates; assembly language function
+//    ----------------------------------------------------------------------------------------------------------
+extern "C" void RestoreInterrupts(regval_t flg);
+
+
 #endif

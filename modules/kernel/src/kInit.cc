@@ -1,5 +1,5 @@
 //===================================================================================================================
-// kernel/src/kInit.c -- Initialize the kernel structures
+// kernel/src/kInit.cc -- Initialize the kernel structures
 // 
 // Initialize the kernel structures, preparing to formally start the OS.
 //
@@ -27,12 +27,17 @@
 
 #include "types.h"
 #include "cpu.h"
+#include "console.h"
 
 // extern uint32 schedulerEnabled;
 // extern Mutex screenMutex;
 
 extern "C" void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic));
 
+
+//
+// -- This is the main entry point for the kernel, starting with initialization
+//    -------------------------------------------------------------------------
 void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 {
 	//
@@ -48,8 +53,8 @@ void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 //	kSetCursorType(CSR_BLOCK);
 //	kCls();
 
-//	kprintf("\n\nWelcome to CenturyOS -- a 32-bit operating system\n");
-//	kprintf("    (initializing...)\n\n");
+	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
+	ConsolePutS("    (initializing...)\n");		// an extra newline
 //	InitGDT();
 //	InitIDT();
 
