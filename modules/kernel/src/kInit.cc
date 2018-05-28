@@ -43,16 +43,8 @@ void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 	//
 	// -- Phase 1: Required by the processor to setup the proper state
 	//    ------------------------------------------------------------
-
-//	List *wrk;
-
-//	debuggerEnabled = 1;
-//	tty15Mode = TTY15_MUTEX_WATCH;
-
-//	InitMutex(&screenMutex);
-//	kSetCursorType(CSR_BLOCK);
-//	kCls();
-
+	ConsoleClear();
+	ConsoleUpdateStatus();
 	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
 	ConsolePutS("    (initializing...)\n");		// an extra newline
 //	InitGDT();

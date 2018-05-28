@@ -48,3 +48,11 @@ However, there is also give and take with `tup`.  Since I do not want to clutter
 The only key function I am giving up is the ability to build an architecture or a module independently.  For the moment, I think I can live with that by creating stub functions when needed.
 
 You can find `tup` at: http://gittup.org/gittup/.
+
+
+***Issue Tracking***
+
+Many of the things I find and log myself are not placed into the public repo bug tracking system.  There are several things that I identify as things to do that I want to write down before I forget them and all the things I keep track of that can clutter up a more public system.  I'm sorry for the loss of visibility on that.  Some day, I might poke a hole in my firewall and make those available if I get enough interest in doing so -- you can e-mail me that interest at hobbyos@eryjus.com.
+
+Redmine is an open source issue tracking application can be found here: https://www.redmine.org/.
+

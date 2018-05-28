@@ -32,11 +32,6 @@
 #define CONSOLE_ROWS            24
 #define CONSOLE_ATTR            0x07
 #define CONSOLE_VIDEO           ((unsigned char *)0xb8000)
+#define CONSOLE_CLEAR           0x0700
 
-
-//
-// -- Put a single character on the screen and advance the cursor position
-//    --------------------------------------------------------------------
-void ConsolePutChar(const int c);
-
-
+#define CONSOLE_STATUS_ATTR     0xe0

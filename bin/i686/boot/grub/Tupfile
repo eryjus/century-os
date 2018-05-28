@@ -17,7 +17,7 @@
 #
 # -- Create the grub.cfg file
 #    ------------------------
-: |> 	echo "set timeout=3"                   						>  %o;       \
+: |> 	echo "set timeout=1"                   						>  %o;       \
     	echo "set default=0"                  						>> %o;       \
 	    echo "menuentry \"Century-OS (Multiboot)\" {"      			>> %o;       \
 	    echo "  multiboot /boot/kernel.elf"                    		>> %o;       \

@@ -1,5 +1,5 @@
 //===================================================================================================================
-// kernel/src/x86-common/ConsolePutChar.cc -- Put a character on the screen at the current location
+// kernel/src/ConsolePutChar.cc -- Put a character on the screen at the current location
 //
 // Put a character on the screen at the current cursor location and advance the cursor position. 
 //
@@ -16,6 +16,7 @@
 //  2013-09-12   #101                   Resolve issues splint exposes
 //  2013-09-12    #61                   HeapDump() and other functions do not handle tty properly
 //  2018-05-26  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//  2018-05-27   #347     0.1.0   ADCL  Turn this into an architecture-independent function
 //
 //===================================================================================================================
 
@@ -28,8 +29,8 @@
 //
 // -- declare a couple of variables that are not public but we want here
 //    ------------------------------------------------------------------
-static uint16_t _colPos;
-static uint16_t _rowPos;
+uint16_t _colPos;
+uint16_t _rowPos;
 
 
 //
@@ -59,11 +60,7 @@ newline:
 		goto out;
 	}
 	
-    // -- put the character and then the attribute on the screen
-	*(CONSOLE_VIDEO + (_colPos + _rowPos * CONSOLE_COLS) * 2) = (unsigned char)(c & 0xff);
-	*(CONSOLE_VIDEO + (_colPos + _rowPos * CONSOLE_COLS) * 2 + 1) = CONSOLE_ATTR;
-	
-	_colPos ++;
+	ConsolePaintChar(_rowPos, _colPos ++, CONSOLE_ATTR, (unsigned char)(c & 0xff));
 	
 	if (_colPos >= CONSOLE_COLS) goto newline;
 	

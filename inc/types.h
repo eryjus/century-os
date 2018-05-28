@@ -17,7 +17,12 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
+
+//
+// -- these are the only 2 standard include files that are safe to include
+//    --------------------------------------------------------------------
 #include <stdint.h>
+#include <stddef.h>
 
 
 //

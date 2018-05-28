@@ -17,6 +17,7 @@
 #define __CONSOLE_H__
 
 
+#include "types.h"
 #include "arch-console.h"
 
 
@@ -24,6 +25,30 @@
 // -- Write a string to the console and follow it up with a newline
 //    -------------------------------------------------------------
 void ConsolePutS(const char *str);
+
+
+//
+// -- Put a single character on the screen and advance the cursor position
+//    --------------------------------------------------------------------
+void ConsolePutChar(const int c);
+
+
+//
+// -- Paint a character on the screen
+//    -------------------------------
+void ConsolePaintChar(const uint16_t row, const uint16_t col, const uint8_t attr, const uint8_t byte);
+
+
+//
+// -- Update a the status bar with the complete new contents
+//    ------------------------------------------------------
+void ConsoleUpdateStatus(void);
+
+
+//
+// -- Clear the console
+//    -----------------
+void ConsoleClear (void);
 
 
 #endif

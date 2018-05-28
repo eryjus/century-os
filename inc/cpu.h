@@ -17,6 +17,9 @@
 #define __CPU_H__
 
 
+#include "types.h"
+
+
 //
 // -- Enable interrupts if they are disabled; assembly language function
 //    ------------------------------------------------------------------
@@ -34,5 +37,10 @@ extern "C" regval_t DisableInterrupts(void);
 //    ----------------------------------------------------------------------------------------------------------
 extern "C" void RestoreInterrupts(regval_t flg);
 
+
+//
+// -- Set a block of memory to the specified  word
+//    --------------------------------------------
+extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
 
 #endif
