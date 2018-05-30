@@ -47,8 +47,7 @@ void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 	ConsoleUpdateStatus();
 	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
 	ConsolePutS("    (initializing...)\n");		// an extra newline
-//	InitGDT();
-//	InitIDT();
+	CpuGetCapabilities();
 
 	//
 	// -- Phase 2: Required OS Structure Initialization
@@ -114,7 +113,7 @@ void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 //	SetProcPriority(currentProcess, PTY_IDLE);
 //	BREAKPOINT;
 
-//	EnableInterrupts();
+	EnableInterrupts();
 
 	while (1) {
 		__asm("hlt");

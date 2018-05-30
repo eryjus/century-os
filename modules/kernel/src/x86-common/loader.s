@@ -20,13 +20,16 @@
 ; -- Expose some labels to other fucntions that the linker can pick up
 ;    -----------------------------------------------------------------
 global		_start					                        ; make _start visible
-global		hang					                        ; make hang visible
+global		Halt					                        ; make hang visible
 
 
 ;
 ; -- Now, we need some things from other functions imported
 ;    ------------------------------------------------------
 extern		kInit					                        ; allow reference to external kinit
+extern      gdt												; the gdt structure
+extern      kMemMove										; the memory move function
+extern      BuildIdt                                        ; build the IDT table
 
 
 ;
@@ -64,6 +67,22 @@ align 4
 
 
 ;
+; -- the structure needed to load the GDT table -- this is temporary and once loaded the data space can go away
+;    ----------------------------------------------------------------------------------------------------------
+GdtDesc:
+    dw      (16*8)-1                        				; size minus one...
+    dd      0                               				; this is the addresss
+
+
+;
+; -- the structure needed to load the IDT table -- this is temporary and once loaded the data space can go away
+;    ----------------------------------------------------------------------------------------------------------
+IdtDesc:
+    dw      (256*8)-1                        				; size minus one...  or 0x7ff
+    dd      0x800                              				; this is the addresss
+
+
+;
 ; -- This is the beginning of the code segment for this file
 ;    -------------------------------------------------------
 section .text
@@ -76,12 +95,50 @@ cpu		586
 ;--------------------------------------------------------------------------------------------------------------------
 _start:
 loader:
+; load the GDT; copy to address 0x00000000 first
+    push	eax												; save the magic number
+    push    ebx												; and the mbi address
+
+    push    (16*8)											; the number of bytes to move
+    lea     eax,[gdt]										; the gdt to move
+    push    eax												; ... the next argument
+    push    0												; the target address we will move the GDT to
+    call    kMemMove										; move the block of memory to the target location
+    add     esp,12											; clean up the stack
+
+    pop     ebx												; restore the mbi address
+    pop     eax												; restore the magic number
+
+; load the address into the gdt register
+    mov     ecx,GdtDesc                   					; Get the gdt address
+    lgdt    [ecx]					                        ; and load the GDT
+
+; set up all the segment selector registers and the new stack
+    mov     ecx,0x02<<3			    						; set the value to load -- we will use kernel data
+    mov     ds,cx
+    mov     es,cx
+    mov     fs,cx
+    mov     gs,cx
+    mov     ss,cx                             				; halts ints (if enabled) for one more instr to set stack
+    mov     esp,0x200000    			                  	; set up a stack
+    
+    push    0x01<<3	    									; The kernel code selector
+    push    $newGDT 										; the instruction to which to return
+    retf                                        			; an almost jump, returning to an addr rather than jump
+
+newGDT:
 	cli								                        ; just in case, no interupts please
 	mov		esp,stack+STACKSIZE		                        ; setup stack
 	push	eax						                        ; push multiboot magic number
 	push	ebx						                        ; push multiboot info struct
 	
-	call	kInit					                        ; call the C initialization function
+    call    BuildIdt                                        ; go build the IDT table in-place
+
+; load the address into the idt register
+    mov     ecx,IdtDesc                   					; Get the idt address
+    lidt    [ecx]					                        ; and load the IDT
+
+	call	kInit					                        ; call the C initialization function (passes eax and ebx)
 
 ;
 ; -- if you get back here, then you have a problem and need to hang; fall through to the next function...
@@ -89,9 +146,9 @@ loader:
 
 
 ;--------------------------------------------------------------------------------------------------------------------
-; hang() -- This is a kernel panic function that will hang the system
+; Halt() -- This is a kernel panic function that will hang the system
 ;--------------------------------------------------------------------------------------------------------------------
-hang:
+Halt:
 	cli								                        ; stop all interrupts
 
 ;
@@ -114,7 +171,7 @@ hang:
 ; -- Halt the cpu
 ;    ------------
 	hlt								                        ; force a hard reboot
-	jmp		hang					                        ; loop, just in case
+	jmp		Halt					                        ; loop, just in case
 
 
 ;

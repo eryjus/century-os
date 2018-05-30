@@ -87,4 +87,90 @@ The 2 key functions calls that I have ahead of what has been implemented so far 
 
 Today I started to wrap up the rest of the early console functions.  The last thing is the cursor geometry function -- and I do not see the value in it at the moment.  I may pull it in later.  So, I will commit locally at this point and move on to CPU initialization.
 
+Actually, I pushed the commits to GitHub since I figured there was enough working to make complete an interim push....
 
+So, the next major step to work on is CPU initialization.  I will be supporting several architectures here and I need to be able to determine several things during the initial startup.  One critical task is the figure out the system capabilities.  There are going to have to be several minimal capabilities that I require in order to boot and I need to make sure that they are available before I really get into the core of the OS.  An example is paging.  Another is the CPU instruction set.  After I determine all that, I need to put the CPU into a consistent state across all architectures.
+
+This is a huge task that I will not complete all at once at this point.  However, I need to lay in the foundation for all this work and I will add to it as I add features.  The x86 systems require a GDT and IDT to start up, but are quite different in implementation.  ARM also will require some interrupt initialization as well and I want a consistent foundation for these.
+
+So, the first order of business is the CPU capabilities collection.
+
+Some thoughts on my research for CPUID.  This opcode is not available on all x86 CPUs and therefore may cause problems.  I want to be able to catch as many problem as I can and report them clearly.  However, there are some limitations and thoughts:
+* I will be using a multiboot boot loader to load the OS, which requires at least a 286 to get into protected mode -- and PAE may also be required.  GRUB should be able to identify the CPU and handle any errors before getting to my kernel.  So, that responsibility is not mine to handle.  As a matter of fact, I am going to assume that I am running on at least a 386.
+
+So, now that leaves only the CPUID instruction.  If the instruction is not available, the CPU will triple fault and reboot since I am not yet ready for interrupts.  This is not what I intend.  Therefore I need to detect whether the CPUID opcode is supported.
+
+Now, what to do if it is not?  Well, my basic assumption will be that if CPUID is not supported, I will not have much of a chance to determine if the rest of what I need is supported.  Therefore, I will panic the kernel if it is not.  I may need to revisit this later with I get into ACPI parsing.  Maybe...
+
+Ahhh...  my bad!!  The CPUID opcode is not available until Pentium.  Therefore, I will need to work out capabilities in other ways.
+
+So, that now leaves the question: what kinds of capabilities do I think I might need to detect.  There are certainly differences between the 386 and 686 and x86_64 CPU capabilities; even more between the x86 family and ARM.  For now, I will assume only the 386 CPU capabilities as the baseline and determine how to handle this later.  For 32-bit I am leaving an empty function to fill in.
+
+So, on to the base initialization for the GDT and IDT...  These need to happen for the x86 CPU family, but 32- and 64-bits are different.  Well, no they are not.  Here is a snip of the JOURNAL.md from *century*:
+
+> ***2017-05-28***
+>
+> ...
+>
+> Both the 32-bit and 64-bit modes use 64-bits to describe the GDT entries.  Therefore they can coexist.  However, the order is quite important if we are to use SYSENTER and SYSEXIT for system calls.  I have not made any decision on this either way, but I also want to make sure that any decision I make in this next step will not limit my choices to a single option either.  Therefore, wherever these selectors are, they must appear in this order: 
+> 1.  Kernel Code
+> 2.  Kernel Stack (this may be kernel data as well)
+> 3.  User Code
+> 4.  User Stack (and this may be data as well)
+
+So, that helps to clear that up.  I also had an order defined:
+
+> ***2017-05-29***
+>
+> ...
+>
+> So, that leaves the GDT layout.  Here is the target layout:
+> * 0x00<<3: NULL descriptor
+> * 0x01<<3: Kernel Code
+> * 0x02<<3: Kernel Data (includes stacks)
+> * 0x03<<3: User Code
+> * 0x04<<3: User Data (includes stacks)
+> * 0x05<<3: Unused (left open for user data if I want it later)
+> * 0x06<<3: Unused (left open for kernel data if I want it later)
+> * 0x07<<3: Loader Code
+> * 0x08<<3: Loader Data
+> * 0x09<<3: TSS
+> * 0x0a<<3: TSS Second half (for 64-bit; NULL for 32-bit)
+> * 0x0b<<3: Future use call gate? (need to research the rpi2b capabilities)
+> * 0x0c<<3: Future use call gate?
+> * 0x0d<<3: Future use call gate?
+> * 0x0e<<3: Future use call gate?
+> * 0x0f<<3: Future use call gate?
+> 
+> For now, I will use only 16 GDT entries.  This will be frame aligned and have some room to grow.  The call gates may be able to be aligned with the SVC instruction for rpi2b.
+
+With this outstanding research, I see no need to change my thinking.  I will leverage the GDT from the century code base.
+
+
+**2018-05-29**
+
+So century put the GDT at address 0x00000000.  It was also set prior to leaving the assembly language loader.  I want to duplicate that here, but I am not convinced that the address is really the best thing to use due to null pointer assignments.  Now, on the other hand, since I will be using paging, I can keep that page unmapped and be relatively safe.  So I think I will keep that setup.
+
+The other thing to make sure I bring up is the BIOS Data Area (BDA) and the Multiboot info.  These really should work in conjunction with the `cpuid` instruction.  At some point, I will need to implement those into the CpuGetCapabilities function.
+
+So I am not starting to build out the Interrupt Descriptor Table (IDT).  In reading, not every interrupt will clear the interrupt flag.  However, if the interrupt is an exception, the CPU (i686) will clear the IF.  Therefore, I will `cli` myself just to be sure.  Now, since they are all interrupts, the `iret` opcode will also restore the previous flags value.
+
+The problem is where to put the IDT.  For 256 interrupts, the table will be 256*8 bytes long, or 2K, or 1/2 of a page frame.  The GDT is 128 bytes long in its current configuration.  I think it might make sense to put them into the same 4K frame, with the IDT being in the last 2K if this frame.  That would be at address 0x00000800 and a limit of 0x000007ff.  Like the GDT, I am going to load this in the in the loader before call `kInit()`.
+
+The final thing to do tonight as I wrap up for the evening is to build the actual IDT able in place (at address 0x800) as part of the initialization.  That will be a task for tomorrow.
+
+
+**2018-05-30**
+
+So, I need to be able to construct an IDT so that I can handle interrupts.  That IDT needs to land at linear address 0x00000800 and be 256 gates long.  It will have to be constructed in-place.
+
+I have this working now and just need to document my changes.  Also, with this new function, I have completed phase I initialization and I am able to enable interrupts.  I am able to type on the keyboard and the emulator does not lock up. 
+
+So for the record, what are the phases of initialization?
+1. Anything required by the processor to set up initial state
+1. Any OS internal structure initialization
+1. Hardware Discovery (preliminary interrupts)
+1. User Space ready
+1. Become Butler process
+
+With this, we are at a substantial point and I will commit these changes and push to GitHib.

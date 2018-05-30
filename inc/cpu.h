@@ -19,6 +19,14 @@
 
 #include "types.h"
 
+#include "arch-cpu.h"
+
+
+//
+// -- halt the CPU
+//    ------------
+extern "C" void Halt(void);
+
 
 //
 // -- Enable interrupts if they are disabled; assembly language function
@@ -39,8 +47,21 @@ extern "C" void RestoreInterrupts(regval_t flg);
 
 
 //
-// -- Set a block of memory to the specified  word
-//    --------------------------------------------
+// -- Set a block of memory to the specified byte
+//    -------------------------------------------
+extern "C" void kMemSetB(void *buf, uint8_t wrd, size_t cnt);
+
+
+//
+// -- Set a block of memory to the specified word
+//    -------------------------------------------
 extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
+
+
+//
+// -- Get the CPU capabilities list for CenturyOS
+//    -------------------------------------------
+void CpuGetCapabilities(void);
+
 
 #endif
