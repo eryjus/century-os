@@ -92,4 +92,6 @@ SECTIONS {
     /DISCARD/ : {
         *(.eh_frame .note.GNU-stack .comment .bootstack)
     }
+       
+    end = .; _end = .; __end = .;
 }

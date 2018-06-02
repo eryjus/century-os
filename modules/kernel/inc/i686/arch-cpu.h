@@ -16,4 +16,9 @@
 #endif
 
 
+typedef uint32_t ptrsize_t;
+
+
+#define BYTE_ALIGNMENT      4
+
 #include "x86-common-cpu.h"

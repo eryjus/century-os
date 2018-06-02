@@ -28,6 +28,7 @@
 #include "types.h"
 #include "cpu.h"
 #include "console.h"
+#include "heap.h"
 
 // extern uint32 schedulerEnabled;
 // extern Mutex screenMutex;
@@ -52,9 +53,7 @@ void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 	//
 	// -- Phase 2: Required OS Structure Initialization
 	//    ---------------------------------------------
-
-//	ReadMBI(mbi);
-//	InitHeap();
+	HeapInit();
 //	InitPaging();
 
 //#ifndef USE_APIC

@@ -174,3 +174,17 @@ So for the record, what are the phases of initialization?
 1. Become Butler process
 
 With this, we are at a substantial point and I will commit these changes and push to GitHib.
+
+So, the next thing to work on is Phase 2 (OS internal structures).  One of the first things to initialize is the Kernel Heap.  I am actually pretty happy with my heap implementation from century32.  It has been ported from one instance to another and this is no exception.  I will work on pulling that in from century32 to century-os.  This is the next task.
+
+
+**2018-05-31**
+
+I am working today on bringing over the heap functions.
+
+
+**2018-06-01**
+
+OK, I have been able to bring over all the heap functions.  Having done that, I think I may be running into a problem where the source folder is going to get quite full of files.  One one hand, I am not too concerned about it since the file is named the same as the function and all names start with the module (except maybe CPU).  On the other hand, it would be much easier for anyone else to find what they are looking for if all the heap functions and files were in a heap folder.  For now, I will leave it as it is but I will likely revisit this as I grow the kernel.
+
+In the meantime, I commit and push since this is a rather significant milestone.
