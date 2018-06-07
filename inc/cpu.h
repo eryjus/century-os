@@ -3,10 +3,10 @@
 // inc/cpu.h -- Standard CPU functions
 //
 // These are the common functions that need to be implemented to manage the CPU resource by the OS.
-// 
+//
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-05-25  Initial   0.1.0   ADCL  Initial version as I move functions from century32
 //
@@ -23,7 +23,7 @@
 
 
 //
-// -- halt the CPU
+// -- Halt the CPU
 //    ------------
 extern "C" void Halt(void);
 
@@ -56,6 +56,18 @@ extern "C" void kMemSetB(void *buf, uint8_t wrd, size_t cnt);
 // -- Set a block of memory to the specified word
 //    -------------------------------------------
 extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
+
+
+//
+// -- Get a byte from an I/O Port
+//    ---------------------------
+extern "C" uint8_t inb(uint16_t port);
+
+
+//
+// -- Output a byte to an I/O Port
+//    ----------------------------
+extern "C" void outb(uint16_t port, uint8_t byte);
 
 
 //

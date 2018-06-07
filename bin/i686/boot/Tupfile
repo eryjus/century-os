@@ -1,22 +1,27 @@
 #####################################################################################################################
-##                                                                                                                 
+##
 ##  bin/686/boot/Tupfile -- An alternative to the 'make' build system -- i686 boot files
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
-## ----------------------------------------------------------------------------------------------------------------- 
-##                                                                                                                 
-##     Date     Tracker  Version  Pgmr  Description                                                                         
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date     Tracker  Version  Pgmr  Description
 ##  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 ##  2017-05-10  Initial   0.0.0   ADCL  Initial version
 ##  2018-05-25  Initial   0.1.0   ADCL  Copy this file from century32 to century-os and eliminate loader
-## 
+##  2018-06-07  Initial   0.1.0   ADCL  Add libk as a dependency and include in the target
+##
 #####################################################################################################################
 
 
 #
 # -- The rules to make the bootable targets in this folder
 #    -----------------------------------------------------
-: ../../../obj/kernel/i686/*.o         \
-        |> i686-elf-gcc -g -T ../../../modules/kernel/src/i686/kernel.ld -ffreestanding -O2 -nostdlib -o %o %f -lgcc;    \
-        |> kernel.elf
+: ../../../obj/loader/i686/*.o ../../../lib/i686/libk.a                                                 \
+        |> i686-elf-gcc -g -T ../../../modules/loader/src/i686/loader.ld -ffreestanding -O2 -nostdlib   \
+        -L ../../../lib/i686 -o %o %f -lgcc -lk; |> loader.elf
+
+: ../../../obj/kernel/i686/*.o  ../../../lib/i686/libk.a                                                \
+        |> i686-elf-gcc -g -T ../../../modules/kernel/src/i686/kernel.ld -ffreestanding -O2 -nostdlib   \
+        -L ../../../lib/i686 -o %o %f -lgcc -lk; |> kernel.elf

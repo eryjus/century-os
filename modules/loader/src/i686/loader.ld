@@ -1,15 +1,17 @@
 /*******************************************************************************************************************/
 /*                                                                                                                 */ 
-/*  kernel/src/i686/loader.ld -- This is the linker script for locating the sections in the target binary          */
+/*  loader/src/i686/loader.ld -- This is the linker script for locating the sections in the target binary          */
 /*                                                                                                                 */ 
 /*        Copyright (c)  2017-2018 -- Adam Clark                                                                   */
+/*        Licensed under "THE BEER-WARE LICENSE"                                                                   */
+/*        See License.md for details.                                                                              */ 
 /*                                                                                                                 */ 
 /* --------------------------------------------------------------------------------------------------------------- */
 /*                                                                                                                 */ 
 /*     Date     Tracker  Version  Pgmr  Description                                                                */       
 /*  ----------  -------  -------  ----  -------------------------------------------------------------------------  */
 /*  2017-04-14  Initial   0.0.0   ADCL  Initial version                                                            */
-/*  2018-05-25  Initial   0.1.0   ADCL  Copy this file from the loader of century                                  */
+/*  2018-06-02  Initial   0.1.0   ADCL  Copied from century to century-os                                          */
 /*                                                                                                                 */ 
 /*******************************************************************************************************************/
 
@@ -24,17 +26,8 @@ SECTIONS {
      */
      
     . = 0x100000; 
-    _kernelStart = .;
+    _loaderStart = .;
     _textStart = .;
-
-    /*
-     * -- The .mbheader section is the early control point.  We will put that into its own section rather than
-     *    organizing it into the .text section.
-     *    ----------------------------------------------------------------------------------------------------
-     */
-    .mbheader : {
-        *(.mbheader)
-    }
     
     /*
      * -- This is where the code will be placed.  Note that we put the init section right up front.  This
@@ -42,6 +35,7 @@ SECTIONS {
      *    -----------------------------------------------------------------------------------------------
      */
     .text : {
+        *(.mboot)
         *(.init)
         *(.text .text.* .stub .gnu.linkonce.t.*)
     }
@@ -95,11 +89,9 @@ SECTIONS {
     }
     . = ALIGN(4096);
     _bssEnd = .;
-    _kernelEnd = .;
+    _loaderEnd = .;
 
     /DISCARD/ : {
         *(.eh_frame .note.GNU-stack .comment .bootstack)
     }
-       
-    end = .; _end = .; __end = .;
 }

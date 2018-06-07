@@ -1,0 +1,38 @@
+#####################################################################################################################
+##
+##  obj/loader/i686/Tupfile -- An alternative to the 'make' build system -- i686 loader objects
+##
+##        Copyright (c)  2017-2018 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date     Tracker  Version  Pgmr  Description
+##  ----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2017-05-13  Initial   0.0.0   ADCL  Initial version
+##  2018-05-24  Initial   0.1.0   ADCL  Copy this file from century to century-os
+##
+#####################################################################################################################
+
+
+#
+# -- The following 2 macros are used to build the object files
+#    ---------------------------------------------------------
+!nasm = |> nasm -felf -g -w+all -i../../../modules/loader/inc/ -i../../../modules/loader/inc/i686/ \
+        -i../../../modules/loader/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
+        -o %o %f |> %B.o
+
+!i686-loader-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/loader/inc \
+        -I ../../../modules/loader/inc/i686 -I ../../../modules/loader/inc/x86-common  -I ../../../inc \
+        -I ../../../inc/i686 -I ../../../inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
+
+#
+# -- These are the implicit build rules for the i686 loader object files
+#    -------------------------------------------------------------------
+: foreach ../../../modules/loader/src/i686/*.s |> !nasm |>
+#: foreach ../../../modules/loader/src/x86-common/*.s |> !nasm |>
+
+: foreach ../../../modules/loader/src/*.cc |> !i686-loader-cc |>
+: foreach ../../../modules/loader/src/i686/*.cc |> !i686-loader-cc |>
+: foreach ../../../modules/loader/src/hardware/*.cc |> !i686-loader-cc |>
+: foreach ../../../modules/loader/src/string/*.cc |> !i686-loader-cc |>
+: foreach ../../../modules/loader/src/x86-common/*.cc |> !i686-loader-cc |>

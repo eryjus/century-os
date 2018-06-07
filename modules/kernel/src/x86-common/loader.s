@@ -123,7 +123,7 @@ loader:
     mov     esp,0x200000    			                  	; set up a stack
     
     push    0x01<<3	    									; The kernel code selector
-    push    $newGDT 										; the instruction to which to return
+    push    newGDT   										; the instruction to which to return
     retf                                        			; an almost jump, returning to an addr rather than jump
 
 newGDT:

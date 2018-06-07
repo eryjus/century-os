@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  obj/kernel/i686/Tupfile -- An alternative to the 'make' build system -- i686 kernel objects
+##  obj/libk/i686/Tupfile -- An alternative to the 'make' build system -- i686 libk objects
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
@@ -17,20 +17,17 @@
 #
 # -- The following 2 macros are used to build the object files
 #    ---------------------------------------------------------
-!nasm = |> nasm -felf -g -w+all -i../../../modules/kernel/inc/ -i../../../modules/kernel/inc/i686/ \
-        -i../../../modules/kernel/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
+!nasm = |> nasm -felf -g -w+all -i../../../modules/libk/inc/ -i../../../modules/libk/inc/i686/                  \
+        -i../../../modules/libk/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
         -o %o %f |> %B.o
 
-!i686-kernel-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/kernel/inc \
-        -I ../../../modules/kernel/inc/i686 -I ../../../modules/kernel/inc/x86-common  -I ../../../inc \
+!i686-libk-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/libk/inc                               \
+        -I ../../../modules/libk/inc/i686 -I ../../../modules/libk/inc/x86-common  -I ../../../inc              \
         -I ../../../inc/i686 -I ../../../inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
 
 #
-# -- These are the implicit build rules for the i686 kernel object files
+# -- These are the implicit build rules for the i686 loader object files
 #    -------------------------------------------------------------------
-: foreach ../../../modules/kernel/src/i686/*.s |> !nasm |>
-: foreach ../../../modules/kernel/src/x86-common/*.s |> !nasm |>
+: foreach ../../../modules/libk/src/i686/*.s |> !nasm |>
 
-: foreach ../../../modules/kernel/src/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/i686/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/x86-common/*.cc |> !i686-kernel-cc |>
+: foreach ../../../modules/libk/src/i686/*.cc |> !i686-libk-cc |>
