@@ -30,7 +30,7 @@ global          Halt
 ;;
 ;; -- import some external symbols
 ;;    ----------------------------
-extern          memmove
+extern          kMemMove
 extern          gdt
 extern          mb1Data
 extern          mb2Data
@@ -146,9 +146,9 @@ _start:
 
     push        (16*8)
     lea         eax,[gdt]
-    push        eax
-    push        0
-    call        memmove
+    push        eax                                         ;; push the source
+    push        0                                           ;; push the target
+    call        kMemMove
     add         esp,12
 
     pop         ebx

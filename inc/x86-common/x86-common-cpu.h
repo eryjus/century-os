@@ -19,15 +19,19 @@
 
 #include "types.h"
 
-#define PORT 0x3f8   /* COM1 */
 
-
+//
+// -- The types of segments we support in the GDT
+//    -------------------------------------------
 enum GdtTypes {
     GDT_DATA = 0b0010,
     GDT_CODE = 0b1010,
 };
 
 
+//
+// -- The Segment Selectors
+//    ---------------------
 enum Selectors {
     SEL_NULL = 0x00 << 3,
     SEL_KCODE = 0x01 << 3,

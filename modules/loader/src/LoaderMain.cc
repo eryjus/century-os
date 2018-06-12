@@ -31,8 +31,7 @@ extern "C" void LoaderMain(void);
 void LoaderMain(void)
 {
     SerialInit();
-    Mb1Parse();
-//    Mb2Parse();
+    HwDiscovery();
 
     while (1) {}
 }

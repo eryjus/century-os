@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  libk/ing/hw-disc.h -- Locally formatted copies of the multiboot information
+//  inc/hw-disc.h -- Locally formatted copies of the multiboot information
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -19,6 +19,7 @@
 
 
 #include "types.h"
+#include "serial.h"
 
 
 #define NUM_MMAP_ENTRIES        (25)
@@ -39,11 +40,25 @@ typedef struct MMap_t {
 //    -------------------------------------------------------------------------------------------
 typedef struct HardwareDiscovery_t {
     //
+    // -- The BIOS information
+    //    --------------------
+    ptrsize_t ebdaLocation;
+    uint16_t com1;
+    uint16_t com2;
+    uint16_t com3;
+    uint16_t com4;
+    uint16_t lpt1;
+    uint16_t lpt2;
+    uint16_t lpt3;
+    uint16_t videoPort;
+
+    //
     // -- the memory limit information
     //    ----------------------------
     bool memLimitsAvail;
     uint32_t availLowerMem;
     uint32_t availUpperMem;
+    uint64_t upperMemLimit;
 
     //
     // -- the memory map information
@@ -51,6 +66,12 @@ typedef struct HardwareDiscovery_t {
     bool memMapAvail;
     int memMapCount;
     MMap_t mmap[NUM_MMAP_ENTRIES];
+
+    //
+    // -- the Physical Memory Manager location and other relevant info
+    //    ------------------------------------------------------------
+    uint32_t *pmmBitmap;
+    size_t pmmFrameCount;
 } __attribute__((packed)) HardwareDiscovery_t;
 
 
@@ -67,6 +88,12 @@ extern HardwareDiscovery_t localHwDisc;
 //    -----------------------------------------------------------------------------------------------------------
 static_assert(sizeof(HardwareDiscovery_t) <= 4096, \
         "The size of the Hardware Discovery stucture is more than 1 page long.  Something must be done...");
+
+
+//
+// -- Hardware discovery function to collect the hardware inventory
+//    -------------------------------------------------------------
+void HwDiscovery(void);
 
 
 //
@@ -87,6 +114,47 @@ void Mb2Parse(void);
 
 
 //
+// -- BIOS Data Area
+//    --------------
+inline bool IsEbdaAvail(void) { return localHwDisc.ebdaLocation != 0; }
+inline bool IsCom1Avail(void) { return localHwDisc.com1 != 0; }
+inline bool IsCom2Avail(void) { return localHwDisc.com2 != 0; }
+inline bool IsCom3Avail(void) { return localHwDisc.com3 != 0; }
+inline bool IsCom4Avail(void) { return localHwDisc.com4 != 0; }
+inline bool IsLpt1Avail(void) { return localHwDisc.lpt1 != 0; }
+inline bool IsLpt2Avail(void) { return localHwDisc.lpt2 != 0; }
+inline bool IsLpt3Avail(void) { return localHwDisc.lpt3 != 0; }
+inline bool IsVideoAvail(void) { return localHwDisc.videoPort != 0; }
+
+inline void SetEbda(ptrsize_t e) { localHwDisc.ebdaLocation = e; }
+inline ptrsize_t GetEbda(void) { return localHwDisc.ebdaLocation; }
+
+inline void SetCom1(uint16_t p) { localHwDisc.com1 = p; }
+inline uint16_t GetCom1(void) { return localHwDisc.com1; }
+
+inline void SetCom2(uint16_t p) { localHwDisc.com2 = p; }
+inline uint16_t GetCom2(void) { return localHwDisc.com2; }
+
+inline void SetCom3(uint16_t p) { localHwDisc.com3 = p; }
+inline uint16_t GetCom3(void) { return localHwDisc.com3; }
+
+inline void SetCom4(uint16_t p) { localHwDisc.com4 = p; }
+inline uint16_t GetCom4(void) { return localHwDisc.com4; }
+
+inline void SetLpt1(uint16_t p) { localHwDisc.lpt1 = p; }
+inline uint16_t GetLpt1(void) { return localHwDisc.lpt1; }
+
+inline void SetLpt2(uint16_t p) { localHwDisc.lpt2 = p; }
+inline uint16_t GetLpt2(void) { return localHwDisc.lpt2; }
+
+inline void SetLpt3(uint16_t p) { localHwDisc.lpt3 = p; }
+inline uint16_t GetLpt3(void) { return localHwDisc.lpt3; }
+
+inline void SetVideo(uint16_t p) { localHwDisc.videoPort = p; }
+inline uint16_t GetVideo(void) { return localHwDisc.videoPort; }
+
+
+//
 // -- Basic memory limits (where flag 0 is set)
 //    -----------------------------------------
 inline bool AreMemLimitsAvail(void) { return localHwDisc.memLimitsAvail; }
@@ -96,6 +164,9 @@ inline uint32_t GetAvailLowerMem(void) { return localHwDisc.availLowerMem; }
 
 inline void SetAvailUpperMem(uint32_t l) { localHwDisc.availUpperMem = l; localHwDisc.memLimitsAvail = true; }
 inline uint32_t GetAvailUpperMem(void) { return localHwDisc.availUpperMem; }
+
+inline void SetUpperMemLimit(uint64_t l) { localHwDisc.upperMemLimit = l; }
+inline uint64_t GetUpperMemLimit(void) { return localHwDisc.upperMemLimit; }
 
 
 //
@@ -112,6 +183,16 @@ inline void AddAvailMem(uint64_t at, uint64_t len) {
 
 inline uint64_t GetAvailMemStart(int i) { return localHwDisc.mmap[i].baseAddr; }
 inline uint64_t GetAvailMemLength(int i) { return localHwDisc.mmap[i].length; }
+
+
+//
+// -- Physical Memory Manager Bitmap location
+//    ---------------------------------------
+inline void SetPmmBitmap(uint32_t *l) { localHwDisc.pmmBitmap = l; }
+inline uint32_t *GetPmmBitmap(void) { return localHwDisc.pmmBitmap; }
+
+inline void SetPmmFrameCount(size_t c) { localHwDisc.pmmFrameCount = c; }
+inline size_t GetPmmFrameCount(void) { return localHwDisc.pmmFrameCount; }
 
 
 #endif

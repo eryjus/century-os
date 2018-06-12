@@ -16,9 +16,10 @@
 #endif
 
 
-typedef uint32_t ptrsize_t;
-
-
+//
+// -- This is the natural byte alignment for this architecture
+//    --------------------------------------------------------
 #define BYTE_ALIGNMENT      4
+
 
 #include "x86-common-cpu.h"

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/x86-common/SerialPutS.cc -- Output a string to the serial port
+//  loader/src/i686/HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,27 +10,23 @@
 //
 //     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-07  Initial   0.0.0   ADCL  Initial version
+//  2017-06-09  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "cpu.h"
+#include "bda.h"
+#include "pmm.h"
+#include "hw-disc.h"
 
-extern uint16_t serialPort;
 
 //
-// -- Send a character string to a serial port
-//    ----------------------------------------
-void SerialPutS(const char *s)
+// -- Perform the hardware discovery
+//    ------------------------------
+void HwDiscovery(void)
 {
-    while (*s) {
-        while ((inb(serialPort + 5) & 0x20) == 0) {}
-
-        outb(serialPort, *s ++);
-    }
-
-
-    while ((inb(serialPort + 5) & 0x20) == 0) {}
-    outb(serialPort, '\n');
+    Mb1Parse();
+    Mb2Parse();
+    BdaRead();
+    PmmInit();
 }

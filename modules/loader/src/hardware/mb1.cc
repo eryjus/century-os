@@ -21,6 +21,17 @@
 
 
 //
+// -- Memory Map entries, which will repeat (pointer points to mmapAddr)
+//    ------------------------------------------------------------------
+typedef struct Mb1MmapEntry_t {
+    uint32_t mmapSize;
+    uint64_t mmapAddr;
+    uint64_t mmapLength;
+    uint32_t mmapType;
+} __attribute__((packed)) Mb1MmapEntry_t;
+
+
+//
 // -- This is the Multiboot 1 information structure as defined by the spec
 //    --------------------------------------------------------------------
 typedef struct MB1 {
@@ -164,7 +175,7 @@ void Mb1Parse(void)
     // -- Check for the command line -- we might have parameters to the loader
     //    --------------------------------------------------------------------
     if (CHECK_FLAG(2)) {
-        // TODO: Implement this feature
+        SerialPutS((const char *)mb1Data->cmdLine);
     }
 
 
@@ -177,8 +188,8 @@ void Mb1Parse(void)
 
 
     //
-    // -- We skip flag 4 since we will never be an a.out-type executable.  Check for ELF symbols
-    //    --------------------------------------------------------------------------------------
+    // -- We skip flag 4 since we will never be an a.out-type executable.  Check for ELF symbols with flag 5
+    //    --------------------------------------------------------------------------------------------------
     if (CHECK_FLAG(5)) {
         // TODO: Implement this feature
     }
@@ -188,7 +199,16 @@ void Mb1Parse(void)
     // -- Check for Memory Map data, which we will require
     //    ------------------------------------------------
     if (CHECK_FLAG(6)) {
-        // TODO: Implement this feature
+        SerialPutS("Setting memory map data");
+        uint32_t size = mb1Data->mmapLen;
+        Mb1MmapEntry_t *entry = (Mb1MmapEntry_t *)mb1Data->mmapAddr;
+        while (size) {
+            if (entry->mmapType == 1) AddAvailMem(entry->mmapAddr, entry->mmapLength);
+            uint64_t newLimit = entry->mmapAddr + entry->mmapLength;
+            if (newLimit > GetUpperMemLimit()) SetUpperMemLimit(newLimit);
+            size -= (entry->mmapSize + 4);
+            entry = (Mb1MmapEntry_t *)(((uint32_t)entry) + entry->mmapSize + 4);
+        }
     }
 
 
@@ -212,7 +232,7 @@ void Mb1Parse(void)
     // -- Check for the boot loader name
     //    ------------------------------
     if (CHECK_FLAG(9)) {
-        // TODO: Implmement this feature
+        SerialPutS((const char *)mb1Data->bootLoaderName);
     }
 
 

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/string/memmove.cc -- copy a block of memory from one address to another
+//  loader/src/x86-common/BdaRead.cc -- Read the BDA and store its contents for later
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,23 +10,30 @@
 //
 //     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-04-26  Initial   0.0.0   ADCL  Initial version
-//  2018-06-02  Initial   0.1.0   ADCL  Copied this file (string.c) from century and whittled down to memmove().
+//  2017-06-09  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include <stdint.h>
-#include <stddef.h>
-
-
-extern "C" void memmove(uint8_t *d, const uint8_t *s, size_t cnt);
+#include "types.h"
+#include "serial.h"
+#include "hw-disc.h"
+#include "bda.h"
 
 
 //
-// -- memmove() -- copy bytes from one memory buffer to another
-//    ---------------------------------------------------------------------------------------------------------------
-void memmove(uint8_t *d, const uint8_t *s, size_t cnt)
+// -- Get the critical information from the BDA before it is overwritten
+//    ------------------------------------------------------------------
+void BdaRead(void)
 {
-    for (unsigned int i = 0; i < cnt; i ++) d[i] = s[i];
+    SerialPutS("Getting BDA information");
+    SetCom1(BdaGetCom1());
+    SetCom2(BdaGetCom2());
+    SetCom3(BdaGetCom3());
+    SetCom4(BdaGetCom4());
+    SetLpt1(BdaGetLpt1());
+    SetLpt2(BdaGetLpt2());
+    SetLpt3(BdaGetLpt3());
+    SetVideo(BdaGetVideo());
+    SetEbda(BdaGetEbda());
 }

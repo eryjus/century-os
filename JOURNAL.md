@@ -259,3 +259,40 @@ OK, I have the most basic serial output enabled for the loader, which will allow
 I do need to go back and revisit the structure (which has not been checked in) and I have several files I need to properly comment.
 
 With that complete, I will commit these changes at this point publicly as there are so many changes in structure and code, but not functionality.
+
+Now, with that done, I can continue to parse the multiboot information structures.
+
+
+**2018-06-08**
+
+I am pretty happy with where I have gotten with the MB1 parsing.  It is not complete but I have enough to begin the physical memory manager initialization.
+
+Next is to implement the same things with the MB2 Information structure.
+
+And now that this is complete, it is time to set up the first 128MB of the PMM.  For this, I will need a bitmap and a location to put the data.
+
+Actually, the PMM initialization I have written for century will initialize the entire physical memory space into the bitmap, and I will copy that to century-os.  That is important to note is that the PMM bitmap is placed just prior to either the EBDA or the 640K low memory cap, whichever is lower.  I have not yet found the EBDA, so I need to go after that first.
+
+
+**2018-06-09**
+
+OK, now to pull data from the BDA, which will include identifying the EBDA location.
+
+
+**2018-06-10**
+
+This morning I have been able to complete the code that reads the BDA and stores its contents in the internal hardware communication area.  Included in this is the location of the EBDA, which if it exists will serve as the upper boundary for the PMM bitmap in physical memory (alternatively, it will be the traditional 640K low memory limit).
+
+So, returning to the top-down-ish approach for the loader, I can resume development on the PMM initialization.
+
+
+**2018-06-11**
+
+Today I am working on completing the PMM initialization.
+
+
+**2018-06-12**
+
+I have completed the fundamental PMM initialization given all the information I have mined so far.  I still have the video buffer and the modules to map, but I am not yet prepared for this.  I am going to commit these changes to the public repo and figure out what to work on next.
+
+
