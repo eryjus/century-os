@@ -32,6 +32,7 @@
 #: foreach ../../../modules/loader/src/x86-common/*.s |> !nasm |>
 
 : foreach ../../../modules/loader/src/*.cc |> !i686-loader-cc |>
+: foreach ../../../modules/loader/src/frame-buffer/*.cc |> !i686-loader-cc |>
 : foreach ../../../modules/loader/src/i686/*.cc |> !i686-loader-cc |>
 : foreach ../../../modules/loader/src/hardware/*.cc |> !i686-loader-cc |>
 : foreach ../../../modules/loader/src/pmm/*.cc |> !i686-loader-cc |>

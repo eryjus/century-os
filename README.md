@@ -2,7 +2,7 @@
 
 Century OS is a hobby Operating System.  Its objective is to run a *relatively* "common" kernel across multiple architectures.  Currently, I am targeting i686, x86_64, and rpi2b.  I am developing for these architectures these in parallel.
 
-        Copyright (c)  2017 -- Adam Clark (see LICENSE for the specifics)
+        Copyright (c)  2017-2018 -- Adam Clark (see LICENSE for the specifics)
 
 
 I chose "Century" as a name because it described me and my project in 2 ways:

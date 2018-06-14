@@ -26,6 +26,16 @@
 
 
 //
+// -- The values for the frame buffer type
+//    ------------------------------------
+typedef enum {
+    FB_PALLET = 0,
+    FB_RGB = 1,
+    FB_EGA = 2,
+} FrameBufferType;
+
+
+//
 // -- This is the structure that will hold the memory map data
 //    --------------------------------------------------------
 typedef struct MMap_t {
@@ -72,6 +82,28 @@ typedef struct HardwareDiscovery_t {
     //    ------------------------------------------------------------
     uint32_t *pmmBitmap;
     size_t pmmFrameCount;
+
+    //
+    // -- FrameBufferInformation
+    //    ----------------------
+    // -- Frame Buffer Info
+    bool frameBufferAvail;
+    uint16_t *fbAddr;
+    uint32_t fbPitch;
+    uint32_t fbWidth;
+    uint32_t fbHeight;
+    uint8_t fbBpp;
+    FrameBufferType fbType;
+
+    //---------------------------------
+
+    //
+    // -- The console properties; which will be also passed to the kernel
+    //    ---------------------------------------------------------------
+    uint16_t bgColor;
+    uint16_t fgColor;
+    uint16_t rowPos;
+    uint16_t colPos;
 } __attribute__((packed)) HardwareDiscovery_t;
 
 
@@ -194,5 +226,44 @@ inline uint32_t *GetPmmBitmap(void) { return localHwDisc.pmmBitmap; }
 inline void SetPmmFrameCount(size_t c) { localHwDisc.pmmFrameCount = c; }
 inline size_t GetPmmFrameCount(void) { return localHwDisc.pmmFrameCount; }
 
+
+//
+// -- Frame Buffer Management & Screen output management
+//    --------------------------------------------------
+inline bool IsFrameBufferAvail(void) { return localHwDisc.frameBufferAvail; }
+
+inline void SetFrameBufferAddr(uint16_t *a) { localHwDisc.fbAddr = a; localHwDisc.frameBufferAvail = true; }
+inline uint16_t *GetFrameBufferAddr(void) { return localHwDisc.fbAddr; }
+
+inline void SetFrameBufferPitch(uint32_t p) { localHwDisc.fbPitch = p; }
+inline uint32_t GetFrameBufferPitch(void) { return localHwDisc.fbPitch; }
+
+inline void SetFrameBufferWidth(uint32_t w) { localHwDisc.fbWidth = w; }
+inline uint32_t GetFrameBufferWidth(void) { return localHwDisc.fbWidth; }
+
+inline void SetFrameBufferHeight(uint32_t h) { localHwDisc.fbHeight = h; }
+inline uint32_t GetFrameBufferHeight(void) { return localHwDisc.fbHeight; }
+
+inline void SetFrameBufferBpp(uint8_t b) { localHwDisc.fbBpp = b; }
+inline uint8_t GetFrameBufferBpp(void) { return localHwDisc.fbBpp; }
+
+inline void SetFrameBufferType(FrameBufferType t) { localHwDisc.fbType = t; }
+inline FrameBufferType GetFrameBufferType(void) { return localHwDisc.fbType; }
+
+
+//
+// -- Console properties that are passed to the kernel
+//    ------------------------------------------------
+inline void SetBgColor(uint16_t c) { localHwDisc.bgColor = c; }
+inline uint16_t GetBgColor(void) { return localHwDisc.bgColor; }
+
+inline void SetFgColor(uint16_t c) { localHwDisc.fgColor = c; }
+inline uint16_t GetFgColor(void) { return localHwDisc.fgColor; }
+
+inline void SetColPos(uint16_t p) { localHwDisc.colPos = p; }
+inline uint16_t GetColPos(void) { return localHwDisc.colPos; }
+
+inline void SetRowPos(uint16_t p) { localHwDisc.rowPos = p; }
+inline uint16_t GetRowPos(void) { return localHwDisc.rowPos; }
 
 #endif

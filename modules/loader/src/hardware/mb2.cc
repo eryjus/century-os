@@ -272,15 +272,13 @@ void Mb2Parse(void)
         }
 
         case MB2_TAG_FRAMEBUFFER: {
-//            Mb2FbInfo_t *fb = (Mb2FbInfo_t *)locn;
-//            MbLocalSetFb(fb->fbAddr, fb->fbPitch, fb->fbWidth, fb->fbHeight, fb->fbBpp, fb->fbType);
-//
-//            if (fb->fbType == 0) {
-//                for (uint32_t i = 0; i < fb->pallet.palletColors; i ++) {
-//                    MbLocalAddPalletColor(fb->pallet.color[i].red, fb->pallet.color[i].green,
-//                            fb->pallet.color[i].blue);
-//                }
-//            }
+            Mb2FbInfo_t *fb = (Mb2FbInfo_t *)locn;
+            SetFrameBufferAddr((uint16_t *)fb->fbAddr);
+            SetFrameBufferPitch(fb->fbPitch);
+            SetFrameBufferWidth(fb->fbWidth);
+            SetFrameBufferHeight(fb->fbHeight);
+            SetFrameBufferBpp(fb->fbBpp);
+            SetFrameBufferType((FrameBufferType)fb->fbType);
 
             break;
         }

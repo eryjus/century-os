@@ -59,6 +59,12 @@ extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
 
 
 //
+// -- Get the length of a string
+//    --------------------------
+extern "C" size_t kStrLen(const char *s);
+
+
+//
 // -- Get a byte from an I/O Port
 //    ---------------------------
 extern "C" uint8_t inb(uint16_t port);

@@ -16,7 +16,9 @@
 
 
 #include "hw-disc.h"
+#include "pmm.h"
 #include "serial.h"
+#include "fb.h"
 
 
 //
@@ -32,6 +34,9 @@ void LoaderMain(void)
 {
     SerialInit();
     HwDiscovery();
+    PmmInit();
+    FrameBufferInit();
+    FrameBufferPutS("Welcome to Century-OS");
 
     while (1) {}
 }

@@ -257,6 +257,11 @@ void Mb1Parse(void)
     //    https://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
     //    ------------------------------------------------------------------
     if (CHECK_FLAG(12)) {
-        // TODO: Implmement this feature
+        SetFrameBufferAddr((uint16_t *)mb1Data->framebufferAddr);
+        SetFrameBufferPitch(mb1Data->framebufferPitch);
+        SetFrameBufferWidth(mb1Data->framebufferWidth);
+        SetFrameBufferHeight(mb1Data->framebufferHeight);
+        SetFrameBufferBpp(mb1Data->framebufferBpp);
+        SetFrameBufferType((FrameBufferType)mb1Data->framebufferType);
     }
 }

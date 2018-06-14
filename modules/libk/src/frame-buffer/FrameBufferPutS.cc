@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/i686/HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//  libk/src/frame-buffer/FrameBufferPutS.cc -- Write a string to the frame buffer
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,21 +10,24 @@
 //
 //     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-09  Initial   0.1.0   ADCL  Initial version
+//  2018-06-13  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "bda.h"
+#include "types.h"
 #include "hw-disc.h"
+#include "fb.h"
 
 
 //
-// -- Perform the hardware discovery
-//    ------------------------------
-void HwDiscovery(void)
+// -- Write a string to the frame buffer
+//    ----------------------------------
+void FrameBufferPutS(const char *s)
 {
-    Mb1Parse();
-    Mb2Parse();
-    BdaRead();
+    while (*s) {
+        FrameBufferDrawChar(*s ++);
+    }
+
+    FrameBufferDrawChar('\n');
 }

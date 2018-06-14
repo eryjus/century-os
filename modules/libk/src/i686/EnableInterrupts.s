@@ -18,7 +18,7 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-global EnableInterrupts
+global 	EnableInterrupts
 
 
 ;;

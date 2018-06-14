@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/i686/HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//  inc/fb.h -- Framebuffer functions
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,21 +10,42 @@
 //
 //     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-09  Initial   0.1.0   ADCL  Initial version
+//  2018-06-13  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
-
-#include "bda.h"
-#include "hw-disc.h"
+#ifndef __FB_H__
+#define __FB_H__
 
 
 //
-// -- Perform the hardware discovery
+// -- Initialize the frame buffer
+//    ---------------------------
+void FrameBufferInit(void);
+
+
+//
+// -- Clear the frame buffer
+//    ----------------------
+void FrameBufferClear(void);
+
+
+//
+// -- Parse an RGB color in the form '#ffffff' into an RGB color
+//    ----------------------------------------------------------
+uint16_t FrameBufferParseRGB(const char *c);
+
+
+//
+// -- Draw a character on the screen
 //    ------------------------------
-void HwDiscovery(void)
-{
-    Mb1Parse();
-    Mb2Parse();
-    BdaRead();
-}
+void FrameBufferDrawChar(char ch);
+
+
+//
+// -- Write a screen on the screen
+//    ----------------------------
+void FrameBufferPutS(const char *s);
+
+
+#endif
