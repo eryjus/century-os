@@ -26,7 +26,7 @@
 //    ------------------------------------------------------------------
 void BdaRead(void)
 {
-    SerialPutS("Getting BDA information");
+    SerialPutS("Getting BDA information\n");
     SetCom1(BdaGetCom1());
     SetCom2(BdaGetCom2());
     SetCom3(BdaGetCom3());

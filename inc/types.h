@@ -1,13 +1,13 @@
 //===================================================================================================================
 //
 // inc/types.h -- Common type definitions for all architectures
-// 
-// These types are architecture independent.  In the end, we add the architecture-specific types with the proper 
+//
+// These types are architecture independent.  In the end, we add the architecture-specific types with the proper
 // size.
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-05-24  Initial   0.1.0   ADCL  Initial version
 //
@@ -36,6 +36,22 @@
 #else
 # define UNUSED(x) x
 #endif
+
+
+//
+// -- Define the types that will be used by the ELF loader
+//    ----------------------------------------------------
+typedef uint64_t elf64Addr_t;
+typedef uint64_t elf64Off_t;
+
+typedef uint32_t elf32Addr_t;
+typedef uint32_t elf32Off_t;
+
+typedef int64_t elfSXWord_t;
+typedef uint64_t elfXWord_t;
+typedef int32_t elfSWord_t;
+typedef uint32_t elfWord_t;
+typedef uint16_t elfHalf_t;
 
 
 #include "arch-types.h"

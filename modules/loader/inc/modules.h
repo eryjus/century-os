@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// loader/inc/serial.h -- Serial debugging functions
+// loader/inc/modules.h -- The loader functions for handling the modules loaded by Multiboot
 //
 // These functions are used to send debugging information to the serial port.
 //
@@ -13,28 +13,14 @@
 //===================================================================================================================
 
 
-#ifndef __SERIAL_H__
-#define __SERIAL_H__
-
-
-#include "types.h"
-
-//
-// -- Initialize the serial port for writing debug data
-//    -------------------------------------------------
-void SerialInit(void);
+#ifndef __MODULES_H__
+#define __MODULES_H__
 
 
 //
-// -- Send a string to the serial port
-//    --------------------------------
-void SerialPutS(const char *s);
-
-
-//
-// -- Send a hexidecimal number to the serial port
-//    --------------------------------------------
-void SerialPutHex(uint32_t val);
+// -- Initialize the modules loaded by Multiboot
+//    ------------------------------------------
+void ModuleInit(void);
 
 
 #endif

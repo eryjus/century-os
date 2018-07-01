@@ -21,6 +21,17 @@
 
 
 //
+// -- This is the loaded modules block (which will repeat)
+//    ----------------------------------------------------
+typedef struct Mb1Mods_t {
+    uint32_t modStart;
+    uint32_t modEnd;
+    char *modIdent;
+    uint32_t modReserved;
+} __attribute__((packed)) Mb1Mods_t;
+
+
+//
 // -- Memory Map entries, which will repeat (pointer points to mmapAddr)
 //    ------------------------------------------------------------------
 typedef struct Mb1MmapEntry_t {
@@ -157,7 +168,7 @@ void Mb1Parse(void)
     // -- Check for basic memory information
     //    ----------------------------------
     if (CHECK_FLAG(0)) {
-        SerialPutS("Setting basic memory information");
+        SerialPutS("Setting basic memory information\n");
         SetAvailLowerMem(mb1Data->availLowerMem);
         SetAvailUpperMem(mb1Data->availUpperMem);
     }
@@ -176,6 +187,7 @@ void Mb1Parse(void)
     //    --------------------------------------------------------------------
     if (CHECK_FLAG(2)) {
         SerialPutS((const char *)mb1Data->cmdLine);
+        SerialPutS("\n");
     }
 
 
@@ -183,7 +195,16 @@ void Mb1Parse(void)
     // -- Check for the module information -- we will need this for the additional loaded modules (i.e. the kernel)
     //    ---------------------------------------------------------------------------------------------------------
     if (CHECK_FLAG(3)) {
-        // TODO: Implement this feature
+        uint32_t i;
+        Mb1Mods_t *m;
+
+        SerialPutS("Module information present\n");
+
+        for (m = (Mb1Mods_t *)mb1Data->modAddr, i = 0; i < mb1Data->modCount; i ++) {
+            SerialPutS(m[i].modIdent);
+            SerialPutS("\n");
+            AddModule(m[i].modStart, m[i].modEnd, m[i].modIdent);
+        }
     }
 
 
@@ -199,7 +220,7 @@ void Mb1Parse(void)
     // -- Check for Memory Map data, which we will require
     //    ------------------------------------------------
     if (CHECK_FLAG(6)) {
-        SerialPutS("Setting memory map data");
+        SerialPutS("Setting memory map data\n");
         uint32_t size = mb1Data->mmapLen;
         Mb1MmapEntry_t *entry = (Mb1MmapEntry_t *)mb1Data->mmapAddr;
         while (size) {
@@ -233,6 +254,7 @@ void Mb1Parse(void)
     //    ------------------------------
     if (CHECK_FLAG(9)) {
         SerialPutS((const char *)mb1Data->bootLoaderName);
+        SerialPutS("\n");
     }
 
 
@@ -263,5 +285,13 @@ void Mb1Parse(void)
         SetFrameBufferHeight(mb1Data->framebufferHeight);
         SetFrameBufferBpp(mb1Data->framebufferBpp);
         SetFrameBufferType((FrameBufferType)mb1Data->framebufferType);
+
+        SerialPutS("Frame Buffer is at: ");
+        SerialPutHex((ptrsize_t)mb1Data->framebufferAddr);
+        SerialPutS("; The pitch is: ");
+        SerialPutHex((ptrsize_t)mb1Data->framebufferPitch);
+        SerialPutS("; The height is: ");
+        SerialPutHex((ptrsize_t)mb1Data->framebufferHeight);
+        SerialPutS("\n");
     }
 }

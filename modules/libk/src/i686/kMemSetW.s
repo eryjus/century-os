@@ -1,8 +1,8 @@
 ;====================================================================================================================
 ;
-; kernel/src/i686/kMemSetW.s -- Set a block of memory to the specified value by words
+; libk/src/i686/kMemSetW.s -- Set a block of memory to the specified value by words
 ;
-; Set a block of memory to the specified value.  This function operates with words being passed into the function, 
+; Set a block of memory to the specified value.  This function operates with words being passed into the function,
 ; so cnt contains the number of words to fill.
 ;
 ;  On entry, the stack has the following structure:
@@ -30,8 +30,8 @@
 ;  void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
 ;
 ; ------------------------------------------------------------------------------------------------------------------
-;                                                                                                                 
-;     Date     Tracker  Version  Pgmr  Description                                                                         
+;
+;     Date     Tracker  Version  Pgmr  Description
 ;  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 ;  2012-05-24                          Initial version
 ;  2012-05-24    #21                   Created function as a tool to resolve defect 21

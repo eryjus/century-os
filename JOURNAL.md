@@ -303,3 +303,215 @@ I think the next order of business will be to print out the greeting.  Since I a
 Today I was able to get the frame buffer to clear, setting the background to blue.  The next things to collect are the functions that will write the greeting on the screen and output that greeting.
 
 The greeting is completed, so I will commit publicly again.
+
+
+**2018-06-17**
+
+So, the last 2 major things to do to get the minimal loader operational it to A) Enable paging, and B) parse the ELF file of the kernel proper (and other modules) and move them to the final location.
+
+So, I think the best thing to start with is getting the ELF modules copied into the proper locations in memory (I need to map that memory for the PMM anyway).  So, this is not something that I have every fully implemented before, so it might take some time to get it right.  I cannot just copy the code from another OS attempt into this one.  This means that I might just have to implement some additional functions to output hex values and the like -- I'm likely going to need them for debugging.  I will build them as I go, but I do expect that this will be rather quickly once I get something that will execute.
+
+The other things is where to write the debugging output.  The best place at this point I think will be the serial port as that is maintained on the console with a decent scroll-back buffer.  Not to mention I can easily redirect the output to a file if I need to.
+
+Now, there are 2 standards I can look at implementing..  a 32-bit and a 64-bit ELF standard.  I am not yet familiar with them enough to discern the difference.  So, reading it is...
+
+It looks like if I am able to write the ELF data types properly, I should be able to merge the 2 specifications together cleanly.  The 64-bit spec is supposed to be a minimal extension of the 32-bit spec.  So, I start with merging the data types and the program header structure.
+
+So, I managed to get the ELF File header structure written and now need to identify the modules that were loaded by multiboot and figure out what I am going to do about them.  At the moment, I am parsing the multiboot information prior to initializing the PMM.  This means I will need to capture the module information as part of the multiboot parsing, then allocate the memory that is already in use by these modules in the PMM, and then finally parse each module's ELF information to extract the program and data and prepare each module for execution.
+
+So, I go and get the module information from both MB1 and MB2....
+
+
+**2018-06-23**
+
+Yeah, I have had to walk away for a couple of days.  Ok, nearly a week.  But this is also one of the reasons for this journal; I can review my thinking and get back into the code much faster.
+
+A quick review shows me that I am collecting the module information from Multiboot but I have not yet updated the PMM to have that space allocated.  So, I will go and clean that portion up so that the PMM is accurate again.  I have also been working on the ELF structures, trying to get them combined in a manner that will work for me.  But I missed the PMM from before so I need to get that addressed.
+
+So, now as I'm trying to start the parsing process for the modules and elf information, I am realizing that I am going to need to copy the module named into a holding area in the hw-disc structure.  Currently, I am limited to 4096 bytes and I check for this at compile time, throwing an error if it's too long.  However, I think I'm going to need this to be longer.  At the moment, it appears that I am stepping on the original MB1 module name (likely with the PMM memory map, but that's a guess at the moment).  I know that when I add the module to the structure, the name is available and when I am trying to initialize the module the name is garbage.  The things that take place between are the PMM initialization and the frame buffer initialization.  The frame buffer should not be updating anything, so I am convinced it is the PMM structures.
+
+The multiboot specification says that these structures can be anywhere in the first 1MB memory and to collect all data needed before overwriting the structures.  My own hardware discovery structure I am building is above that mark and I will be copying it back into low memory once I have everything I need initialized.  So, long story short, I will need to make a copy of the strings in higher memory.  But the best way to do this....?
+
+So, I have added a short character array into the module structure.  I am not checking for overruns so there is a risk here and I will likely have to come back around to this at a later time.  However, this will allow me to move forward.  I will leave an open Redmine for this to address.
+
+Now as I start to look into where to put the kernel in physical memory, it dawns on me that I probably need a physical memory map.  This will be very different than the virtual memory map that I will use once I get paging started.  I do not need this memory map for all of the memory, but probably only up to 2MB.  The reason is that there will be nothing else I will want to look at beyond 2MB other than the modules.  It is the lower memory that I will be most interested in.  Therefore, I will only map 32 bits of memory space, but the same will hold true for 64-bit systems.
+
+| From Address (inclusive) | To Address (exclusive) | Size | Use |
+|:------------------------:|:----------------------:|:----:|:----|
+| 0000 0000                | 0000 1000              |  4K  | GDT and IDT tables |
+| 0000 1000                | 0001 F000              | 120K | Free Space |
+| 0001 F000                | 0009 F000              | 512K | PMM Bitmap for 16GB |
+| 0009 F000                | 000A 0000              |  4K  | EBDA |
+| 000A 0000                |                        |      | 640K boundary |
+
+This map brings 2 things into very sharp focus:
+1. 120K of free space is not enough to put a kernel, so it will have to be relocated to above the last loaded module.
+1. 16GB of PMM bitmap will take most of the rest of the available low memory (which I will need to keep some for DMA accesses I understand), so I will need to limit the amount of PMM Bitmap I put into low memory.  This one will be put into a Redmine so that I can address it at a later time and not forget about it.
+
+
+**2018-06-24**
+
+OK, so today I will need to identify the last frame that the modules occupy and then begin the process of copying the kernel module into its new location.  All of this is to get to the point where I can launch the kernel (and issue a second greeting) in upper memory and then reclaim the loader space.
+
+Wait a minute!!!  Do I actually need to copy anything??  I mean seriously with the kernel?  If I have been able to architect the format of the kernel.elf file properly, I should be able to just create the VMM mappings to the kernel in memory wherever it landed and viola!
+
+For this to be a viable option, I will need to make sure that the segments are 4K (or page) aligned.  After that, I should only need to read the program header sections to determine the virtual memory location for the page mappings.  I will also need to be able to determine if the kernel is page aligned in the disk file.  However, this should all be doable.  And this will save some work and quite a few CPU cycles.  It's also far more elegant than a brute force copy.
+
+With that said, a quick test illustrates that the current kernel meets these requirements.  Therefore, I just need to move on to the MMU (Memory Management Unit), or the paging setup and start mapping the pages to frames.
+
+The MMU is highly architecture dependent.  So, as usual, I will focus on the i686 architecture first.  We are able to cover 3.5GB of memory with a 32-bit processor.  This is a complicated concept for many, so I will try to lay things out a little bit here.
+
+In the 32-bit architecture, the tables are 3 levels deep.  There is the `CR3` register which holds the physical address (or frame) of the Page Directory (PD) table.  A Page Directory Entry (PDE) will hold the physical address (or frame) of the Page Table (PT).  And a Page Table Entry (PTE), holds the physical address (or frame) of the Page.  A page will map 1:1 with a frame.  Many PTEs can refer to a single frame.
+
+One of the keys for managing these tables is how to manage the Tables themselves.  We accomplish this by doing what is referred to as a recursive mapping.  This takes the last Page in the entire table structure and points it to the same physical address (frame) of the PD table, or the value in `CR3`.  In this way, we can use Virtual Memory Addresses to maintain the table easily.  More on this as we get into it.
+
+For my loader, I am dealing with Physical or Linear memory, not virtual memory.  There may end up being some wasted code here.  But the first thing I need to do is to establish the location of the PD table in physical memory.  Looking back on the physical memory map from yesterday, this will be at address 0x0000_1000.  It takes up one frame only and should be initialized to 0.
+
+After that, I just need routines to walk the VMM Tables and create new ones as needed with the help of the PMM to offer us frames.  Since we are dealing with physicals addresses at this point, the translation is trivial and there is no need to use the recursive mapping -- but I need to set it up for sure!
+
+So, there are a few functions I will need to create in order to get this all working.  First of all, I will not be releasing or un-allocating any pages, so whatever I write I only need to be concerned with allocation.  I will need to be able to build new tables dynamically from the PMM and initialize them.  I will also need to be able to walk the tables to determine what is missing and what to build.  At the core of all this functionality, is a `MmuMapToFrame()` function.
+
+So, now that I am starting to set up the MMU, I am also going to need a Virtual Memory Map.  Each process is going to have its own paging tables, so each process can have its own virtual memory address space which can overlap others.  I will have to work on that tomorrow, but I have several iterations I can draw from.
+
+
+**2018-06-25**
+
+OK, so maybe there isn't a version of the VMM layout I can pull from...  I cannot seem to find it anyway.  But I'm going to keep looking a while longer.
+
+Well, it looks like I'm going to be making this up again....
+
+First up is the recursive mapping for the paging tables.  The top Page Directory entry controls access to 4MB of pages.  This entry is remapped to recursively point back to the Page Directory.  Therefore, we will lose 4MB of data space, from ffc0 0000 to ffff ffff.
+
+| Start Address | End Address | Size | Usage |
+|:-------------:|:-----------:|:----:|:------|
+| 0000 0000     | bfff ffff   |  3G  | User Space & More |
+| c000 0000     | cfff ffff   | 256M | Kernel Code |
+| d000 0000     | efff ffff   | 512M | Kernel Data & Heap|
+| f000 0000     | ffbf ffff   | 252M | Kernel Stacks |
+| ffc0 0000     | ffff ffff   |  4M  | Recursive Mapping |
+
+* I want to note that I implemented recursive mapping incorrectly and will need to be corrected.  It has not yet been committed so you will not see the mistake before I correct it, but it does happen and is important to be aware of the complexity of this concept.  I have a Redmine for this and I want to continue with my thinking.
+
+So, it's also important to make a formal note of how the paging tables are found.  The Page Directory Table is located at 0xffff f000.  Then, Page Tables [0] to [1022] ([1023] does not exist!) are located at `0xffc0 0000 + (idx * 0x1000)` -- More on idx [1023]: note that 0xffc0 0000 + (1023 * 0x1000) == 0xffff f000, which is explicitly the address of the Page Directory Table.
+
+Take some time to get your head around this concept.  It can be difficult to fully grasp and even if you think you have it, you may still stumble.  For reference, see my own mistake above.  For more information, see: https://wiki.osdev.org/Page_Tables.
+
+
+**2018-06-26**
+
+Today I realize that I am going to need to debug the paging table maintenance.  In particular, I need to write a hex number to the serial port.  I will start working on that feature today.
+
+I managed to get a bunch of debugging done today.  I will need to comment out all the changes I have made, but I am not sure I have all that in me this evening.  I will start tonight and probably finish this work tomorrow.
+
+
+**2018-06-27**
+
+OK, I have managed to get everything documented the way I want (I think anyway).  I now need to initialize all the rest of the kernel mappings, including the loader which will have to be de-allocated by the kernel.  There are also a couple of additional thing I need to map into a final location as well, so the virtual memory map from 25-Jun will change.
+
+
+**2018-06-28**
+
+So, I start today looking at the virtual memory map and what I have left out.  I'm going to start a list:
+1. GDT/IDT
+1. A Page location for clearing new frames that have been allocated
+1. PMM Bitmap
+1. Mapped Frame Buffer
+1. Memory Mapped I/O (driven by hardware -- so I need to research this a bit)
+
+The place in memory I am looking at putting most of this stuff is to co-mingle it with the kernel stacks.  All except for the Frame Buffer.  That I may carve out 1GB right below the kernel.
+
+So, video buffer sizes...  The site https://www.digitalcitizen.life/what-screen-resolution-or-aspect-ratio-what-do-720p-1080i-1080p-mean (admittedly a two-year-old web site) reports the largest resolution size 3840×2160 as the largest resolution I might need to support.  Now, it has been 2 years and so the largest resolution is certainly bigger that this already.  However, with that said, looking at 3840×2160×4 (bytes per pixel) results in just under 32MB of memory needed to represent the frame buffer.  If I want double buffering, I will need 64MB (which leaves a little room I can use to get cute with in the future if I want).  Of course, by reducing the number of bits per pixel I can still support somewhat higher resolutions.  However, I think the point of all this is that for the 32-bit kernel, this size is plenty and sized reasonably well for the memory limits (2% of all supported physical memory in non-PAE 32-bit memory).
+
+Now, for the PMM...  The same type of calculations need to apply here.
+
+
+**2018-06-30**
+
+Well, I was not able to complete my analysis and so I need to pick that up here today.  The thinking I departed with was that on a 32-bit OS, only 4GB of memory is addressable.  4GB = 4096MB and since I can keep track of 128MB of PMM frames in a single 4096 byte (32768 bit) frame, I only need 32 frames of memory to control all the possible address space.  For 32-bit; 64-bit will be different.
+
+But I was researching why many 32-bit operating systems will only report 3.5GB memory.  In particular, Windows is like this.  I believe it is due to the shared video frame buffer taking up 512MB of memory and I am Googling for confirmation of this. This web page from Microsoft (https://support.microsoft.com/en-us/help/978610/the-usable-memory-may-be-less-than-the-installed-memory-on-windows-7-b) indicates that the total usable memory is the total physically installed minus any "hardware reserved" memory.  The video frame buffer qualifies as hardware reserved memory in the example provided on that web site.  So, that answers the question about 3.5GB vs. 4GB.  Again this is all non-PAE.
+
+All of this research leads me to the conclusion that I will only ever need a maximum of 32 frames (or 128KB) of memory, which is what I need to find room for in the virtual memory map.
+
+Now, going back to the frame buffer for a moment, I want to call out that I am not going to support multiple monitors at the moment.  All of the calculations above assume a single monitor.
+
+Where to put all this memory?  Well, I need to take a look at the stacks I will use as well.  Do I really need 252MB worth of stacks for the kernel?  Part of that answer will be determined by the syscall method I chose to implement.  I am going to assume a simple interrupt-based method at this point.  There are a couple of reasons for this:
+1. The method is simple
+1. The method relies on the interrupt table for stack management
+1. I should be able to implement a simple jump table to determine what gets control, which will be relatively fast (versus a long line of compares)
+
+So, for the 32-bit intel architecture, there is a limit to the number of stacks I can provide to the interrupt handlers.  With that said, 252MB of stacks does not seem reasonable (16128 individual 16KB stacks...).  So, what does?
+
+The Intel 64-bit architecture has the ability to specify 1 of 7 stacks as part of an interrupt call.  Plus it can use the calling user-space stack.  That is not a hard limit as the stacks can also be managed once the interrupt gets control if need be.  In the Intel 32-bit architecture, this is all dedicated to the user space stack and an interrupt-specific stack is not set by the CPU.  However, that does not prevent us from setting up our own dedicated stack in software.
+
+We have 256 possible interrupts.  If we wanted to have each with its own stack that would be 256 stacks.  16KB for a stack seems reasonable, especially for 32-bit CPUs and might even be over-kill.  Since the kernel is not "running" but rather "called" using a system call (syscall), there is no reason to keep a dedicated stack for the kernel.  However, there will be several functions (drivers?) that will require their own stack space.  Each of those will have the stack available from the process itself and not from this pool.  So, I am down to 256 stacks as my upper limit.
+
+256×16KB = 4096KB = 4MB
+
+Now, that is an interesting result of a calculation.  4MB is the exact amount of memory that is controlled by a Page Directory Entry.  Just like the Recursive Table mapping, it would be really nice to be able to keep the stacks in a single PDE.  Not sure why...  Maybe it's my own personal OCD speaking to me.  But, I will update the table and add this info:
+
+| PDE Entries | Start Address | End Address | Size | Usage |
+|:-----------:|:-------------:|:-----------:|:----:|:------|
+|    0-511    | 0000 0000     | 7fff ffff   |  2G  | User Address Space & More |
+|   512-767   | 8000 0000     | bfff ffff   |  1G  | Device Driver Address Space (Code, Data, Stack, etc.) |
+|  768-1003   | c000 0000     | faff ffff   | 944M | Kernel Code, Data, and Heap |
+| 1004-1019   | fb00 0000     | feff ffff   |  64M | Video Frame Buffer |
+|    1020     | ff00 0000     | ff3f ffff   |  4M  | Unused at this time - forces page faults |
+|    1021     | ff40 0000     | ff7f ffff   |  4M  | Miscellaneous Small Elements (GDT, Temp Pages, PMM Bitmap, etc.) |
+|             |      1000     |             |      | GDT/IDT |
+|             |      2000     |             |      | Temp Page for clearing frames by the PMM |
+|             |      3000     |             |      | PMM Bitmap Page  1 of 32 |
+|             |      4000     |             |      | PMM Bitmap Page  2 of 32 |
+|             |      5000     |             |      | PMM Bitmap Page  3 of 32 |
+|             |      6000     |             |      | PMM Bitmap Page  4 of 32 |
+|             |      7000     |             |      | PMM Bitmap Page  5 of 32 |
+|             |      8000     |             |      | PMM Bitmap Page  6 of 32 |
+|             |      9000     |             |      | PMM Bitmap Page  7 of 32 |
+|             |      a000     |             |      | PMM Bitmap Page  8 of 32 |
+|             |      b000     |             |      | PMM Bitmap Page  9 of 32 |
+|             |      c000     |             |      | PMM Bitmap Page 10 of 32 |
+|             |      d000     |             |      | PMM Bitmap Page 11 of 32 |
+|             |      e000     |             |      | PMM Bitmap Page 12 of 32 |
+|             |      f000     |             |      | PMM Bitmap Page 13 of 32 |
+|             |    1 0000     |             |      | PMM Bitmap Page 14 of 32 |
+|             |    1 1000     |             |      | PMM Bitmap Page 15 of 32 |
+|             |    1 2000     |             |      | PMM Bitmap Page 16 of 32 |
+|             |    1 3000     |             |      | PMM Bitmap Page 17 of 32 |
+|             |    1 4000     |             |      | PMM Bitmap Page 18 of 32 |
+|             |    1 5000     |             |      | PMM Bitmap Page 19 of 32 |
+|             |    1 6000     |             |      | PMM Bitmap Page 20 of 32 |
+|             |    1 7000     |             |      | PMM Bitmap Page 21 of 32 |
+|             |    1 8000     |             |      | PMM Bitmap Page 22 of 32 |
+|             |    1 9000     |             |      | PMM Bitmap Page 23 of 32 |
+|             |    1 a000     |             |      | PMM Bitmap Page 24 of 32 |
+|             |    1 b000     |             |      | PMM Bitmap Page 25 of 32 |
+|             |    1 c000     |             |      | PMM Bitmap Page 26 of 32 |
+|             |    1 d000     |             |      | PMM Bitmap Page 27 of 32 |
+|             |    1 e000     |             |      | PMM Bitmap Page 28 of 32 |
+|             |    1 f000     |             |      | PMM Bitmap Page 29 of 32 |
+|             |    2 0000     |             |      | PMM Bitmap Page 30 of 32 |
+|             |    2 1000     |             |      | PMM Bitmap Page 31 of 32 |
+|             |    2 2000     |             |      | PMM Bitmap Page 32 of 32 |
+|    1022     | ff80 0000     | ffbf ffff   |  4M  | Kernel Stacks -- 256×16KB |
+|    1023     | ffc0 0000     | ffff ffff   |  4M  | Recursive Mapping |
+
+One of the things I think I like about this layout is the gap up unused address space between the Video Frame Buffer mapped location and the other small elements.  In the event I have some sort of video buffer overrun, I will have a place in memory that will force a page fault that I can trap.  Now that not to say that I cannot achieve this withing PDE 1004-1019, but I really like the extra buffer space for safety with larger calculations.
+
+Now, a note for those following along at home...  This Virtual Memory Map is where things will be located in address space only.  Not every page will be mapped to physical memory.  Therefore, not every address space will be used.  This map is used (and in particular the memory above 0xc000_0000) is used to build out the Page Directory only.  In the event a page is not mapped to a physical frame, a page fault occurs.  At some point, I will start swapping pages from memory to disk and retrieve them on demand, which will mean I will need these page faults as a feature and not just a problem.  That's a bit down the road.
+
+So, I have spent several days thinking and documenting my thoughts.  I have been able to leverage a large amount of code so far to get to this point, but now I am starting to write much more from scratch.  This thinking is critical.  I have said before and I will say again:
+
+> Writing a hobby Operating System is more of a research project than a coding project.
+
+But I can finally write some code again and will go about mapping all these components I have.
+
+It turns out that one of the things I have discovered was that the EBDA is either taking more than 1 frame or is not butted right up against the 640K boundary.  I need to figure out which.  For now, I have made the EBDA 1 frame in length but I may be truncating lots of information from the EBDA I will want to collect.  For this one, I am adding it to Redmine to make sure I do not lose track of this need.
+
+So, as I end the day today, I have everything except the video frame buffer mapped into the paging tables.  This does include the kernel mapped to the proper location as identified in the ELF file and how the executable was linked.
+
+I now have all the MMU mappings completed for in preparation for the kernel.  With this, I wll check my code for comments and will commit it publicly tomorrow.  I am not yet enabling paging or jumping to the kernel, so there is still a lot of debugging yet to do on all this work I have done.  That will be a major task on its own.
+
+
+**2018-07-01**
+
+So, the first order of business today is to get this code committed.  I need to work through all the files I have modified and make sure the comments are proper and up-to-date.

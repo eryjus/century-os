@@ -29,10 +29,9 @@
 //===================================================================================================================
 
 
-
-
 #include "types.h"
 #include "console.h"
+#include "serial.h"
 #include "cpu.h"
 #include "pmm.h"
 
@@ -49,7 +48,7 @@ void PmmInit(void)
 
     // -- Sanity check -- we cannot continue without a memory map
     if (!HaveMMapData()) {
-        SerialPutS("PANIC: Unable to determine memory map; Century OS cannot initialize\n");
+        SerialPutS("PANIC: Unable to determine memory map; Century OS cannot initialize\n\n");
         Halt();
     }
 
@@ -72,30 +71,34 @@ void PmmInit(void)
         length = PmmLinearToFrame(GetAvailMemLength(i));
 
         PmmFreeFrameRange(frame, length);
-
-//        if ((frame + length - 1) > mbLocal.mmu) mbLocal.mmu = frame + length - 1;
     }
 
     // -- The GDT is at linear address 0 and make it unavailable
     PmmAllocFrame(0);
 
+    // -- Page Directory is not available
+    PmmAllocFrame(1);
+
+    // -- The area between the EBDA and 1MB is allocated
+    PmmAllocFrameRange(PmmLinearToFrame(GetEbda()), 0x100 - PmmLinearToFrame(GetEbda()));
+
     // -- now that all our memory is available, set the loader space to be not available; _loader* already aligned
     frame_t ls = PmmLinearToFrame((ptrsize_t)_loaderStart);
     frame_t le = PmmLinearToFrame((ptrsize_t)_loaderEnd);
-    PmmAllocFrameRange(ls, le - ls + 1);
+    PmmAllocFrameRange(ls, le - ls);        // _loaderEnd is already page aligned, so no need to add 1 page.
 
     // -- Allocate the Frame Buffer
-//    FrameAllocRange(mbLocal.fbAddr, 1024 * 768 * 2);
+    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), 1024 * 768 * 2);
 
-    // TODO: allocate the loaded modules
-//    if (mbLocal.hasModulesLoaded) {
-//        for (uint32_t i = 0; i < mbLocal.numModulesLoaded; i ++) {
-//            frame = mbLocal.modules[i].modStart >> 12;
-//            length = (mbLocal.modules[i].modEnd >> 12) - frame;
-//
-//            FrameFreeRange(frame, length);
-//        }
-//    }
+    // -- Allocate the loaded modules
+    if (HaveModData()) {
+        for (int i = 0; i < GetModCount(); i ++) {
+            frame = PmmLinearToFrame(GetAvailModuleStart(i));
+            length = PmmLinearToFrame(GetAvailModuleEnd(i)) - frame + 1;
+
+            PmmAllocFrameRange(frame, length);
+        }
+    }
 
     // -- Finally, we have to mark the bitmap itself as used
     PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)start), pages);

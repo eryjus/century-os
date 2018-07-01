@@ -7,6 +7,7 @@
 sysroot
 iso
 *.old
+org.kde.konsole.desktop
 
 obj/**/*.o
 

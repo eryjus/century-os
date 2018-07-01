@@ -18,6 +18,8 @@
 #include "hw-disc.h"
 #include "pmm.h"
 #include "serial.h"
+#include "mmu.h"
+#include "modules.h"
 #include "fb.h"
 
 
@@ -34,9 +36,15 @@ void LoaderMain(void)
 {
     SerialInit();
     HwDiscovery();
+
+    // -- Theoretically, after this point, there should be very little architecture-dependent code
     PmmInit();
     FrameBufferInit();
     FrameBufferPutS("Welcome to Century-OS");
+    MmuInit();
+    ModuleInit();
+
+    FrameBufferPutS("Initialization Complete");
 
     while (1) {}
 }

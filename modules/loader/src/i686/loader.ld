@@ -1,18 +1,18 @@
 /*******************************************************************************************************************/
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /*  loader/src/i686/loader.ld -- This is the linker script for locating the sections in the target binary          */
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /*        Copyright (c)  2017-2018 -- Adam Clark                                                                   */
 /*        Licensed under "THE BEER-WARE LICENSE"                                                                   */
-/*        See License.md for details.                                                                              */ 
-/*                                                                                                                 */ 
+/*        See License.md for details.                                                                              */
+/*                                                                                                                 */
 /* --------------------------------------------------------------------------------------------------------------- */
-/*                                                                                                                 */ 
-/*     Date     Tracker  Version  Pgmr  Description                                                                */       
+/*                                                                                                                 */
+/*     Date     Tracker  Version  Pgmr  Description                                                                */
 /*  ----------  -------  -------  ----  -------------------------------------------------------------------------  */
 /*  2017-04-14  Initial   0.0.0   ADCL  Initial version                                                            */
 /*  2018-06-02  Initial   0.1.0   ADCL  Copied from century to century-os                                          */
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /*******************************************************************************************************************/
 
 OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
@@ -24,11 +24,11 @@ SECTIONS {
      * -- Set the location where the binary will be loaded
      *    ------------------------------------------------
      */
-     
-    . = 0x100000; 
+
+    . = 0x100000;
     _loaderStart = .;
     _textStart = .;
-    
+
     /*
      * -- This is where the code will be placed.  Note that we put the init section right up front.  This
      *    is where we will gain control.
@@ -41,7 +41,7 @@ SECTIONS {
     }
     . = ALIGN(4096);
     _textEnd = .;
-    
+
     _roStart = .;
     /*
      * -- We drop in the read only data here
@@ -53,8 +53,8 @@ SECTIONS {
     . = ALIGN(4096);
     _roEnd = .;
 
-    /* 
-     * -- Include debugging information in loader memory 
+    /*
+     * -- Include debugging information in loader memory
      *    ----------------------------------------------
      */
     _stabStart = .;
@@ -87,7 +87,7 @@ SECTIONS {
     .bss : {
         *(.bss)
     }
-    . = ALIGN(4096);
+    . = ALIGN(4096);        /* This is required to make sure we are page aligned when we init the MMU */
     _bssEnd = .;
     _loaderEnd = .;
 

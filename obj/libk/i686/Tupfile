@@ -30,4 +30,5 @@
 #    -------------------------------------------------------------------
 : foreach ../../../modules/libk/src/i686/*.s |> !nasm |>
 
+: foreach ../../../modules/libk/src/frame-buffer/*.cc |> !i686-libk-cc |>
 : foreach ../../../modules/libk/src/i686/*.cc |> !i686-libk-cc |>

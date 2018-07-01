@@ -1,16 +1,16 @@
 /*******************************************************************************************************************/
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /*  kernel/src/i686/loader.ld -- This is the linker script for locating the sections in the target binary          */
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /*        Copyright (c)  2017-2018 -- Adam Clark                                                                   */
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /* --------------------------------------------------------------------------------------------------------------- */
-/*                                                                                                                 */ 
-/*     Date     Tracker  Version  Pgmr  Description                                                                */       
+/*                                                                                                                 */
+/*     Date     Tracker  Version  Pgmr  Description                                                                */
 /*  ----------  -------  -------  ----  -------------------------------------------------------------------------  */
 /*  2017-04-14  Initial   0.0.0   ADCL  Initial version                                                            */
 /*  2018-05-25  Initial   0.1.0   ADCL  Copy this file from the loader of century                                  */
-/*                                                                                                                 */ 
+/*                                                                                                                 */
 /*******************************************************************************************************************/
 
 OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
@@ -22,8 +22,8 @@ SECTIONS {
      * -- Set the location where the binary will be loaded
      *    ------------------------------------------------
      */
-     
-    . = 0x100000; 
+
+    . = 0xc0000000;                 /* This is the location in upper memory we will load the kernel */
     _kernelStart = .;
     _textStart = .;
 
@@ -35,7 +35,7 @@ SECTIONS {
     .mbheader : {
         *(.mbheader)
     }
-    
+
     /*
      * -- This is where the code will be placed.  Note that we put the init section right up front.  This
      *    is where we will gain control.
@@ -47,7 +47,7 @@ SECTIONS {
     }
     . = ALIGN(4096);
     _textEnd = .;
-    
+
     _roStart = .;
     /*
      * -- We drop in the read only data here
@@ -59,8 +59,8 @@ SECTIONS {
     . = ALIGN(4096);
     _roEnd = .;
 
-    /* 
-     * -- Include debugging information in loader memory 
+    /*
+     * -- Include debugging information in loader memory
      *    ----------------------------------------------
      */
     _stabStart = .;
@@ -100,6 +100,6 @@ SECTIONS {
     /DISCARD/ : {
         *(.eh_frame .note.GNU-stack .comment .bootstack)
     }
-       
+
     end = .; _end = .; __end = .;
 }

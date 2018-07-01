@@ -228,19 +228,26 @@ void Mb2Parse(void)
 
         case MB2_TAG_LOADER:
             SerialPutS(((Mb2Loader_t *)locn)->name);
+            SerialPutS("\n");
             break;
 
         case MB2_TAG_MODULE: {
-//            Mb2Module_t *mod = (Mb2Module_t *)locn;
-//            MbLocalAddModule(mod->modStart, mod->modEnd, mod->name);
+            SerialPutS("Module information present\n");
+
+            Mb2Module_t *m = (Mb2Module_t *)locn;
+
+            AddModule(m->modStart, m->modEnd, m->name);
+
             break;
         }
 
         case MB2_TAG_BASIC_MEM: {
             Mb2BasicMem_t *mem = (Mb2BasicMem_t *)locn;
-        SerialPutS("Setting basic memory information");
-        SetAvailLowerMem(mem->memLower);
-        SetAvailUpperMem(mem->memUpper);
+
+            SerialPutS("Setting basic memory information\n");
+            SetAvailLowerMem(mem->memLower);
+            SetAvailUpperMem(mem->memUpper);
+
             break;
         }
 
@@ -251,7 +258,7 @@ void Mb2Parse(void)
         }
 
         case MB2_TAG_MMAP: {
-            SerialPutS("Setting memory map data");
+            SerialPutS("Setting memory map data\n");
             Mb2MemMap_t *mmap = (Mb2MemMap_t *)locn;
             uint32_t s = tag->size / mmap->entrySize;
             for (uint32_t i = 0; i < s; i ++) {
@@ -280,6 +287,15 @@ void Mb2Parse(void)
             SetFrameBufferBpp(fb->fbBpp);
             SetFrameBufferType((FrameBufferType)fb->fbType);
 
+
+            SerialPutS("Frame Buffer is at: ");
+            SerialPutHex((ptrsize_t)fb->fbAddr);
+            SerialPutS("; The pitch is");
+            SerialPutHex((ptrsize_t)fb->fbPitch);
+            SerialPutS("; The height is");
+            SerialPutHex((ptrsize_t)fb->fbHeight);
+            SerialPutS("\n");
+
             break;
         }
 
@@ -299,7 +315,7 @@ void Mb2Parse(void)
         }
 
         default:
-            SerialPutS("Unimplemented MB2 type");
+            SerialPutS("Unimplemented MB2 type\n");
             break;
         }
 

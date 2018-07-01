@@ -61,6 +61,12 @@ inline void PmmAllocFrameRange(frame_t f, size_t l) { for (frame_t end = f + l; 
 
 
 //
+// -- Find a new frame and allocate it
+//    --------------------------------
+frame_t PmmNewFrame(void);
+
+
+//
 // -- Initialize the PMM
 //    ------------------
 void PmmInit(void);

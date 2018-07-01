@@ -1,32 +1,28 @@
 //===================================================================================================================
 //
-//  loader/src/x86-common/SerialPutS.cc -- Output a string to the serial port
-//
-//        Copyright (c)  2017-2018 -- Adam Clark
-//        Licensed under "THE BEER-WARE LICENSE"
-//        See License.md for details.
+//  loader/src/i686/MmuMakeNewTable.cc -- Create a new Table when we need to allocate a new Page Table.
 //
 // -----------------------------------------------------------------------------------------------------------------
 //
 //     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-07  Initial   0.0.0   ADCL  Initial version
+//  2017-06-27  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "cpu.h"
+#include "pmm.h"
+#include "mmu.h"
 
-extern uint16_t serialPort;
 
 //
-// -- Send a character string to a serial port
-//    ----------------------------------------
-void SerialPutS(const char *s)
+// -- Make a new Paging table
+//    -----------------------
+pageEntry_t *MmuMakeNewTable(pageEntry_t *e)
 {
-    while (*s) {
-        while ((inb(serialPort + 5) & 0x20) == 0) {}
-
-        outb(serialPort, *s ++);
-    }
+    frame_t frame = PmmNewFrame();
+    kMemSetB((void *)PmmFrameToLinear(frame), 0, 4096);
+    e->frame = frame;
+    return e;
 }

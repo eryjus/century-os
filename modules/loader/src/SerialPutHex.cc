@@ -1,10 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/x86-common/SerialPutS.cc -- Output a string to the serial port
-//
-//        Copyright (c)  2017-2018 -- Adam Clark
-//        Licensed under "THE BEER-WARE LICENSE"
-//        See License.md for details.
+//  loader/src/SeriapPutHex.cc -- Output a Hex Number to the Serial Port
 //
 // -----------------------------------------------------------------------------------------------------------------
 //
@@ -15,18 +11,22 @@
 //===================================================================================================================
 
 
+#include "types.h"
+#include "serial.h"
 #include "cpu.h"
 
-extern uint16_t serialPort;
 
 //
-// -- Send a character string to a serial port
-//    ----------------------------------------
-void SerialPutS(const char *s)
+// -- Print a hex number to the serial port
+//    -------------------------------------
+void SerialPutHex(uint32_t val)
 {
-    while (*s) {
-        while ((inb(serialPort + 5) & 0x20) == 0) {}
+    extern uint16_t serialPort;
+    char hex[] = "0123456789abcdef";
 
-        outb(serialPort, *s ++);
+    SerialPutS("0x");
+    for (int i = 28; i >= 0; i -= 4) {
+        while ((inb(serialPort + 5) & 0x20) == 0) {}
+        outb(serialPort, hex[(val >> i) & 0x0f]);
     }
 }

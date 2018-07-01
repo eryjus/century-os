@@ -59,6 +59,12 @@ extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
 
 
 //
+// -- Copy a string from one location to another
+//    ------------------------------------------
+extern "C" void kStrCpy(char *dest, char *src);
+
+
+//
 // -- Get the length of a string
 //    --------------------------
 extern "C" size_t kStrLen(const char *s);

@@ -19,10 +19,12 @@
 
 
 #include "types.h"
-#include "serial.h"
+#include "cpu.h"
 
 
 #define NUM_MMAP_ENTRIES        (25)
+#define MAX_MODULES             (10)
+#define MODULE_IDENT_LEN        (12)
 
 
 //
@@ -36,13 +38,22 @@ typedef enum {
 
 
 //
+// -- This is the structure that will hold loaded module info
+//    -------------------------------------------------------
+typedef struct Module_t {
+    uint32_t modStart;
+    uint32_t modEnd;
+    char modIdent[MODULE_IDENT_LEN];             // this will point to at-risk memory
+} Module_t;
+
+
+//
 // -- This is the structure that will hold the memory map data
 //    --------------------------------------------------------
 typedef struct MMap_t {
     uint64_t baseAddr;
     uint64_t length;
 } MMap_t;
-
 
 
 //
@@ -76,6 +87,14 @@ typedef struct HardwareDiscovery_t {
     bool memMapAvail;
     int memMapCount;
     MMap_t mmap[NUM_MMAP_ENTRIES];
+
+    //
+    // -- the module information
+    //    ----------------------
+    bool modAvail;
+    int modCount;
+    Module_t mods[MAX_MODULES];
+    frame_t modHighestFrame;
 
     //
     // -- the Physical Memory Manager location and other relevant info
@@ -115,7 +134,7 @@ extern HardwareDiscovery_t localHwDisc;
 
 //
 // -- A compile time sanity check -- if this throws an error, the structure will not fit in a page and will cause
-//    problems for both the loader and the kernel.  The fix will be to move somethings around in memory and make
+//    problems for both the loader and the kernel.  The fix will be to move some things around in memory and make
 //    room for the larger structure
 //    -----------------------------------------------------------------------------------------------------------
 static_assert(sizeof(HardwareDiscovery_t) <= 4096, \
@@ -199,6 +218,30 @@ inline uint32_t GetAvailUpperMem(void) { return localHwDisc.availUpperMem; }
 
 inline void SetUpperMemLimit(uint64_t l) { localHwDisc.upperMemLimit = l; }
 inline uint64_t GetUpperMemLimit(void) { return localHwDisc.upperMemLimit; }
+
+
+//
+// -- Module Data
+//    -----------
+inline bool HaveModData(void) { return localHwDisc.modAvail; }
+inline int GetModCount(void) { return localHwDisc.modCount; }
+
+inline frame_t GetModHightestFrame(void) { return localHwDisc.modHighestFrame; }
+inline void UpdateModHighestFrame(frame_t frame) {
+    if (frame > localHwDisc.modHighestFrame) localHwDisc.modHighestFrame = frame;
+}
+
+inline void AddModule(uint64_t at, uint64_t end, char *ident) {
+    localHwDisc.mods[localHwDisc.modCount].modStart = at;
+    localHwDisc.mods[localHwDisc.modCount].modEnd = end;
+    kStrCpy(localHwDisc.mods[localHwDisc.modCount ++].modIdent, ident);
+    UpdateModHighestFrame(end >> 12);
+    localHwDisc.modAvail = true;
+}
+
+inline uint64_t GetAvailModuleStart(int i) { return localHwDisc.mods[i].modStart; }
+inline uint64_t GetAvailModuleEnd(int i) { return localHwDisc.mods[i].modEnd; }
+inline char *GetAvailModuleIdent(int i) { return localHwDisc.mods[i].modIdent; }
 
 
 //
