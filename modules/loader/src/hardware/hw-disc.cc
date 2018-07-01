@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/hw-disc.cc -- hardware discovery structure implementation
+//  libk/src/hw-disc.cc -- hardware discovery structure implementation
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -21,4 +21,6 @@
 //
 // -- This is the local version of what we have found for hardware
 //    ------------------------------------------------------------
-HardwareDiscovery_t localHwDisc;
+static HardwareDiscovery_t _localHwDisc;
+HardwareDiscovery_t *localHwDisc = &_localHwDisc;
+

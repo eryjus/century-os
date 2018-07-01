@@ -18,9 +18,15 @@
 
 
 //
+// -- This is the entry point for the kernel
+//    --------------------------------------
+typedef void (*kernEntry_t)(void);
+
+
+//
 // -- Initialize the modules loaded by Multiboot
 //    ------------------------------------------
-void ModuleInit(void);
+kernEntry_t ModuleInit(void);
 
 
 #endif

@@ -23,6 +23,7 @@
 //    -----------------------------------
 extern uint8_t _loaderStart[];
 extern uint8_t _loaderEnd[];
+extern "C" void LoaderMain(void);
 
 
 //
@@ -81,6 +82,11 @@ void MmuInit(void)
         MmuMapToFrame(cr3, addr, f);
     }
 
+    // -- need to identity-map the stack
+    MmuMapToFrame(cr3, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096));
+
+    // -- identity map the hardware data strucure
+    MmuMapToFrame(cr3, 0x00003000, 3);
 
     //
     // -- Dump some addresses from the cr3 tables to check validity
@@ -89,5 +95,10 @@ void MmuInit(void)
     MmuDumpTables(640 * 1024); // Print 640K
     MmuDumpTables(0xff401000); // The GDT/IDT location
     MmuDumpTables((ptrsize_t)&_loaderStart); // The loader location
+    MmuDumpTables(0x28172948);  // An address that should not be mapped
+    MmuDumpTables(0xfb000000);  // The start of the frame buffer
+
+    MmuDumpTables((ptrsize_t)LoaderMain);
+    MmuDumpTables((ptrsize_t)MmuSwitchPageDir);
 }
 

@@ -1,6 +1,6 @@
 //===================================================================================================================
 // kernel/src/kInit.cc -- Initialize the kernel structures
-// 
+//
 // Initialize the kernel structures, preparing to formally start the OS.
 //
 // Initialization is going to be broken into several phases.  At a high level, the phases are:
@@ -13,47 +13,57 @@
 // The above is a starting point and will be expanded as we add support
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-09-15  Initial                 Initial version -- leveraged from Century: kmain
 //  2013-09-01    #82                   Add a mutex for screen operations (2018-05-25: temporarily removed)
 //  2013-09-03    #73                   Encapsulate Process Structure
 //  2013-09-13   #101                   Resolve issues splint exposes
 //  2018-05-25             0.1.0  ADCL  Copy this file from century32 to century-os
+//  2018-07-01  Initial    0.1.0  ADCL  Refactor this function to be strictly the kernel (not the loader)
 //
 //===================================================================================================================
 
 
 #include "types.h"
 #include "cpu.h"
-#include "console.h"
+#include "fb.h"
+#include "hw-disc.h"
 #include "heap.h"
+
+
+HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
+
 
 // extern uint32 schedulerEnabled;
 // extern Mutex screenMutex;
 
-extern "C" void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic));
+extern "C" void kInit(void);
+
+extern void SerialPutS(const char *s);
+uint16_t serialPort = 0x3f8;
 
 
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
-void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
+void kInit(void)
 {
+	SerialPutS("Hello from the kernel!!\n");
 	//
 	// -- Phase 1: Required by the processor to setup the proper state
 	//    ------------------------------------------------------------
-	ConsoleClear();
-	ConsoleUpdateStatus();
-	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
-	ConsolePutS("    (initializing...)\n");		// an extra newline
-	CpuGetCapabilities();
+//	ConsoleClear();
+//	ConsoleUpdateStatus();
+//	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
+//	ConsolePutS("    (initializing...)\n");		// an extra newline
+//	CpuGetCapabilities();
 
 	//
 	// -- Phase 2: Required OS Structure Initialization
 	//    ---------------------------------------------
-	HeapInit();
+//	HeapInit();
 //	InitPaging();
 
 //#ifndef USE_APIC
@@ -112,7 +122,7 @@ void kInit(void UNUSED(*mbi), uint32_t UNUSED(magic))
 //	SetProcPriority(currentProcess, PTY_IDLE);
 //	BREAKPOINT;
 
-	EnableInterrupts();
+//	EnableInterrupts();
 
 	while (1) {
 		__asm("hlt");

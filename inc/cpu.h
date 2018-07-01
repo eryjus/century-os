@@ -59,6 +59,12 @@ extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
 
 
 //
+// -- Move a block of memory from one location to another
+//    ---------------------------------------------------
+extern "C" void kMemMove(void *tgt, void *src, size_t cnt);
+
+
+//
 // -- Copy a string from one location to another
 //    ------------------------------------------
 extern "C" void kStrCpy(char *dest, char *src);

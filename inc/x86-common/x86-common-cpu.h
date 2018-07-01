@@ -148,3 +148,9 @@ typedef struct IdtEntry {
 	uint16_t baseHigh;
 } __attribute__((packed)) IdtEntry;
 
+
+//
+// -- Change the page directory to the physical address provided
+//    ----------------------------------------------------------
+extern "C" void MmuSwitchPageDir(ptrsize_t physAddr);
+

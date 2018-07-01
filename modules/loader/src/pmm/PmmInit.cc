@@ -100,6 +100,12 @@ void PmmInit(void)
         }
     }
 
+    // -- we have a 4K stack that is upper-bound at 2MB
+    PmmAllocFrame(PmmLinearToFrame(0x200000 - 4096));
+
+    // -- There is a frame that will hold the hardware structure
+    PmmAllocFrame(PmmLinearToFrame(0x00003000));
+
     // -- Finally, we have to mark the bitmap itself as used
     PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)start), pages);
 

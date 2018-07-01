@@ -7,6 +7,9 @@ I found some old code that I want to reuse.  The most successful iteration I hav
 My goals from the previous iteration are all still valid, I am just hoping to move this along a little faster.  I plan on combining code from several sources here.
 
 
+---
+---
+
 ***Prologue from Century***
 
 So as I am sitting down today to start laying out how my virtual memory manager will be used, I really should be documenting my progress and thoughts if this is really going to be something others can learn from.  The README.md file is not really suited for the type of "conversation" I want to have here.  One of the goals of this project is, after all, to have a result that others can learn from -- even if it is from my mistakes.
@@ -30,6 +33,9 @@ So, my priority is to get into the native CPU mode and then transfer control to 
 I wanted to incorporate all the thinking I had done with Century64 (the assembly-based 64-bit version), but I just realized that the documentation was lost in the "Big SAN Crash of 2015!"
 
 
+---
+---
+
 **2018-05-23**
 
 The first orders of business are the basic structure and the build system.  First, I would like to structure to be relatively flat, but broken up into modules.  The recovered code from Century32 is a monolithic kernel, so everything was in the main directory.  On the other hand, several things are going to be hardware-specific and need to be placed into their own folders.  I may not be able to keep the goal to be flat as cleanly as I would prefer.  Back to that in a bit...
@@ -38,6 +44,9 @@ As for the build system, I prefer `tup`.  Is is very fast and have never let me 
 
 So, back to the directory structure...  This might sound a little odd, but I think the starting point should be the `Makefile` from century.  That `Makefile` is optimized for `tup` already and already takes care of some of the management I was referring to above.  It will be an easy clean-up from that start, so I will go and copy it.
 
+
+---
+---
 
 **2018-05-24**
 
@@ -50,6 +59,9 @@ At this point, I am starting to write `lists.cc`.  I wanted to take a moment to 
 Another thought about organization is the number of functions to put into a single file.  Compiles run much faster with multiple functions in a single file (reducing the number of files to compile).  However, it is easier to maintain and read/understand the entire system with a single or few functions in each file.  Also, I believe it will aid portability.  So I am going to change back to a single function in each file.
 
 
+---
+---
+
 **2018-05-25**
 
 Today I will continue laying out the basic of the kernel support functions.  In this case, lists.
@@ -58,7 +70,11 @@ I have decided I will not be using `doxygen` for the kernel (at least not at thi
 
 So I have finished the lists, changing the entire interface into inline functions.  At this point, I am going to perform a local interim commit to hold the state.
 
+---
+
 I have also been able to get the kernel to boot and immediately lock up (which is the intent -- no triple fault).  This is a rather big milestone, so I will locally commit again.
+
+---
 
 So, now after the commit, what is next?  Well I need to get data to the screen.  Let's face it: any sort of debugging is going to be impossible without that ability.  Century32 has a number of kScreen functions that outputs to the screen.  However, the rpi2b does not have a text mode.  For the moment, I am going to ignore that fact and start in text mode.  I will revisit this decision when I start the rpi2b version.
 
@@ -67,14 +83,22 @@ Also, another note is that I am going to start putting my TODO list into my own 
 As I get into the early screen functions, I am struck by the amount of code duplication I had to deal with in century32.  I recall that this bothered me then as well and I never really addressed it.  The concern is that I had `kprintf` and a `ttyprintf` functions and the majority of the body of both functions were similar.  I was able to leverage some of the `kprintf` code, but that was not good enough.  So, I would rather write a `kputs` function that writes early messages to the screen and keep the bulk of the `kprintf` stuff really optimized for the tty functions.  I will be giving up the ability to print numbers and other things using `%` tags, but I think that is OK for the moment.  Just like `puts`, `kputs` will append a newline after writing the string.
 
 
+---
+---
+
 **2018-05-26**
 
 Today I will start to bring over early console functionality.  This will also drag over several supporting functions and I will make the effort to bring over all the similar functions at the same time.  I will start with a `ConsolePutChar` function and then build from there.
 
 
+---
+---
+
 **2018-05-27**
 
 Today I have finished up copying in several functions and getting my `ConsolePutS()` implementation working.  I now have a greeting on the screen.  This is a milestone so I will commit these changes locally.
+
+---
 
 So, since I am working on the screen, I think the next thing to do is to write the status bar.  This way the screen is actually 'complete'.  The status bar will have to be blank for now since I don't have too much to actually paint into the status bar, but I will start laying the foundation.  What I am thinking about is the Redmine (my internal bug tracker, sorry for the loss of visibility on that) I have put in for the `ConsolePutChar()` to be more architecture independent.  I will think on this a bit....
 
@@ -83,11 +107,16 @@ So, I did go ahead and make the `ConsolePaintChar()` function, as I had identifi
 The 2 key functions calls that I have ahead of what has been implemented so far is the function to set the cursor type and the other to clear the screen.  I think those are the next 2 I will be implementing.  This way, I will be able to look forward rather than backward.
 
 
+---
+---
+
 **2018-05-28**
 
 Today I started to wrap up the rest of the early console functions.  The last thing is the cursor geometry function -- and I do not see the value in it at the moment.  I may pull it in later.  So, I will commit locally at this point and move on to CPU initialization.
 
 Actually, I pushed the commits to GitHub since I figured there was enough working to make complete an interim push....
+
+---
 
 So, the next major step to work on is CPU initialization.  I will be supporting several architectures here and I need to be able to determine several things during the initial startup.  One critical task is the figure out the system capabilities.  There are going to have to be several minimal capabilities that I require in order to boot and I need to make sure that they are available before I really get into the core of the OS.  An example is paging.  Another is the CPU instruction set.  After I determine all that, I need to put the CPU into a consistent state across all architectures.
 
@@ -147,6 +176,9 @@ So, that helps to clear that up.  I also had an order defined:
 With this outstanding research, I see no need to change my thinking.  I will leverage the GDT from the century code base.
 
 
+---
+---
+
 **2018-05-29**
 
 So century put the GDT at address 0x00000000.  It was also set prior to leaving the assembly language loader.  I want to duplicate that here, but I am not convinced that the address is really the best thing to use due to null pointer assignments.  Now, on the other hand, since I will be using paging, I can keep that page unmapped and be relatively safe.  So I think I will keep that setup.
@@ -159,6 +191,9 @@ The problem is where to put the IDT.  For 256 interrupts, the table will be 256*
 
 The final thing to do tonight as I wrap up for the evening is to build the actual IDT able in place (at address 0x800) as part of the initialization.  That will be a task for tomorrow.
 
+
+---
+---
 
 **2018-05-30**
 
@@ -175,13 +210,21 @@ So for the record, what are the phases of initialization?
 
 With this, we are at a substantial point and I will commit these changes and push to GitHib.
 
+---
+
 So, the next thing to work on is Phase 2 (OS internal structures).  One of the first things to initialize is the Kernel Heap.  I am actually pretty happy with my heap implementation from century32.  It has been ported from one instance to another and this is no exception.  I will work on pulling that in from century32 to century-os.  This is the next task.
 
+
+---
+---
 
 **2018-05-31**
 
 I am working today on bringing over the heap functions.
 
+
+---
+---
 
 **2018-06-01**
 
@@ -189,10 +232,15 @@ OK, I have been able to bring over all the heap functions.  Having done that, I 
 
 In the meantime, I commit and push since this is a rather significant milestone.
 
+---
+
 Now that the commit os done, I really need to be able to identify how much heap I really can have.  For the moment I have hard-coded the upper limit.  I was thinking I should get the upper memory limit from MBI, but that is not really a good solution since I will have paging enabled and will have a virtual limit.  I need to think this through but for the moment, I will keep it hard-coded.
 
 The next thing to work through is paging.  However, I also need to set up the kernel into upper memory, which was not done in Century32.  It was in Century64 (assembly) and Century (multi-architecture).  This will be the hardest part of the port so far.  Tomorrow....
 
+
+---
+---
 
 **2018-06-02**
 
@@ -215,6 +263,9 @@ OK, so do I really need to know and understand *both* the Multiboot1 and Multibo
 I've been a bit all over the place today.  However, I am happy with the results so far.  I think the loader is the right thing to do since I will have to normalize the architectures to a common starting point.  It also allows me to abandon the loader (which are also launched at different addresses on different systems and will be different sizes) once I have all the setup -- which might be quite a bit of code.  I recognize that I need to better document this starting point for entering the kernel, and that will come soon.  At the moment I can boot to both mb1 and mb2 and see the screen change to graphics (1024 X 768 X 16).
 
 
+---
+---
+
 **2018-06-03**
 
 So, today I will work on getting paging set up.  I want to get interrupts set up, but I cannot put any code in place that cannot be abandoned.  However, on the other hand, I will need to be able to receive page faults in order to debug the loader with paging on.  WAIT!!!  No I won't.  Here's why:
@@ -235,15 +286,24 @@ All of the above are subject to change.
 However, since there are components (the hardware communication data area in particular) that will be used by both the loader and the kernel, it makes sense to start a common library that will be used by both.  This will be `libk`.
 
 
+---
+---
+
 **2018-06-04**
 
 Today I start with organizing the include files a little better.  I have 2 types that I need to maintain: 1) the internal kernel ones and 2) the ones required by the standalone OS programs.  The former should never make it to the output image and are expected to only be used for the loader, libk, and kernel modules.  The latter will need to be written to the /include folder on the resulting boot image.  Note that the loader, libk, and kernel will pull from both locations.
 
 
+---
+---
+
 **2018-06-05**
 
 I am working on getting the memory map pulled out so I can map out the physical memory.  More work on this today.
 
+
+---
+---
 
 **2018-06-06**
 
@@ -251,6 +311,9 @@ I have the Multiboot 1 Information structure detailed out.  Now, I need to figur
 
 I will work on a UART driver for the loader.
 
+
+---
+---
 
 **2018-06-07**
 
@@ -260,8 +323,13 @@ I do need to go back and revisit the structure (which has not been checked in) a
 
 With that complete, I will commit these changes at this point publicly as there are so many changes in structure and code, but not functionality.
 
+---
+
 Now, with that done, I can continue to parse the multiboot information structures.
 
+
+---
+---
 
 **2018-06-08**
 
@@ -274,10 +342,16 @@ And now that this is complete, it is time to set up the first 128MB of the PMM. 
 Actually, the PMM initialization I have written for century will initialize the entire physical memory space into the bitmap, and I will copy that to century-os.  That is important to note is that the PMM bitmap is placed just prior to either the EBDA or the 640K low memory cap, whichever is lower.  I have not yet found the EBDA, so I need to go after that first.
 
 
+---
+---
+
 **2018-06-09**
 
 OK, now to pull data from the BDA, which will include identifying the EBDA location.
 
+
+---
+---
 
 **2018-06-10**
 
@@ -286,17 +360,28 @@ This morning I have been able to complete the code that reads the BDA and stores
 So, returning to the top-down-ish approach for the loader, I can resume development on the PMM initialization.
 
 
+---
+---
+
 **2018-06-11**
 
 Today I am working on completing the PMM initialization.
 
 
+---
+---
+
 **2018-06-12**
 
 I have completed the fundamental PMM initialization given all the information I have mined so far.  I still have the video buffer and the modules to map, but I am not yet prepared for this.  I am going to commit these changes to the public repo and figure out what to work on next.
 
+---
+
 I think the next order of business will be to print out the greeting.  Since I am already in graphics mode from the boot loader, I will need to "paint" the characters on the screen.  I have already included the system font in the loader binary, so I just need to know the frame buffer address.  Thankfully, I have the frame buffer data in the multiboot data.  So, I need to extract this data from the loader, and allocate the frames in the PMM as part of the PMM initialization.  Finally, I will be able to paint a greeting on the screen (one pixel at a time).
 
+
+---
+---
 
 **2018-06-13**
 
@@ -304,6 +389,9 @@ Today I was able to get the frame buffer to clear, setting the background to blu
 
 The greeting is completed, so I will commit publicly again.
 
+
+---
+---
 
 **2018-06-17**
 
@@ -321,6 +409,9 @@ So, I managed to get the ELF File header structure written and now need to ident
 
 So, I go and get the module information from both MB1 and MB2....
 
+
+---
+---
 
 **2018-06-23**
 
@@ -349,6 +440,9 @@ This map brings 2 things into very sharp focus:
 1. 16GB of PMM bitmap will take most of the rest of the available low memory (which I will need to keep some for DMA accesses I understand), so I will need to limit the amount of PMM Bitmap I put into low memory.  This one will be put into a Redmine so that I can address it at a later time and not forget about it.
 
 
+---
+---
+
 **2018-06-24**
 
 OK, so today I will need to identify the last frame that the modules occupy and then begin the process of copying the kernel module into its new location.  All of this is to get to the point where I can launch the kernel (and issue a second greeting) in upper memory and then reclaim the loader space.
@@ -374,6 +468,9 @@ So, there are a few functions I will need to create in order to get this all wor
 So, now that I am starting to set up the MMU, I am also going to need a Virtual Memory Map.  Each process is going to have its own paging tables, so each process can have its own virtual memory address space which can overlap others.  I will have to work on that tomorrow, but I have several iterations I can draw from.
 
 
+---
+---
+
 **2018-06-25**
 
 OK, so maybe there isn't a version of the VMM layout I can pull from...  I cannot seem to find it anyway.  But I'm going to keep looking a while longer.
@@ -397,6 +494,9 @@ So, it's also important to make a formal note of how the paging tables are found
 Take some time to get your head around this concept.  It can be difficult to fully grasp and even if you think you have it, you may still stumble.  For reference, see my own mistake above.  For more information, see: https://wiki.osdev.org/Page_Tables.
 
 
+---
+---
+
 **2018-06-26**
 
 Today I realize that I am going to need to debug the paging table maintenance.  In particular, I need to write a hex number to the serial port.  I will start working on that feature today.
@@ -404,10 +504,16 @@ Today I realize that I am going to need to debug the paging table maintenance.  
 I managed to get a bunch of debugging done today.  I will need to comment out all the changes I have made, but I am not sure I have all that in me this evening.  I will start tonight and probably finish this work tomorrow.
 
 
+---
+---
+
 **2018-06-27**
 
 OK, I have managed to get everything documented the way I want (I think anyway).  I now need to initialize all the rest of the kernel mappings, including the loader which will have to be de-allocated by the kernel.  There are also a couple of additional thing I need to map into a final location as well, so the virtual memory map from 25-Jun will change.
 
+
+---
+---
 
 **2018-06-28**
 
@@ -424,6 +530,9 @@ So, video buffer sizes...  The site https://www.digitalcitizen.life/what-screen-
 
 Now, for the PMM...  The same type of calculations need to apply here.
 
+
+---
+---
 
 **2018-06-30**
 
@@ -512,6 +621,27 @@ So, as I end the day today, I have everything except the video frame buffer mapp
 I now have all the MMU mappings completed for in preparation for the kernel.  With this, I wll check my code for comments and will commit it publicly tomorrow.  I am not yet enabling paging or jumping to the kernel, so there is still a lot of debugging yet to do on all this work I have done.  That will be a major task on its own.
 
 
+---
+---
+
 **2018-07-01**
 
 So, the first order of business today is to get this code committed.  I need to work through all the files I have modified and make sure the comments are proper and up-to-date.
+
+---
+
+With that commit pushed to github, on to the next item on the list.  That is going to be to get the kernel to launch and to print a second greeting on the console.  This will require that paging is enabled which is going to require a lot of debugging.  The problem is going to be that I do not have a Page Fault handler that I have written or installed, so any issues at the moment are going to triple fault the PC and cause it to reboot, with no indication of where the problem is.  For now, I will start with the `MmuDumpTables()` function to check on things, but I have a feeling I will need a rudimentary Page Fault handler to dump data to the serial port.  I will write it when I just cannot tolerate not having it anymore, which will be far later than I really should write it.
+
+But before I get into that, I am a formatting change I want to make to this journal file.  I am going to go back an put horizontal lines between the different days to aid in reading.  I am not going to make any changes in the content (I'm not even going to correct any typos).
+
+And,...  as I predicted,... I have a triple fault as soon as I enable paging.  So I have some debugging to do.
+
+OK, so the stack was not mapped into the paging tables.  It needed to be frame-allocated and then identity-mapped.  Once I got that completed, I was able to get paging enabled and not have a triple fault.  The key here is that the stack is also hard-coded at the frame right below 2MB and that will eventually get stepped on by the loaded modules.  I have entered a Redmine for that to fix and will likely be built into the loaded executable (loader.elf) at some point.  For now, I can get away with it.
+
+So, the final thing is going to be to jump into the actual kernel code and acknowledge the arrival somehow.
+
+Just to make a note of where I am at this point, I am jumping to a kernel location (which I think is a good location) but the hardware structure is not available to the kernel.  As a result, I am not able to confirm it with what happens on the screen.  I mistakenly moved `hw-disc.cc` to libk but it really needs to be copied to a good location in low memory by the loader and then pointed to in the kernel.
+
+OK, I was not able to get the frame buffer to work, but I was able to product serial output that demonstrates that I am executing the kernel.  I do have some things to work out, but the video driver will probably move the frame buffer if possible.  So, I am going to call this objective complete (the kernel is being executed) and commit this the code at this point.  I am also going to zip up an .iso image that can be run from a command line and drop that on the github project as well.
+
+

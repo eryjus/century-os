@@ -34,6 +34,8 @@ extern "C" void LoaderMain(void);
 //    -------------------------------
 void LoaderMain(void)
 {
+    extern ptrsize_t cr3;
+
     SerialInit();
     HwDiscovery();
 
@@ -42,9 +44,16 @@ void LoaderMain(void)
     FrameBufferInit();
     FrameBufferPutS("Welcome to Century-OS");
     MmuInit();
-    ModuleInit();
+    kernEntry_t ent = ModuleInit();
 
     FrameBufferPutS("Initialization Complete");
+
+    MmuSwitchPageDir(cr3);
+
+    SerialPutS("Jumping to the kernel\n");
+    kMemMove((uint8_t *)0x00003000, localHwDisc, sizeof(HardwareDiscovery_t));
+    ent();
+    SerialPutS("Uh-Oh!!\n");
 
     while (1) {}
 }

@@ -18,6 +18,7 @@
 #include "mmu.h"
 #include "serial.h"
 #include "elf.h"
+#include "modules.h"
 
 
 extern ptrsize_t cr3;
@@ -26,8 +27,10 @@ extern ptrsize_t cr3;
 //
 // -- Initialize the modules multiboot handed off to us
 //    -------------------------------------------------
-void ModuleInit(void)
+kernEntry_t ModuleInit(void)
 {
+    kernEntry_t entry;
+
     if (!HaveModData()) {
         SerialPutS("Unable to locate Kernel...  Halting!\n");
         Halt();
@@ -36,6 +39,8 @@ void ModuleInit(void)
     bool haveKernel = false;
 
     for (int i = 0; i < GetModCount(); i ++) {
+        bool thisIsKernel = false;
+
         SerialPutS("Initializing Modules:\n");
         char *modName = GetAvailModuleIdent(i);
         SerialPutS(modName);
@@ -43,12 +48,13 @@ void ModuleInit(void)
         SerialPutHex(GetAvailModuleStart(i));
         SerialPutS("\n");
 
+        ElfHdrCommon_t* hdr = (ElfHdrCommon_t *)GetAvailModuleStart(i);
+
         if (modName[0] == 'k' && modName[1] == 'e' && modName[2] == 'r' && modName[3] == 'n'
                 && modName[4] == 'e' && modName[5] == 'l') {
             haveKernel = true;
+            thisIsKernel = true;
         }
-
-        ElfHdrCommon_t* hdr = (ElfHdrCommon_t *)GetAvailModuleStart(i);
 
         // -- Check for the ELF signature
         if (!HAS_ELF_MAGIC(hdr)) {
@@ -85,6 +91,8 @@ void ModuleInit(void)
             SerialPutHex(phdr32[j].pOffset);
             SerialPutS("\n");
 
+            if (thisIsKernel) entry = (kernEntry_t)hdr32->eEntry;
+
             ptrsize_t offset;
             for (offset = 0; offset < phdr32[j].pMemSz; offset += 0x1000) {
                 frame_t f;
@@ -116,5 +124,11 @@ void ModuleInit(void)
         SerialPutS("Unable to locate Kernel...  Halting!\n");
         Halt();
     }
+
+    SerialPutS("Returning kernel entry point: ");
+    SerialPutHex((ptrsize_t)entry);
+    SerialPutS("\n");
+
+    return entry;
 }
 

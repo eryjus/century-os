@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader/src/x86-common/SerialPutS.cc -- Output a string to the serial port
+//  libk/src/x86-common/SerialPutS.cc -- Output a string to the serial port
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
