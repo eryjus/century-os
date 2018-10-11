@@ -19,6 +19,13 @@
 
 #include "types.h"
 
+
+//
+// -- This is the serial port we will use for debugging info
+//    ------------------------------------------------------
+extern uint16_t serialPort;
+
+
 //
 // -- Initialize the serial port for writing debug data
 //    -------------------------------------------------
@@ -29,6 +36,12 @@ void SerialInit(void);
 // -- Send a string to the serial port
 //    --------------------------------
 void SerialPutS(const char *s);
+
+
+//
+// -- Send a single character to the serial port
+//    ------------------------------------------
+void SerialPutChar(const char ch);
 
 
 //

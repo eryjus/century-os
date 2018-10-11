@@ -48,7 +48,9 @@ void LoaderMain(void)
 
     FrameBufferPutS("Initialization Complete");
 
-    MmuSwitchPageDir(cr3);
+    MmuSwitchPageDir(cr3);                  // also enabled paging
+    SetFrameBufferAddr((uint16_t *)0xfb000000);     // re-map the frame buffer now that paging is enabled
+
 
     SerialPutS("Jumping to the kernel\n");
     kMemMove((uint8_t *)0x00003000, localHwDisc, sizeof(HardwareDiscovery_t));

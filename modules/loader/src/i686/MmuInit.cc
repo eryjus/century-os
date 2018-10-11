@@ -53,14 +53,18 @@ void MmuInit(void)
     SerialPutS("\n");
 
     // -- Map the EBDA
+    SerialPutS("Map the EBDA\n");
     MmuMapToFrame(cr3, GetEbda(), PmmLinearToFrame(GetEbda()));
 
     // -- Map the memory from 640KB to 1MB
+    SerialPutS("Map Upper Memory");
     for (addr = 640 * 1024; addr < 0x100000; addr += 0x1000) {
+        SerialPutChar('.');
         MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr));
     }
 
     // -- Map the GDT/IDT to the final location
+    SerialPutS("\nMap GDT/IDT\n");
     MmuMapToFrame(cr3, 0xff401000, PmmLinearToFrame(0x00000000));
 
     // -- Identity map the loader
@@ -71,32 +75,44 @@ void MmuInit(void)
     SerialPutS("\n");
 
     // -- Identity map the loader
+    SerialPutS("Identity Map the Loader");
     for (addr = (ptrsize_t)&_loaderStart; addr < (ptrsize_t)&_loaderEnd; addr += 0x1000) {
+        SerialPutChar('.');
         MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr));
     }
 
     // -- Finally, map the frame buffer
+    SerialPutS("\nMap FrameBuffer "); SerialPutHex(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight())));
     for (frame_t f = PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), addr = 0xfb000000;
             f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
-            f += 0x1000, addr += 0x1000) {
+            f ++, addr += 0x1000) {
+        SerialPutChar('.');
         MmuMapToFrame(cr3, addr, f);
     }
 
+    // -- need to identity-map frame 0
+    SerialPutS("\nMap Frame 0\n");
+    MmuMapToFrame(cr3, 0, 0);
+
     // -- need to identity-map the stack
+    SerialPutS("Map Stack\n");
     MmuMapToFrame(cr3, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096));
 
     // -- identity map the hardware data strucure
+    SerialPutS("Map Hardware Discovery Struture\n");
     MmuMapToFrame(cr3, 0x00003000, 3);
 
     //
     // -- Dump some addresses from the cr3 tables to check validity
     //    ---------------------------------------------------------
+    SerialPutS("Checking our work\n");
     MmuDumpTables(0xfffff000); // Recursive Map
     MmuDumpTables(640 * 1024); // Print 640K
     MmuDumpTables(0xff401000); // The GDT/IDT location
     MmuDumpTables((ptrsize_t)&_loaderStart); // The loader location
     MmuDumpTables(0x28172948);  // An address that should not be mapped
     MmuDumpTables(0xfb000000);  // The start of the frame buffer
+    MmuDumpTables(0xfd010000);  // One Page Fault Address
 
     MmuDumpTables((ptrsize_t)LoaderMain);
     MmuDumpTables((ptrsize_t)MmuSwitchPageDir);

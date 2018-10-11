@@ -644,4 +644,152 @@ Just to make a note of where I am at this point, I am jumping to a kernel locati
 
 OK, I was not able to get the frame buffer to work, but I was able to product serial output that demonstrates that I am executing the kernel.  I do have some things to work out, but the video driver will probably move the frame buffer if possible.  So, I am going to call this objective complete (the kernel is being executed) and commit this the code at this point.  I am also going to zip up an .iso image that can be run from a command line and drop that on the github project as well.
 
+---
+
+Well, I am not able to upload the file, but I have it stored on my own hard disk.  I will live with that.
+
+
+---
+---
+
+**2018-07-02**
+
+Today I start thinking about what I really want in my kernel proper.  I know I want to write a microkernel.  But, a microkernel has limited functionality.  So, what do I want to include in my kernel.  Hmmm....  lots of thinking.
+
+
+---
+---
+
+**2018-07-03**
+
+So, I think the first thing I have settled on for inclusion in the kernel is the management of the Interrupt Table.  The reason for this is that the device drivers are going to have to register an interrupt for the top half of a device driver.  As an extension of that function, the prologue and epilogue to the interrupt will also be handled by the kernel (this will save the context on entry and restore the context on exit).  However, I believe that will be the extent of the functionality required of the kernel for interrupts.
+
+The next thing that needs to be included in the kernel is messaging, or Inter-Process Communication (IPC).  We will need the ability to send and receive a message that is handled by the kernel.  This also means that there will be a heap to store the message while it is en-route.  I will need to set timeouts for messages and be able to respond to those as well.  This means that a basic timer management will need to be included at the kernel level -- at least to manage timeouts.
+
+I want to note that process synchronization will be tightly coupled with the scheduler.  I hope to be able to implement that in user space.
+
+One final thought will be a kernel debugger.  This debugger will need to have visibility to all the structures for the kernel and possibly the device drivers.  As such, it might need to be a kernel function rather than a user-space function.
+
+Beyond that, I am not sure what more is really needed.  I think everything else can be moved to ring 3....  Time will tell.  In the meantime, I will start with the interrupts and IPC capabilities.
+
+
+---
+---
+
+**2018-07-04**
+
+The first thing to do today is to strip the kernel of everything that I no longer need -- things that were moved from the kernel to the loader.  This will be significant and will result in most of the kernel source going away.  This is going to be scary, but at least everything I am about to delete is still available on github.
+
+I really did not delete as much as I thought I would....  I guess that's a good thing.  I still have all the heap code I moved over near the beginning and I have the start of an Interrupt Table manager built in.
+
+However, I need to revisit the goal of having all the one-time initialization completed in the loader.  I'm nearly positive at this point that I am not going to be able to meet this goal.  For example, I will need to have kernel exception handlers that for things like divide by 0 that will be responsible for shutting down the offending process.  I am not able to initialize that in the loader (at least not without some really fancy data structure in the kernel that I find and read for addresses -- which might be a possibility at a later time) without having a symbol table to read and I am not really interested in forcing debugging information to be available in the kernel.  While it is a great goal, I think it should be set aside for a moment and revisited once I have a better working system (read: working system).
+
+So, this will meant that I will need to perform some initialization for the IDT in the kernel.  It will involve setting up some basic exception handlers and registering them to the IDT.  I also want to have a version of `kprintf()` that writes to the serial port rather than the console.  `kprintf()` is a simple port from a previous version and I believe I have several of these exception handlers that I can copy as well.
+
+
+---
+---
+
+**2018-07-05**
+
+I was able to finish up the ISR initialization routines.  I have no ISRs yet, certainly nothing for the errors.  These are all written in century32, so I will be able to copy them into century-os and fix up the comments.
+
+As I start copying the Interrupt Handler for INT0...
+
+
+---
+---
+
+**2018-07-06**
+
+Well I never finished my thought yesterday.  I got distracted....  But it's all good.
+
+So, what I was saying about the INT0 interrupt handler...  I was doing some research on the best way to handle a divide by 0.  Many applications development languages can capture that error and handle it within that application, but if it ever makes it to the OS, we really need to kill the process.  Now, the question come up about what to do when the exception occurs in the kernel itself, or from a driver -- how should that be handled?
+
+Well the questions do need to be considered, but I have nowhere near the base code written to address the issue.  I will come back to that, but it is certainly food for thought.
+
+So, for the moment, I will just dump the contents of the registers to the serial port and report the exception.  At the moment, the only 2 choices I have are to `Halt()`, or continue on.  I think I will `Halt()` at this point since I am still deep into development and need to solve these problems as they come up.  Once I have user-space functionality I will reconsider.
+
+So, I am going to need a basic `IsrDumpState()` function to report the contents of the registers.
+
+---
+
+Now, with a basic ISR0 handler I am able to perform some basic testing.  A few things I noticed right away:
+* I forgot to load the IDT in the loader.  I make that happen in the kernel entry and cleared the location as well
+* I needed to identity map the IDT to get that to work.  This is risky and I will need to clean that up at some point, since it leaves the GDT and IDT exposed to NULL pointer dereferences.
+* The `IsrDumpState()` function is not writing everything to the serial port.  Not sure why.  I need to figure that out and clean it up, but there are some issues for sure.  Whatever is going on, it appears consistent on the surface.
+* I cannot be sure that the register values are aligned.  I need to dig a bit more.
+
+
+---
+---
+
+**2018-07-07**
+
+This morning I will start looking at what is going on with `kprintf()` -- I need to make sure I can get accurate debugging information to solve other problems.
+
+After some testing, it looks like my `kprintf()` implementation is not perfect.  This is something I have used in several other versions and I am not sure why it is breaking now.  It is taken from http://www.jbox.dk/sanos/source/lib/vsprintf.c.html.
+
+I'm going to have to set up some debugging to get to the bottom of the issues.
+
+
+---
+---
+
+**2018-07-08**
+
+So..., I am left wondering if I should work on my own `kprintf()` implementation or try to fix this one.  My bet is that the problem is not in `kprintf()` but in the ISR handler or stub.  However, `kprintf()` should not stop printing if there is something wrong.  What is interesting is that if I split the prints into separate lines I have the same problem as if I have 1 line of code for each full line of output.
+
+I decided to make it my own and abandon the one from the internet.
+
+---
+
+I was able to get a basic version started.  It is not as fully functional as the normal `printf()` function.  However, for my needs at the moment it is a good solution.
+
+
+---
+---
+
+**2018-10-09**
+
+Well, It's been a while.  Let me start by saying how much I appreciate the journal I am keeping!
+
+A quick test tells me that the last concern appears to have been addressed.  I am able to test a divide by 0 and get debugging information to the serial port.
+
+So, this leaves me looking at the Redmine issues that are documented to see what is next.  I see that the kernel is not able to write to the frame buffer once we get to the kernel.  This is Redmine #361 (http://eryjus.ddns.net:3000/issues/361).  I will take a look at this next..., well after dinner.
+
+---
+
+So, there is a line in the kernel that should greet the user: `kprintf("Hello from the kernel!!\n");`  This text is not appearing on the screen.  So, this is the bug.
+
+However, I am not certain if anything is being written to the screen once paging has been enabled.  Additionally, I want to make sure that the frame buffer is being updated properly (or in totality) once paging has been enabled. -- Actually on review, the new `kprintf()` function only writes to the Serial Port.  So I need to add the a call to `void FrameBufferPutS()`.  Adding this into the kernel causes a triple fault.
+
+I believe it is a page fault that needs to be investigated....  To that end, I will build out a Page Fault handler which in `IsrInt0e()`.
+
+---
+
+Well, the function pulled together quickly, but yielded no information.  My problem is not a Page Fault.  So, the next 2 faults to look at are a GPF (13 or 0x0d) and Double Fault (8 or 0x08).
+
+And again nothing....  So, there are a couple of things that might be in play here:
+1. The IDT is not working properly even though IsrInt00 is working properly.
+1. There is a failure ahead of the one I am trying to debug.
+1. There is some other thing happening (interrupts enabled?) that is causing the problem.
+
+Well, it looks like the problem was really that of sequencing.  I was looking for a page fault before the `IdtBuild()` function was called.  I set the `IdtBuild()` function to be called ahead of the greeting.  This revealed a Page Fault.  Also, CR2 holds the value `0xfd010000`.  So, I will need to review the Page Table construction.
+
+
+---
+---
+
+**2018-10-10**
+
+Some debugging code reveals that I am trying to write to the frame buffer at address `0xfd010000`.  However, the frame buffer is only mapped through `0xfb17ffff`.  So, there is something going wrong with the (x,y) coordinates for where I am trying to write in the kernel.  I might even have a problem with the starting location for the frame buffer.  But I am on the right path here.
+
+It turns out that I am using `GetFrameBufferAddr()`, which looks at the fbAddr in the hardware discovery structure.  I am populating this with the physical address of the frame buffer, not the virtual address.  Since this function is used across both the loader and kernel, the fix for this will be delicate.  The way I chose to fix this is to reset the frame buffer address to the virtual address once paging has been enabled.
+
+I believe it's time to commit my changes.
+
+
+
+
 

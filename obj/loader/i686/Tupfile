@@ -21,7 +21,7 @@
         -i../../../modules/loader/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
         -o %o %f |> %B.o
 
-!i686-loader-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/loader/inc \
+!i686-loader-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/loader/inc -I ../../../modules/libk/inc \
         -I ../../../modules/loader/inc/i686 -I ../../../modules/loader/inc/x86-common  -I ../../../inc \
         -I ../../../inc/i686 -I ../../../inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
 

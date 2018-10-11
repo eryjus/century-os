@@ -1,11 +1,11 @@
 //===================================================================================================================
 // kernel/src/x86-common/IdtSetGate.cc -- Set the gate in the IDT.
-// 
+//
 // This function sets up the IDT gate in the table itself
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-05-30  Initial   0.1.0   ADCL  Initial version
 //
@@ -27,6 +27,6 @@ void IdtSetGate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
 
 	idtEntries[num].sel = sel;
 	idtEntries[num].always0 = 0;
-	idtEntries[num].flags = flags;		//!<  | 0x60 --- used for ring 3
+	idtEntries[num].flags = flags;		//  | 0x60 --- used for ring 3
 }
 

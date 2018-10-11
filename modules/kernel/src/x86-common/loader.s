@@ -21,6 +21,7 @@
 ; -- Expose some labels to other fucntions that the linker can pick up
 ;    -----------------------------------------------------------------
 global		_start					                        ; make _start visible
+global      systemFont
 global		Halt					                        ; make hang visible
 
 
@@ -28,14 +29,23 @@ global		Halt					                        ; make hang visible
 ; -- Now, we need some things from other functions imported
 ;    ------------------------------------------------------
 extern		kInit					                        ; allow reference to external kinit
+extern      kMemSetB
+
+
+section		.data
+
+align 		8
+IdtDesc:
+dw      (256*8)-1                                           ;; size minus one...
+dd      0x800                                               ;; this is the addresss
 
 
 ;
 ; -- This is the beginning of the code segment for this file
 ;    -------------------------------------------------------
-section .text
-align 4
-cpu		586
+section 	.text
+align 		4
+cpu			586
 
 
 ;--------------------------------------------------------------------------------------------------------------------
@@ -43,6 +53,15 @@ cpu		586
 ;--------------------------------------------------------------------------------------------------------------------
 _start:
 loader:
+    push        (256*8)										;; the number of bytes to set
+    push        0                                           ;; push the byte to fill
+    push		0x800										;; push the destination
+    call        kMemSetB
+    add         esp,12
+
+    mov     ecx,IdtDesc                                 	;; Get the gdt address
+    lidt    [ecx]                                       	;; and load the GDT
+
 	jmp	    kInit					                        ; jump to the C initialization function
 
 ;
@@ -61,3 +80,11 @@ Halt:
 ;    ------------
 	hlt								                        ; force a hard reboot
 	jmp		Halt					                        ; loop, just in case
+
+
+;;
+;; -- This is where we include the binary data for the system font
+;;    ------------------------------------------------------------
+section         .data
+systemFont:
+incbin          "system-font.bin"

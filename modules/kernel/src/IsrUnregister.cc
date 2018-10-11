@@ -1,31 +1,33 @@
 //===================================================================================================================
-// kernel/src/HeapError.cc -- When a Heap Error occurs, kill the kernel
-//
-// When a Heap Error occurs, kill the kernel printing the problem description
+// kernel/src/IsrUnregister.cc -- Unregister an ISR Handler
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-09-23                          Initial Version
-//  2018-05-31  Initial   0.1.0   ADCL  Copied this file from century32 (__HeapError.c)
+//  2018-07-06  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
 #include "cpu.h"
-#include "serial.h"
-#include "heap.h"
+#include "printf.h"
+#include "idt.h"
 
 
 //
-// -- Panic the kernel as the result of a heap error
-//    ----------------------------------------------
-void HeapError(const char *from, const char *desc)
+// -- Remove an ISR handler from the handlers table
+//    ---------------------------------------------
+void IsrUnregister(uint8_t interrupt)
 {
-    DisableInterrupts();
-    SerialPutS(from);
-    SerialPutS(desc);
-    Halt();
+	regval_t flags = DisableInterrupts();
+
+    if (isrHandlers[interrupt] == NULL_ISR) {
+        kprintf("When unregistering interrupt %d, no handler is registered\n", interrupt);
+    } else {
+	    isrHandlers[interrupt] = NULL_ISR;
+    }
+
+	RestoreInterrupts(flags);
 }

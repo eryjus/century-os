@@ -30,6 +30,8 @@
 #include "cpu.h"
 #include "fb.h"
 #include "hw-disc.h"
+#include "idt.h"
+#include "printf.h"
 #include "heap.h"
 
 
@@ -41,7 +43,6 @@ HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
 
 extern "C" void kInit(void);
 
-extern void SerialPutS(const char *s);
 uint16_t serialPort = 0x3f8;
 
 
@@ -50,10 +51,15 @@ uint16_t serialPort = 0x3f8;
 //    -------------------------------------------------------------------------
 void kInit(void)
 {
-	SerialPutS("Hello from the kernel!!\n");
 	//
 	// -- Phase 1: Required by the processor to setup the proper state
 	//    ------------------------------------------------------------
+	IdtBuild();
+	kprintf("Hello from the kernel!!\n");
+	FrameBufferPutS("Hello from the kernel!!\n");
+
+//	volatile int x = 0;
+//	x = 1 / x;
 //	ConsoleClear();
 //	ConsoleUpdateStatus();
 //	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
@@ -123,6 +129,8 @@ void kInit(void)
 //	BREAKPOINT;
 
 //	EnableInterrupts();
+
+	kprintf("Reached the end of initialization\n");
 
 	while (1) {
 		__asm("hlt");

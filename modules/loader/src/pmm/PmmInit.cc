@@ -30,7 +30,6 @@
 
 
 #include "types.h"
-#include "console.h"
 #include "serial.h"
 #include "cpu.h"
 #include "pmm.h"

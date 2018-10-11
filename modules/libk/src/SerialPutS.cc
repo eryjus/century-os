@@ -16,6 +16,7 @@
 
 
 #include "cpu.h"
+#include "serial.h"
 
 extern uint16_t serialPort;
 
@@ -24,9 +25,5 @@ extern uint16_t serialPort;
 //    ----------------------------------------
 void SerialPutS(const char *s)
 {
-    while (*s) {
-        while ((inb(serialPort + 5) & 0x20) == 0) {}
-
-        outb(serialPort, *s ++);
-    }
+    while (*s) SerialPutChar(*s ++);
 }

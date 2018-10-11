@@ -34,3 +34,44 @@ typedef uint32_t frame_t;
 // -- This is the size of a general purpose register in this architecture
 //    -------------------------------------------------------------------
 typedef uint32_t regval_t;
+
+
+//
+// -- This is the order of the registers on the stack
+//    -----------------------------------------------
+typedef struct isrRegs_t {
+	uint32_t ss;
+	uint32_t gs;
+	uint32_t fs;
+	uint32_t es;
+	uint32_t ds;
+	uint32_t cr3;
+	uint32_t cr2;
+	uint32_t cr0;
+	uint32_t edi;
+	uint32_t esi;
+	uint32_t ebp;
+	uint32_t esp;
+	uint32_t ebx;
+	uint32_t edx;
+	uint32_t ecx;
+	uint32_t eax;
+	uint32_t intno;
+	uint32_t ackIRQ;
+	uint32_t errcode;
+	uint32_t eip;
+	uint32_t cs;
+	uint32_t eflags;
+} isrRegs_t;
+
+
+//
+// -- This is the prototype definition for an ISR handler routine
+//    -----------------------------------------------------------
+typedef void (*isrFunc_t)(isrRegs_t *);
+
+
+//
+// -- The definition of a NULL ISR Handler Function
+//    ---------------------------------------------
+const isrFunc_t NULL_ISR = (isrFunc_t)NULL;

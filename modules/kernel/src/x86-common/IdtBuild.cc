@@ -1,18 +1,20 @@
 //===================================================================================================================
 // kernel/src/x86-common/BuildIdt.cc -- Build the IDT Table in-place
-// 
+//
 // This function will build the IDT table in-place at location 0x00000800.
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-05-30  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#include "locations.h"
 #include "cpu.h"
+#include "idt.h"
 
 
 //
@@ -74,20 +76,13 @@ extern "C" {
 //
 // -- The location of the IDT.  Note that this is a foxed point in linear memory
 //    --------------------------------------------------------------------------
-IdtEntry *idtEntries = (IdtEntry *)0x800;
-
-
-//
-// -- Some additional local prototypes
-//    --------------------------------
-extern void IdtSetGate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
-extern "C" void BuildIdt(void);
+IdtEntry *idtEntries = (IdtEntry *)IDT_ADDRESS;
 
 
 //
 // -- Build the parts of the IDT we are going to use so far
 //    -----------------------------------------------------
-void BuildIdt(void)
+void IdtBuild(void)
 {
 	kMemSetB((uint8_t *)idtEntries, 0, sizeof(IdtEntry) * 256);
 
@@ -123,7 +118,7 @@ void BuildIdt(void)
 	IdtSetGate(29, (uint32_t)isr29, 0x08, 0x8e);
 	IdtSetGate(30, (uint32_t)isr30, 0x08, 0x8e);
 	IdtSetGate(31, (uint32_t)isr31, 0x08, 0x8e);
-	
+
 	IdtSetGate(32, (uint32_t)irq0 , 0x08, 0x8e);
 	IdtSetGate(33, (uint32_t)irq1 , 0x08, 0x8e);
 	IdtSetGate(34, (uint32_t)irq2 , 0x08, 0x8e);
@@ -140,4 +135,10 @@ void BuildIdt(void)
 	IdtSetGate(45, (uint32_t)irq13, 0x08, 0x8e);
 	IdtSetGate(46, (uint32_t)irq14, 0x08, 0x8e);
 	IdtSetGate(47, (uint32_t)irq15, 0x08, 0x8e);
+
+	// -- Register the individual ISR routines
+	IsrRegister(0x00, IsrInt00);
+	IsrRegister(0x08, IsrInt0e);
+	IsrRegister(0x0d, IsrInt0e);
+	IsrRegister(0x0e, IsrInt0e);
 }

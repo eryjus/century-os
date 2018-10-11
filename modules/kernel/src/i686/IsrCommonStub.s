@@ -1,12 +1,12 @@
 ;====================================================================================================================
 ;
 ; kernel/src/i686/IsrCommonStub.s -- Common code for handling all interrupts
-; 
+;
 ; Provides the common code for handling all interrupts
 ;
 ; ------------------------------------------------------------------------------------------------------------------
-;                                                                                                                 
-;     Date     Tracker  Version  Pgmr  Description                                                                         
+;
+;     Date     Tracker  Version  Pgmr  Description
 ;  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 ;  2012-05-28                          Initial Version
 ;  2012-06-09    #35                   Fix sflags, cr0, and cr3 in core dump
@@ -139,7 +139,7 @@ IRQ_HANDLER 15,47		                            		; define irq15
 ;     es
 ;     fs
 ;     gs
-;    --------------------------------------  
+;    --------------------------------------
 IsrCommonStub:
 	push	eax
 	push	ecx
@@ -187,9 +187,7 @@ IsrCommonStub:
 	pop		eax					                            ; pop ds
 	mov		ds,ax				                            ; and set it
 
-	pop		eax					                            ; pop cr3 and discard it
-	pop		eax					                            ; pop cr2 and discard it
-	pop		eax					                            ; pop cr0 and discard it
+	add		esp,12				                            ; skip past cr0, cr2, and cr3
 
 	pop		edi
 	pop		esi
