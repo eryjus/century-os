@@ -138,7 +138,35 @@ void IdtBuild(void)
 
 	// -- Register the individual ISR routines
 	IsrRegister(0x00, IsrInt00);
-	IsrRegister(0x08, IsrInt0e);
-	IsrRegister(0x0d, IsrInt0e);
+	IsrRegister(0x01, IsrInt01);
+	IsrRegister(0x02, IsrInt02);
+	IsrRegister(0x03, IsrInt03);
+	IsrRegister(0x04, IsrInt04);
+	IsrRegister(0x05, IsrInt05);
+	IsrRegister(0x06, IsrInt06);
+	IsrRegister(0x07, IsrInt07);
+	IsrRegister(0x08, IsrInt08);
+	IsrRegister(0x09, IsrInt09);
+	IsrRegister(0x0a, IsrInt0a);
+	IsrRegister(0x0b, IsrInt0b);
+	IsrRegister(0x0c, IsrInt0c);
+	IsrRegister(0x0d, IsrInt0d);
 	IsrRegister(0x0e, IsrInt0e);
+	IsrRegister(0x0f, IsrInt0f);
+	IsrRegister(0x10, IsrInt10);
+	IsrRegister(0x11, IsrInt11);
+	IsrRegister(0x12, IsrInt12);
+	IsrRegister(0x13, IsrInt13);
+	IsrRegister(0x14, IsrInt14);
+	IsrRegister(0x15, IsrInt15);
+	IsrRegister(0x16, IsrInt16);
+	IsrRegister(0x17, IsrInt17);
+	IsrRegister(0x18, IsrInt18);
+	IsrRegister(0x19, IsrInt19);
+	IsrRegister(0x1a, IsrInt1a);
+	IsrRegister(0x1b, IsrInt1b);
+	IsrRegister(0x1c, IsrInt1c);
+	IsrRegister(0x1d, IsrInt1d);
+	IsrRegister(0x1e, IsrInt1e);
+	IsrRegister(0x1f, IsrInt1f);
 }

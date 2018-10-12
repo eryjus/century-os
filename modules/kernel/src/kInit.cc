@@ -53,24 +53,22 @@ void kInit(void)
 {
 	//
 	// -- Phase 1: Required by the processor to setup the proper state
+	//             Greet the user from the kernel.
 	//    ------------------------------------------------------------
 	IdtBuild();
-	kprintf("Hello from the kernel!!\n");
-	FrameBufferPutS("Hello from the kernel!!\n");
+	kprintf("Welcome to CenturyOS -- a hobby operating system\n");
+	kprintf("    (initializing...)\n");				// an extra newline
 
-//	volatile int x = 0;
-//	x = 1 / x;
-//	ConsoleClear();
-//	ConsoleUpdateStatus();
-//	ConsolePutS("\n\nWelcome to CenturyOS -- a hobby operating system");
-//	ConsolePutS("    (initializing...)\n");		// an extra newline
-//	CpuGetCapabilities();
+    SetBgColor(FrameBufferParseRGB("#404040"));
+    SetFgColor(0xffff);
+	FrameBufferClear();
+	FrameBufferPutS("Welcome to CenturyOS -- a hobby operating system\n");
+	FrameBufferPutS("    (initializing...)\n");		// an extra newline
 
 	//
 	// -- Phase 2: Required OS Structure Initialization
 	//    ---------------------------------------------
 //	HeapInit();
-//	InitPaging();
 
 //#ifndef USE_APIC
 //	kprintf("Initializing PIT timer\n");
@@ -131,6 +129,10 @@ void kInit(void)
 //	EnableInterrupts();
 
 	kprintf("Reached the end of initialization\n");
+
+	//
+	// -- Phase 5: Assume the butler process role
+	//	  ---------------------------------------
 
 	while (1) {
 		__asm("hlt");

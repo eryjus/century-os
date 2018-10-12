@@ -1,13 +1,13 @@
 //===================================================================================================================
-// kernel/src/x86-common/IsrInt00.cc -- Divide by 0 handler
+// kernel/src/x86-common/IsrInt06.cc -- This is an invalid Opcode exception
 //
-// The most basic divide by 0 exception handler
+// This is a basic invalid opcode exception handler
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-10  Initial   0.1.0   ADCL  Initial version
+//  2018-Oct-11  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -18,10 +18,10 @@
 
 
 //
-// -- This is the ISR Handler routine
-//    -------------------------------
-void IsrInt00(isrRegs_t *regs)
+// -- Invalid Opcode Exception Handler
+//    --------------------------------
+void IsrInt06(isrRegs_t *regs)
 {
-    kprintf("\nDivide Overflow\n");
+    kprintf("\nInvalid Opcode Exception\n");
     IsrDumpState(regs);
 }

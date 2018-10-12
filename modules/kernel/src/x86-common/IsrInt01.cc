@@ -1,13 +1,13 @@
 //===================================================================================================================
-// kernel/src/x86-common/IsrInt00.cc -- Divide by 0 handler
+// kernel/src/x86-common/IsrInt01.cc -- This is a reserved interrupt
 //
-// The most basic divide by 0 exception handler
+// The most basic int01 handler, which will be installed but should never be called.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-10  Initial   0.1.0   ADCL  Initial version
+//  2018-Oct-11  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -18,10 +18,10 @@
 
 
 //
-// -- This is the ISR Handler routine
-//    -------------------------------
-void IsrInt00(isrRegs_t *regs)
+// -- A dummy reserved handler
+//    ------------------------
+void IsrInt01(isrRegs_t *regs)
 {
-    kprintf("\nDivide Overflow\n");
+    kprintf("\nRESERVED INT01\n");
     IsrDumpState(regs);
 }

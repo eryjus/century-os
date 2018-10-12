@@ -28,6 +28,4 @@ void FrameBufferPutS(const char *s)
     while (*s) {
         FrameBufferDrawChar(*s ++);
     }
-
-    FrameBufferDrawChar('\n');
 }

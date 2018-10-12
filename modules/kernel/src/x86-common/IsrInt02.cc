@@ -1,13 +1,13 @@
 //===================================================================================================================
-// kernel/src/x86-common/IsrInt00.cc -- Divide by 0 handler
+// kernel/src/x86-common/IsrInt02.cc -- This is the NMI interrupt
 //
-// The most basic divide by 0 exception handler
+// The most basic NMI Handler
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-10  Initial   0.1.0   ADCL  Initial version
+//  2018-Oct-11  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -18,10 +18,10 @@
 
 
 //
-// -- This is the ISR Handler routine
-//    -------------------------------
-void IsrInt00(isrRegs_t *regs)
+// -- An NMI handler
+//    --------------
+void IsrInt02(isrRegs_t *regs)
 {
-    kprintf("\nDivide Overflow\n");
+    kprintf("\nNMI\n");
     IsrDumpState(regs);
 }

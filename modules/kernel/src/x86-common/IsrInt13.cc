@@ -1,13 +1,13 @@
 //===================================================================================================================
-// kernel/src/x86-common/IsrInt08.cc -- Double Fault handler
+// kernel/src/x86-common/IsrInt13.cc -- SIMD Floating Point Exception
 //
-// The most basic Double Fault exception handler
+// The most basic SIMD Floating Point Exception handler
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-10-10  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Oct-10  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -20,8 +20,8 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
-void IsrInt08(isrRegs_t *regs)
+void IsrInt13(isrRegs_t *regs)
 {
-    kprintf("\nDouble Fault\n");
+    kprintf("\nSIMD Floating Point Exception\n");
     IsrDumpState(regs);
 }

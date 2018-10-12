@@ -790,6 +790,15 @@ It turns out that I am using `GetFrameBufferAddr()`, which looks at the fbAddr i
 I believe it's time to commit my changes.
 
 
+---
+---
 
+**2018-Oct-11**
+
+Today I will take care of the remainder of the interrupt handlers, making sure that all the exceptions are caught and outputs the system state properly.  This ended up being quick work.  Copy and paste works.
+
+I reviewed the Redmine issues and several appear to have been resolved.  I am cleaning these up and getting things ready for the next major coding element.  Not everything is critical for this moment.
+
+So, I am going back through my old `kInit()` function.  I am about done with Phase I initialization.  All I need to do is reset the greeting and remove the commented lines from the other phases that are now complete with this phase.
 
 
