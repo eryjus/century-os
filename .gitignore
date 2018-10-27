@@ -10,6 +10,7 @@ iso
 org.kde.konsole.desktop
 
 obj/**/*.o
+obj/*.map
 
 bin/**/*.cfg
 bin/**/*.elf

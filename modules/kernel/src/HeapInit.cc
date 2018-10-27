@@ -17,6 +17,9 @@
 
 #include "types.h"
 #include "serial.h"
+#include "printf.h"
+#include "pmm.h"
+#include "mmu.h"
 #include "heap.h"
 
 
@@ -36,8 +39,10 @@ static KHeap _heap;
 
 //
 // -- Initialize the heap structures
+//    ------------------------------
 void HeapInit(void)
 {
+
 	KHeapFooter *tmpFtr;
 
 	if (heapStart & 0x00000fff) {
@@ -54,6 +59,16 @@ void HeapInit(void)
 	_heap.strAddr = (char *)heapStart;
 	_heap.endAddr = ((char *)_heap.strAddr) + fixedList[0].size;
 	_heap.maxAddr = (char *)0xc0000000;
+
+    // -- map the heap
+//    SerialPutS("Map the kernel heap\n");
+//	frame_t f;
+//	ptrsize_t addr;
+//	for (addr = (ptrsize_t)_heap.strAddr, f = PmmLinearToFrame((ptrsize_t)GetPmmBitmap());
+//			addr < (ptrsize_t)_heap.endAddr;
+//			addr += 0x1000, f ++) {
+//    	MmuMapToFrame(0xfffff000, addr, f);
+//	}
 
 	_heap.heapMemory = _heap.heap512 = _heap.heap1K =
 			_heap.heap4K = _heap.heap16K = &fixedList[0];

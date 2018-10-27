@@ -801,4 +801,124 @@ I reviewed the Redmine issues and several appear to have been resolved.  I am cl
 
 So, I am going back through my old `kInit()` function.  I am about done with Phase I initialization.  All I need to do is reset the greeting and remove the commented lines from the other phases that are now complete with this phase.
 
+After completing the Phase I initialization, I committed my changes.
+
+---
+
+I still have concerns about the directory structure.  I commented on this back on 2018-Jun-01.  I am still not too sure about what I am going to do, but I think I will need to sort that out before I bring over any more files.  On one hand, I want it to be easy to read and maintain.  On the other hand, the `Tupfile`s will need to be maintained with each new folder.  Since I already have the heap functions imported into the kernel, I will kick this down the road until I get through the heap initialization debugging.
+
+Initializing the kernel heap begins Phase II initialization.  Which of course immediately ends in a page fault.
+
+---
+
+I was able to determine that the initial heap is not mapped in the paging tables.  This should be a relatively quick fix.  I hope.  I will take that on tomorrow.
+
+Well, looking a little further into it, I do not have a Physical Memory Manager (PMM) implemented for the kernel.  I will need to take this on ahead of mapping the heap memory.
+
+
+---
+---
+
+**2018-Oct-12**
+
+Starting out today, I am struck by the need to rebuild (well, the proper term is 'build' since I don't really have one) my PMM.  What I have done so far is just get the basics taken care of for the loader.  Now I will need to copy the results into the area controlled by the kernel and put the kernel in charge.  But with that, I now have another chicken-and-egg problem.  I would like my PMM to work as a user-space process.  But I also need to get it set up and running prior to having legitimate user space.  This is also going to mean that I need to have some code running as a service that takes care of the allocation/de-allocation and when I write that a read duplicated code.
+
+The question I have at the moment is how the 'microkernel' is defined.  I can easily see the kernel only being that part that is running at privilege but the source containing the other components that run in user space -- all of which is compiled into the `kernel.elf` binary.  On the other hand, I can also see the measure of the kernel being the kernel.elf binary and if more things than the code that runs at privilege then the kernel is more hybrid or monolithic.  I'm spending some quality time with Google on this question.
+
+One of the things that strikes me with this additional PMM initialization is that anything I allocate in the kernel initialization is not going to be de-allocated in this kernel initialization.  I'm not sure if this will help me at this point or not.
+
+After some research, I notice the following:
+* There is a common measurement of the number of lines of code for a kernel where a microkernel is somewhere in the 10K lines order of magnitude.  Compare that to the monolithic kernel which is in the 1M lines or more order of magnitude.
+* All the formal definitions I can read talk about the privilege level any given process or function runs at.
+* Ultimately, the design of my own OS is up to me, but I want to develop a microkernel.
+
+So, I think I am going to build my OS to include the PMM compiled into the kernel binary but will execute the PMM as a user-space process.  This may make initialization a little more difficult, but I am not writing code for the sake of easy initialization.
+
+Now, with that said, I need to allocate space for the heap.  I need to consider the initial heap size and keep it relatively small.  I should be able to expand the heap as the need arises.  This means I should be able to allocate some heap frames in the loader and then map before handing control over to the kernel.
+
+I have changed the starting heap size to 64K from 1M.  This means I only need to find 16 frames to cover the starting heap size.
+
+---
+
+After making an effort to pull this together, I end up with a page fault with the PMM.  This means I will have some work to do to get to the heap initialized (big heavy sigh...).  This is not what I wanted to have to to at this point.
+
+So, what does this mean?  It means I need to get a PMM implementation built into the kernel.  Now, with the discussions above, I want this to be able to be run from user space.  So I will need to build an interface to "thunk" the CPU into the user space and to execute the PMM code when called directly and then "thunk" the CPU back into kernel mode.
+
+This change is going to be pervasive and will disrupt nearly everything.  One of the things I am considering is whether I don't want to not initialize the PMM in the loader at all but keep track of what I can hand out and then walk the resulting Paging Tables and allocate the frames that have been mapped.  If I do this, what would I need to walk?  Well, the butler process running from the kernel and the PMM for two.  From there, I am not certain I would need to deal with much else before I was able to put the PMM in charge as a process servicing requests when I got to Phase IV (User Processes).
+
+Well, do I need to wait that long?  If I delay setting up the PMM until **after** all the processes are established and then walk the resulting Paging Tables, I might actually be able to set up the process tables and IPC ahead of the PMM initialization.  With this approach, I know that the Butler and PMM process structures can be statically allocated at compile time.  This looks like it might come together.
+
+I will think on this tonight....
+
+---
+---
+
+**2018-Oct-14**
+
+Thinking about setting up processes ahead of the PMM initialization, I think this is going to be the way to go.  In fact, I should be able to run processes and enable process swapping ahead of this as well.  The only challenge will be the process stacks for the Butler and PMM processes -- both will have to be carefully allocated.  Century32 has a process.h implementation that I will pull into this kernel, but it will require some modification for the new kernel.
+
+As I am pulling this structure over, I am left wondering if I will have enough virtual memory space for all the pointers based on the current memory definitions.  I might have to go back and revisit this.
+
+I have created the `ProcessNewPID()` function to allocate a new PID (not the process structure) for a new process.  This will typically only be used from CreateProcess function.
+
+After creating this function, I realize that I need to implement some form of locking for when the system is running fully.  In a multi-process environment, there is a risk where the same PID might be handed out to 2 separate processes.  For this, I will need to implement a locking structure, which is typically a Spinlock.  For the a Spinlock to operate properly, I need some atomic operations.
+
+In a single threaded environment such as while initialization is not yet complete, this will be trivial to get the lock.  So, there are no challenges to add the locks at the point.
+
+A Spinlock is a specialized implementation of an Atomic Integer, and more specifically an Atomic Boolean.  The key here is that the value needs to be read and updated at the same time so that the current value can be compared to the expected value of the new assignment.
+
+With this, I am going to take a top-down approach and start with the Spinlock.
+
+But, why a Spinlock and not a Mutex?  well, in short, I am going to need to simple quick locks to handle the low level structure updates.  These simple locks will also be necessary to handle the larger structures such as Mutexes.
+
+---
+
+I was able to implement a spinlock structure and the related functions.  This was relatively simple to do as most of the work is done in inline functions.
+
+So, I have functions to `ProcessNewPID()` and `ProcessFreePID()`.  I also need processes to do the following:
+1. `ProcessCreate()` -- Create a new `Process_t` structure and allocate a new PID for it.  Decorate the stack for processing.
+1. `ProcessReady()` -- Ready a process and put it at the end of the respective priority queue.
+1. `ProcessHold()` -- Hold a process and put it on the held list.
+1. `ProcessRelease()` -- If a process is held (only), release it and put it back in the correct queue.
+1. `ProcessWait()` -- Place a process on the waiting queue.
+1. `ProcessTerminate()` -- Start to force kill a process which is not the same as one terminating normally.  Put the process on the reaper queue.
+1. `ProcessEnd()` -- End a process normally.  This will typically be done by the process itself.  Put the process on the reaper queue.
+1. `ProcessReschedule()` -- If the running process just got blocked for some reason, reschedule to a new process.
+1. `ProcessSwitch()` -- Switch to a new process, already determined.
+
+As I start to write `ProcessHold()`, it dawns on me that I probably should start creating error codes I can use in reporting if nothing else, but also to include as return values for functions.  If I am comprehensive enough in this, I should be able to pinpoint errors quickly.
+
+I did manage to get the `ProcessHold()` function written today, with all the supporting errors.  I also documented the errors in the `kernel/errors/process` folder.  It occurred to me as I wrote this that there is more error checking that I have started to take on in this iteration of the OS than I have taken on in previous versions.
+
+---
+---
+
+**2018-Oct-22**
+
+So, I had some power problems with the winds we had last week.  Living in Southern California, we get Santa Ana winds.  They were particularly bad last week which managed to disconnect the service line at the pole.   Well, we only had power to half the house and with those issues I did not want to power up my virtual machines or SAN.  Anyway, I am picking back up where I had left up a week ago and it's good I keep this journal.
+
+I started today be reformatting how the error messages are written.  I moved these into macros in `errors.h`.  I reserve the right to revisit that decision.
+
+Based on the time have left for the day and the size of each other function to write, I am going to take on `ProcessRelease()` as the next function to write.
+
+---
+---
+
+**2018-Oct-24**
+
+I have several functions left to work on for my process scheduler.  I will start to fill in the ones I need to get the kernel to compile first.
+
+I have most of the Process functions worked out at this point.  I do still have a few extra processes to write.
+
+---
+---
+
+**2018-Oct-26**
+
+Today, I finished up all the work on processes.
+
+
+
+
+
 

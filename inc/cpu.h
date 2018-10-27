@@ -25,7 +25,7 @@
 //
 // -- Halt the CPU
 //    ------------
-extern "C" void Halt(void);
+extern "C" void Halt(void) __attribute__((noreturn));
 
 
 //

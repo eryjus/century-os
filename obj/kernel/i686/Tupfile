@@ -21,7 +21,7 @@
         -i../../../modules/kernel/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
         -o %o %f |> %B.o
 
-!i686-kernel-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/kernel/inc -I ../../../modules/libk/inc \
+!i686-kernel-cc = |> i686-elf-gcc -g -fpic -ffreestanding -I ../../../modules/kernel/inc -I ../../../modules/libk/inc \
         -I ../../../modules/kernel/inc/i686 -I ../../../modules/kernel/inc/x86-common  -I ../../../inc \
         -I ../../../inc/i686 -I ../../../inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
 
@@ -34,3 +34,4 @@
 : foreach ../../../modules/kernel/src/*.cc |> !i686-kernel-cc |>
 : foreach ../../../modules/kernel/src/i686/*.cc |> !i686-kernel-cc |>
 : foreach ../../../modules/kernel/src/x86-common/*.cc |> !i686-kernel-cc |>
+: foreach ../../../modules/kernel/src/process/*.cc |> !i686-kernel-cc |>

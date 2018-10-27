@@ -105,6 +105,9 @@ void PmmInit(void)
     // -- There is a frame that will hold the hardware structure
     PmmAllocFrame(PmmLinearToFrame(0x00003000));
 
+    // -- here we will allocate 16 frames for the heap (See MIN_HEAP_SIZE)
+    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)(start) - 0x00010000), 0x00010000 >> 12);
+
     // -- Finally, we have to mark the bitmap itself as used
     PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)start), pages);
 

@@ -1,37 +1,37 @@
-;====================================================================================================================
-;
-; kernel/src/i686/IsrCommonStub.s -- Common code for handling all interrupts
-;
-; Provides the common code for handling all interrupts
-;
-; ------------------------------------------------------------------------------------------------------------------
-;
-;     Date     Tracker  Version  Pgmr  Description
-;  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-;  2012-05-28                          Initial Version
-;  2012-06-09    #35                   Fix sflags, cr0, and cr3 in core dump
-;  2012-09-16                          Leveraged from Century
-;  2018-05-29  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
-;
-;====================================================================================================================
+;;===================================================================================================================
+;;
+;; kernel/src/i686/IsrCommonStub.s -- Common code for handling all interrupts
+;;
+;; Provides the common code for handling all interrupts
+;;
+;; -----------------------------------------------------------------------------------------------------------------
+;;
+;;     Date     Tracker  Version  Pgmr  Description
+;;  ----------  -------  -------  ----  ---------------------------------------------------------------------------
+;;  2012-05-28                          Initial Version
+;;  2012-06-09    #35                   Fix sflags, cr0, and cr3 in core dump
+;;  2012-09-16                          Leveraged from Century
+;;  2018-05-29  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+;;
+;;===================================================================================================================
 
 
-;
-; -- Now, we need some things from other functions imported
-;    ------------------------------------------------------
+;;
+;; -- Now, we need some things from other functions imported
+;;    ------------------------------------------------------
 extern	IsrHandler
 
 
-;
-; -- This is the beginning of the code segment for this file
-;    -------------------------------------------------------
+;;
+;; -- This is the beginning of the code segment for this file
+;;    -------------------------------------------------------
 section .text
 cpu		586
 
 
-;
-; -- This is a macro to for an interrupt that does not contain an error code
-;    -----------------------------------------------------------------------
+;;
+;; -- This is a macro to for an interrupt that does not contain an error code
+;;    -----------------------------------------------------------------------
 %macro ISR_NOERRORCODE 1
 global		isr%1			                                ; make the label available to other modules
 
@@ -44,9 +44,9 @@ isr%1:
 %endmacro
 
 
-;
-; -- This is a macro to for an interrupt that contains an error code
-;    ---------------------------------------------------------------
+;;
+;; -- This is a macro to for an interrupt that contains an error code
+;;    ---------------------------------------------------------------
 %macro ISR_ERRORCODE 1
 global		isr%1			                                ; make the label available to other modules
 
@@ -59,9 +59,9 @@ isr%1:
 %endmacro
 
 
-;
-; -- This is a macro to for an IRQ
-;    -----------------------------
+;;
+;; -- This is a macro to for an IRQ
+;;    -----------------------------
 %macro IRQ_HANDLER 2
 								                            ;    parm 1 is the IRQ number
 								                            ;    parm 2 is the ISR number
@@ -76,9 +76,9 @@ irq%1:
 %endmacro
 
 
-;
-; -- Now, we put the macros to use to define the interrupt entry points
-;    ------------------------------------------------------------------
+;;
+;; -- Now, we put the macros to use to define the interrupt entry points
+;;    ------------------------------------------------------------------
 ISR_NOERRORCODE 0				                    		; define isr0
 ISR_NOERRORCODE 1				                    		; define isr1
 ISR_NOERRORCODE 2				                    		; define isr2
@@ -130,16 +130,16 @@ IRQ_HANDLER 14,46				                    		; define irq14
 IRQ_HANDLER 15,47		                            		; define irq15
 
 
-;
-; -- build the stack in the following order
-;     interrupt frame
-;     error code and parms
-;     all regs
-;     ds
-;     es
-;     fs
-;     gs
-;    --------------------------------------
+;;
+;; -- build the stack in the following order
+;;     interrupt frame
+;;     error code and parms
+;;     all regs
+;;     ds
+;;     es
+;;     fs
+;;     gs
+;;    --------------------------------------
 IsrCommonStub:
 	push	eax
 	push	ecx

@@ -18,10 +18,10 @@
 #
 # -- The rules to make the bootable targets in this folder
 #    -----------------------------------------------------
-: ../../../obj/loader/i686/*.o ../../../lib/i686/libk.a ../../../modules/loader/src/i686/loader.ld      \
-        |> i686-elf-gcc -g -T ../../../modules/loader/src/i686/loader.ld -ffreestanding -O2 -nostdlib   \
-        -L ../../../lib/i686 -o %o %f -lgcc -lk; |> loader.elf
+: ../../../obj/loader/i686/*.o ../../../lib/i686/libk.a ../../../modules/loader/src/i686/loader.ld              \
+        |> i686-elf-gcc -g -T ../../../modules/loader/src/i686/loader.ld                                        \
+        -ffreestanding -O2 -nostdlib -L ../../../lib/i686 -o %o %f -lgcc -lk; |> loader.elf
 
-: ../../../obj/kernel/i686/*.o  ../../../lib/i686/libk.a  ../../../modules/kernel/src/i686/kernel.ld    \
-        |> i686-elf-gcc -g -T ../../../modules/kernel/src/i686/kernel.ld -ffreestanding -O2 -nostdlib   \
-        -L ../../../lib/i686 -o %o %f -lgcc -lk; |> kernel.elf
+: ../../../obj/kernel/i686/*.o  ../../../lib/i686/libk.a  ../../../modules/kernel/src/i686/kernel.ld            \
+        |> i686-elf-gcc -g -T ../../../modules/kernel/src/i686/kernel.ld                                        \
+        -ffreestanding -O2 -nostdlib -L ../../../lib/i686 -o %o %f -lgcc -lk; |> kernel.elf

@@ -62,6 +62,15 @@ typedef uint32_t elfWord_t;
 typedef uint16_t elfHalf_t;
 
 
+//
+// -- This is a process ID (or PID)
+//    -----------------------------
+typedef uint32_t PID_t;
+
+
+//
+// -- Now include the architecture-specific types
+//    -------------------------------------------
 #include "arch-types.h"
 
 
@@ -69,6 +78,12 @@ typedef uint16_t elfHalf_t;
 // -- The ISR Handlers
 //    ----------------
 extern isrFunc_t isrHandlers[256];
+
+
+//
+// -- The current PID
+//    ---------------
+extern volatile PID_t currentPID;
 
 
 #endif

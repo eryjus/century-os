@@ -68,7 +68,7 @@ void kInit(void)
 	//
 	// -- Phase 2: Required OS Structure Initialization
 	//    ---------------------------------------------
-//	HeapInit();
+	HeapInit();
 
 //#ifndef USE_APIC
 //	kprintf("Initializing PIT timer\n");
