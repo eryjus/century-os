@@ -59,6 +59,7 @@
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
+
 #include "types.h"
 #include "errors.h"
 #include "printf.h"
@@ -115,12 +116,13 @@ typedef struct Process_t {
 	size_t totalQuantum;                // This is the total quantum used by this process
 	ProcStatus_t status;                // This is the process status
 	ProcPriority_t priority;            // This is the process priority
-	ProcPriority_t quantumLeft;         // This is the quantum remaining for the process (may be more than priority)
+	int quantumLeft;                	// This is the quantum remaining for the process (may be more than priority)
     bool isHeld;                        // Is this process held and on the Held list?
-	struct Spinlock_t lock;				// This is the lock needed to read/change values above this field
+	struct Spinlock_t lock;				// This is the lock needed to read/change values
 	List_t stsQueue;                    // This is the location on the current status queue
 	List_t lockList;                    // This is the list of currently held locks (for the butler to release)
 	List_t messages;                    // This is the queue of messages for this process
+	void *prevPayload;					// This is the previous payload in case the process did not allocate enough
 } __attribute__((packed)) Process_t;
 
 
@@ -128,6 +130,12 @@ typedef struct Process_t {
 // -- This is the process table
 //    -------------------------
 extern Process_t *procs[MAX_NUM_PID];
+
+
+//
+// -- Is the scheduler Enabled?
+//    -------------------------
+extern bool ProcessEnabled;
 
 
 //
@@ -199,6 +207,12 @@ Errors_t ProcessRelease(ProcStatus_t newStat);
 // -- Reschedule a process to the next one on the scheduler
 //    -----------------------------------------------------
 void ProcessReschedule(void);
+
+
+//
+// -- Put the process on the wait queue and set its status
+//    ----------------------------------------------------
+Errors_t ProcessWait(ProcStatus_t newStat);
 
 
 //

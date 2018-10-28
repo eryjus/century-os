@@ -84,3 +84,8 @@ Spinlock_t waitListLock = {0};
 //    -------------------------------
 Spinlock_t reaperQueueLock = {0};
 
+
+//
+// -- Is the scheduler enabled
+//    ------------------------
+bool ProcessEnabled = false;

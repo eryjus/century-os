@@ -915,10 +915,70 @@ I have most of the Process functions worked out at this point.  I do still have 
 
 **2018-Oct-26**
 
-Today, I finished up all the work on processes.
+Today, I finished up all the work on processes.  This version still page faults -- but I committed the code anyway.
 
+---
 
+Now, I will start on the IPC communication -- specifically passing messages.  Do I need to support Mutexes and Semaphores in the kernel?  I do not think so at this point.  I think messaging will be enough and with the Spinlocks, I think I have enough locking mechanisms built in.
 
+So, with that said, I only think I need to support `MessageSend()` and `MessageReceive()` functions.  Do I need a timeout?  No, not at the kernel level.
 
+---
+---
+
+**2018-Oct-27**
+
+Century-32 had a messaging implementation.  It's a rather simple design and I already have the fields necessary in the `Process_t` structure.  However, what bothers me is that the message is copied into a temporary structure and then copied back to a target structure.  It's a lot of copying.  I might not be able to get around that, but I want to try to think that through today.
+
+https://wiki.osdev.org/IPC_Data_Copying_methods contains some algorithms for messaging.  It has valuable information about what I am considering today.  It occurs to me that I am able to get around it but I really have no interest in blocking a sending process.  On top of that, I will plan that most of my kernel messages will not have extended data elements to allocate additional memory for.  I should be able to allocate a slab of memory during initialization and then allocate message structures to be used by processes.  I run the risk of running out of messages (at which point I can allocate from heap if I want to go that far), but I think I can ignore that risk for now.  One thing I want to be able to do is allocate and pass a message from a lower-half interrupt to a higher-half driver process (where generally small messages work well) quickly and only when an extended block is needed allocate it on top of the message.
+
+I also think I will need a function to check if there is a message waiting.  This function would be `MessageWaiting()`.  This function will be particularly useful in the Butler process.
+
+I am going to allocate from the Heap internally for now.  This may be something I work on changing in the future.
+
+The messages have been written.  This was relatively simple to implement.  I also reorganized the Heap* functions into their own folder to match the other files.
+
+So, what is left before I can get the PMM written?  Well, I still need a `ProcessCreate()` function to add the PMM driver into the mix and then a customer method to create the Butler process (which is the kernel initialization at this point in time).  I also will need some form of `ProcessInit()` to get the process structures set up properly.
+
+I'm feeling a bit undecided on where to focus my attention next.  When I get to this point, I find it helpful to list out all my current wants.  So, here goes:
+* I need to complete the Heap initialization
+* To do this, I need to clean up the Page Fault during preparing the initial 'hole'
+* To do this, I need to have the PMM up and running in the kernel
+* I want the PMM to be running as a separate process in user mode
+* To get the PMM up and running as a separate process, I need `ProcessCreate()` written
+* To get any additional processes running, I need to complete the preemptive scheduler
+* To get the scheduler completed, I need to initialize the PIC/PIT or APIC based on what is available
+* To initialize the PIC or APIC, I will need to determine which is on the system in hardware discovery (I will need to support both in the kernel code, or swap the driver the supported timer later in kernel initialization
+* Finally, I will need to get the linker to reformat the resulting executable into separate segments for the kernel and PMM (I think) for security reasons
+
+So, with this list, I think I will take on the PIC/PIT and get it configured and initialized.  If I am able to determine an APIC is present, I will swap it out before initialization is complete.  This will allow me to ensure beyond a shadow of a doubt that the PIC/PIT code is working even if all my own systems have an APIC.
+
+For this to work properly, I want to be able to define a structure of functions that can be called to perform operations.  I know I am using a C++ compiler and I know that this can happen easily enough in the C++ language.  I may come back at a later time and clean this up, but for now I am going to stick with the C-compatible constructs.
+
+So the PIC initialization was simple to copy from Century32.  I placed that in the `IdtBuild.cc` file.
+
+---
+---
+
+**2018-Oct-28**
+
+Century32 had a status bar that was at the bottom of the screen.  It helped with things like which TTY device you were logged in to; it showed the heart-beat of the kernel, and would occasionally show how much quantum was remaining on your slice.  All-in-all, it was pretty cool.  But there was also a lot of time that was caught up in writing this data, so I had to break that down into updating less frequently.  With the graphical screen I am using now, this will now take far longer to process.  But eventually, I think I want to have this status bar available to me since it provides a place I can put information about what is happening internally.
+
+I bring this up now, because I am reviewing the code from Century32 for IRQ0 -- the timer interrupt.  There was more code in that handler to manage the status bar than there was for managing processes.
+
+Having completed all the PIT timer functions, I now have a working interrupt timer that will trigger IRQ0.  This version will produce a dot to the debugging serial port each time the timer fires.  While I have the controls in place for a process switch, this is still disabled because I have not yet completed all of the process initialization.
+
+So, from my list above, where does this code stand?
+* Heap init -- not done
+* Page Fault during Heap init -- not done
+* PMM process -- not done
+* PMM user mode -- not done
+* Write `ProcessCreate()` -- not done
+* Preemptive scheduler -- written not tested
+* PIC/PIT init -- **done**
+* APIC determination -- not going to do yet
+* PMM in own segments -- not considered yet
+
+However, with that said, this is a huge milestone for many hobby OS developers -- setting up the timer and getting interrupts to fire.  I will commit this version of the code.
 
 

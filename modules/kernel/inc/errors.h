@@ -26,6 +26,8 @@
 //    ----------------------------------------------------------------------------------------------------
 typedef enum {
     ERR(00000000),                  // This is not an error, but success
+    ERR(00000001),                  // Reached an illegal location
+    ERR(00000002),                  // Invalid parameter -- NULL
 
     //
     // -- Errors that begin with `0x80...` are process management errors
@@ -41,6 +43,12 @@ typedef enum {
     ERR(80000008),                  // PID is held; cannot ready
     ERR(80000009),                  // PID has invalid priority
     ERR(8000000A),                  // PID is already ending
+
+    //
+    // -- Errors that begin with `0x90...` are heap management errors
+    //    -----------------------------------------------------------
+    ERR(90000000),                  // This is an unspecified heap error
+    ERR(90000001),                  // Heap is out of memory
 } Errors_t;
 
 
@@ -52,6 +60,10 @@ typedef enum {
 //
 // -- From here, we set up macros to emit error messages
 //    --------------------------------------------------
+#define ERROR_00000001()    kprintf("Error (0x00000001): Invalid code location was reached\n")
+#define ERROR_00000002(loc) kprintf("Warning (0x00000002): Invalid Parameter in function %s -- NULL\n")
+
+
 #define ERROR_80000000()    kprintf("Error (0x80000000): An unspecified Process error has occurred\n")
 #define ERROR_80000001()    kprintf("Fatal (0x80000001): Unable to allocate a new Process ID (PID); tables full\n" \
                             "Table Size: %d\nSystem halted!\n", MAX_NUM_PID)
@@ -65,5 +77,10 @@ typedef enum {
 #define ERROR_80000008(pid) kprintf("Warning (0x80000008): PID $u is held; cannot ready\n", pid)
 #define ERROR_80000009(pid) kprintf("Error (0x80000009): PID $u does not have a valid priority\n", pid)
 #define ERROR_8000000A(pid) kprintf("Warning (0x8000000A): PID $u is already ending\n", pid)
+
+
+#define ERROR_90000000()    kprintf("Error (0x90000000): An unspecified Heap error has occurred\n")
+#define ERROR_90000001(loc) kprintf("Error (0x90000001): Heap out of memory error in %s\n", loc)
+
 
 #endif

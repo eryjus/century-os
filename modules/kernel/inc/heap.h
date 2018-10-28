@@ -168,4 +168,9 @@ void HeapValidateHdr(KHeapHeader *hdr, const char *from);
 void HeapValidatePtr(const char *from);
 
 
+//
+// -- A quick macro to make coding easier and more readable
+//    -----------------------------------------------------
+#define NEW(tp) (tp *)HeapAlloc(sizeof(tp), false)
+
 #endif

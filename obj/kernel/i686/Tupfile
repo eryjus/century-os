@@ -32,6 +32,9 @@
 : foreach ../../../modules/kernel/src/x86-common/*.s |> !nasm |>
 
 : foreach ../../../modules/kernel/src/*.cc |> !i686-kernel-cc |>
+: foreach ../../../modules/kernel/src/heap/*.cc |> !i686-kernel-cc |>
 : foreach ../../../modules/kernel/src/i686/*.cc |> !i686-kernel-cc |>
+: foreach ../../../modules/kernel/src/ipc/*.cc |> !i686-kernel-cc |>
 : foreach ../../../modules/kernel/src/x86-common/*.cc |> !i686-kernel-cc |>
 : foreach ../../../modules/kernel/src/process/*.cc |> !i686-kernel-cc |>
+: foreach ../../../modules/kernel/src/timer/*.cc |> !i686-kernel-cc |>

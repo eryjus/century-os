@@ -33,6 +33,7 @@
 #include "idt.h"
 #include "printf.h"
 #include "heap.h"
+#include "timer.h"
 
 
 HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
@@ -57,18 +58,19 @@ void kInit(void)
 	//    ------------------------------------------------------------
 	IdtBuild();
 	kprintf("Welcome to CenturyOS -- a hobby operating system\n");
-	kprintf("    (initializing...)\n");				// an extra newline
+	kprintf("    (initializing...)\n");
 
     SetBgColor(FrameBufferParseRGB("#404040"));
     SetFgColor(0xffff);
 	FrameBufferClear();
 	FrameBufferPutS("Welcome to CenturyOS -- a hobby operating system\n");
-	FrameBufferPutS("    (initializing...)\n");		// an extra newline
+	FrameBufferPutS("    (initializing...)\n");
 
 	//
 	// -- Phase 2: Required OS Structure Initialization
 	//    ---------------------------------------------
-	HeapInit();
+	TimerInit(250);
+//	HeapInit();
 
 //#ifndef USE_APIC
 //	kprintf("Initializing PIT timer\n");
@@ -126,7 +128,7 @@ void kInit(void)
 //	SetProcPriority(currentProcess, PTY_IDLE);
 //	BREAKPOINT;
 
-//	EnableInterrupts();
+	EnableInterrupts();
 
 	kprintf("Reached the end of initialization\n");
 

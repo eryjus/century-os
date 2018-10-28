@@ -26,7 +26,7 @@
 //
 // -- Put the process on the wait queue and set its status
 //    ----------------------------------------------------
-Errors_t ProcessRelease(ProcStatus_t newStat)
+Errors_t ProcessWait(ProcStatus_t newStat)
 {
     Process_t *proc;
 
