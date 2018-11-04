@@ -14,22 +14,25 @@
 #####################################################################################################################
 
 
+include_rules
+
+
 #
 # -- The following 2 macros are used to build the object files
 #    ---------------------------------------------------------
-!nasm = |> nasm -felf -g -w+all -i../../../modules/libk/inc/ -i../../../modules/libk/inc/i686/                  \
-        -i../../../modules/libk/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
+!nasm = |> nasm -felf -g -w+all -i$(WS)/modules/libk/inc/ -i$(WS)/modules/libk/inc/i686/                        \
+        -i$(WS)/modules/libk/inc/x86-common/ -i$(WS)/inc/ -i$(WS)/inc/i686/ -i$(WS)/inc/x86-common/             \
         -o %o %f |> %B.o
 
-!i686-libk-cc = |> i686-elf-gcc -fpic -ffreestanding -I ../../../modules/libk/inc                               \
-        -I ../../../modules/libk/inc/i686 -I ../../../modules/libk/inc/x86-common  -I ../../../inc              \
-        -I ../../../inc/i686 -I ../../../inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
+!i686-libk-cc = |> i686-elf-gcc -fpic -ffreestanding -I $(WS)/modules/libk/inc                                  \
+        -I $(WS)/modules/libk/inc/i686 -I $(WS)/modules/libk/inc/x86-common  -I $(WS)/inc                       \
+        -I $(WS)/inc/i686 -I $(WS)/inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
 
 #
 # -- These are the implicit build rules for the i686 loader object files
 #    -------------------------------------------------------------------
-: foreach ../../../modules/libk/src/i686/*.s |> !nasm |>
+: foreach $(WS)/modules/libk/src/i686/*.s |> !nasm |>
 
-: foreach ../../../modules/libk/src/*.cc |> !i686-libk-cc |>
-: foreach ../../../modules/libk/src/frame-buffer/*.cc |> !i686-libk-cc |>
-: foreach ../../../modules/libk/src/i686/*.cc |> !i686-libk-cc |>
+: foreach $(WS)/modules/libk/src/*.cc |> !i686-libk-cc |>
+: foreach $(WS)/modules/libk/src/frame-buffer/*.cc |> !i686-libk-cc |>
+: foreach $(WS)/modules/libk/src/i686/*.cc |> !i686-libk-cc |>

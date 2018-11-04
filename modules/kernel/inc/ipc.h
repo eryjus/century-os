@@ -30,6 +30,7 @@ typedef struct Message_t {
     uint32_t msg;
     uint32_t parm1;
     uint32_t parm2;
+    PID_t pid;
     size_t payloadSize;
     void *dataPayload;
 } Message_t;
@@ -44,13 +45,13 @@ inline bool MessageWaiting(void) { return !IsListEmpty(&procs[currentPID]->messa
 //
 // -- Send a message to another process by PID
 //    ----------------------------------------
-Errors_t MessageSend(PID_t pid, Message_t *msg);
+int MessageSend(PID_t pid, Message_t *msg);
 
 
 //
 // -- Receive a message
 //    -----------------
-Errors_t MessageReceive(Message_t *m);
+int MessageReceive(Message_t *m);
 
 
 #endif

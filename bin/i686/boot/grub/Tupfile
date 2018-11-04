@@ -1,17 +1,20 @@
 #####################################################################################################################
-##                                                                                                                 
-##  bin/i686/boot/grub/Tupfile -- An alternative to the 'make' build system -- i686 grub.cfg
+##
+##  Tupfile -- An alternative to the 'make' build system -- i686 boot/grub files
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
-## ----------------------------------------------------------------------------------------------------------------- 
-##                                                                                                                 
-##     Date     Tracker  Version  Pgmr  Description                                                                         
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date     Tracker  Version  Pgmr  Description
 ##  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 ##  2017-05-10  Initial   0.0.0   ADCL  Initial version
 ##  2018-05-25  Initial   0.1.0   ADCL  Copy this file from century32 to century-os and eliminate multiboot2
-## 
+##
 #####################################################################################################################
+
+
+include_rules
 
 
 #
@@ -22,11 +25,13 @@
 	    echo "menuentry \"Century (Multiboot)\" {" 	      			>> %o;       \
 	    echo "  multiboot /boot/loader.elf"                    		>> %o;       \
 	    echo "  module /boot/kernel.elf kernel"            			>> %o;       \
+		echo "  module /boot/pmm.elf pmm"                           >> %o;		 \
 	    echo "  boot"   					  						>> %o;       \
 	    echo "}"							  						>> %o;       \
 	    echo "menuentry \"Century (Multiboot2)\" {"   	  			>> %o;       \
 	    echo "  multiboot2 /boot/loader.elf"                   		>> %o;       \
 	    echo "  module2 /boot/kernel.elf kernel"           			>> %o;       \
+	    echo "  module2 /boot/pmm.elf pmm" 	             			>> %o;       \
 	    echo "  boot"						  						>> %o;       \
 	    echo "}"					    							>> %o;       \
     |> grub.cfg

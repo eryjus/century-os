@@ -1,0 +1,35 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to the 'make' build system -- i686 pmm objects
+##
+##        Copyright (c)  2017-2018 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2018-Nov-02  Initial   0.1.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+include_rules
+
+
+#
+# -- The following 2 macros are used to build the object files
+#    ---------------------------------------------------------
+!nasm = |> nasm -felf -g -w+all -i$(WS)/bin/i686/usr/include -i$(WS)/modules/pmm/inc/ -i$(WS)/modules/libc/inc/       \
+        -i$(WS)/modules/pmm/inc/i686/ -i$(WS)/modules/pmm/inc/x86-common/ -i$(WS)/inc/ -i$(WS)/inc/i686/  \
+        -i$(WS)/inc/x86-common/ -o %o %f |> %B.o
+
+!i686-kernel-cc = |> i686-elf-gcc -g -fpic -ffreestanding -I $(WS)/bin/i686/usr/include  -I $(WS)/modules/libc/inc/      -I $(WS)/modules/kernel/inc/      \
+        -I $(WS)/modules/pmm/inc -I $(WS)/modules/libk/inc -I $(WS)/modules/pmm/inc/i686                  \
+        -I $(WS)/modules/pmm/inc/x86-common  -I $(WS)/inc -I $(WS)/inc/i686 -I $(WS)/inc/x86-common          \
+        -Wall -Werror -c -o %o %f |> %B.o
+
+#
+# -- These are the implicit build rules for the i686 kernel object files
+#    -------------------------------------------------------------------
+: foreach $(WS)/modules/pmm/src/*.s | $(II686) |> !nasm |>
+: foreach $(WS)/modules/pmm/src/*.cc | $(II686) |> !i686-kernel-cc |>

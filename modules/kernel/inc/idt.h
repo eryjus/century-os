@@ -87,4 +87,9 @@ void IsrInt1e(isrRegs_t *regs);
 void IsrInt1f(isrRegs_t *regs);
 
 
+//
+// -- The system call handler
+//    -----------------------
+void SyscallHandler(isrRegs_t *regs);
+
 #endif

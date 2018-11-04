@@ -11,6 +11,11 @@
 //  Directory has 1024 entries, resulting in 4GB addressable space.  It is also important to note that with
 //  recursive mapping, we give up 4MB of virtual address space.
 //
+//  I will leverage the paging structure to take one of the avl bits to indicate a kernel page.  This type of
+//  page will have the following attributes:
+//  * Will be mapped into other processes for use by SYSCALLS
+//  * Will not be eligible for page swapping
+//
 // -----------------------------------------------------------------------------------------------------------------
 //
 //     Date     Tracker  Version  Pgmr  Description
@@ -39,7 +44,8 @@ typedef struct pageEntry_t {
     unsigned int d : 1;                 // dirty (needs to be written for a swap)
     unsigned int pat : 1;               // set to 0 for tables, page Page Attribute Table (set to 0)
     unsigned int g : 1;                 // Global (set to 0)
-    unsigned int avl : 3;               // Available for software use
+    unsigned int k : 1;                 // Is this a kernel page?
+    unsigned int avl : 2;               // Available for software use
     unsigned int frame : 20;            // This is the 4K aligned page frame address (or table address)
 } __attribute__((packed)) pageEntry_t;
 

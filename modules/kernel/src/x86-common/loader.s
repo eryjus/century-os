@@ -62,7 +62,15 @@ loader:
     mov     ecx,IdtDesc                                 	;; Get the gdt address
     lidt    [ecx]                                       	;; and load the GDT
 
-	jmp	    kInit					                        ; jump to the C initialization function
+    mov         ecx,0x02<<3
+    mov         ds,cx
+    mov         es,cx
+    mov         fs,cx
+    mov         gs,cx
+    mov         ss,cx
+    nop
+
+	jmp	    0x08:kInit					                        ; jump to the C initialization function
 
 ;
 ; -- if you get back here, then you have a problem and need to hang; fall through to the next function...

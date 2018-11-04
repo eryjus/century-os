@@ -63,10 +63,11 @@
 #####################################################################################################################
 
 .PHONY: all all-iso i686-iso run-i686 debug-i686 x86_64-iso run-x86_64 debug-x86_64 rpi2b-iso run-rpi2b debug-rpi2b
+.PHONY: init
 .SILENT:
 
 
-all:
+all: init
 	tup
 
 
@@ -127,3 +128,11 @@ run-rpi2b: rpi2b-iso
 
 debug-rpi2b: rpi2b-iso
 	qemu-system-arm -m 256 -M raspi2 -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -s -S
+
+
+init: Tuprules.tup
+
+
+Tuprules.tup: Makefile
+	echo "WS = `pwd`" > $@
+	echo "II686 = \$$(WS)/bin/i686/usr/include/*" >> $@

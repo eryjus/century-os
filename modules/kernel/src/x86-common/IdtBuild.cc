@@ -169,4 +169,6 @@ void IdtBuild(void)
 	IsrRegister(0x1d, IsrInt1d);
 	IsrRegister(0x1e, IsrInt1e);
 	IsrRegister(0x1f, IsrInt1f);
+
+	IsrRegister(100, SyscallHandler);
 }

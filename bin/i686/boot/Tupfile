@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  bin/686/boot/Tupfile -- An alternative to the 'make' build system -- i686 boot files
+##  Tupfile -- An alternative to the 'make' build system -- i686 boot files
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
@@ -15,13 +15,21 @@
 #####################################################################################################################
 
 
+include_rules
+
+
 #
 # -- The rules to make the bootable targets in this folder
 #    -----------------------------------------------------
-: ../../../obj/loader/i686/*.o ../../../lib/i686/libk.a ../../../modules/loader/src/i686/loader.ld              \
-        |> i686-elf-gcc -g -T ../../../modules/loader/src/i686/loader.ld                                        \
-        -ffreestanding -O2 -nostdlib -L ../../../lib/i686 -o %o %f -lgcc -lk; |> loader.elf
+: $(WS)/obj/loader/i686/*.o $(WS)/lib/i686/libk.a $(WS)/modules/loader/src/i686/loader.ld                       \
+        |> i686-elf-gcc -g -T $(WS)/modules/loader/src/i686/loader.ld                                           \
+        -ffreestanding -O2 -nostdlib -L $(WS)/lib/i686 -o %o %f -lgcc -lk; |> loader.elf
 
-: ../../../obj/kernel/i686/*.o  ../../../lib/i686/libk.a  ../../../modules/kernel/src/i686/kernel.ld            \
-        |> i686-elf-gcc -g -T ../../../modules/kernel/src/i686/kernel.ld                                        \
-        -ffreestanding -O2 -nostdlib -L ../../../lib/i686 -o %o %f -lgcc -lk; |> kernel.elf
+: $(WS)/obj/kernel/i686/*.o  $(WS)/lib/i686/libk.a  $(WS)/modules/kernel/src/i686/kernel.ld                     \
+        |> i686-elf-gcc -g -T $(WS)/modules/kernel/src/i686/kernel.ld                                           \
+        -ffreestanding -O2 -nostdlib -L $(WS)/lib/i686 -o %o %f -lgcc -lk; |> kernel.elf
+
+: $(WS)/obj/pmm/i686/*.o  $(WS)/lib/i686/libc.a  $(WS)/modules/pmm/src/pmm.ld                     \
+        |> i686-elf-gcc -g -T $(WS)/modules/pmm/src/pmm.ld                                           \
+        -ffreestanding -O2 -nostdlib -L $(WS)/lib/i686 -o %o %f -lgcc -lc; |> pmm.elf
+

@@ -13,18 +13,18 @@
 
 #include "spinlock.h"
 #include "heap.h"
-#include "errors.h"
 #include "ipc.h"
+
+#include <errno.h>
 
 
 //
 // -- Receive a message
 //    -----------------
-Errors_t MessageReceive(Message_t *m)
+int MessageReceive(Message_t *m)
 {
     if (!m) {
-        ERROR_00000002("MessageReceive()");
-        return ERR_00000002;
+        return -EUNDEF;
     }
 
     Process_t *proc = procs[currentPID];

@@ -14,7 +14,6 @@
 
 
 #include "types.h"
-#include "errors.h"
 #include "lists.h"
 #include "spinlock.h"
 #include "process.h"
@@ -23,16 +22,15 @@
 //
 // -- Terminate a process
 //    -------------------
-Errors_t ProcessTerminate(PID_t pid)
+int ProcessTerminate(PID_t pid)
 {
     Process_t *proc;
 
     SANITY_CHECK_PID(pid, proc);
     SPIN_BLOCK(proc->lock) {
         if (proc->status == PROC_END || proc->status == PROC_ZOMB) {
-            ERROR_8000000A(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_8000000A;
+            return -EUNDEF;
         }
 
         if (proc->isHeld) {

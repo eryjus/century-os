@@ -38,6 +38,28 @@ NEW_LIST(procIdlePtyList);
 
 
 //
+// -- This is the process structure for the butler process
+//    ----------------------------------------------------
+Process_t butler = {
+    0,                      // esp
+    0,                      // ss
+    0x200000 - 4096,        // stack location
+    4096,                   // stack length
+    "Butler",               // process name
+    0,                      // total quantum
+    PROC_RUN,               // process status
+    PTY_OS,                 // the priority
+    0,                      // quantum left
+    false,                  // not held
+    {0},                    // the spinlock for this process
+    {0},                    // the status queue
+    {0},                    // the lock list
+    {0},                    // pending messages
+    NULL,                   // the previous payload
+};
+
+
+//
 // -- This is a list of waiting processes.  These processes are waiting for some external event.
 //    ------------------------------------------------------------------------------------------
 NEW_LIST(procWaitList);

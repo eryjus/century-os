@@ -6,10 +6,11 @@
 /*                                                                                                                 */
 /* --------------------------------------------------------------------------------------------------------------- */
 /*                                                                                                                 */
-/*     Date     Tracker  Version  Pgmr  Description                                                                */
-/*  ----------  -------  -------  ----  -------------------------------------------------------------------------  */
-/*  2017-04-14  Initial   0.0.0   ADCL  Initial version                                                            */
-/*  2018-05-25  Initial   0.1.0   ADCL  Copy this file from the loader of century                                  */
+/*     Date      Tracker  Version  Pgmr  Description                                                               */
+/*  -----------  -------  -------  ----  ------------------------------------------------------------------------  */
+/*  2017-Apr-14  Initial   0.0.0   ADCL  Initial version                                                           */
+/*  2018-May-25  Initial   0.1.0   ADCL  Copy this file from the loader of century                                 */
+/*  2018-Oct-28  Initial   0.1.0   ADCL  Set the PMM into its own sections                                         */
 /*                                                                                                                 */
 /*******************************************************************************************************************/
 
@@ -26,15 +27,6 @@ SECTIONS {
     . = 0xc0000000;                 /* This is the location in upper memory we will load the kernel */
     _kernelStart = .;
     _textStart = .;
-
-    /*
-     * -- The .mbheader section is the early control point.  We will put that into its own section rather than
-     *    organizing it into the .text section.
-     *    ----------------------------------------------------------------------------------------------------
-     */
-    .mbheader : {
-        *(.mbheader)
-    }
 
     /*
      * -- This is where the code will be placed.  Note that we put the init section right up front.  This

@@ -98,6 +98,16 @@ enum {
 
 
 //
+// -- These are the program segment flags
+//    -----------------------------------
+enum {
+    PF_X                = 0x01,     // The segment is executable
+    PF_W                = 0x02,     // The segment is writable
+    PF_R                = 0x04,     // The segment is readable
+};
+
+
+//
 // -- Architecture-independent check for the ELF signature
 //    ----------------------------------------------------
 #define HAS_ELF_MAGIC(x) ((x)->eIdent[EI_MAG0] == 0x7f && \

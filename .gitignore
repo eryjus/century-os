@@ -8,9 +8,10 @@ sysroot
 iso
 *.old
 org.kde.konsole.desktop
+Tuprules.tup
 
 obj/**/*.o
-obj/*.map
+maps/**/*.map
 
 bin/**/*.cfg
 bin/**/*.elf

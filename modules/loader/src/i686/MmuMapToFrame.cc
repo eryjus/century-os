@@ -25,13 +25,10 @@
 #include "mmu.h"
 
 
-static inline pageEntry_t *MmuGetAddrFromEntry(pageEntry_t *e) { return (pageEntry_t *)PmmFrameToLinear(e->frame); }
-
-
 //
 // -- Map a virtual address page to a physical frame in the paging tables
 //    -------------------------------------------------------------------
-void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame)
+void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame, bool wrt, bool krn)
 {
     // -- Make sure the frame is really allocated
     if (!PmmIsFrameAlloc(frame)) {
@@ -43,9 +40,9 @@ void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame)
 
     // -- Walk the tables, making sure we have all the entries we need
     pageEntry_t *pdTable = (pageEntry_t *)cr3;
-    pageEntry_t *pdEntry = MmuGetTableEntry(pdTable, addr, 22);
+    pageEntry_t *pdEntry = MmuGetTableEntry(pdTable, addr, 22, true);
     pageEntry_t *pTable = MmuGetAddrFromEntry(pdEntry);
-    pageEntry_t *pEntry = MmuGetTableEntry(pTable, addr, 12);
+    pageEntry_t *pEntry = MmuGetTableEntry(pTable, addr, 12, true);
 
     // -- Now, check if the page is already mapped
     if (pEntry->p) {
@@ -60,6 +57,7 @@ void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame)
     // -- Finally complete the mapping
     pEntry->frame = frame;
     pEntry->p = 1;
-    pEntry->rw = 1;
+    pEntry->rw = wrt;
     pEntry->us = 1;
+    pEntry->k = krn;
 }

@@ -14,27 +14,34 @@
 #####################################################################################################################
 
 
+include_rules
+
+
 #
 # -- The following 2 macros are used to build the object files
 #    ---------------------------------------------------------
-!nasm = |> nasm -felf -g -w+all -i../../../modules/kernel/inc/ -i../../../modules/kernel/inc/i686/ \
-        -i../../../modules/kernel/inc/x86-common/ -i../../../inc/ -i../../../inc/i686/ -i../../../inc/x86-common/ \
-        -o %o %f |> %B.o
+!nasm = |> nasm -felf -g -w+all -i$(WS)/bin/i686/usr/include -i$(WS)/modules/kernel/inc/                        \
+        -i$(WS)/modules/kernel/inc/i686/ -i$(WS)/modules/kernel/inc/x86-common/ -i$(WS)/inc/ -i$(WS)/inc/i686/  \
+        -i$(WS)/inc/x86-common/ -o %o %f |> %B.o
 
-!i686-kernel-cc = |> i686-elf-gcc -g -fpic -ffreestanding -I ../../../modules/kernel/inc -I ../../../modules/libk/inc \
-        -I ../../../modules/kernel/inc/i686 -I ../../../modules/kernel/inc/x86-common  -I ../../../inc \
-        -I ../../../inc/i686 -I ../../../inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
+!i686-kernel-cc = |> i686-elf-gcc -g -fpic -ffreestanding -I $(WS)/bin/i686/usr/include                         \
+        -I $(WS)/modules/kernel/inc -I $(WS)/modules/libk/inc -I $(WS)/modules/kernel/inc/i686                  \
+        -I $(WS)/modules/kernel/inc/x86-common  -I $(WS)/inc -I $(WS)/inc/i686 -I $(WS)/inc/x86-common          \
+        -Wall -Werror -c -o %o %f |> %B.o
 
 #
 # -- These are the implicit build rules for the i686 kernel object files
 #    -------------------------------------------------------------------
-: foreach ../../../modules/kernel/src/i686/*.s |> !nasm |>
-: foreach ../../../modules/kernel/src/x86-common/*.s |> !nasm |>
+: foreach $(WS)/modules/kernel/src/i686/*.s | $(II686) |> !nasm |>
+: foreach $(WS)/modules/kernel/src/x86-common/*.s | $(II686) |> !nasm |>
 
-: foreach ../../../modules/kernel/src/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/heap/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/i686/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/ipc/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/x86-common/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/process/*.cc |> !i686-kernel-cc |>
-: foreach ../../../modules/kernel/src/timer/*.cc |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/heap/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/i686/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/ipc/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/mmu/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/pmm/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/process/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/syscall/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/timer/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/x86-common/*.cc | $(II686) |> !i686-kernel-cc |>

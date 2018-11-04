@@ -18,7 +18,7 @@
 #include "types.h"
 #include "serial.h"
 #include "printf.h"
-#include "pmm.h"
+//#include "pmm.h"
 #include "mmu.h"
 #include "heap.h"
 

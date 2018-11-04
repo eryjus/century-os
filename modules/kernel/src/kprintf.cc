@@ -75,6 +75,14 @@ int kprintf(const char *fmt, ...)
 			printed ++;
 			continue;
 
+		case 's': {
+			char *s = va_arg(args, char *);
+			if (!s) s = (char *)"<NULL>";
+			while (*s) SerialPutChar(*s ++);
+			printed ++;
+			continue;
+		}
+
 		case 'P':
 			flags |= LARGE;
 			dig = upper_digits;

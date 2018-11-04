@@ -16,33 +16,32 @@
 //===================================================================================================================
 
 
-#include "errors.h"
 #include "printf.h"
 #include "spinlock.h"
 #include "process.h"
+
+#include <errno.h>
 
 
 //
 // -- Ready a process by placing it on the proper ready queue
 //    -------------------------------------------------------
-Errors_t ProcessReady(PID_t pid)
+int ProcessReady(PID_t pid)
 {
     Process_t *proc;
 
     SANITY_CHECK_PID(pid, proc);
     SPIN_BLOCK(proc->lock) {
         if (proc->isHeld) {
-            ERROR_80000008(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000008;
+            return -EUNDEF;
         }
 
         switch(proc->status) {
         case PROC_END:
         case PROC_ZOMB:
-            ERROR_80000005(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000005;
+            return -EUNDEF;
 
         case PROC_INIT:
         case PROC_DLYW:
@@ -75,10 +74,9 @@ Errors_t ProcessReady(PID_t pid)
                     break;
 
                 default:
-                    ERROR_80000009(pid);
                     SpinlockUnlock(&proc->lock);
                     SpinlockUnlock(&readyQueueLock);
-                    return ERR_80000009;
+                    return -EUNDEF;
                 }
 
                 SpinlockUnlock(&readyQueueLock);
@@ -87,9 +85,8 @@ Errors_t ProcessReady(PID_t pid)
             break;
 
         default:
-            ERROR_80000006(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000006;
+            return -EUNDEF;
         }
 
         SpinlockUnlock(&proc->lock);

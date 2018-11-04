@@ -89,6 +89,12 @@ extern "C" void outb(uint16_t port, uint8_t byte);
 
 
 //
+// -- Get the CR3 value
+//    -----------------
+extern "C" regval_t GetCr3(void);
+
+
+//
 // -- Get the CPU capabilities list for CenturyOS
 //    -------------------------------------------
 void CpuGetCapabilities(void);

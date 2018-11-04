@@ -21,12 +21,12 @@
 //
 // -- From the address, get the table entry shifting properly
 //    -------------------------------------------------------
-pageEntry_t *MmuGetTableEntry(pageEntry_t *table, ptrsize_t addr, int shift)
+pageEntry_t *MmuGetTableEntry(pageEntry_t *table, ptrsize_t addr, int shift, bool alloc)
 {
     uint32_t index = (addr >> shift) & 0x3ff;
     pageEntry_t *rv = &table[index];
 
-    if (rv->p == 0 && shift != 12) {       // we will not allocate a new frame
+    if (rv->p == 0 && shift != 12 && alloc) {       // we will allocate a new frame if appropriate
         uint32_t frame = PmmNewFrame();
         kMemSetB((void *)(frame << 12), 0, 4096);
         rv->frame = frame;

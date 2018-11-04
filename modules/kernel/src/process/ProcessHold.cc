@@ -17,33 +17,32 @@
 //===================================================================================================================
 
 
-#include "errors.h"
 #include "printf.h"
 #include "spinlock.h"
 #include "process.h"
+
+#include <errno.h>
 
 
 //
 // -- Hold a process by putting it on the hold list and update the hold flag
 //    ----------------------------------------------------------------------
-Errors_t ProcessHold(PID_t pid)
+int ProcessHold(PID_t pid)
 {
     Process_t *proc;
 
     SANITY_CHECK_PID(pid, proc);
     SPIN_BLOCK(proc->lock) {
         if (proc->isHeld) {
-            ERROR_80000004(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000004;
+            return -EUNDEF;
         }
 
         switch(proc->status) {
         case PROC_END:
         case PROC_ZOMB:
-            ERROR_80000005(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000005;
+            return -EUNDEF;
 
         case PROC_DLYW:
         case PROC_MSGW:
@@ -65,9 +64,8 @@ Errors_t ProcessHold(PID_t pid)
             break;
 
         default:
-            ERROR_80000006(pid);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000006;
+            return -EUNDEF;
         }
 
         proc->isHeld = true;

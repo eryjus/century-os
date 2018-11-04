@@ -33,16 +33,16 @@
 #include "idt.h"
 #include "printf.h"
 #include "heap.h"
+#include "process.h"
 #include "timer.h"
 
 
 HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
 
 
-// extern uint32 schedulerEnabled;
-// extern Mutex screenMutex;
-
 extern "C" void kInit(void);
+void PmmStart(Module_t *);
+
 
 uint16_t serialPort = 0x3f8;
 
@@ -69,6 +69,14 @@ void kInit(void)
 	//
 	// -- Phase 2: Required OS Structure Initialization
 	//    ---------------------------------------------
+	ProcessInit();
+	for (int i = 0; i < GetModCount(); i ++) {
+		char *s = GetAvailModuleIdent(i);
+		if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && s[3] == 0) {
+			PmmStart(&localHwDisc->mods[i]);
+			break;
+		}
+	}
 	TimerInit(250);
 //	HeapInit();
 

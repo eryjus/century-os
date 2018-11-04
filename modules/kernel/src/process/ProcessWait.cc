@@ -17,25 +17,25 @@
 
 
 #include "types.h"
-#include "errors.h"
 #include "lists.h"
 #include "spinlock.h"
 #include "process.h"
+
+#include <errno.h>
 
 
 //
 // -- Put the process on the wait queue and set its status
 //    ----------------------------------------------------
-Errors_t ProcessWait(ProcStatus_t newStat)
+int ProcessWait(ProcStatus_t newStat)
 {
     Process_t *proc;
 
     SANITY_CHECK_PID(currentPID, proc);
     SPIN_BLOCK(proc->lock) {
         if (!proc->isHeld) {
-            ERROR_80000007(currentPID);
             SpinlockUnlock(&proc->lock);
-            return ERR_80000007;
+            return -EUNDEF;
         }
 
         SPIN_BLOCK(readyQueueLock) {

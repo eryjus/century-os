@@ -16,5 +16,5 @@
 #
 # -- Create a map file by dumping the object
 #    ---------------------------------------
-: ../bin/i686/boot/kernel.elf |> i686-elf-objdump -D %f > %o |> kernel-i686.map
-: ../bin/i686/boot/loader.elf |> i686-elf-objdump -D %f > %o |> loader-i686.map
+: ../../bin/i686/boot/kernel.elf |> i686-elf-objdump -D %f > %o |> kernel-i686.map
+: ../../bin/i686/boot/loader.elf |> i686-elf-objdump -D %f > %o |> loader-i686.map

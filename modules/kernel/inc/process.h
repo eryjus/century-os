@@ -61,7 +61,6 @@
 
 
 #include "types.h"
-#include "errors.h"
 #include "printf.h"
 #include "lists.h"
 #include "spinlock.h"
@@ -139,6 +138,12 @@ extern bool ProcessEnabled;
 
 
 //
+// -- The butler process structure
+//    ----------------------------
+extern Process_t butler;
+
+
+//
 // -- Several Spinlocks needed for managing internal structures
 //    ---------------------------------------------------------
 extern struct Spinlock_t pidTableLock;
@@ -162,6 +167,12 @@ extern List_t procReaper;
 
 
 //
+// -- Initialize the process structures
+//    ---------------------------------
+void ProcessInit(void);
+
+
+//
 // -- Allocate a new PID from the PID table
 //    -------------------------------------
 PID_t ProcessNewPID(void);
@@ -170,25 +181,25 @@ PID_t ProcessNewPID(void);
 //
 // -- Hold a process by PID
 //    ---------------------
-Errors_t ProcessHold(PID_t pid);
+int ProcessHold(PID_t pid);
 
 
 //
 // -- Release a process by PID
 //    ------------------------
-Errors_t ProcessRelease(PID_t pid);
+int ProcessRelease(PID_t pid);
 
 
 //
 // -- Ready a process by PID
 //    ----------------------
-Errors_t ProcessReady(PID_t pid);
+int ProcessReady(PID_t pid);
 
 
 //
 // -- Terminate a process
 //    -------------------
-Errors_t ProcessTerminate(PID_t pid);
+int ProcessTerminate(PID_t pid);
 
 
 //
@@ -200,7 +211,7 @@ void ProcessEnd(void) __attribute__((noreturn));
 //
 // -- Put the process on the wait queue and set its status
 //    ----------------------------------------------------
-Errors_t ProcessRelease(ProcStatus_t newStat);
+int ProcessRelease(ProcStatus_t newStat);
 
 
 //
@@ -212,7 +223,7 @@ void ProcessReschedule(void);
 //
 // -- Put the process on the wait queue and set its status
 //    ----------------------------------------------------
-Errors_t ProcessWait(ProcStatus_t newStat);
+int ProcessWait(ProcStatus_t newStat);
 
 
 //
@@ -224,20 +235,20 @@ extern "C" void ProcessSwitch(Process_t *current, Process_t *target);
 //
 // -- A function to get the Process structure from the PID
 //    ----------------------------------------------------
-static inline Process_t *ProcessGetStruct(PID_t pid) { return (pid>=MAX_NUM_PID?NULL:procs[pid]); }
+inline Process_t *ProcessGetStruct(PID_t pid) { return (pid>=MAX_NUM_PID?NULL:procs[pid]); }
 
 
 //
 // -- Deallocate a PID from the PID table
 //    -----------------------------------
-static inline void ProcessFreePID(PID_t pid) { if (pid < MAX_NUM_PID) procs[pid] = 0; }
+inline void ProcessFreePID(PID_t pid) { if (pid < MAX_NUM_PID) procs[pid] = 0; }
 
 
 //
 // -- We need an additional include
 //    -----------------------------
 #include "spinlock.h"
-#include "errors.h"
+#include <errno.h>
 
 
 //
@@ -245,15 +256,13 @@ static inline void ProcessFreePID(PID_t pid) { if (pid < MAX_NUM_PID) procs[pid]
 //    -------------------------------
 #define SANITY_CHECK_PID(pid,proc)		do {											\
 										    if (pid > MAX_NUM_PID) {					\
-        										ERROR_80000002(pid);					\
-        										return ERR_80000002;					\
+        										return -EUNDEF;							\
     										}											\
 																						\
     										proc = procs[pid];							\
 																						\
     										if(!proc) {									\
-        										ERROR_80000003(pid);					\
-        										return ERR_80000003;					\
+        										return -EUNDEF;							\
     										}											\
 										} while (0)
 

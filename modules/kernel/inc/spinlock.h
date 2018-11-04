@@ -72,4 +72,10 @@ static inline PID_t SpinLockGetHolder(Spinlock_t *lock) { return lock->lockHolde
 static inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->locked; }
 
 
+//
+// -- This is the spinlock for the temporary page for frame population ahead of putting it to a process
+//    -------------------------------------------------------------------------------------------------
+extern Spinlock_t lockTempPage;
+
+
 #endif

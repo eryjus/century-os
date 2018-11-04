@@ -15,18 +15,16 @@
 
 #include "spinlock.h"
 #include "heap.h"
-#include "errors.h"
 #include "ipc.h"
 
 
 //
 // -- Send a message to a PID
 //    -----------------------
-Errors_t MessageSend(PID_t pid, Message_t *m)
+int MessageSend(PID_t pid, Message_t *m)
 {
     if (!m) {
-        ERROR_00000002("MessageSend()");
-        return ERR_00000002;
+        return -EUNDEF;
     }
 
     Process_t *proc;
@@ -37,14 +35,14 @@ Errors_t MessageSend(PID_t pid, Message_t *m)
         if (msg) HeapFree(msg);
         if (payload) HeapFree(payload);
 
-        ERROR_90000001("MessageSend()");
-        return ERR_90000001;
+        return -EUNDEF;
     }
 
     ListInit(&msg->list);
     msg->msg = m->msg;
     msg->parm1 = m->parm1;
     msg->parm2 = m->parm2;
+    msg->pid = currentPID;
     msg->payloadSize = m->payloadSize;
     if (m->payloadSize) kMemMove(payload, m->dataPayload, m->payloadSize);
     msg->dataPayload = payload;

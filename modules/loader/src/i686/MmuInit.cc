@@ -54,18 +54,18 @@ void MmuInit(void)
 
     // -- Map the EBDA
     SerialPutS("Map the EBDA\n");
-    MmuMapToFrame(cr3, GetEbda(), PmmLinearToFrame(GetEbda()));
+    MmuMapToFrame(cr3, GetEbda(), PmmLinearToFrame(GetEbda()), true, false);
 
     // -- Map the memory from 640KB to 1MB
     SerialPutS("Map Upper Memory");
     for (addr = 640 * 1024; addr < 0x100000; addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr));
+        MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr), true, true);
     }
 
     // -- Map the GDT/IDT to the final location
     SerialPutS("\nMap GDT/IDT\n");
-    MmuMapToFrame(cr3, 0xff401000, PmmLinearToFrame(0x00000000));
+    MmuMapToFrame(cr3, 0xff401000, PmmLinearToFrame(0x00000000), true, false);
 
     // -- Identity map the loader
     SerialPutS("Loader Start: ");
@@ -78,7 +78,7 @@ void MmuInit(void)
     SerialPutS("Identity Map the Loader");
     for (addr = (ptrsize_t)&_loaderStart; addr < (ptrsize_t)&_loaderEnd; addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr));
+        MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr), true, false);
     }
 
     // -- Finally, map the frame buffer
@@ -87,20 +87,20 @@ void MmuInit(void)
             f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
             f ++, addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(cr3, addr, f);
+        MmuMapToFrame(cr3, addr, f, true, true);
     }
 
     // -- need to identity-map frame 0
     SerialPutS("\nMap Frame 0\n");
-    MmuMapToFrame(cr3, 0, 0);
+    MmuMapToFrame(cr3, 0, 0, true, false);
 
     // -- need to identity-map the stack
     SerialPutS("Map Stack\n");
-    MmuMapToFrame(cr3, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096));
+    MmuMapToFrame(cr3, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096), true, false);
 
     // -- identity map the hardware data strucure
     SerialPutS("Map Hardware Discovery Struture\n");
-    MmuMapToFrame(cr3, 0x00003000, 3);
+    MmuMapToFrame(cr3, 0x00003000, 3, true, false);
 
     //
     // -- Dump some addresses from the cr3 tables to check validity

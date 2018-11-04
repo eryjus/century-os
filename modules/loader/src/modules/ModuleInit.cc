@@ -4,6 +4,8 @@
 //
 //  This will read all the ELF header information and build the proper locations in memory.
 //
+//  Paging is not yet turned on, so we can easily initialize any newly allocated frames.
+//
 // -----------------------------------------------------------------------------------------------------------------
 //
 //     Date     Tracker  Version  Pgmr  Description
@@ -16,6 +18,7 @@
 #include "hw-disc.h"
 #include "pmm.h"
 #include "mmu.h"
+#include "cpu.h"
 #include "serial.h"
 #include "elf.h"
 #include "modules.h"
@@ -30,6 +33,7 @@ extern ptrsize_t cr3;
 kernEntry_t ModuleInit(void)
 {
     kernEntry_t entry;
+    ptrsize_t modCr3;
 
     if (!HaveModData()) {
         SerialPutS("Unable to locate Kernel...  Halting!\n");
@@ -54,6 +58,13 @@ kernEntry_t ModuleInit(void)
                 && modName[4] == 'e' && modName[5] == 'l') {
             haveKernel = true;
             thisIsKernel = true;
+            modCr3 = cr3;
+        } else {
+            modCr3 = PmmFrameToLinear(PmmNewFrame());
+
+            // -- clear the Page Directory
+            kMemSetB((void *)modCr3, 0, 4096);
+            SetModuleCr3(i, modCr3);
         }
 
         // -- Check for the ELF signature
@@ -81,6 +92,8 @@ kernEntry_t ModuleInit(void)
         Elf32EHdr_t *hdr32 = (Elf32EHdr_t *)hdr;
         Elf32PHdr_t *phdr32 = (Elf32PHdr_t *)((char *)hdr + hdr32->ePhOff);
 
+        SetModuleEntry(i, hdr32->eEntry);
+
         for (int j = 0; j < hdr32->ePhNum; j ++) {
             // -- So now we need to go through and map the kernel pages to the frames
             SerialPutS("   FileSize = ");
@@ -99,6 +112,9 @@ kernEntry_t ModuleInit(void)
 
                 if (offset > phdr32[j].pFileSz) {
                     f = PmmNewFrame();
+
+                    // -- This is bss space, initialize it to 0
+                    kMemSetB((void *)PmmFrameToLinear(f), 0, 4096);
                 } else {
                     f = PmmLinearToFrame(GetAvailModuleStart(i) + phdr32[j].pOffset + offset);
                 }
@@ -109,7 +125,8 @@ kernEntry_t ModuleInit(void)
                 SerialPutHex(f);
                 SerialPutS("\n");
 
-                MmuMapToFrame(cr3, phdr32[j].pVAddr + offset, f);
+                MmuMapToFrame(modCr3, phdr32[j].pVAddr + offset, f,
+                        (phdr32[i].pFlags&PF_W?true:false), (thisIsKernel?true:false));
             }
         }
 

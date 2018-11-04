@@ -130,6 +130,8 @@ IRQ_HANDLER 14,46				                    		; define irq14
 IRQ_HANDLER 15,47		                            		; define irq15
 
 
+ISR_NOERRORCODE 100											; This is the system call ISR
+
 ;;
 ;; -- build the stack in the following order
 ;;     interrupt frame
@@ -174,6 +176,7 @@ IsrCommonStub:
 	mov		es,ax				                            ; ... es, ...
 	mov		fs,ax				                            ; ... fs, and ...
 	mov		gs,ax				                            ; ... gs
+	mov 	ss,ax											; ... ss
 
 	call	IsrHandler			                            ; call the C ISR haandler
 

@@ -23,7 +23,6 @@
 #include "types.h"
 #include "printf.h"
 #include "cpu.h"
-#include "errors.h"
 #include "process.h"
 
 
@@ -45,6 +44,5 @@ PID_t ProcessNewPID(void)
         }
     } while (i != lastPID);
 
-    ERROR_80000001();
     Halt();
 }

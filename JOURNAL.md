@@ -1,6 +1,6 @@
-***The Century OS Development Journal***
+# The Century OS Development Journal
 
-***Prologue***
+## Prologue
 
 I found some old code that I want to reuse.  The most successful iteration I have had was the second 32-bit version.  I thought I had lost that code (see below).  So I am going to try to resurrect it with this iteration.  Plus, I will clean up after myself a bit.
 
@@ -8,9 +8,8 @@ My goals from the previous iteration are all still valid, I am just hoping to mo
 
 
 ---
----
 
-***Prologue from Century***
+## Prologue from Century
 
 So as I am sitting down today to start laying out how my virtual memory manager will be used, I really should be documenting my progress and thoughts if this is really going to be something others can learn from.  The README.md file is not really suited for the type of "conversation" I want to have here.  One of the goals of this project is, after all, to have a result that others can learn from -- even if it is from my mistakes.
 
@@ -34,9 +33,8 @@ I wanted to incorporate all the thinking I had done with Century64 (the assembly
 
 
 ---
----
 
-**2018-05-23**
+### 2018-May-23
 
 The first orders of business are the basic structure and the build system.  First, I would like to structure to be relatively flat, but broken up into modules.  The recovered code from Century32 is a monolithic kernel, so everything was in the main directory.  On the other hand, several things are going to be hardware-specific and need to be placed into their own folders.  I may not be able to keep the goal to be flat as cleanly as I would prefer.  Back to that in a bit...
 
@@ -46,9 +44,8 @@ So, back to the directory structure...  This might sound a little odd, but I thi
 
 
 ---
----
 
-**2018-05-24**
+### 2018-May-24
 
 Today I am still working on getting the structure aligned.  I am continuing to follow the structure laid out in `Makefile`.
 
@@ -60,9 +57,8 @@ Another thought about organization is the number of functions to put into a sing
 
 
 ---
----
 
-**2018-05-25**
+### 2018-May-25
 
 Today I will continue laying out the basic of the kernel support functions.  In this case, lists.
 
@@ -84,17 +80,15 @@ As I get into the early screen functions, I am struck by the amount of code dupl
 
 
 ---
----
 
-**2018-05-26**
+### 2018-May-26
 
 Today I will start to bring over early console functionality.  This will also drag over several supporting functions and I will make the effort to bring over all the similar functions at the same time.  I will start with a `ConsolePutChar` function and then build from there.
 
 
 ---
----
 
-**2018-05-27**
+### 2018-May-27
 
 Today I have finished up copying in several functions and getting my `ConsolePutS()` implementation working.  I now have a greeting on the screen.  This is a milestone so I will commit these changes locally.
 
@@ -108,9 +102,8 @@ The 2 key functions calls that I have ahead of what has been implemented so far 
 
 
 ---
----
 
-**2018-05-28**
+### 2018-May-28
 
 Today I started to wrap up the rest of the early console functions.  The last thing is the cursor geometry function -- and I do not see the value in it at the moment.  I may pull it in later.  So, I will commit locally at this point and move on to CPU initialization.
 
@@ -175,11 +168,9 @@ So, that helps to clear that up.  I also had an order defined:
 
 With this outstanding research, I see no need to change my thinking.  I will leverage the GDT from the century code base.
 
-
----
 ---
 
-**2018-05-29**
+### 2018-May-29
 
 So century put the GDT at address 0x00000000.  It was also set prior to leaving the assembly language loader.  I want to duplicate that here, but I am not convinced that the address is really the best thing to use due to null pointer assignments.  Now, on the other hand, since I will be using paging, I can keep that page unmapped and be relatively safe.  So I think I will keep that setup.
 
@@ -191,11 +182,9 @@ The problem is where to put the IDT.  For 256 interrupts, the table will be 256*
 
 The final thing to do tonight as I wrap up for the evening is to build the actual IDT able in place (at address 0x800) as part of the initialization.  That will be a task for tomorrow.
 
-
----
 ---
 
-**2018-05-30**
+### 2018-May-30
 
 So, I need to be able to construct an IDT so that I can handle interrupts.  That IDT needs to land at linear address 0x00000800 and be 256 gates long.  It will have to be constructed in-place.
 
@@ -214,19 +203,15 @@ With this, we are at a substantial point and I will commit these changes and pus
 
 So, the next thing to work on is Phase 2 (OS internal structures).  One of the first things to initialize is the Kernel Heap.  I am actually pretty happy with my heap implementation from century32.  It has been ported from one instance to another and this is no exception.  I will work on pulling that in from century32 to century-os.  This is the next task.
 
-
----
 ---
 
-**2018-05-31**
+### 2018-May-31
 
 I am working today on bringing over the heap functions.
 
-
----
 ---
 
-**2018-06-01**
+###  2018-Jun-01
 
 OK, I have been able to bring over all the heap functions.  Having done that, I think I may be running into a problem where the source folder is going to get quite full of files.  One one hand, I am not too concerned about it since the file is named the same as the function and all names start with the module (except maybe CPU).  On the other hand, it would be much easier for anyone else to find what they are looking for if all the heap functions and files were in a heap folder.  For now, I will leave it as it is but I will likely revisit this as I grow the kernel.
 
@@ -238,11 +223,9 @@ Now that the commit os done, I really need to be able to identify how much heap 
 
 The next thing to work through is paging.  However, I also need to set up the kernel into upper memory, which was not done in Century32.  It was in Century64 (assembly) and Century (multi-architecture).  This will be the hardest part of the port so far.  Tomorrow....
 
-
----
 ---
 
-**2018-06-02**
+### 2018-Jun-02
 
 I am looking at the best method to get paging turned on and have the kernel in upper memory.  I will need to set up a temporary page table to get into upper memory during early initialization.  This temporary table will likely need to be 1MB pages until I can construct a new table.  I'm not totally certain on this and have concerns with the frame size.
 
@@ -262,11 +245,9 @@ OK, so do I really need to know and understand *both* the Multiboot1 and Multibo
 
 I've been a bit all over the place today.  However, I am happy with the results so far.  I think the loader is the right thing to do since I will have to normalize the architectures to a common starting point.  It also allows me to abandon the loader (which are also launched at different addresses on different systems and will be different sizes) once I have all the setup -- which might be quite a bit of code.  I recognize that I need to better document this starting point for entering the kernel, and that will come soon.  At the moment I can boot to both mb1 and mb2 and see the screen change to graphics (1024 X 768 X 16).
 
-
----
 ---
 
-**2018-06-03**
+### 2018-Jun-03
 
 So, today I will work on getting paging set up.  I want to get interrupts set up, but I cannot put any code in place that cannot be abandoned.  However, on the other hand, I will need to be able to receive page faults in order to debug the loader with paging on.  WAIT!!!  No I won't.  Here's why:
 
@@ -285,37 +266,29 @@ All of the above are subject to change.
 
 However, since there are components (the hardware communication data area in particular) that will be used by both the loader and the kernel, it makes sense to start a common library that will be used by both.  This will be `libk`.
 
-
----
 ---
 
-**2018-06-04**
+### 2018-Jun-04
 
 Today I start with organizing the include files a little better.  I have 2 types that I need to maintain: 1) the internal kernel ones and 2) the ones required by the standalone OS programs.  The former should never make it to the output image and are expected to only be used for the loader, libk, and kernel modules.  The latter will need to be written to the /include folder on the resulting boot image.  Note that the loader, libk, and kernel will pull from both locations.
 
-
----
 ---
 
-**2018-06-05**
+### 2018-Jun-05
 
 I am working on getting the memory map pulled out so I can map out the physical memory.  More work on this today.
 
-
----
 ---
 
-**2018-06-06**
+### 2018-Jun-06
 
 I have the Multiboot 1 Information structure detailed out.  Now, I need to figure out how to get output and debugging information.  I have 2 choices at this point: 1) output to the screen, and 2) output to the serial port.  On one hand, I may want to output to the screen before the screen is ready for output and on the other hand the rpi serial port is not perfect with the cable I have been using.  A third potential option would be to output the log to a fixed point in memory and use a debugger to read it.  I think the best bet is going to be the serial port since I will be able to use that consistently with the emulators.  This will be only for the loader as the kernel will be able to write logs to files for debugging.
 
 I will work on a UART driver for the loader.
 
-
----
 ---
 
-**2018-06-07**
+### 2018-Jun-07
 
 OK, I have the most basic serial output enabled for the loader, which will allow for the most basic debugging.  I am only able to output strings (no numbers, pointers, or hex), but I will add that as I need them.
 
@@ -327,11 +300,9 @@ With that complete, I will commit these changes at this point publicly as there 
 
 Now, with that done, I can continue to parse the multiboot information structures.
 
-
----
 ---
 
-**2018-06-08**
+### 2018-Jun-08
 
 I am pretty happy with where I have gotten with the MB1 parsing.  It is not complete but I have enough to begin the physical memory manager initialization.
 
@@ -341,37 +312,29 @@ And now that this is complete, it is time to set up the first 128MB of the PMM. 
 
 Actually, the PMM initialization I have written for century will initialize the entire physical memory space into the bitmap, and I will copy that to century-os.  That is important to note is that the PMM bitmap is placed just prior to either the EBDA or the 640K low memory cap, whichever is lower.  I have not yet found the EBDA, so I need to go after that first.
 
-
----
 ---
 
-**2018-06-09**
+### 2018-Jun-09
 
 OK, now to pull data from the BDA, which will include identifying the EBDA location.
 
-
----
 ---
 
-**2018-06-10**
+### 2018-Jun-10
 
 This morning I have been able to complete the code that reads the BDA and stores its contents in the internal hardware communication area.  Included in this is the location of the EBDA, which if it exists will serve as the upper boundary for the PMM bitmap in physical memory (alternatively, it will be the traditional 640K low memory limit).
 
 So, returning to the top-down-ish approach for the loader, I can resume development on the PMM initialization.
 
-
----
 ---
 
-**2018-06-11**
+### 2018-Jun-11
 
 Today I am working on completing the PMM initialization.
 
-
----
 ---
 
-**2018-06-12**
+### 2018-Jun-12
 
 I have completed the fundamental PMM initialization given all the information I have mined so far.  I still have the video buffer and the modules to map, but I am not yet prepared for this.  I am going to commit these changes to the public repo and figure out what to work on next.
 
@@ -379,21 +342,17 @@ I have completed the fundamental PMM initialization given all the information I 
 
 I think the next order of business will be to print out the greeting.  Since I am already in graphics mode from the boot loader, I will need to "paint" the characters on the screen.  I have already included the system font in the loader binary, so I just need to know the frame buffer address.  Thankfully, I have the frame buffer data in the multiboot data.  So, I need to extract this data from the loader, and allocate the frames in the PMM as part of the PMM initialization.  Finally, I will be able to paint a greeting on the screen (one pixel at a time).
 
-
----
 ---
 
-**2018-06-13**
+### 2018-Jun-13
 
 Today I was able to get the frame buffer to clear, setting the background to blue.  The next things to collect are the functions that will write the greeting on the screen and output that greeting.
 
 The greeting is completed, so I will commit publicly again.
 
-
----
 ---
 
-**2018-06-17**
+### 2018-Jun-17
 
 So, the last 2 major things to do to get the minimal loader operational it to A) Enable paging, and B) parse the ELF file of the kernel proper (and other modules) and move them to the final location.
 
@@ -409,11 +368,9 @@ So, I managed to get the ELF File header structure written and now need to ident
 
 So, I go and get the module information from both MB1 and MB2....
 
-
----
 ---
 
-**2018-06-23**
+### 2018-Jun-23
 
 Yeah, I have had to walk away for a couple of days.  Ok, nearly a week.  But this is also one of the reasons for this journal; I can review my thinking and get back into the code much faster.
 
@@ -439,11 +396,9 @@ This map brings 2 things into very sharp focus:
 1. 120K of free space is not enough to put a kernel, so it will have to be relocated to above the last loaded module.
 1. 16GB of PMM bitmap will take most of the rest of the available low memory (which I will need to keep some for DMA accesses I understand), so I will need to limit the amount of PMM Bitmap I put into low memory.  This one will be put into a Redmine so that I can address it at a later time and not forget about it.
 
-
----
 ---
 
-**2018-06-24**
+### 2018-Jun-24
 
 OK, so today I will need to identify the last frame that the modules occupy and then begin the process of copying the kernel module into its new location.  All of this is to get to the point where I can launch the kernel (and issue a second greeting) in upper memory and then reclaim the loader space.
 
@@ -467,11 +422,9 @@ So, there are a few functions I will need to create in order to get this all wor
 
 So, now that I am starting to set up the MMU, I am also going to need a Virtual Memory Map.  Each process is going to have its own paging tables, so each process can have its own virtual memory address space which can overlap others.  I will have to work on that tomorrow, but I have several iterations I can draw from.
 
-
----
 ---
 
-**2018-06-25**
+### 2018-Jun-25
 
 OK, so maybe there isn't a version of the VMM layout I can pull from...  I cannot seem to find it anyway.  But I'm going to keep looking a while longer.
 
@@ -493,29 +446,23 @@ So, it's also important to make a formal note of how the paging tables are found
 
 Take some time to get your head around this concept.  It can be difficult to fully grasp and even if you think you have it, you may still stumble.  For reference, see my own mistake above.  For more information, see: https://wiki.osdev.org/Page_Tables.
 
-
----
 ---
 
-**2018-06-26**
+### 2018-Jun-26
 
 Today I realize that I am going to need to debug the paging table maintenance.  In particular, I need to write a hex number to the serial port.  I will start working on that feature today.
 
 I managed to get a bunch of debugging done today.  I will need to comment out all the changes I have made, but I am not sure I have all that in me this evening.  I will start tonight and probably finish this work tomorrow.
 
-
----
 ---
 
-**2018-06-27**
+### 2018-Jun-27
 
 OK, I have managed to get everything documented the way I want (I think anyway).  I now need to initialize all the rest of the kernel mappings, including the loader which will have to be de-allocated by the kernel.  There are also a couple of additional thing I need to map into a final location as well, so the virtual memory map from 25-Jun will change.
 
-
----
 ---
 
-**2018-06-28**
+### 2018-Jun-28
 
 So, I start today looking at the virtual memory map and what I have left out.  I'm going to start a list:
 1. GDT/IDT
@@ -530,11 +477,9 @@ So, video buffer sizes...  The site https://www.digitalcitizen.life/what-screen-
 
 Now, for the PMM...  The same type of calculations need to apply here.
 
-
----
 ---
 
-**2018-06-30**
+### 2018-Jun-30
 
 Well, I was not able to complete my analysis and so I need to pick that up here today.  The thinking I departed with was that on a 32-bit OS, only 4GB of memory is addressable.  4GB = 4096MB and since I can keep track of 128MB of PMM frames in a single 4096 byte (32768 bit) frame, I only need 32 frames of memory to control all the possible address space.  For 32-bit; 64-bit will be different.
 
@@ -620,11 +565,9 @@ So, as I end the day today, I have everything except the video frame buffer mapp
 
 I now have all the MMU mappings completed for in preparation for the kernel.  With this, I wll check my code for comments and will commit it publicly tomorrow.  I am not yet enabling paging or jumping to the kernel, so there is still a lot of debugging yet to do on all this work I have done.  That will be a major task on its own.
 
-
----
 ---
 
-**2018-07-01**
+### 2018-Jul-01
 
 So, the first order of business today is to get this code committed.  I need to work through all the files I have modified and make sure the comments are proper and up-to-date.
 
@@ -648,19 +591,15 @@ OK, I was not able to get the frame buffer to work, but I was able to product se
 
 Well, I am not able to upload the file, but I have it stored on my own hard disk.  I will live with that.
 
-
----
 ---
 
-**2018-07-02**
+### 2018-Jul-02
 
 Today I start thinking about what I really want in my kernel proper.  I know I want to write a microkernel.  But, a microkernel has limited functionality.  So, what do I want to include in my kernel.  Hmmm....  lots of thinking.
 
-
----
 ---
 
-**2018-07-03**
+### 2018-Jul-03
 
 So, I think the first thing I have settled on for inclusion in the kernel is the management of the Interrupt Table.  The reason for this is that the device drivers are going to have to register an interrupt for the top half of a device driver.  As an extension of that function, the prologue and epilogue to the interrupt will also be handled by the kernel (this will save the context on entry and restore the context on exit).  However, I believe that will be the extent of the functionality required of the kernel for interrupts.
 
@@ -672,11 +611,9 @@ One final thought will be a kernel debugger.  This debugger will need to have vi
 
 Beyond that, I am not sure what more is really needed.  I think everything else can be moved to ring 3....  Time will tell.  In the meantime, I will start with the interrupts and IPC capabilities.
 
-
----
 ---
 
-**2018-07-04**
+### 2018-Jul-04
 
 The first thing to do today is to strip the kernel of everything that I no longer need -- things that were moved from the kernel to the loader.  This will be significant and will result in most of the kernel source going away.  This is going to be scary, but at least everything I am about to delete is still available on github.
 
@@ -686,21 +623,17 @@ However, I need to revisit the goal of having all the one-time initialization co
 
 So, this will meant that I will need to perform some initialization for the IDT in the kernel.  It will involve setting up some basic exception handlers and registering them to the IDT.  I also want to have a version of `kprintf()` that writes to the serial port rather than the console.  `kprintf()` is a simple port from a previous version and I believe I have several of these exception handlers that I can copy as well.
 
-
----
 ---
 
-**2018-07-05**
+### 2018-Jul-05
 
 I was able to finish up the ISR initialization routines.  I have no ISRs yet, certainly nothing for the errors.  These are all written in century32, so I will be able to copy them into century-os and fix up the comments.
 
 As I start copying the Interrupt Handler for INT0...
 
-
----
 ---
 
-**2018-07-06**
+### 2018-Jul-06
 
 Well I never finished my thought yesterday.  I got distracted....  But it's all good.
 
@@ -720,11 +653,9 @@ Now, with a basic ISR0 handler I am able to perform some basic testing.  A few t
 * The `IsrDumpState()` function is not writing everything to the serial port.  Not sure why.  I need to figure that out and clean it up, but there are some issues for sure.  Whatever is going on, it appears consistent on the surface.
 * I cannot be sure that the register values are aligned.  I need to dig a bit more.
 
-
----
 ---
 
-**2018-07-07**
+### 2018-Jul-07
 
 This morning I will start looking at what is going on with `kprintf()` -- I need to make sure I can get accurate debugging information to solve other problems.
 
@@ -732,11 +663,9 @@ After some testing, it looks like my `kprintf()` implementation is not perfect. 
 
 I'm going to have to set up some debugging to get to the bottom of the issues.
 
-
----
 ---
 
-**2018-07-08**
+### 2018-Jul-08
 
 So..., I am left wondering if I should work on my own `kprintf()` implementation or try to fix this one.  My bet is that the problem is not in `kprintf()` but in the ISR handler or stub.  However, `kprintf()` should not stop printing if there is something wrong.  What is interesting is that if I split the prints into separate lines I have the same problem as if I have 1 line of code for each full line of output.
 
@@ -746,11 +675,9 @@ I decided to make it my own and abandon the one from the internet.
 
 I was able to get a basic version started.  It is not as fully functional as the normal `printf()` function.  However, for my needs at the moment it is a good solution.
 
-
----
 ---
 
-**2018-10-09**
+### 2018-Oct-09
 
 Well, It's been a while.  Let me start by saying how much I appreciate the journal I am keeping!
 
@@ -777,11 +704,9 @@ And again nothing....  So, there are a couple of things that might be in play he
 
 Well, it looks like the problem was really that of sequencing.  I was looking for a page fault before the `IdtBuild()` function was called.  I set the `IdtBuild()` function to be called ahead of the greeting.  This revealed a Page Fault.  Also, CR2 holds the value `0xfd010000`.  So, I will need to review the Page Table construction.
 
-
----
 ---
 
-**2018-10-10**
+### 2018-Oct-10
 
 Some debugging code reveals that I am trying to write to the frame buffer at address `0xfd010000`.  However, the frame buffer is only mapped through `0xfb17ffff`.  So, there is something going wrong with the (x,y) coordinates for where I am trying to write in the kernel.  I might even have a problem with the starting location for the frame buffer.  But I am on the right path here.
 
@@ -789,11 +714,9 @@ It turns out that I am using `GetFrameBufferAddr()`, which looks at the fbAddr i
 
 I believe it's time to commit my changes.
 
-
----
 ---
 
-**2018-Oct-11**
+### 2018-Oct-11
 
 Today I will take care of the remainder of the interrupt handlers, making sure that all the exceptions are caught and outputs the system state properly.  This ended up being quick work.  Copy and paste works.
 
@@ -815,11 +738,9 @@ I was able to determine that the initial heap is not mapped in the paging tables
 
 Well, looking a little further into it, I do not have a Physical Memory Manager (PMM) implemented for the kernel.  I will need to take this on ahead of mapping the heap memory.
 
-
----
 ---
 
-**2018-Oct-12**
+### 2018-Oct-12
 
 Starting out today, I am struck by the need to rebuild (well, the proper term is 'build' since I don't really have one) my PMM.  What I have done so far is just get the basics taken care of for the loader.  Now I will need to copy the results into the area controlled by the kernel and put the kernel in charge.  But with that, I now have another chicken-and-egg problem.  I would like my PMM to work as a user-space process.  But I also need to get it set up and running prior to having legitimate user space.  This is also going to mean that I need to have some code running as a service that takes care of the allocation/de-allocation and when I write that a read duplicated code.
 
@@ -851,9 +772,8 @@ Well, do I need to wait that long?  If I delay setting up the PMM until **after*
 I will think on this tonight....
 
 ---
----
 
-**2018-Oct-14**
+### 2018-Oct-14
 
 Thinking about setting up processes ahead of the PMM initialization, I think this is going to be the way to go.  In fact, I should be able to run processes and enable process swapping ahead of this as well.  The only challenge will be the process stacks for the Butler and PMM processes -- both will have to be carefully allocated.  Century32 has a process.h implementation that I will pull into this kernel, but it will require some modification for the new kernel.
 
@@ -891,9 +811,8 @@ As I start to write `ProcessHold()`, it dawns on me that I probably should start
 I did manage to get the `ProcessHold()` function written today, with all the supporting errors.  I also documented the errors in the `kernel/errors/process` folder.  It occurred to me as I wrote this that there is more error checking that I have started to take on in this iteration of the OS than I have taken on in previous versions.
 
 ---
----
 
-**2018-Oct-22**
+### 2018-Oct-22
 
 So, I had some power problems with the winds we had last week.  Living in Southern California, we get Santa Ana winds.  They were particularly bad last week which managed to disconnect the service line at the pole.   Well, we only had power to half the house and with those issues I did not want to power up my virtual machines or SAN.  Anyway, I am picking back up where I had left up a week ago and it's good I keep this journal.
 
@@ -902,18 +821,16 @@ I started today be reformatting how the error messages are written.  I moved the
 Based on the time have left for the day and the size of each other function to write, I am going to take on `ProcessRelease()` as the next function to write.
 
 ---
----
 
-**2018-Oct-24**
+### 2018-Oct-24
 
 I have several functions left to work on for my process scheduler.  I will start to fill in the ones I need to get the kernel to compile first.
 
 I have most of the Process functions worked out at this point.  I do still have a few extra processes to write.
 
 ---
----
 
-**2018-Oct-26**
+### 2018-Oct-26
 
 Today, I finished up all the work on processes.  This version still page faults -- but I committed the code anyway.
 
@@ -924,9 +841,8 @@ Now, I will start on the IPC communication -- specifically passing messages.  Do
 So, with that said, I only think I need to support `MessageSend()` and `MessageReceive()` functions.  Do I need a timeout?  No, not at the kernel level.
 
 ---
----
 
-**2018-Oct-27**
+### 2018-Oct-27
 
 Century-32 had a messaging implementation.  It's a rather simple design and I already have the fields necessary in the `Process_t` structure.  However, what bothers me is that the message is copied into a temporary structure and then copied back to a target structure.  It's a lot of copying.  I might not be able to get around that, but I want to try to think that through today.
 
@@ -958,9 +874,8 @@ For this to work properly, I want to be able to define a structure of functions 
 So the PIC initialization was simple to copy from Century32.  I placed that in the `IdtBuild.cc` file.
 
 ---
----
 
-**2018-Oct-28**
+### 2018-Oct-28
 
 Century32 had a status bar that was at the bottom of the screen.  It helped with things like which TTY device you were logged in to; it showed the heart-beat of the kernel, and would occasionally show how much quantum was remaining on your slice.  All-in-all, it was pretty cool.  But there was also a lot of time that was caught up in writing this data, so I had to break that down into updating less frequently.  With the graphical screen I am using now, this will now take far longer to process.  But eventually, I think I want to have this status bar available to me since it provides a place I can put information about what is happening internally.
 
@@ -980,5 +895,444 @@ So, from my list above, where does this code stand?
 * PMM in own segments -- not considered yet
 
 However, with that said, this is a huge milestone for many hobby OS developers -- setting up the timer and getting interrupts to fire.  I will commit this version of the code.
+
+---
+
+I managed to get `CreateProcess()` written, but I realize I am unable to use that for the PMM process.  The reason is that it is totally dependent on `HeapAlloc()`, which itself is dependent on the PMM -- a circular dependency.  To get around this, I will have to ensure that the PMM has its own `Process_t` structure in the kernel code and be able to allocate its own stack without using `HeapAlloc()`.
+
+So, at this point, I will have shift in focus to start developing out the PMM in the kernel binary.  To reiterate, I want the PMM to have the following characteristics:
+1. It will be part of the kernel binary
+1. It will run as its own process
+1. It will run in user mode
+1. It will have separate segments than the kernel (by definition)
+
+As a side note, I am going to redo the formatting of this JOURNAL.md file.  I will not be changing the content.
+
+---
+
+I was able to get the `kernel.ld` set and ready to put the PMM into its own sections.  So, now I need to start coding the actual PMM.  But not tonight.
+
+---
+
+### 2018-Oct-30
+
+The key challenge is going to be communicating the existing PMM setup to the new PMM manager.  They are on separate segments and separate VM spaces.  This will be the biggest issue related to completing the initialization.  However, it is not good practice to design a system for easy initialization (which is why I typically will write the initialization functions last).  This is no different.
+
+So, as I recall, the initial PMM configuration is only 1 page (1 frame) worth of bitmap (from 3-Jun above):
+
+> So, I think I will start with configuring the physical memory manager.  I think I will need to pick a single frame and use it for the first 128MB and then hand the responsibility for the remaining initialization over to the kernel -- or initialize the whole thing dynamically.  I think the best thing is going to be to to setup the first 128MB into a single frame so that we can have a fixed initialization step.
+>
+> To do this, I will need to establish the functions to read the memory map from from the boot loader and load them into a frame for the kernel as well.
+>
+> So a couple of things I need to make available:
+> * The hardware communication data area (assume at 0x200000 or 2MB), and will take 1 frame
+> * The PMM bitmap for 128MB (assume at 0x200100 or 2MB + 4KB), and will take 1 frame
+> * The Paging tables starting at 0x200200 (or 2MB + 8KB), and will take many frames depending on architecture
+
+So, I reviewed what I had written in the Century32 code.  What a mess!!  I clearly did not know what I was doing with that as I had all the terminology wrong at the very least.  I certainly had a half-hearted PMM in that version.  So, this will be a ground-up rewrite in this iteration.  I will start with an undefined location for the PMM bitmap since I believe that will have to move once the PMM is fully in charge.
+
+That should be enough to get me started....
+
+It occurs to me that a mere 128K of memory will hold all the memory I can possible have installed on a 32-bit system.  I can statically allocate that....
+
+---
+
+As I am coding the PMM, I realize I will likely need a sender pid in the `Message_t` structure, so that the receiver knows to which process to reply when needed.  I could use one of the `Message_t.parm`s for this but why take do that for something that will probably be ubiquitous.  I have this TODO captured in http://eryjus.ddns.net:3000/issues/369.
+
+---
+
+So, as I am writing `PmmMain()`, I realize that I am using kernel functions like they are part of the user process.  I really need to think this through...  I am likely going to have to implement the system calls (or SYSCALL) functionality to get this to work.  In particular, `MessageReceive()` and `MessageSend()` will be only available as a kernel function.  And, if this is the case, then I probably could simply separate the PMM into its own module.
+
+So, at this point, I call it a day.
+
+---
+
+### 2018-Oct-31
+
+While I have a little time, I figured I would discuss what my concerns are (at this point) with including the PMM in the kernel binary (well, among other things).  Here are several:
+1. The compiler is going to allow things that it should not.
+1. I am able to statically allocate the 128K for managing 4GB of memory in a separate module -- in particular I can direct its placement in asm.
+1. I should be able to significantly reduce the amount of code in libk.
+1. I will need to set up for system calls anyway, so why not handle that at this point?
+1. I will eventually need to start a newlib port for a "C" compiler, which I expect to drive the elimination of libk.
+
+For the moment, I can duplicate code in the PMM when needed.  I do not mind maintaining multiple versions of the same function when the situation warrants.  I can also handle this through includes to the original code if needed.  This is particularly easy because of the single-function nature of my code.
+
+This will also handle the situation where the build was getting really messy with all the required includes.  I should be able to significantly simplify this as well.
+
+The challenge will be that this will take some work to accomplish.
+
+WOW!!!  On a whim I tried `man msgctl`.  I was shocked to see all the documentation related to the system call.  NICE!!!  For more than 2 decades playing with Linux and Unix proper, I never knew the system call documentation was available.
+
+Now, I do want a relatively easy port of newlib when I get to that point.  I only want to have to provide my own system call library.  That said, I have been avoiding building my own version of `errno.h` -- and certainly having that match Linux.  However, I think it's time to give that up.  I am going to eliminate `errors.h` and replace it with `errno.h` build using Linux as a template.  This will be my first task and will probably end up in a commit.
+
+---
+
+### 2018-Nov-01
+
+Today I started by creating `errno.h` from lifting the error codes from GCC.  I will model my own errors from these codes to make the kernel compatible and porting other applications easier.  It has always been my plan to start by porting certain certain utilities to the OS rather the rewrite them all myself.  On the other hand, I did plan on writing my own GUI.
+
+I am now working on a system call implementation.  This will be my first one, so I have some reading to do.  I opted to hold off on eliminating `errors.h` until I can get the system calls working.  I need a functioning kernel to be able to test compiles while I do this.
+
+I found the following site: https://www.freebsd.org/doc/en_US.ISO8859-1/books/developers-handbook/x86-system-calls.html.  This site shows that it is possible by pushing the parameters on the stack and then issuing an interrupt to perform a system call.  I think I can leverage this with my system calls.
+
+So, what I am thinking (which is not vetted) is something like this:
+* Push the parameters for the system call on the stack.
+* Perform the system call (INT 0x80 or maybe 0x64 for CenturyOS).
+* From the kernel not changing the stack, create a pointer to the list of parameters and push that on the stack.
+* Then call the proper function to service the System Call, passing the pointer to the parameters as the only required parameter.
+
+I think there are going to be problems with this, but I should be able to use this as a starting point.
+
+Scratch that....  the approach I need to take is to handle the system call from the kernel only before I start considering the user applications.  This will un-complicate this quickly.
+
+Since x86-32bit does not replace the stack on an interrupt, I want to pass the parameters in the general purpose registers.  I have 7 to play with: `eax` - `edx`, `esi`, `edi`, `ebp`.  One will need to hold the function to call (`eax`), so there will be up to 6 parameters.  There may be a need to hold out another register for additional manipulation.  I will assume that to be `ebp`.
+
+---
+
+### 2018-Nov-02
+
+OK, I was able to get the framework of system calls established yesterday before I called it a day.  It is generally a duplication of the Interrupt Handler to create a jump table for the value in `eax` on entry.  Since the 32-bit architecture does not replace the stack for me, this will work rather cleanly.  64-bit might be a bit messier when I get there.
+
+So, now there is this whole issue about POSIX, Linux, standards....  I have always had it in mind to port certain utilities to CenturyOS, write my own to replace certain things at a later time, and even write some things from the ground up.  I do not need my system to be perfectly aligned with the POSIX standard for example, but it would be nice to be able to take that as a starting point.  Now, on the other hand, there is just so much fussiness in that standard that I am not interested in that it might make sense to skip it altogether.
+
+Why am I bringing this up now?  Well, I will need to implement a messaging system call in very short order.  The POSIX interface about messaging is obnoxious.  As I understand it, most systems will simply pass the parameters to the system with little to no translation.  So, a C function that is set to use a POSIX message structure *could* be translated into a `Message_t` structure by my run-time library before making the system call.  The trade-off there is that need to do quite a bit of porting to get newlib working for CenturyOS.
+
+I think for now the decision needs to be that I will focus on my micro-kernel first and then when the time comes make upgrades to comply with the POSIX standard.
+
+---
+
+I think I am going to take a break from this and work on cleaning up my build system a bit.  I have lots of references from the current folder to walk back up the directory structure to find a file in another part of the tree.  I want this to be more absolute, and there is a `tuprules.tup` file I can take advantage of.  However, this will be unique to my installation and will need to be updated with other installations.  For this, I will use `make` to output the file.
+
+---
+
+Now, back to the system calls....
+
+In figuring this out, I had to take care of `errors.h` at the same time.  This touched a crap-ton of files.  But I still execute at the same level as I did.  I have one more system call to implement.
+
+---
+
+I have all the binaries compiling again.  I am also able to run the kernel and get the timer to fire.  However, I am not yet creating a process for the PMM.  It is loaded as a module (not yet confirmed, but included it in the `grub.cfg` file.  I feel like I have made a hell of a mess making this all compile and work again.  Certainly, nothing is tested other than the ability to compile and run the elements that have all worked so far without the new stuff.  I have also been victim of a squirrel moment and need to get back on track.  I stated down this road on 2018-Oct-26 when I was not able to get the heap to initialize due to PMM issues and resulting Page Faults.
+
+So, long story short, I need to start pulling this all back together.  I will start with a dump of the loaded modules so that I can confirm that the pmm.elf is loaded.   I did find that it is loaded:
+
+```
+Module information present
+kernel
+pmm
+```
+
+With this, I now need to be able to parse an ELF file properly to load it by the kernel.  This will require some work with the ELF specification.  I have some of this built into the loader, but will likely need to move that into a purpose-built library.  I will start by looking into what is required to read the ELF file.
+
+Well, it turns out that I am trying to map my PMM using the same paging tables as the kernel.  This is not going to work.  I have 2 choices here:
+1. I can not build the Paging Tables for any other module except for the kernel.  However, if I go down this path, I do not have a working PMM in the kernel yet to allocate a new `cr3`.
+2. I can load build the new Paging Tables from the loader since I have a PMM-light implementation to work with.  However, in this case, I will need to add in the kernel pages when I get to the kernel before launching the process.
+
+Option 2 seems the better solution to me so that I can avoid a chicken-and-egg problem.
+
+It turned out to be a relatively simple change to make.
+
+---
+
+### 2018-Nov-03
+
+This morning I realize that I am mapping all my VMM pages to be writable.  I caught this as I was looking for a place to indicate a common page for the kernel that will be mapped into the user processes.  This is obviously a security concern.  I have changed `MmuMapToFrame()` to accept a parameter to indicate writable pages and now I have some cleanup to fix every place this is called.
+
+Now, I also need to be able to identify the kernel pages and map them into user processes as well.  This is going to be dynamic as the the kernel heap can expand.  What I don't want to have to do is walk every single process's paging tables every time I allocate a new frame for the kernel heap.  That would end up being a total mess.  I think I am going to ignore that particular issue (the heap and new frames) for now as it will be a while before that is a problem and focus on just marking the kernel pages so that I can identify what needs to be copied later.
+
+I did cannibalize one of the available PageTableEntry bits to identify the kernel maps:
+
+```C
+typedef struct pageEntry_t {
+    unsigned int p : 1;                 // Is the page present?
+    unsigned int rw : 1;                // set to 1 to allow writes
+    unsigned int us : 1;                // 0=Supervisor; 1=user
+    unsigned int pwt : 1;               // Page Write Through
+    unsigned int pcd : 1;               // Page-level cache disable
+    unsigned int a : 1;                 // accessed
+    unsigned int d : 1;                 // dirty (needs to be written for a swap)
+    unsigned int pat : 1;               // set to 0 for tables, page Page Attribute Table (set to 0)
+    unsigned int g : 1;                 // Global (set to 0)
+    unsigned int k : 1;                 // Is this a kernel page?
+    unsigned int avl : 2;               // Available for software use
+    unsigned int frame : 20;            // This is the 4K aligned page frame address (or table address)
+} __attribute__((packed)) pageEntry_t;
+```
+
+This new bit field is `pageEntry_t.k`.  A couple of key points with this decision:
+1. When I get to swapping pages to disk, the kernel pages are not going to be eligible for swapping for all kinds of reasons -- but mostly because I do not want to risk swapping the page the is responsible for loading the pages from disk.  Undesirable results will occur....
+1. These pages are effectively shared across multiple process and multiple Page Directories and if I swap one, I need to update all those -- oh, I don't even want to think about it.
+1. Finally, when I do happen to swap a page to disk, I will be able to set the `pageEntry_t.p` bit to 0.  Nothing else on that structure will need to be maintained (`pageEntry_p.k` is guaranteed to be 0), so I will be able to use bits 1:31 to hold the location of that page in the swap file system.  Bit 0 must remain 0 in this case.
+
+So, at this point, I need to switch back to the kernel and take care of the new `ProcessCreate()` requirements -- get the starting address from the module list and also properly augment the Paging structures.  But before I go there, I think I need ot revisit the VMM memory maps.  I last worked on this on 2018-Jun-30.
+
+I am going to look at this specifically from the PMM process perspective, but without all the ad-nauseam detail.
+
+| PDE Entries | Start Address | End Address | Size | Kernel | Mapped? | Usage |
+|:-----------:|:-------------:|:-----------:|:----:|:------:|:-------:|:------|
+|    0-511    | 0000 0000     | 7fff ffff   |  2G  |   N    |    N    | User Address Space & More |
+|   512-767   | 8000 0000     | bfff ffff   |  1G  |   N    |    Y    | Device Driver Address Space (Code, Data, Stack, etc.) |
+|  768-1003   | c000 0000     | faff ffff   | 944M |   Y    |    Y    | Kernel Code, Data, and Heap |
+| 1004-1019   | fb00 0000     | feff ffff   |  64M |   Y    |    Y    | Video Frame Buffer |
+|    1020     | ff00 0000     | ff3f ffff   |  4M  |   N    |    N    | Unused at this time - forces page faults |
+|    1021     | ff40 0000     | ff7f ffff   |  4M  |   N    |    N    | Miscellaneous Small Elements |
+|    1022     | ff80 0000     | ffbf ffff   |  4M  |   N    |    N    | Kernel Stacks -- 256×16KB |
+|    1023     | ffc0 0000     | ffff ffff   |  4M  |   N    |    Y    | Recursive Mapping |
+
+Well, what does this mean?  Well, it means that I did not really need to mark a page as a kernel page quite yet.  I only really need to look through the Page Directory in entries 768 to 1019 and copy these entries to the new Page Directory for a new process.  I do not even need to drive any deeper than the Page Directory, just copy the Page Directory Entries.
+
+For this, I will need to map the new process cr3 to a temporary location and build it out, and then un-map it.
+
+---
+
+So, as I start writing the `PmmStart()` function to create the PMM process from the loaded module, I notice that I am getting some VMM errors from the `ModuleInit()` changes I have done in the loader.  I will have to debug those since the messages do not make sense to me:
+
+```
+      Attempting to map page 0xc0028000 to frame 0x00000131
+      Attempting to map page 0xc0029000 to frame 0x00000132
+      Attempting to map page 0xc002a000 to frame 0x00000133
+MMU: Address 0xfffff000 is already mapped to frame 0x00000001
+      Attempting to map page 0xc002b000 to frame 0x00000142
+MMU: Address 0xfffff000 is already mapped to frame 0x00000001
+```
+
+In particular, the address `0xfffff000` is an odd reported error address since it is not the address I am requesting to be mapped.  As it turns out, I had the recursive mapping for the new process Page Directory in the wrong place.  Moving is solved my problems:
+
+```
+      Attempting to map page 0xc0028000 to frame 0x00000131
+      Attempting to map page 0xc0029000 to frame 0x00000132
+      Attempting to map page 0xc002a000 to frame 0x00000133
+      Attempting to map page 0xc002b000 to frame 0x00000142
+```
+
+As a side note at this point, I know I have started adding a lot of context into the JOURNAL.md file.  This will increase the length of it very quickly, so I may have to split these and possibly move them into their own folder at some point.  However, I really like the resulting story it tells.  I will not go back to update the older entries but will continue to adopt this going forward.  Keep in mind I will not go back and update any code snips I put here if they change -- this is intended to tell a story.  Call it an early New Year's resolution.
+
+---
+
+I finally got to the point where I am able to compile all the modules and when `ld` when to link the binary, it was not able to find several functions.
+
+```
+/home/adam/workspace/century-os/obj/kernel/i686/MmuGetFrameForAddr.o: In function `MmuGetFrameForAddr(unsigned long, unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuGetFrameForAddr.cc:32: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
+/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuGetFrameForAddr.cc:42: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
+/home/adam/workspace/century-os/obj/kernel/i686/MmuUnmapPage.o: In function `MmuUnmapPage(unsigned long, unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuUnmapPage.cc:14: undefined reference to `MmuGetTableEntry(pageEntry_t*, unsigned long, int, bool)'
+/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuUnmapPage.cc:19: undefined reference to `MmuGetTableEntry(pageEntry_t*, unsigned long, int, bool)'
+/home/adam/workspace/century-os/obj/kernel/i686/PmmStart.o: In function `PmmStart(Module_t*)':
+/home/adam/workspace/century-os/modules/kernel/src/pmm/PmmStart.cc:73: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
+/home/adam/workspace/century-os/modules/kernel/src/pmm/PmmStart.cc:85: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
+```
+
+These are implemented in the `loader` and cannot be moved to the kernel.  They will have to be re-implemented.  However, there is an additional concern: When I re-implement these functions, I will need to have a working PMM again.  So, the solution is going to be to allocate more space in the pmm binary and to purpose build the MMU functions I need to get the PMM running.  All of the one-time initialization was part of what I wanted to avoid in the kernel by moving to the loader, but I do not believe that is going to every come to fruition at this point -- not with my little hobby kernel.
+
+So, I will take on a couple of tasks at this point:
+1. I will allocate another 8K page aligned memory for the PD and first PT for the PMM process.  This should cover it since everything is 4M aligned.
+2. I will have to write some purpose-built functions specifically for setting up the MMU for the PMM, pointing directly at the 2 frames allocated by the binary.
+
+Once again, I have a feeling that this is getting away from me and I will have to circle back around with a clean-up task once I get everything written and working.  It's time for another list of things to do:
+* Allocate space for a Page Directory and Page Table in the PMM binary -- actually this only needs to be a Page Table since I already have a Page Directory allocated by the loader.
+* I will need to map the Page Table to the proper location on the Page Directory.
+* From there, I will need to implement the minimal `Mmu*()` functions needed to get the PMM implemented -- the key here is that the tables are specific to the PMM and not generalized.  This should help.  I hope.
+
+See, a list helps.  I am feeling better about this already, even if I may not be able to get this all done today.  I will certainly have a lot of testing with such wholesale changes to the code.
+
+---
+
+I was able to get to the point where I can run a test and I got a page fault:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+
+Page Fault
+EAX: 0xffc010b4  EBX: 0xc002acc4  ECX: 0xc000492f
+EDX: 0x000001cc  ESI: 0x00106321  EDI: 0x00000000
+EBP: 0x001fff64  ESP: 0x001fff28  SS: 0x40
+EIP: 0xc0002f5e  EFLAGS: 0x00200097
+CS: 0x38  DS: 0x40  ES: 0x40  FS: 0x40  GS: 0x40
+CR0: 0x80000011  CR2: 0xffc010b4  CR3: 0x00001000
+Trap: 0xe  Error: 0x0
+```
+
+The thing that stood out to me more than anything else is that I am still using the loader segments.  I changed them to the kernel segments and the system triple faults.  So, I have a bit to work out there.
+
+It turns out that I was referencing a segment that was defined as NULL.  Correcting that resolved my segment concern:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+
+Page Fault
+EAX: 0xffc010b4  EBX: 0xc002ad18  ECX: 0xc000492f
+EDX: 0x000001cc  ESI: 0x00106321  EDI: 0x00000000
+EBP: 0x001fff64  ESP: 0x001fff28  SS: 0x10
+EIP: 0xc0002f5e  EFLAGS: 0x00200097
+CS: 0x8  DS: 0x10  ES: 0x10  FS: 0x10  GS: 0x10
+CR0: 0x80000011  CR2: 0xffc010b4  CR3: 0x00001000
+Trap: 0xe  Error: 0x0
+```
+
+Now for the page fault....  which I was able to track down to the `KernelMap()` function.  I'm betting there something silly with the math.  Whatever it is, it will be the same problem with `KernelUnmap()` function as well.  Copy and paste has its disadvantages....
+
+So, lets go through the calculations to be sure.
+* The Page Directory is located at 0xfffff000.
+* The Page Tables are located at 0xffc00000 through 0xffffd000.
+* The table I am looking at is at index 1021 or 0x3fd.
+* Multiply that by 0x1000 to adjust for the table size and I end up with 0x3fd000.
+* Add 0xffc00000 and 0x003fd000 and the resulting address of the Page Table is 0xffffd000 (and this is where I went wrong!)
+* From there the offset I am looking for is (addr >> 12) & 0x3ff.
+
+With these changes I get past where I started and then triple fault.  Commenting out the `TimerInit()` call makes no difference, so the problem is still in `PmmStart()`.
+
+Well, check that...
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+PmmStart(): Setting up the tables to be managed
+PmmStart(): clearing the mmu tables
+PmmStart(): Copying the kernel Page Tables
+PmmStart(): Mapping the pmm itself
+PmmStart(): Build the stack
+PmmStart(): All done
+```
+
+I am able to get to the end of he `PmmStart()` function, so is this an interrupt problem?  Indeed, if I do not enable interrupts, it does not triple fault.   Now, if I do not call `PmmStart()`, it does not triple fault either.  So, what I think is happening is that I am clobbering the IDT somehow.  The IDT is located at virtual address 0xff401000.
+
+---
+
+### 2018-Nov-04
+
+Well, I thought the IDT might be clobbered because I was using the same VM space.  This is not the problem; I put the IDT at location 0xff401000:
+
+```
+    // -- Map the GDT/IDT to the final location
+    SerialPutS("\nMap GDT/IDT\n");
+    MmuMapToFrame(cr3, 0xff401000, PmmLinearToFrame(0x00000000), true, false);
+```
+
+... and the other elements in a higher memory range:
+
+```
+//
+// -- Some specific memory locations
+//    ------------------------------
+#define PROCESS_PAGE_DIR    0xff430000
+#define PROCESS_PAGE_TABLE  0xff431000
+
+// -- these are dedicated to the function `MmuGetFrameForAddr()`, but documented here.
+#define MMU_FRAME_ADDR_PD   0xff432000
+#define MMU_FRAME_ADDR_PT   0xff433000
+
+#define PROCESS_STACK_BUILD 0xff441000
+```
+
+So, this means I am not clobbering it by reusing the virtual memory address.  Now, is it possible that the page is already mapped to frame 0 and I am not remapping it?  Yes.  Is it possible that I am actually performing a map to frame 0?  Highly unlikely but something to check.
+
+Well, imagine that!!  I am mapping over frame 0!
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+PmmStart(): Setting up the tables to be managed
+PmmStart(): Mapping addr 0xff430000 to frame 0x00000000
+PmmStart(): Mapping addr 0xff431000 to frame 0x0000013a
+PmmStart(): clearing the mmu tables
+PmmStart(): Copying the kernel Page Tables
+PmmStart(): Mapping the pmm itself
+PmmStart(): Mapping addr 0xff441000 to frame 0x00139000
+PmmStart(): Build the stack
+PmmStart(): All done
+```
+
+And, based on the address I am mapping, this is the page table that is supposed to be in the binary itself.  Throwing in some more debugging output to see what I am getting for a starting address, and I get the following (and found a bug in `kprintf()` while I as at it):
+
+```
+Jumping to the kernel
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+PmmStart(): installing module for %s, located at 0x000031eb
+PmmStart(): Setting up the tables to be managed
+PmmStart(): Mapping addr 0xff430000 to frame 0x00000000
+PmmStart(): Mapping addr 0xff431000 to frame 0x0000013a
+PmmStart(): clearing the mmu tables
+PmmStart(): Copying the kernel Page Tables
+PmmStart(): Mapping the pmm itself
+PmmStart(): Mapping addr 0xff441000 to frame 0x00139000
+PmmStart(): Build the stack
+PmmStart(): All done
+```
+
+I was expecting to see an address well above 1MB for the location, but what I have appears to be a frame number.  I know I am adjusting that as if it was an address.  What is also odd is that I am adding to that and should still have a frame number other than 0 by the time I get to mapping the address to the frame.  Tracing back to the loader and reading the GRUB information, this is a physical address.  I am not manipulating that at all.
+
+As a side note, I am also seeing the stack frame in my debug logs.  This looks like a physical address and not a frame number (in fact, if it shift that by 12 [`<< 12`] to convert it from a frame to an address, it will overflow 32 bits.
+
+I think I need to get `kprintf()` working properly so I can figure out what the hell went wrong with the module information.
+
+OK, having cleaned up `kprintf()`, it was not outputting anything for a `%s` format specifier.  This means I was skipping the parameter and picking that up with the `%p` format specifier.  With that resolved, I am getting better output now:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+PmmStart(): installing module for pmm, located at 0x00138000
+PmmStart(): Setting up the tables to be managed
+PmmStart(): Mapping addr 0xff430000 to frame 0x00000000
+PmmStart(): Mapping addr 0xff431000 to frame 0x0000013a
+PmmStart(): clearing the mmu tables
+PmmStart(): Copying the kernel Page Tables
+PmmStart(): Mapping the pmm itself
+PmmStart(): Mapping addr 0xff441000 to frame 0x00139000
+PmmStart(): Build the stack
+PmmStart(): All done
+```
+
+So, the module location looks good.  This is a good physical address.  The calculation for the Page Table is bad somehow.  And the frame for the stack is really a physical address from GRUB as well.  The offset between the start and the stack is `0x1000` which is good as well -- what I want it to be.
+
+Here is the buggy code, and I see the problem with `tos` right away.
+```
+    frame_t pageDirFrame = pmmMod->cr3 >> 12;
+    frame_t pageTblFrame = (pmmMod->modStart + 4096 + 4096) >> 12;  // This is the ELF header and stack
+    ptrsize_t tos = (pmmMod->modStart + 4096);
+```
+
+Some cleanup and some more debugging code and my calculations are correct, but somehow the value is getting clobbered:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+PmmStart(): installing module for pmm, located at 0x00138000
+PmmStart(): calculated pageTblFrame to be 0x0000013a; tos to be 0x00000139
+PmmStart(): Setting up the tables to be managed
+PmmStart(): Mapping addr 0xff430000 to frame 0x00000000
+PmmStart(): Mapping addr 0xff431000 to frame 0x0000013a
+PmmStart(): clearing the mmu tables
+PmmStart(): Copying the kernel Page Tables
+PmmStart(): Mapping the pmm itself
+PmmStart(): Mapping addr 0xff441000 to frame 0x00000139
+PmmStart(): Build the stack
+PmmStart(): All done
+```
+
+Wait a minute!!!  My coffee just kicked in!  I'm looking at the wrong thing!  I'm not sure ***what*** I was thinking!
+
+OK, this is the Page Directory I am looking at.  I need to go back to the loader to figure this out -- it is in the module initialization code.
+
+Hmmm....  Did I forget to store the module `cr3` value?
+
+```
+        } else {
+            modCr3 = PmmFrameToLinear(PmmNewFrame());
+
+            // -- clear the Page Directory
+            kMemSetB((void *)modCr3, 0, 4096);
+
+            // -- create the recursive mapping
+            MmuMapToFrame(modCr3, 0xfffff000, PmmLinearToFrame(modCr3), true, false);
+        }
+```
+
+Also, since I am clearing this table in `PmmStart()`, there is no need to recursively map the Page Directory.  After correcting this issue, I am now able to get interrupts to fire again properly.  Now all I have left to do is ready the process and deal with all the crashes from that....
+
+I'm completely shocked.  It didn't crash.  Either, I am not swapping tasks, or I wrote some really great task swapping code that had absolutely no bugs.  I'm betting on the former.  However, there are a crap-ton of changes and I want to commit this code.  The PMM initialization is not complete, but it is not crashing.
 
 

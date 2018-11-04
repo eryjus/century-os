@@ -14,7 +14,6 @@
 
 
 #include "types.h"
-#include "errors.h"
 #include "lists.h"
 #include "spinlock.h"
 #include "cpu.h"
@@ -48,6 +47,5 @@ void ProcessEnd(void)
     //
     // -- This function should never get here
     //    -----------------------------------
-    ERROR_80000007(currentPID);
     Halt();
 }
