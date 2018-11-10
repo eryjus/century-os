@@ -16,12 +16,19 @@
 
 
 #include "types.h"
+#include "printf.h"
 
 
 //
 // -- This macro basically disappears because but helps to delineate the block that requires the lock
 //    -----------------------------------------------------------------------------------------------
 #define SPIN_BLOCK(lock)        SpinlockLock(&(lock));
+
+
+//
+// -- This marco only exists so I do not need to type an '&' with each unlock
+//    -----------------------------------------------------------------------
+#define SPIN_RLS(lock)          SpinlockUnlock(&(lock))
 
 
 //
@@ -49,7 +56,8 @@ extern "C" void SpinlockClear(Spinlock_t *lock);
 // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
 //    ---------------------------------------------------------------------------------------------
 static inline void SpinlockLock(Spinlock_t *lock) {
-    while (SpinlockCmpXchg(lock, 0, 1) != 0) {};
+    kprintf("Attempting lock by %x at address %p\n", lock->lockHolder, lock);
+    while (SpinlockCmpXchg(lock, 0, 1) != 0) { }
     lock->lockHolder = currentPID;
 }
 
@@ -57,7 +65,10 @@ static inline void SpinlockLock(Spinlock_t *lock) {
 //
 // -- This inline function will unlock a spinlock, clearing the lock holder
 //    ---------------------------------------------------------------------
-static inline void SpinlockUnlock(Spinlock_t *lock) { SpinlockClear(lock); lock->lockHolder = 0; }
+static inline void SpinlockUnlock(Spinlock_t *lock) {
+    SpinlockClear(lock); lock->lockHolder = 0;
+    kprintf("Lock at %p released\n", lock);
+}
 
 
 //

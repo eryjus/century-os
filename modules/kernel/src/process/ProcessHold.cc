@@ -34,47 +34,83 @@ int ProcessHold(PID_t pid)
     SANITY_CHECK_PID(pid, proc);
     SPIN_BLOCK(proc->lock) {
         if (proc->isHeld) {
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
         switch(proc->status) {
         case PROC_END:
         case PROC_ZOMB:
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
 
         case PROC_DLYW:
         case PROC_MSGW:
         case PROC_MTXW:
         case PROC_SEMW:
-            SPIN_BLOCK(waitListLock) {
-                ListDelInit(&proc->stsQueue);
-                SpinlockUnlock(&waitListLock);
+            SPIN_BLOCK(procWaitList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procWaitList.lock);
             }
 
             break;
 
         case PROC_RUN:
-            SPIN_BLOCK(readyQueueLock) {
-                ListDelInit(&proc->stsQueue);
-                SpinlockUnlock(&readyQueueLock);
+            switch (proc->priority) {
+            case PTY_OS:
+                SPIN_BLOCK(procOsPtyList.lock) {
+                    ListRemoveInit(&proc->stsQueue);
+                    SPIN_RLS(procOsPtyList.lock);
+                }
+                break;
+
+            case PTY_HIGH:
+                SPIN_BLOCK(procHighPtyList.lock) {
+                    ListRemoveInit(&proc->stsQueue);
+                    SPIN_RLS(procHighPtyList.lock);
+                }
+                break;
+
+            case PTY_NORM:
+                SPIN_BLOCK(procNormPtyList.lock) {
+                    ListRemoveInit(&proc->stsQueue);
+                    SPIN_RLS(procNormPtyList.lock);
+                }
+                break;
+
+            case PTY_LOW:
+                SPIN_BLOCK(procLowPtyList.lock) {
+                    ListRemoveInit(&proc->stsQueue);
+                    SPIN_RLS(procLowPtyList.lock);
+                }
+                break;
+
+            case PTY_IDLE:
+                SPIN_BLOCK(procIdlePtyList.lock) {
+                    ListRemoveInit(&proc->stsQueue);
+                    SPIN_RLS(procIdlePtyList.lock);
+                }
+                break;
+
+            default:
+                SPIN_RLS(proc->lock);
+                return -EUNDEF;
             }
 
             break;
 
         default:
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
         proc->isHeld = true;
-        SPIN_BLOCK(heldListLock) {
+        SPIN_BLOCK(procHeldList.lock) {
             ListAddTail(&procHeldList, &proc->stsQueue);
-            SpinlockUnlock(&heldListLock);
+            SPIN_RLS(procHeldList.lock);
         }
 
-        SpinlockUnlock(&proc->lock);
+        SPIN_RLS(proc->lock);
     }
 
     if (pid == currentPID) ProcessReschedule();

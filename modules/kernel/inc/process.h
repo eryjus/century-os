@@ -109,6 +109,8 @@ typedef enum { PTY_IDLE = 1,            // This is for the butler process when t
 typedef struct Process_t {
 	regval_t esp;                       // This is the process current esp value (when not executing)
 	regval_t ss;                        // This is the process ss value
+	regval_t cr3;						// This is the process cr3 value
+	PID_t pid;							// This is the PID of this process
 	ptrsize_t ssAddr;                   // This is the address of the process stack
 	size_t ssLength;                    // This is the length of the process stack
 	char command[MAX_CMD_LEN];			// The identifying command, includes the terminating null
@@ -118,9 +120,9 @@ typedef struct Process_t {
 	int quantumLeft;                	// This is the quantum remaining for the process (may be more than priority)
     bool isHeld;                        // Is this process held and on the Held list?
 	struct Spinlock_t lock;				// This is the lock needed to read/change values
-	List_t stsQueue;                    // This is the location on the current status queue
-	List_t lockList;                    // This is the list of currently held locks (for the butler to release)
-	List_t messages;                    // This is the queue of messages for this process
+	ListHead_t::List_t stsQueue;        // This is the location on the current status queue
+	ListHead_t lockList;                // This is the list of currently held locks (for the butler to release)
+	ListHead_t messages;                // This is the queue of messages for this process
 	void *prevPayload;					// This is the previous payload in case the process did not allocate enough
 } __attribute__((packed)) Process_t;
 
@@ -144,26 +146,16 @@ extern Process_t butler;
 
 
 //
-// -- Several Spinlocks needed for managing internal structures
-//    ---------------------------------------------------------
-extern struct Spinlock_t pidTableLock;
-extern struct Spinlock_t readyQueueLock;
-extern struct Spinlock_t heldListLock;
-extern struct Spinlock_t waitListLock;
-extern struct Spinlock_t reaperQueueLock;
-
-
-//
 // -- Several Lists for managing processes
 //    ------------------------------------
-extern List_t procOsPtyList;
-extern List_t procHighPtyList;
-extern List_t procNormPtyList;
-extern List_t procLowPtyList;
-extern List_t procIdlePtyList;
-extern List_t procWaitList;
-extern List_t procHeldList;
-extern List_t procReaper;
+extern ListHead_t procOsPtyList;
+extern ListHead_t procHighPtyList;
+extern ListHead_t procNormPtyList;
+extern ListHead_t procLowPtyList;
+extern ListHead_t procIdlePtyList;
+extern ListHead_t procWaitList;
+extern ListHead_t procHeldList;
+extern ListHead_t procReaper;
 
 
 //
@@ -249,6 +241,12 @@ inline void ProcessFreePID(PID_t pid) { if (pid < MAX_NUM_PID) procs[pid] = 0; }
 //    -----------------------------
 #include "spinlock.h"
 #include <errno.h>
+
+
+//
+// -- A spinlock needed for updating the procs table
+//    ----------------------------------------------
+extern Spinlock_t pidTableLock;
 
 
 //

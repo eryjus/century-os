@@ -20,10 +20,11 @@
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2016-09-12  Initial   0.0.0   ADCL  Initial version
-//  2018-05-24  Initial   0.1.0   ADCL  Copy this file from century to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  --------------------------------------------------------------------------
+//  2016-Sep-12  Initial   0.0.0   ADCL  Initial version
+//  2018-May-24  Initial   0.1.0   ADCL  Copy this file from century to century-os
+//  2018-Nov-09            0.1.0   ADCL  Reformat the list structures to have a list head, creating a separate type.
 //
 //===================================================================================================================
 
@@ -33,6 +34,7 @@
 
 
 #include "types.h"
+#include "spinlock.h"
 
 
 //
@@ -54,85 +56,112 @@
 //
 // -- This is an entry in a list.  It will be included as an element (not a pointer) in a structure to be "listed".
 //    -------------------------------------------------------------------------------------------------------------
-typedef struct List_t {
-	struct List_t *prev;
-	struct List_t *next;
-} List_t;
+
+
+//
+// -- This is the header of the list.
+//    -------------------------------
+typedef struct ListHead_t {
+	typedef struct List_t {
+		struct List_t *prev;
+		struct List_t *next;
+	} List_t;
+
+	List_t list;
+	Spinlock_t lock;
+} ListHead_t;
 
 
 //
 // -- Declare and initialize a new List not in a structure
 //    ----------------------------------------------------
-#define NEW_LIST(name) List_t name = { &(name), &(name) }
+#define NEW_LIST(name) ListHead_t name = { { &(name.list), &(name.list) }, {0, 0} };
 
 
 //
-// -- Initialize a ListHead structure to point to itself; notice that `l` is a constant address
-//    -----------------------------------------------------------------------------------------
-inline void ListInit(List_t * const l) { l->prev = l->next = l; }
+// -- Initialize a list to point to itself
+//    ------------------------------------
+inline void ListInit(ListHead_t::List_t * const list) { list->next = list->prev = list; }
 
 
 //
 // -- Low-level function to add a node to a list
 //    ------------------------------------------
-inline void __list_add(List_t * const nw, List_t * const pv, List_t * const nx)
-	{ nx->prev = nw; nw->next = nx; nw->prev = pv; pv->next = nw; }
+inline void __list_add(ListHead_t::List_t * const nw, ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
+	nx->prev = nw; nw->next = nx; nw->prev = pv; pv->next = nw;
+}
 
 
 //
 // -- Low-level function to delete a node from a list
 //    -----------------------------------------------
-inline void __list_del(List_t * const pv, List_t * const nx) { nx->prev = pv; pv->next = nx; }
+inline void __list_del(ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
+	nx->prev = pv; pv->next = nx;
+}
 
 
 //
 // -- Add a new node to a list (which is right ahead of the head)
 //    -----------------------------------------------------------
-inline void ListAdd(List_t * const nw, List_t * const head) { __list_add(nw, head, head->next); }
+inline void ListAdd(ListHead_t * const head, ListHead_t::List_t * const nw) {
+	__list_add(nw, &head->list, head->list.next);
+}
 
 
 //
 // -- Add a new node to a list (which will be right behind the tail)
 //    --------------------------------------------------------------
-inline void ListAddTail(List_t * const nw, List_t * const head) { __list_add(nw, head->prev, head); }
+inline void ListAddTail(ListHead_t * const head, ListHead_t::List_t * const nw) {
+	__list_add(nw, head->list.prev, &head->list);
+}
 
 
 //
 // -- Delete a node from a list (and clear the node's pointers to NULL)
 //    -----------------------------------------------------------------
-inline void ListDel(List_t * const entry) { __list_del(entry->prev, entry->next); entry->next = entry->prev = 0; }
+inline void ListRemove(ListHead_t::List_t * const entry) {
+	__list_del(entry->prev, entry->next); entry->next = entry->prev = 0;
+}
 
 
 //
 // -- Delete a node from a list (and and initialize the node to be properly empty)
 //    ----------------------------------------------------------------------------
-inline void ListDelInit(List_t * const entry) { __list_del(entry->prev, entry->next); ListInit(entry); }
+inline void ListRemoveInit(ListHead_t::List_t * const entry) {
+	__list_del(entry->prev, entry->next); ListInit(entry);
+}
 
 
 //
 // -- Is this list empty or not?  Notice that both the address and the contents are constant
 //    --------------------------------------------------------------------------------------
-inline bool IsListEmpty(const List_t * const head) { return (head->next == head); }
+inline bool IsListEmpty(const ListHead_t * const head) {
+	return (head->list.next == &head->list);
+}
 
 
 //
 // -- Is this entry last in the list?  Notice that both the address and the contents are constant
 //    -------------------------------------------------------------------------------------------
-inline bool IsLastInList(const List_t * const list, const List_t * const head) { return list->next == head; }
+inline bool IsLastInList(const ListHead_t * const head, const ListHead_t::List_t * const entry) {
+	return entry->next == &head->list;
+}
 
 
 //
 // -- Move an entry from one list to another (in front of the head)
 //    -------------------------------------------------------------
-inline void ListMove(List_t * const entry, List_t * const head)
-	{ __list_del(entry->prev, entry->next); ListAdd(entry, head); }
+inline void ListMove(ListHead_t * const head, ListHead_t::List_t * const entry) {
+	__list_del(entry->prev, entry->next); ListAdd(head, entry);
+}
 
 
 //
 // -- Move an entry from one list to another (after the tail)
 //    -------------------------------------------------------
-inline void ListMoveTail(List_t * const entry, List_t * const head)
-	{ __list_del(entry->prev, entry->next); ListAddTail(entry, head); }
+inline void ListMoveTail(ListHead_t * const head, ListHead_t::List_t * const entry) {
+	__list_del(entry->prev, entry->next); ListAddTail(head, entry);
+}
 
 
 #endif

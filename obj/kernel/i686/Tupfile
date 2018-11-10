@@ -36,6 +36,7 @@ include_rules
 : foreach $(WS)/modules/kernel/src/x86-common/*.s | $(II686) |> !nasm |>
 
 : foreach $(WS)/modules/kernel/src/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(WS)/modules/kernel/src/cpu/*.cc | $(II686) |> !i686-kernel-cc |>
 : foreach $(WS)/modules/kernel/src/heap/*.cc | $(II686) |> !i686-kernel-cc |>
 : foreach $(WS)/modules/kernel/src/i686/*.cc | $(II686) |> !i686-kernel-cc |>
 : foreach $(WS)/modules/kernel/src/ipc/*.cc | $(II686) |> !i686-kernel-cc |>

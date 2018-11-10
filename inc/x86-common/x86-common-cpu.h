@@ -11,6 +11,7 @@
 //
 //===================================================================================================================
 
+#if 0
 
 #ifndef __CPU_H__
 #error "Do not include 'x86-common-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
@@ -136,6 +137,8 @@ struct SegmentDescriptor {
     0x00                                    /* baseHi */                                    \
 }
 
+#endif
+
 
 //
 // -- The Interrupt Descriptor Table Entry
@@ -153,4 +156,5 @@ typedef struct IdtEntry {
 // -- Change the page directory to the physical address provided
 //    ----------------------------------------------------------
 extern "C" void MmuSwitchPageDir(ptrsize_t physAddr);
+
 

@@ -14,6 +14,7 @@
 
 
 #include "types.h"
+#include "cpu.h"
 #include "lists.h"
 #include "spinlock.h"
 #include "process.h"
@@ -24,39 +25,57 @@
 //    ------------------------------------------------------------------
 void ProcessReschedule(void)
 {
+    kprintf("Looking for a new process\n");
     Process_t *currentProc = procs[currentPID];
+    Process_t *tgt = NULL;
+    const char *q = "";
 
-    SPIN_BLOCK(readyQueueLock) {
-        if (!IsListEmpty(&procOsPtyList)) {
-            Process_t *tgt = FIND_PARENT(procOsPtyList.next,Process_t,stsQueue);
-            if (tgt == currentProc) return;
-            ListMoveTail(&tgt->stsQueue, &procOsPtyList);
-            SpinlockUnlock(&readyQueueLock);
-            ProcessSwitch(currentProc, tgt);
-        } else if (!IsListEmpty(&procHighPtyList)) {
-            Process_t *tgt = FIND_PARENT(procHighPtyList.next,Process_t,stsQueue);
-            if (tgt == currentProc) return;
-            ListMoveTail(&tgt->stsQueue, &procHighPtyList);
-            SpinlockUnlock(&readyQueueLock);
-            ProcessSwitch(currentProc, tgt);
-        } else if (!IsListEmpty(&procNormPtyList)) {
-            Process_t *tgt = FIND_PARENT(procNormPtyList.next,Process_t,stsQueue);
-            if (tgt == currentProc) return;
-            ListMoveTail(&tgt->stsQueue, &procNormPtyList);
-            SpinlockUnlock(&readyQueueLock);
-            ProcessSwitch(currentProc, tgt);
-        } else if (!IsListEmpty(&procLowPtyList)) {
-            Process_t *tgt = FIND_PARENT(procLowPtyList.next,Process_t,stsQueue);
-            if (tgt == currentProc) return;
-            ListMoveTail(&tgt->stsQueue, &procLowPtyList);
-            SpinlockUnlock(&readyQueueLock);
-            ProcessSwitch(currentProc, tgt);
-        } else {
-            Process_t *tgt = FIND_PARENT(procIdlePtyList.next,Process_t,stsQueue);
-            if (tgt == currentProc) return;
-            ListMoveTail(&tgt->stsQueue, &procIdlePtyList);
-            SpinlockUnlock(&readyQueueLock);
-            ProcessSwitch(currentProc, tgt);
+    if (!IsListEmpty(&procOsPtyList)) {
+        SPIN_BLOCK(procOsPtyList.lock) {
+            tgt = FIND_PARENT(procOsPtyList.list.next,Process_t,stsQueue);
+            ListMoveTail(&procOsPtyList, &tgt->stsQueue);
+            SPIN_RLS(procOsPtyList.lock);
         }
+        q = "OS";
+    } else if (!IsListEmpty(&procHighPtyList)) {
+        SPIN_BLOCK(procHighPtyList.lock) {
+            tgt = FIND_PARENT(procHighPtyList.list.next,Process_t,stsQueue);
+            ListMoveTail(&procHighPtyList, &tgt->stsQueue);
+            SPIN_RLS(procHighPtyList.lock);
+        }
+        q = "HIGH";
+    } else if (!IsListEmpty(&procNormPtyList)) {
+        SPIN_BLOCK(procNormPtyList.lock) {
+            tgt = FIND_PARENT(procNormPtyList.list.next,Process_t,stsQueue);
+            ListMoveTail(&procNormPtyList, &tgt->stsQueue);
+            SPIN_RLS(procNormPtyList.lock);
+        }
+        q = "NORM";
+    } else if (!IsListEmpty(&procLowPtyList)) {
+        SPIN_BLOCK(procLowPtyList.lock) {
+            FIND_PARENT(procLowPtyList.list.next,Process_t,stsQueue);
+            ListMoveTail(&procLowPtyList, &tgt->stsQueue);
+            SPIN_RLS(procLowPtyList.lock);
+        }
+        q = "LOW";
+    } else if (!IsListEmpty(&procIdlePtyList)) {
+        SPIN_BLOCK(procIdlePtyList.lock) {
+            tgt = FIND_PARENT(procIdlePtyList.list.next,Process_t,stsQueue);
+            ListMoveTail(&procIdlePtyList, &tgt->stsQueue);
+            SPIN_RLS(procIdlePtyList.lock);
+        }
+        q = "IDLE";
+    } else {
+        kprintf("PANIC: The queues are out of sync!!!\n");
+        Halt();
+    }
+
+    if (tgt == currentProc) {
+        kprintf("The current process is still the highest priority\n");
+        currentProc->quantumLeft = currentProc->priority;
+    } else {
+        kprintf("%s: Executing process switch: %x\n", q, tgt->pid);
+        currentPID = tgt->pid;
+        ProcessSwitch(currentProc, tgt);
     }
 }

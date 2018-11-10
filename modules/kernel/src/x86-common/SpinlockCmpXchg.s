@@ -46,14 +46,17 @@ cpu		586
 ;; -- Perform the compare and exchange
 ;;    --------------------------------
 SpinlockCmpXchg:
+		push		ebp						;; save the stack frame
+		mov			ebp,esp					;; create a new stack frame
 		push	    ebx				        ;; save the ebx register
 		push	    ecx				        ;; save the ecx register
 
-		mov		    ebx,[esp+12]	        ;; get the address of the spinlock struct (note: offset is 0)
-		mov		    eax,[esp+16]	        ;; get the expected value
-		mov		    ecx,[esp+20]	        ;; get the value to xchg
+		mov		    ebx,[ebp+8] 	        ;; get the address of the spinlock struct (note: offset is 0)
+		mov		    eax,[ebp+12]	        ;; get the expected value
+		mov		    ecx,[ebp+16]	        ;; get the value to xchg
 LOCK	cmpxchg	    [ebx],ecx		        ;; do the cmpxchg -- notice the LOCK prefix
 
 		pop		    ecx				        ;; restore the ecx register
 		pop		    ebx				        ;; restore the ebx register
+		pop			ebp						;; restore stack frame
 		ret

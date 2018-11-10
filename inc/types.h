@@ -7,9 +7,11 @@
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-24  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  --------------------------------------------------------------------------
+//  2018-May-24  Initial   0.1.0   ADCL  Initial version
+//  2018-Nov-04  Initial   0.1.0   ADCL  Added Compile Time Assertions from
+//                                       http://www.pixelbeat.org/programming/gcc/static_assert.html
 //
 //===================================================================================================================
 
@@ -44,6 +46,17 @@ typedef char *  va_list;
 #define va_start(ap,v)  (ap = (va_list)&v + _INTSIZEOF(v))
 #define va_arg(ap,t)    (*(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)))
 #define va_end(ap)      (ap = (va_list)0)
+
+
+//
+// -- Some compile-time assertions to help with size checking!
+//    --------------------------------------------------------
+/* Note we need the 2 concats below because arguments to ##
+ * are not expanded, so we need to expand __LINE__ with one indirection
+ * before doing the actual concatenation. */
+#define ASSERT_CONCAT_(a, b) a##b
+#define ASSERT_CONCAT(a, b) ASSERT_CONCAT_(a, b)
+#define ct_assert(e) enum { ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) }
 
 
 //
@@ -84,6 +97,12 @@ extern isrFunc_t isrHandlers[256];
 // -- The current PID
 //    ---------------
 extern volatile PID_t currentPID;
+
+
+//
+// -- This is a generic byte definition
+//    ---------------------------------
+typedef uint8_t byte_t;
 
 
 #endif

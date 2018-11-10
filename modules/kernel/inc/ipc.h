@@ -26,7 +26,7 @@
 // -- This is a kernel message.  The dataPayload member is not used by the kernel but might be with user messages
 //    -----------------------------------------------------------------------------------------------------------
 typedef struct Message_t {
-    List_t list;
+    ListHead_t::List_t list;
     uint32_t msg;
     uint32_t parm1;
     uint32_t parm2;

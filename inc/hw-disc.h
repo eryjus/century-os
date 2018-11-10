@@ -43,6 +43,7 @@ typedef enum {
 typedef struct Module_t {
     uint32_t modStart;
     uint32_t modEnd;
+    uint32_t modHdrSize;
     ptrsize_t cr3;
     ptrsize_t entry;
     char modIdent[MODULE_IDENT_LEN];             // this will point to at-risk memory
@@ -241,6 +242,7 @@ inline void AddModule(uint64_t at, uint64_t end, char *ident) {
     localHwDisc->modAvail = true;
 }
 
+inline void SetModuleHdrSize(int i, size_t s) { localHwDisc->mods[i].modHdrSize = s; }
 inline void SetModuleCr3(int i, ptrsize_t cr3) { localHwDisc->mods[i].cr3 = cr3; }
 inline void SetModuleEntry(int i, ptrsize_t entry) { localHwDisc->mods[i].entry = entry; }
 inline uint64_t GetAvailModuleStart(int i) { return localHwDisc->mods[i].modStart; }

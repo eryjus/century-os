@@ -32,36 +32,25 @@ int ProcessRelease(PID_t pid)
     SANITY_CHECK_PID(pid, proc);
     SPIN_BLOCK(proc->lock) {
         if (!proc->isHeld) {
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
         switch(proc->status) {
         case PROC_END:
         case PROC_ZOMB:
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
 
         case PROC_DLYW:
         case PROC_MSGW:
         case PROC_MTXW:
         case PROC_SEMW:
-            SPIN_BLOCK(heldListLock) {
-                ListDelInit(&proc->stsQueue);
-                SpinlockUnlock(&heldListLock);
-            }
-
-            SPIN_BLOCK(waitListLock) {
-                ListAddTail(&procWaitList, &proc->stsQueue);
-                SpinlockUnlock(&waitListLock);
-            }
-
-            break;
-
+            // -- we will ready the process here in case the wait condition was satisfied
         case PROC_RUN:
-            SPIN_BLOCK(heldListLock) {
-                ListDelInit(&proc->stsQueue);
-                SpinlockUnlock(&heldListLock);
+            SPIN_BLOCK(procHeldList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procHeldList.lock);
             }
 
             ProcessReady(pid);
@@ -69,12 +58,12 @@ int ProcessRelease(PID_t pid)
             break;
 
         default:
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
         proc->isHeld = false;
-        SpinlockUnlock(&proc->lock);
+        SPIN_RLS(proc->lock);
     }
 
     if (pid != currentPID && proc->priority > procs[currentPID]->priority) ProcessSwitch(procs[currentPID], proc);

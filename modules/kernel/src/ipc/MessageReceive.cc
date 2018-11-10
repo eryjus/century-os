@@ -37,8 +37,8 @@ int MessageReceive(Message_t *m)
 
     SANITY_CHECK_PID(currentPID, proc);
     SPIN_BLOCK(proc->lock) {
-        msg = FIND_PARENT(proc->messages.next, Message_t, list);
-        ListDelInit(&msg->list);
+        msg = FIND_PARENT(proc->messages.list.next, Message_t, list);
+        ListRemoveInit(&msg->list);
         if (proc->prevPayload) prevPayload = proc->prevPayload;
         proc->prevPayload = msg->dataPayload;
         SpinlockUnlock(&proc->lock);

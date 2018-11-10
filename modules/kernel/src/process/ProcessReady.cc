@@ -33,14 +33,14 @@ int ProcessReady(PID_t pid)
     SANITY_CHECK_PID(pid, proc);
     SPIN_BLOCK(proc->lock) {
         if (proc->isHeld) {
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
         switch(proc->status) {
         case PROC_END:
         case PROC_ZOMB:
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
 
         case PROC_INIT:
@@ -49,47 +49,55 @@ int ProcessReady(PID_t pid)
         case PROC_MTXW:
         case PROC_SEMW:
         case PROC_RUN:
-            SPIN_BLOCK(readyQueueLock) {
-                if (proc->stsQueue.next) ListDelInit(&proc->stsQueue);
-
-                switch(proc->priority) {
-                case PTY_OS:
+            switch(proc->priority) {
+            case PTY_OS:
+                SPIN_BLOCK(procOsPtyList.lock) {
                     ListAddTail(&procOsPtyList, &proc->stsQueue);
-                    break;
-
-                case PTY_HIGH:
-                    ListAddTail(&procHighPtyList, &proc->stsQueue);
-                    break;
-
-                case PTY_NORM:
-                    ListAddTail(&procNormPtyList, &proc->stsQueue);
-                    break;
-
-                case PTY_LOW:
-                    ListAddTail(&procLowPtyList, &proc->stsQueue);
-                    break;
-
-                case PTY_IDLE:
-                    ListAddTail(&procIdlePtyList, &proc->stsQueue);
-                    break;
-
-                default:
-                    SpinlockUnlock(&proc->lock);
-                    SpinlockUnlock(&readyQueueLock);
-                    return -EUNDEF;
+                    SPIN_RLS(procOsPtyList.lock);
                 }
+                break;
 
-                SpinlockUnlock(&readyQueueLock);
+            case PTY_HIGH:
+                SPIN_BLOCK(procHighPtyList.lock) {
+                    ListAddTail(&procHighPtyList, &proc->stsQueue);
+                    SPIN_RLS(procHighPtyList.lock);
+                }
+                break;
+
+            case PTY_NORM:
+                SPIN_BLOCK(procNormPtyList.lock) {
+                    ListAddTail(&procNormPtyList, &proc->stsQueue);
+                    SPIN_RLS(procNormPtyList.lock);
+                }
+                break;
+
+            case PTY_LOW:
+                SPIN_BLOCK(procLowPtyList.lock) {
+                    ListAddTail(&procLowPtyList, &proc->stsQueue);
+                    SPIN_RLS(procLowPtyList.lock);
+                }
+                break;
+
+            case PTY_IDLE:
+                SPIN_BLOCK(procIdlePtyList.lock) {
+                    ListAddTail(&procIdlePtyList, &proc->stsQueue);
+                    SPIN_RLS(procIdlePtyList.lock);
+                }
+                break;
+
+            default:
+                SPIN_RLS(proc->lock);
+                return -EUNDEF;
             }
 
             break;
 
         default:
-            SpinlockUnlock(&proc->lock);
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
-        SpinlockUnlock(&proc->lock);
+        SPIN_RLS(proc->lock);
     }
 
     if (pid != currentPID && proc->priority > procs[currentPID]->priority) ProcessSwitch(procs[currentPID], proc);

@@ -10,12 +10,6 @@
 //    --------------------------
 extern "C" void PmmMain(void)
 {
-    unsigned int i;
-
-    for (i = 0; i < BITMAP_SIZE; i ++) {
-        pmmBitmap[i] = 0xffffffff;
-    }
-
     while (true) {
         Message_t message;
         Message_t reply = {0};

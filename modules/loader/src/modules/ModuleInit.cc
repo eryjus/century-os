@@ -105,6 +105,7 @@ kernEntry_t ModuleInit(void)
             SerialPutS("\n");
 
             if (thisIsKernel) entry = (kernEntry_t)hdr32->eEntry;
+            if (j == 0) SetModuleHdrSize(i, phdr32->pOffset);
 
             ptrsize_t offset;
             for (offset = 0; offset < phdr32[j].pMemSz; offset += 0x1000) {

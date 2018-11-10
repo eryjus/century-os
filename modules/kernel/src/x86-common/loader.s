@@ -30,14 +30,25 @@ global		Halt					                        ; make hang visible
 ;    ------------------------------------------------------
 extern		kInit					                        ; allow reference to external kinit
 extern      kMemSetB
+extern      _stackEnd
 
 
+CPU_TABLES_BASE     equ     0xff401000
+
+
+;;
+;; -- The data segment
+;;    ----------------
 section		.data
 
 align 		8
 IdtDesc:
 dw      (256*8)-1                                           ;; size minus one...
-dd      0x800                                               ;; this is the addresss
+dd      CPU_TABLES_BASE+0x800                               ;; this is the addresss
+
+GdtDesc:
+dw      (16*8)-1                                            ;; size minus one...
+dd      CPU_TABLES_BASE                                     ;; this is the addresss
 
 
 ;
@@ -59,8 +70,11 @@ loader:
     call        kMemSetB
     add         esp,12
 
-    mov     ecx,IdtDesc                                 	;; Get the gdt address
-    lidt    [ecx]                                       	;; and load the GDT
+    mov         ecx,GdtDesc
+    lgdt        [ecx]
+
+    mov         ecx,IdtDesc                                 ;; Get the gdt address
+    lidt        [ecx]                                       ;; and load the GDT
 
     mov         ecx,0x02<<3
     mov         ds,cx
@@ -68,9 +82,9 @@ loader:
     mov         fs,cx
     mov         gs,cx
     mov         ss,cx
-    nop
+    mov         esp,_stackEnd                               ;; set the final stack
 
-	jmp	    0x08:kInit					                        ; jump to the C initialization function
+	jmp	    0x08:kInit					                    ;; jump to the C initialization function
 
 ;
 ; -- if you get back here, then you have a problem and need to hang; fall through to the next function...
@@ -96,3 +110,11 @@ Halt:
 section         .data
 systemFont:
 incbin          "system-font.bin"
+
+
+;;
+;; -- Allocate a stack
+;;    ----------------
+section         .stack
+    times 4096  db 0
+

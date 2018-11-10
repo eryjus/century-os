@@ -20,11 +20,13 @@
 void ProcessInit(void)
 {
     ListInit(&butler.stsQueue);
-    ListInit(&butler.lockList);
-    ListInit(&butler.messages);
+    butler.lockList.lock = {0};
+    butler.messages.lock = {0};
+    ListInit(&butler.lockList.list);
+    ListInit(&butler.messages.list);
 
     // -- no lock needed during initialization
-    ListAddTail(&procIdlePtyList, &butler.stsQueue);
+    ListAddTail(&procOsPtyList, &butler.stsQueue);
 
     procs[0] = &butler;
     currentPID = 0;

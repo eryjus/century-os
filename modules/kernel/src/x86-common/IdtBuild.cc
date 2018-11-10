@@ -54,6 +54,8 @@ extern "C" {
     extern void isr30 (void);
     extern void isr31 (void);
 
+    extern void isr100(void);
+
     extern void irq0  (void);
     extern void irq1  (void);
     extern void irq2  (void);
@@ -135,6 +137,8 @@ void IdtBuild(void)
 	IdtSetGate(45, (uint32_t)irq13, 0x08, 0x8e);
 	IdtSetGate(46, (uint32_t)irq14, 0x08, 0x8e);
 	IdtSetGate(47, (uint32_t)irq15, 0x08, 0x8e);
+
+	IdtSetGate(100, (uint32_t)isr100, 0x0b, 0x8e);
 
 	// -- Register the individual ISR routines
 	IsrRegister(0x00, IsrInt00);

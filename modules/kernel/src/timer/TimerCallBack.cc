@@ -53,8 +53,8 @@ TimerFunctions_t *timerControl;
 
 
 //
-// -- Initialize the PIT frequency
-//    ----------------------------
+// -- Handle a timer IRQ
+//    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
     kprintf(".");
@@ -67,5 +67,5 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
 	if (-- procs[currentPID]->quantumLeft <= 0) {
         timerControl->eoi(0);
         ProcessReschedule();
-    }
+    } else timerControl->eoi(0);
 }

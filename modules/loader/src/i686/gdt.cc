@@ -16,12 +16,15 @@
 //===================================================================================================================
 
 
+#include "types.h"
+
 //
 // -- GDT Segment types
 //    -----------------
 enum GdtTypes {
     GDT_DATA = 0b0010,
     GDT_CODE = 0b1010,
+    GDT_TSS  = 0b1001,
 };
 
 
@@ -66,6 +69,40 @@ struct SegmentDescriptor {
     unsigned int g : 1;                 // Granularity: limit scaled by 4K when set
     unsigned int baseHi : 8;            // High bits (31-24) of segment base address
 };
+
+
+//
+// -- This is the Task State-Segment structure
+//    ----------------------------------------
+typedef struct tss_t {
+    uint32_t prev_tss;
+    uint32_t esp0;
+    uint32_t ss0;
+    uint32_t esp1;
+    uint32_t ss1;
+    uint32_t esp2;
+    uint32_t ss2;
+    uint32_t cr3;
+    uint32_t eip;
+    uint32_t eflags;
+    uint32_t eax;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t ebx;
+    uint32_t esp;
+    uint32_t ebp;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t es;
+    uint32_t cs;
+    uint32_t ss;
+    uint32_t ds;
+    uint32_t fs;
+    uint32_t gs;
+    uint32_t ldt;
+    uint16_t trap;
+    uint16_t ioMap;
+} __attribute__((packed)) tss_t;
 
 
 //
@@ -134,23 +171,45 @@ struct SegmentDescriptor {
 
 
 //
+// -- This macro will be used to statically define the TSS by the loader.  Note that the segments
+//    used by the kernel and OS will be dynamically built and therefore will not use these macros.
+//    -----------------------------------------------------------------------------------------------------
+#define TSS32(type,base,lim)                                                                \
+(struct SegmentDescriptor) {                                                                \
+    ((lim) >> 12) & 0xffff,                 /* limitLow */                                  \
+    (unsigned int)(base) & 0xffff,          /* baseLow */                                   \
+    ((unsigned int)(base) >> 16) & 0xff,    /* baseMid */                                   \
+    type,                                   /* type (see GDT_* constants) */                \
+    0,                                      /* s: application segment */                    \
+    3,                                      /* dpl -- always 3 */                           \
+    1,                                      /* p: always present */                         \
+    (unsigned int)(lim) >> 28,              /* limitHi */                                   \
+    0,                                      /* avl: keep as 0 for now */                    \
+    0,                                      /* bit64: 32-bit */                             \
+    0,                                      /* db: 1 for 32-bit segment */                  \
+    0,                                      /* g: 1 for limit * 4K */                       \
+    (unsigned int)(base) >> 24              /* baseHi */                                    \
+}
+
+
+//
 // -- The loader's GDT
 //    ----------------
 struct SegmentDescriptor gdt[16] = {
-    SEG_NULL,                                   // 0x00<<3: NULL descriptor
-    SEG32(GDT_CODE, 0, 0xffffffff, 0),          // 0x01<<3: Kernel Code Selector
-    SEG32(GDT_DATA, 0, 0xffffffff, 0),          // 0x02<<3: Kernel Stack (Data) Selector
-    SEG32(GDT_CODE, 0, 0xffffffff, 3),          // 0x03<<3: User Code Selector
-    SEG32(GDT_DATA, 0, 0xffffffff, 3),          // 0x04<<3: User Stack (Data) Selector
-    SEG_NULL,                                   // 0x05<<3: Reserved for user data if desired
-    SEG_NULL,                                   // 0x06<<3: Reserved for kernel data if desired
-    SEG32(GDT_CODE, 0, 0xffffffff, 0),          // 0x07<<3: Loader Code Selector
-    SEG32(GDT_DATA, 0, 0xffffffff, 0),          // 0x08<<3: Loader Data & Stack Selector
-    SEG_NULL,                                   // 0x09<<3: TSS Part 1
-    SEG_NULL,                                   // 0x0a<<3: TSS Part 2
-    SEG_NULL,                                   // 0x0b<<3: Future use call gate
-    SEG_NULL,                                   // 0x0c<<3: Future use call gate
-    SEG_NULL,                                   // 0x0d<<3: Future use call gate
-    SEG_NULL,                                   // 0x0e<<3: Future use call gate
-    SEG_NULL,                                   // 0x0f<<3: Future use call gate
-};  
+    SEG_NULL,                                   // 0x00: NULL descriptor
+    SEG32(GDT_CODE, 0, 0xffffffff, 0),          // 0x08: Kernel Code Selector
+    SEG32(GDT_DATA, 0, 0xffffffff, 0),          // 0x10: Kernel Stack (Data) Selector
+    SEG32(GDT_CODE, 0, 0xffffffff, 3),          // 0x18: User Code Selector
+    SEG32(GDT_DATA, 0, 0xffffffff, 3),          // 0x20: User Stack (Data) Selector
+    SEG_NULL,                                   // 0x28: Reserved for user data if desired
+    SEG_NULL,                                   // 0x30: Reserved for kernel data if desired
+    SEG32(GDT_CODE, 0, 0xffffffff, 0),          // 0x38: Loader Code Selector
+    SEG32(GDT_DATA, 0, 0xffffffff, 0),          // 0x40: Loader Data & Stack Selector
+    TSS32(GDT_TSS, 0xff401200, 0xffffffff),     // 0x48: TSS Part 1
+    SEG_NULL,                                   // 0x50: TSS Part 2
+    SEG_NULL,                                   // 0x58: Future use call gate
+    SEG_NULL,                                   // 0x60: Future use call gate
+    SEG_NULL,                                   // 0x68: Future use call gate
+    SEG_NULL,                                   // 0x70: Future use call gate
+    SEG_NULL,                                   // 0x78: Future use call gate
+};

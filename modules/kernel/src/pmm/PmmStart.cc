@@ -39,6 +39,8 @@
 Process_t pmmProcess = {
     0,                      // esp
     0,                      // ss
+    0,                      // cr3
+    1,                      // pid
     0x80000000,             // stack location (fixed!)
     4096,                   // stack length
     "pmm",                  // process name
@@ -109,7 +111,7 @@ static inline void KernelUnmap(ptrsize_t addr)
 //
 // -- The initial flags for the PMM process
 //    -------------------------------------
-#define INIT_FLAGS		0x00000040
+#define INIT_FLAGS		0x00000200
 
 
 //
@@ -125,6 +127,9 @@ void PmmStart(Module_t *pmmMod)
         return;
     }
 
+    ListInit(&pmmProcess.messages.list);
+    ListInit(&pmmProcess.lockList.list);
+
     kprintf("PmmStart(): installing module for %s, located at %p\n", pmmMod->modIdent, pmmMod->modStart);
 
     //
@@ -134,8 +139,8 @@ void PmmStart(Module_t *pmmMod)
     //    the Page Table is built into the binary.
     //    ---------------------------------------------------------------------------------------------------
     frame_t pageDirFrame = pmmMod->cr3 >> 12;
-    frame_t pageTblFrame = (pmmMod->modStart + 4096 + 4096) >> 12;  // This is the ELF header and stack
-    ptrsize_t stack = (pmmMod->modStart + 4096) >> 12;                      // Only skip the ELF header
+    frame_t pageTblFrame = (pmmMod->modStart + pmmMod->modHdrSize + 4096) >> 12;  // This is the ELF header and stack
+    ptrsize_t stack = (pmmMod->modStart + pmmMod->modHdrSize) >> 12;              // Only skip the ELF header
 
     kprintf("PmmStart(): calculated pageTblFrame to be %p; tos to be %p\n", pageTblFrame, stack);
 
@@ -167,18 +172,18 @@ void PmmStart(Module_t *pmmMod)
     entry->us = 1;
 
     // -- now map the kernel into this page directory. this is actually quite easy by mapping the kernel page tables
-    //    into the process's page directory.  We need to copy PDEs 768 to 1019 (mapped or not) from the kernel PD
+    //    into the process's page directory.  We need to copy PDEs 768 to 1021 (mapped or not) from the kernel PD
     //    to the process PD.
     //    ----------------------------------------------------------------------------------------------------------
     kprintf("PmmStart(): Copying the kernel Page Tables\n");
-    for (i = 768; i <= 1019; i ++) {
+    for (i = 768; i <= 1021; i ++) {
         pd[i] = ((pageEntry_t *)0xfffff000)[i];
     }
 
     // -- we also need to map the PMM into the new address space
     //    ------------------------------------------------------
     kprintf("PmmStart(): Mapping the pmm itself\n");
-    for (v = 0x80000000, p = pmmMod->modStart; p <= pmmMod->modEnd; v += 4096, p += 4096) {
+    for (v = 0x80000000, p = pmmMod->modStart + pmmMod->modHdrSize; p <= pmmMod->modEnd; v += 4096, p += 4096) {
         pageEntry_t *e = &((pageEntry_t *)PROCESS_PAGE_TABLE)[(v >> 12) & 0x3ff];
         e->frame = p >> 12;
         e->p = 1;
@@ -197,38 +202,32 @@ void PmmStart(Module_t *pmmMod)
     kMemSetB((void *)PROCESS_STACK_BUILD, 0, 4096);
 
     kprintf("PmmStart(): Build the stack\n");
-	pmmProcess.ss = 0x20;
+	pmmProcess.ss = 0x23;
 
 	regval_t *msp = (regval_t *)(PROCESS_STACK_BUILD + 4096);
 
     // -- note there are no parameters; TODO: create a SYSCALL to self-terminate
     *(-- msp) = (ptrsize_t)0xff000000;	                        // Force a page fault in the forbidden range
-	*(-- msp) = (regval_t)INIT_FLAGS;			                // flags
-	*(-- msp) = (regval_t)0x0f;									// User Code Segment
 	*(-- msp) = (ptrsize_t)pmmMod->entry;           	        // our entry point -- simulated context switch
-	*(-- msp) = (regval_t)0;					                // error code
-	*(-- msp) = (regval_t)0;					                // unused ack irq
-	*(-- msp) = (regval_t)0;									// interrupt number
+    *(-- msp) = (regval_t)0;                                    // ebp
+	*(-- msp) = (regval_t)INIT_FLAGS;			                // flags
 	*(-- msp) = (regval_t)0;					                // eax
+	*(-- msp) = (regval_t)0;					                // ebx
 	*(-- msp) = (regval_t)0;					                // ecx
 	*(-- msp) = (regval_t)0;					                // edx
-	*(-- msp) = (regval_t)0;					                // ebx
-	*(-- msp) = (regval_t)0;					                // esp
-	*(-- msp) = (regval_t)0;					                // ebp
 	*(-- msp) = (regval_t)0;					                // esi
 	*(-- msp) = (regval_t)0;					                // edi
 	*(-- msp) = (regval_t)0;					                // cr0
-	*(-- msp) = (regval_t)0;									// cr2
 	*(-- msp) = pmmMod->cr3;                                    // cr3
 
-	*(-- msp) = (regval_t)0x10;				                    // ds
-	*(-- msp) = (regval_t)0x10;				                    // es
-	*(-- msp) = (regval_t)0x10;				                    // fs
-	*(-- msp) = (regval_t)0x10;				                    // gs
-	*(-- msp) = (regval_t)0x10;									// ss
+	*(-- msp) = (regval_t)0x23;				                    // ds
+	*(-- msp) = (regval_t)0x23;				                    // es
+	*(-- msp) = (regval_t)0x23;				                    // fs
+	*(-- msp) = (regval_t)0x23;				                    // gs
 
-	pmmProcess.esp = (PROCESS_STACK_BUILD - (regval_t)msp) + 0x80000000;
+	pmmProcess.esp = ((regval_t)msp - PROCESS_STACK_BUILD) + 0x80000000;
 	pmmProcess.status = PROC_RUN;
+    pmmProcess.cr3 = pmmMod->cr3;
 
     KernelUnmap(PROCESS_STACK_BUILD);
     kprintf("PmmStart(): All done\n");

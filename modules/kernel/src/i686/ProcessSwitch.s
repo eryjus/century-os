@@ -65,6 +65,7 @@ global  ProcessSwitch
 ;;    ---------------------------------------------------------
 PROC_ESP        EQU     0
 PROC_SS         EQU     4
+PROC_CR3		EQU		8
 
 ;;
 ;; -- This is the beginning of the code segment for this file
@@ -110,13 +111,52 @@ ProcessSwitch:
 		mov		[esi+PROC_SS],eax	        ;; save the ss register
 		mov		[esi+PROC_ESP],esp	        ;; save the stack pointer
 
+		mov		eax,cr3						;; get the cr3 value
+		mov		[esi+PROC_CR3],eax			;; and store it in the process structure
+
+;;
+;; -- Check how we need to actually perform the task change
+;;    -----------------------------------------------------
+		mov		eax,[edi+PROC_CR3]			;; get the new cr3 value
+		mov		cr3,eax						;; and set the new paging structure (flushes all TLB caches)
+
+		mov     eax,ss						;; get the ss register again
+		cmp 	eax,[edi+PROC_SS]			;; are we moving to the same stack selector?
+		je		NewProcess					;; if the same we can do a simple load
+
+		;; -- Push the new ss register
+		xor		eax,eax						;; clear eax
+		mov		ax,[edi+PROC_SS]			;; get the stack segment
+		push	eax
+
+		;; -- Push the new esp register
+		mov		eax,[edi+PROC_ESP]			;; get the target esp
+		push	eax							;; push it on the stack
+
+		;; -- Push the current flags register
+		pushfd								;; push the current flags (will be replaced later)
+
+		;; -- Push the new cs register
+		xor		eax,eax						;; clear eax
+		mov		ax,[edi+PROC_SS]			;; get the stack segment
+		sub		eax,8						;; calcualte the code segment -- this only works because of GDT layout
+		push	eax							;; and push it on the stack
+
+		;; -- push the new eip register
+		mov		eax,ChangeCPL				;; get the address of the return point
+		push eax
+		iret								;; effectively load the ss/esp and cs/eip registers
+
+
 ;;
 ;; -- This completes saving the current process and below we start to restore the target process context
 ;;    --------------------------------------------------------------------------------------------------
+NewProcess:
 		mov		eax,[edi+PROC_SS]	        ;; get the ss register
 		mov		ss,ax				        ;; and restore it
 		mov		esp,[edi+PROC_ESP]	        ;; restore the stack pointer
 
+ChangeCPL:
 		pop		eax					        ;; pop the gs register
 		mov		gs,ax				        ;; and restore it
 		pop		eax					        ;; pop the fs register
@@ -126,10 +166,9 @@ ProcessSwitch:
 		pop		eax					        ;; pop the ds register
 		mov		ds,ax				        ;; and restore it
 
-		pop		eax					        ;; pop cr3
-		mov		cr3,eax				        ;; and restore it
+		pop		eax					        ;; pop cr3; discarded
 		pop		eax					        ;; pop cr0
-		mov		cr0,eax				        ;; and restore it
+;		mov		cr0,eax				        ;; and restore it
 
 		pop		edi					        ;; restore edi
 		pop		esi					        ;; restore esi

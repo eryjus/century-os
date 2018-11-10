@@ -27,6 +27,12 @@ Process_t *procs[MAX_NUM_PID] = {0};
 
 
 //
+// -- A spinlock needed for updating the procs table
+//    ----------------------------------------------
+Spinlock_t pidTableLock;
+
+
+//
 // -- This is the ready process queue; anything on this queue is ready to run.
 //    Note that there is really one queue per priority.
 //    ------------------------------------------------------------------------
@@ -43,6 +49,8 @@ NEW_LIST(procIdlePtyList);
 Process_t butler = {
     0,                      // esp
     0,                      // ss
+    0,                      // cr3
+    0,                      // pid
     0x200000 - 4096,        // stack location
     4096,                   // stack length
     "Butler",               // process name
@@ -75,36 +83,6 @@ NEW_LIST(procHeldList);
 // -- This is a queue of processes that the Butler needs to clean up.
 //    ---------------------------------------------------------------
 NEW_LIST(procReaper);
-
-
-//
-// -- Lock to allocate a new PID from the table
-//    -----------------------------------------
-Spinlock_t pidTableLock = {0};
-
-
-//
-// -- Lock to update any of the ready queues
-//    --------------------------------------
-Spinlock_t readyQueueLock = {0};
-
-
-//
-// -- Lock to update the held queue
-//    -----------------------------
-Spinlock_t heldListLock = {0};
-
-
-//
-// -- Lock to update the wait queue
-//    -----------------------------
-Spinlock_t waitListLock = {0};
-
-
-//
-// -- Lock to update the reaper queue
-//    -------------------------------
-Spinlock_t reaperQueueLock = {0};
 
 
 //

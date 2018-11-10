@@ -31,26 +31,72 @@ int ProcessWait(ProcStatus_t newStat)
 {
     Process_t *proc;
 
+    kprintf("ProcessWait(): Checking\n");
     SANITY_CHECK_PID(currentPID, proc);
     SPIN_BLOCK(proc->lock) {
-        if (!proc->isHeld) {
-            SpinlockUnlock(&proc->lock);
+        if (proc->isHeld) {
+            SPIN_RLS(proc->lock);
             return -EUNDEF;
         }
 
-        SPIN_BLOCK(readyQueueLock) {
-            ListDelInit(&proc->stsQueue);
-            SpinlockUnlock(&readyQueueLock);
+        kprintf("ProcessWait(): Process lock obtained\n");
+
+        switch (proc->priority) {
+        case PTY_OS:
+            SPIN_BLOCK(procOsPtyList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procOsPtyList.lock);
+            }
+            break;
+
+        case PTY_HIGH:
+            SPIN_BLOCK(procHighPtyList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procHighPtyList.lock);
+            }
+            break;
+
+        case PTY_NORM:
+            SPIN_BLOCK(procNormPtyList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procNormPtyList.lock);
+            }
+            break;
+
+        case PTY_LOW:
+            SPIN_BLOCK(procLowPtyList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procLowPtyList.lock);
+            }
+            break;
+
+        case PTY_IDLE:
+            SPIN_BLOCK(procIdlePtyList.lock) {
+                ListRemoveInit(&proc->stsQueue);
+                SPIN_RLS(procIdlePtyList.lock);
+            }
+            break;
+
+        default:
+            SPIN_RLS(proc->lock);
+            return -EUNDEF;
         }
 
-        SPIN_BLOCK(waitListLock) {
+
+        kprintf("ProcessWait(): removed from ready queue\n");
+
+        SPIN_BLOCK(procWaitList.lock) {
             ListAddTail(&procWaitList, &proc->stsQueue);
-            SpinlockUnlock(&waitListLock);
+            SPIN_RLS(procWaitList.lock);
         }
+
+        kprintf("ProcessWait(): added to wait list\n");
 
         proc->status = newStat;
-        SpinlockUnlock(&proc->lock);
+        SPIN_RLS(proc->lock);
     }
+
+    kprintf("ProcessWait(): released process lock\n");
 
     ProcessReschedule();
 

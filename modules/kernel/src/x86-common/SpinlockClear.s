@@ -39,10 +39,13 @@ cpu		586
 ;; -- Perform the compare and exchange
 ;;    --------------------------------
 SpinlockClear:
+		push		ebp						;; save the stack frame
+		mov			ebp,esp					;; create a new frame
 		push	    ebx				        ;; save the ebx register
 
-		mov		    ebx,[esp+12]	        ;; get the address of the spinlock struct (note: offset is 0)
+		mov		    ebx,[ebp+8]	            ;; get the address of the spinlock struct (note: offset is 0)
     	mov		    dword [ebx],0	        ;; set the value to 0 -- notice the LOCK prefix
 
 		pop		    ebx				        ;; restore the ebx register
+		pop			ebp						;; restore stack frame
 		ret

@@ -32,6 +32,7 @@ global          Halt
 ;;    ----------------------------
 extern          kMemMove
 extern          gdt
+extern          tss
 extern          mb1Data
 extern          mb2Data
 extern          LoaderMain
@@ -65,6 +66,12 @@ MODE_TYPE       equ     0
 WIDTH           equ     1024
 HEIGHT          equ     768
 DEPTH           equ     16
+
+
+;;
+;; -- This is the stack size
+;;    ----------------------
+STACK_SIZE      equ     4096
 
 
 ;;
@@ -144,7 +151,7 @@ _start:
     push        eax
     push        ebx
 
-    push        (16*8)
+    push        (16*8)                                      ;; 128 bytes
     lea         eax,[gdt]
     push        eax                                         ;; push the source
     push        0                                           ;; push the target
@@ -163,7 +170,7 @@ _start:
     mov         fs,cx
     mov         gs,cx
     mov         ss,cx                                       ;; halts ints for one more instruction to set up stack
-    mov         esp,0x200000                                ;; set up a stack at 2MB growing down
+    mov         esp,stack+STACK_SIZE                        ;; set up a stack at 2MB growing down
 
     push        0x07<<3
     push        newGDT
@@ -193,6 +200,16 @@ Halt:
 ;; -- This is where we include the binary data for the system font
 ;;    ------------------------------------------------------------
 section         .data
+
 systemFont:
 incbin          "system-font.bin"
+
+
+;;
+;; -- Declare a stack for the loader
+;;    ------------------------------
+section         .bss
+stack:
+    resb        STACK_SIZE
+
 

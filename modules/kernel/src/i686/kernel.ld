@@ -66,6 +66,17 @@ SECTIONS {
     . = ALIGN(4096);
 	_stabEnd = .;
 
+    /*
+     * -- Allocate a stack
+     *    ----------------
+     */
+    _stackStart = .;
+    .stack : {
+        *(.stack)
+    }
+    . = ALIGN(4096);
+    _stackEnd = .;
+
     _dataStart = .;
     /*
      * -- We drop in the read/write data here
@@ -87,6 +98,7 @@ SECTIONS {
     }
     . = ALIGN(4096);
     _bssEnd = .;
+
     _kernelEnd = .;
 
     /DISCARD/ : {

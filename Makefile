@@ -86,6 +86,10 @@ run-i686: i686-iso
 	qemu-system-i386 -m 3584 -serial stdio -cdrom iso/i686.iso
 
 
+bochs-i686: i686-iso
+	bochs -f .bochsrc -q
+
+
 debug-i686: i686-iso
 	qemu-system-i386 -m 3584 -serial stdio -cdrom iso/i686.iso -s -S
 

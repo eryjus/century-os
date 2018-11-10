@@ -18,3 +18,4 @@
 #    ---------------------------------------
 : ../../bin/i686/boot/kernel.elf |> i686-elf-objdump -D %f > %o |> kernel-i686.map
 : ../../bin/i686/boot/loader.elf |> i686-elf-objdump -D %f > %o |> loader-i686.map
+: ../../bin/i686/boot/pmm.elf |> i686-elf-objdump -D %f > %o |> pmm-i686.map

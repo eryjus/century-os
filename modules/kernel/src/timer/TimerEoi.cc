@@ -13,6 +13,7 @@
 
 #include "types.h"
 #include "cpu.h"
+#include "printf.h"
 #include "timer.h"
 
 

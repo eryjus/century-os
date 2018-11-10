@@ -35,6 +35,7 @@
 #include "heap.h"
 #include "process.h"
 #include "timer.h"
+#include "tss.h"
 
 
 HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
@@ -57,6 +58,7 @@ void kInit(void)
 	//             Greet the user from the kernel.
 	//    ------------------------------------------------------------
 	IdtBuild();
+	CpuTssInit();
 	kprintf("Welcome to CenturyOS -- a hobby operating system\n");
 	kprintf("    (initializing...)\n");
 
@@ -78,6 +80,7 @@ void kInit(void)
 		}
 	}
 	TimerInit(250);
+	ProcessEnabled = true;
 //	HeapInit();
 
 //#ifndef USE_APIC
