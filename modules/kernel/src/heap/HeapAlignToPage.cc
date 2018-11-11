@@ -1,17 +1,17 @@
 //===================================================================================================================
 // kernel/src/HeapAlignToPage.cc -- Align a block to a page boundary
 //
-// Split an entry to the first page boundary after allocating the header.  This will result in a free block on the 
-// left of the page boundary.  This block may be small and if so will need to be added to the previous block (which 
+// Split an entry to the first page boundary after allocating the header.  This will result in a free block on the
+// left of the page boundary.  This block may be small and if so will need to be added to the previous block (which
 // is allocated by definition) or at the beginning of the heap memory (special case).
 //
 // +------------------------------------------------------------------+
 // |  The entry before splitting.  Split will occur at some location  |
 // |  within the entry.                                               |
 // +------------------------------------------------------------------+
-// 
+//
 // One of 2 results will occur (as below):
-// 
+//
 //                  Page
 //                Boundary
 //                    |
@@ -28,8 +28,8 @@
 // +------------------+-----------------------------------------------+
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-07-04                          Initial version
 //  2012-07-28    #53                   Fix small blocks corruption
@@ -49,40 +49,40 @@
 //
 // -- Align a block to a Page boundary
 //    --------------------------------
-OrderedList *HeapAlignToPage(OrderedList *entry)
+OrderedList_t *HeapAlignToPage(OrderedList_t *entry)
 {
-	KHeapHeader *newHdr, *oldHdr;
-	KHeapFooter *newFtr, *oldFtr;
+	KHeapHeader_t *newHdr, *oldHdr;
+	KHeapFooter_t *newFtr, *oldFtr;
 	size_t leftSize, rightSize;
-	OrderedList *ret;
-	
+	OrderedList_t *ret;
+
 	if (!entry) HeapError("NULL entry in HeapAlignToPage()", "");
 	HeapValidateHdr(entry->block, "HeapAlignToPage()");
 
 	// initialize the working variables
 	oldHdr = entry->block;
-	newHdr = (KHeapHeader *)(HeapCalcPageAdjustment(entry));
-	newFtr = (KHeapFooter *)((char *)newHdr - sizeof(KHeapFooter));
-	oldFtr = (KHeapFooter *)((char *)oldHdr + oldHdr->size - sizeof(KHeapFooter));
-	leftSize = (char *)newFtr - (char *)oldHdr + sizeof(KHeapFooter);
-	rightSize = (char *)oldFtr - (char *)newHdr + sizeof(KHeapFooter);
-	
+	newHdr = (KHeapHeader_t *)(HeapCalcPageAdjustment(entry));
+	newFtr = (KHeapFooter_t *)((char *)newHdr - sizeof(KHeapFooter_t));
+	oldFtr = (KHeapFooter_t *)((char *)oldHdr + oldHdr->size - sizeof(KHeapFooter_t));
+	leftSize = (char *)newFtr - (char *)oldHdr + sizeof(KHeapFooter_t);
+	rightSize = (char *)oldFtr - (char *)newHdr + sizeof(KHeapFooter_t);
+
 	HeapReleaseEntry(entry);			// will have better one(s) later
 
 	// size the left block properly
 	if (leftSize < MIN_HOLE_SIZE) {
-		KHeapHeader *wrkHdr;
+		KHeapHeader_t *wrkHdr;
 
-		wrkHdr = ((KHeapFooter*)((char *)oldHdr - sizeof(KHeapFooter)))->hdr;
+		wrkHdr = ((KHeapFooter_t *)((byte_t *)oldHdr - sizeof(KHeapFooter_t )))->hdr;
 
-		if ((char *)wrkHdr >= kHeap->strAddr) {
-			KHeapFooter sav;
-			KHeapFooter *tmp = (KHeapFooter *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter));
-			
+		if ((byte_t *)wrkHdr >= kHeap->strAddr) {
+			KHeapFooter_t sav;
+			KHeapFooter_t *tmp = (KHeapFooter_t *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter_t));
+
 			sav = *tmp;
 			wrkHdr->size += leftSize;
-			
-			tmp = (KHeapFooter *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter));
+
+			tmp = (KHeapFooter_t *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter_t));
 			*tmp = sav;
 			HeapValidateHdr(wrkHdr, "Work Header in HeapAlignToPage()");
 		}
@@ -93,7 +93,7 @@ OrderedList *HeapAlignToPage(OrderedList *entry)
 		oldHdr->size = leftSize;
 		newFtr->hdr = oldHdr;
 		newFtr->_magicUnion.magicHole = oldHdr->_magicUnion.magicHole;
-		
+
 		(void)HeapNewListEntry(oldHdr, 1);
 		HeapValidateHdr(oldHdr, "Old Header in HeapAlignToPage() else");
 	}
@@ -104,7 +104,7 @@ OrderedList *HeapAlignToPage(OrderedList *entry)
 	newHdr->size = rightSize;
 	oldFtr->hdr = newHdr;
 	oldFtr->_magicUnion.magicHole = newHdr->_magicUnion.magicHole;
-	
+
 	ret = HeapNewListEntry(newHdr, 1);
 	if (oldHdr) HeapValidateHdr(oldHdr, "Old Header in HeapAlignToPage() at return");
 	HeapValidateHdr(newHdr, "New Header in HeapAlignToPage() at return");

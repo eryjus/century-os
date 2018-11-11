@@ -128,6 +128,12 @@ typedef struct Process_t {
 
 
 //
+// -- The initial flags for the processes
+//    -----------------------------------
+#define INIT_FLAGS		0x00000200
+
+
+//
 // -- This is the process table
 //    -------------------------
 extern Process_t *procs[MAX_NUM_PID];
@@ -247,6 +253,16 @@ inline void ProcessFreePID(PID_t pid) { if (pid < MAX_NUM_PID) procs[pid] = 0; }
 // -- A spinlock needed for updating the procs table
 //    ----------------------------------------------
 extern Spinlock_t pidTableLock;
+
+
+//
+// -- These are some standard process PIDs
+//    ------------------------------------
+enum {
+	PID_IDLE = 0,
+	PID_BUTLER = 1,
+	PID_PMM = 2,
+};
 
 
 //

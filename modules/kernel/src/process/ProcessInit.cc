@@ -11,6 +11,7 @@
 //===================================================================================================================
 
 
+#include "cpu.h"
 #include "process.h"
 
 
@@ -19,6 +20,51 @@
 //    ---------------------------------
 void ProcessInit(void)
 {
+    //
+    // -- Establish the idle process
+    //    --------------------------
+    extern uint32_t idleStack[512];
+    extern Process_t idleProcess;
+    extern void idleMain(void);
+
+    ListInit(&idleProcess.messages.list);
+    ListInit(&idleProcess.lockList.list);
+
+	idleProcess.ss = 0x10;
+
+	regval_t *msp = (regval_t *)(idleStack + 512);
+
+    // -- note there are no parameters; TODO: create a SYSCALL to self-terminate
+    *(-- msp) = (ptrsize_t)0xff000000;	                        // Force a page fault in the forbidden range
+	*(-- msp) = (ptrsize_t)idleMain;           	                // our entry point -- simulated context switch
+    *(-- msp) = (regval_t)0;                                    // ebp
+	*(-- msp) = (regval_t)INIT_FLAGS;			                // flags
+	*(-- msp) = (regval_t)0;					                // eax
+	*(-- msp) = (regval_t)0;					                // ebx
+	*(-- msp) = (regval_t)0;					                // ecx
+	*(-- msp) = (regval_t)0;					                // edx
+	*(-- msp) = (regval_t)0;					                // esi
+	*(-- msp) = (regval_t)0;					                // edi
+	*(-- msp) = (regval_t)0;					                // cr0
+	*(-- msp) = GetCr3();                                       // cr3
+
+	*(-- msp) = (regval_t)0x10;				                    // ds
+	*(-- msp) = (regval_t)0x10;				                    // es
+	*(-- msp) = (regval_t)0x10;				                    // fs
+	*(-- msp) = (regval_t)0x10;				                    // gs
+
+	idleProcess.esp = (regval_t)msp;
+	idleProcess.status = PROC_RUN;
+    idleProcess.cr3 = GetCr3();
+
+    // -- These are legal without a lock because interrupts are still disabled
+    procs[PID_IDLE] = &idleProcess;
+    ListAddTail(&procIdlePtyList, &idleProcess.stsQueue);
+
+
+    //
+    // -- Establish the Butler Process
+    //    ----------------------------
     ListInit(&butler.stsQueue);
     butler.lockList.lock = {0};
     butler.messages.lock = {0};
@@ -28,6 +74,6 @@ void ProcessInit(void)
     // -- no lock needed during initialization
     ListAddTail(&procOsPtyList, &butler.stsQueue);
 
-    procs[0] = &butler;
-    currentPID = 0;
+    procs[PID_BUTLER] = &butler;
+    currentPID = PID_BUTLER;
 }

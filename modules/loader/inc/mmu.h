@@ -64,19 +64,4 @@ void MmuDumpTables(ptrsize_t addr);
 inline pageEntry_t *MmuGetAddrFromEntry(pageEntry_t *e) { return (pageEntry_t *)((e->frame) << 12); }
 
 
-//
-// -- Some specific memory locations
-//    ------------------------------
-#define PROCESS_PAGE_DIR    0xff430000
-#define PROCESS_PAGE_TABLE  0xff431000
-
-// -- these are dedicated to the function `MmuGetFrameForAddr()`, but documented here.
-#define MMU_FRAME_ADDR_PD   0xff432000
-#define MMU_FRAME_ADDR_PT   0xff433000
-
-#define PROCESS_STACK_BUILD 0xff441000
-
-#define KERNEL_PAGE_DIR     0xfffff000
-
-
 #endif

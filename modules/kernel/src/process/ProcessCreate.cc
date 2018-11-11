@@ -33,7 +33,6 @@
 //
 // -- These are the initial flags for the running process (interrupts enabled)
 //    ------------------------------------------------------------------------
-#define INIT_FLAGS		0x00000040
 #define INIT_STACK		4096
 
 

@@ -1,8 +1,8 @@
 //===================================================================================================================
 // kernel/src/HeapReleaseEntry.cc -- Release an OrderedList Entry and put it back in the pool
-// 
+//
 // Release an OrderedList Entry and put it back in the pool of available entries to use.
-// 
+//
 // On calling, the contents of entry have the following characteristics:
 // +-----------------------------------------------------------------+
 // | Entry                                                           |
@@ -14,7 +14,7 @@
 // +-----------------------------------------------------------------+
 // |  block->entry -- is equal to the parm entry                     |
 // +-----------------------------------------------------------------+
-// 
+//
 // On exit, the following characteristics:
 // +-----------------------------------------------------------------+
 // | Entry                                                           |
@@ -26,14 +26,14 @@
 // +-----------------------------------------------------------------+
 // |  block->entry -- zero                                           |
 // +-----------------------------------------------------------------+
-// 
+//
 // if on entry, entry->next != null, then entry->next->prev is set to entry->prev.
 //
 // if on entry, entry->prev != null, then entry->prev->next is set to entry->next.
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-07-03                          Initial version
 //  2012-09-16                          Leveraged from Century
@@ -49,16 +49,16 @@
 //
 // -- Release an entry from the ordered list
 //    --------------------------------------
-void HeapReleaseEntry(OrderedList *entry)
+void HeapReleaseEntry(OrderedList_t *entry)
 {
 	if (!entry) HeapError("NULL entry in HeapReleaseEntry()", "");
 	HeapValidateHdr(entry->block, "HeapReleaseEntry()");
-	
+
 	// verify removed from list and remove if necessary
 	if (entry->next || entry->prev || entry->block->entry) {
 		HeapRemoveFromList(entry);
 	}
-	
+
 	// clear out the data
 	entry->block->entry = 0;
 	entry->block = 0;

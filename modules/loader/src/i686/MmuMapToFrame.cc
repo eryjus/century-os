@@ -56,8 +56,8 @@ void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame, bool wrt, bool 
 
     // -- Finally complete the mapping
     pEntry->frame = frame;
-    pEntry->p = 1;
     pEntry->rw = wrt;
     pEntry->us = 1;
     pEntry->k = krn;
+    pEntry->p = 1;
 }

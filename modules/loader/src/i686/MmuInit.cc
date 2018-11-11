@@ -102,6 +102,10 @@ void MmuInit(void)
     SerialPutS("Map Hardware Discovery Struture\n");
     MmuMapToFrame(cr3, 0x00003000, 3, true, false);
 
+    // -- we need to create a page table for the kernel heap, which will get mapped later
+    pageEntry_t *pdTable = (pageEntry_t *)cr3;
+    MmuGetTableEntry(pdTable, 0xd0000000, 22, true);
+
     //
     // -- Dump some addresses from the cr3 tables to check validity
     //    ---------------------------------------------------------

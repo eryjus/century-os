@@ -40,7 +40,7 @@ Process_t pmmProcess = {
     0,                      // esp
     0,                      // ss
     0,                      // cr3
-    1,                      // pid
+    PID_PMM,                // pid
     0x80000000,             // stack location (fixed!)
     4096,                   // stack length
     "pmm",                  // process name
@@ -106,12 +106,6 @@ static inline void KernelUnmap(ptrsize_t addr)
 
     kMemSetB(pte, 0, sizeof(pageEntry_t));
 }
-
-
-//
-// -- The initial flags for the PMM process
-//    -------------------------------------
-#define INIT_FLAGS		0x00000200
 
 
 //
@@ -233,6 +227,6 @@ void PmmStart(Module_t *pmmMod)
     kprintf("PmmStart(): All done\n");
 
     // -- These are legal without a lock because interrupts are still disabled
-    procs[1] = &pmmProcess;
+    procs[PID_PMM] = &pmmProcess;
     ListAddTail(&procOsPtyList, &pmmProcess.stsQueue);
 }

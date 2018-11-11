@@ -24,9 +24,9 @@ include_rules
         -i$(WS)/modules/loader/inc/x86-common/ -i$(WS)/inc/ -i$(WS)/inc/i686/ -i$(WS)/inc/x86-common/           \
         -o %o %f |> %B.o
 
-!i686-loader-cc = |> i686-elf-gcc -fpic -ffreestanding -I $(WS)/modules/loader/inc -I $(WS)/modules/libk/inc    \
-        -I $(WS)/modules/loader/inc/i686 -I $(WS)/modules/loader/inc/x86-common  -I $(WS)/inc                   \
-        -I $(WS)/inc/i686 -I $(WS)/inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
+!i686-loader-cc = |> i686-elf-gcc -fpic -ffreestanding -I $(WS)/modules/loader/inc                              \
+        -I $(WS)/modules/loader/inc/i686 -I $(WS)/modules/loader/inc/x86-common  -I $(WS)/modules/libk/inc      \
+        -I $(WS)/inc -I $(WS)/inc/i686 -I $(WS)/inc/x86-common -Wall -Werror -c -o %o %f |> %B.o
 
 #
 # -- These are the implicit build rules for the i686 loader object files

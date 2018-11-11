@@ -1,14 +1,14 @@
 //===================================================================================================================
 // kernel/src/HeapCheckHealth.cc -- Check the health of the heap as we make changes
-// 
+//
 // Perform several sanity checks on the heap in order to verify its integrity is still good.
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-05-31  Initial   0.1.0   ADCL  Initial version (copied out of century32 -- HeapDump.c)
-//  
+//
 //===================================================================================================================
 
 
@@ -22,9 +22,9 @@
 //    ---------------------------------------------------------
 void HeapCheckHealth(void)
 {
-	KHeapHeader *block;
-	KHeapFooter *ftr;
-	
+	KHeapHeader_t *block;
+	KHeapFooter_t *ftr;
+
 	uint32_t numBlocks = 0;
 	uint32_t numAlloc = 0;
 	uint32_t numFree = 0;
@@ -33,15 +33,15 @@ void HeapCheckHealth(void)
 	uint32_t ttlFree = 0;
 	uint32_t largeSize = 0;
 
-	block = (KHeapHeader *)kHeap->strAddr;
-	
+	block = (KHeapHeader_t *)kHeap->strAddr;
+
 	// guaranteed to be at least 1 block
 	do {
-		ftr = (KHeapFooter *)((char*)block + block->size - sizeof(KHeapFooter));
-		
+		ftr = (KHeapFooter_t *)((char*)block + block->size - sizeof(KHeapFooter_t));
+
 		// count the number of blocks regardless of status
 		numBlocks ++;
-		
+
 		// now determine if block is corrupt
 		if ((block->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC ||
 				(ftr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
@@ -55,7 +55,7 @@ void HeapCheckHealth(void)
 			if (block->entry != 0) {
 				numFree ++;
 				ttlFree += block->size;
-				
+
 				if (block->size > largeSize) {
 					largeSize = block->size;
 				}
@@ -71,10 +71,10 @@ void HeapCheckHealth(void)
 				numCorrupt ++;
 			}
 		}
-		
-		block = (KHeapHeader *)((char *)block + block->size);
-	} while ((char *)block < kHeap->endAddr);
-	
+
+		block = (KHeapHeader_t *)((char *)block + block->size);
+	} while ((byte_t *)block < kHeap->endAddr);
+
 	if (!numCorrupt) return;
 	else while (1);
 }

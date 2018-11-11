@@ -2547,3 +2547,78 @@ The current process is still the highest priority
 So, this tells me that I am getting the pmm initialized and I am actually getting a switch to it.  The pmm process blocks (waiting for a message) and we switch back to the kernel initialization, where the scheduler stays since there is no other process ready to execute.
 
 I want to commit this code.  A lot of debugging went into it and it is functioning.
+
+---
+
+OK, with that done, I realize now that my initialization function needs to turn into the Butler process, but I still need an Idle process.  I really want the Idle process to run as pid 0, and the butler to run at pid 1.  This means that both the Butler and the PMM need to move their positions in the `procs[]` table.
+
+Of course this first test ends in a triple fault.  And Bochs has some interesting register values:
+
+```
+00236515315i[CPU0  ] EFER   = 0x00000000
+00236515315i[CPU0  ] | EAX=c0055e54  EBX=c002e5c8  ECX=00000010  EDX=c0005a3f
+00236515315i[CPU0  ] | ESP=c002ffc0  EBP=c002ffdc  ESI=00107349  EDI=00000000
+00236515315i[CPU0  ] | IOPL=0 ID vip vif ac vm RF nt of df if tf SF zf af PF cf
+00236515315i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00236515315i[CPU0  ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00236515315i[CPU0  ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00236515315i[CPU0  ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00236515315i[CPU0  ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00236515315i[CPU0  ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00236515315i[CPU0  ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00236515315i[CPU0  ] | EIP=c0000123 (c0000123)
+00236515315i[CPU0  ] | CR0=0xe0000011 CR2=0xff401840
+00236515315i[CPU0  ] | CR3=0xc0055e54 CR4=0x00000000
+```
+
+I had the operands backward!
+
+```asy
+GetCr3:
+    mov     cr3,eax
+    ret
+```
+
+Which correcting this problem resolved my triple fault.  Now to force the Idle process to get some CPU.  It appears to have worked.
+
+---
+
+So, the next step will be to pass off the PMM bitmap from my loader hardware discovery structure to the PMM as messages.  Since a message will allocate some space from the kernel heap, I need to get that working as well.  Some of this will have to be statically allcoated with the kernel itself -- or at least in the .bss section.  If I play my cards right, I should be able to remap this space in the Paging Tables to the proper location in `HeapInit()` and then let the loader be responsible for allocating several frames to get me started.  All I will need to do is keep track of the memory and size and then make sure I **NEVER** reference that memory.  Of course, this memory will need to be page-aligned.
+
+So, I need to think through this line in the virtual memory map:
+
+> | PDE Entries | Start Address | End Address | Size | Usage |
+> |:-----------:|:-------------:|:-----------:|:----:|:------|
+> |  768-1003   | c000 0000     | faff ffff   | 944M | Kernel Code, Data, and Heap |
+
+I certainly have enough virtual memory for a rather large heap.  This is nice.  I think I will start the heap at `0xd0000000` and let it run to `0xfb000000`.  That is about 688M of possible kernel heap.  I hope that will cover it.  However, not all of it is going to be backed by physical frames whether it is to start or as time progresses.  So, lots of memory should be available for other processes.
+
+Now, the other thing to call out here is that I am mapping the Page Tables from the kernel `PD[768]` to `PD[1021]`.  It is important to note that these Page Tables are included in this, so when a process needs to send a message (which allocates from the kernel Heap).  When I need to update a page in one of these tables, all processes will get this same update because I only map to the existing tables -- I am not copying them!
+
+---
+
+### 2018-Nov-10
+
+This morning I got into resetting my heap initialization.  Since this was copied from an older version, I have some naming convention stuff to clean up.  This will force every file to be touched and updated just to get a good compile again.
+
+At the same time, since I am mapping and unmapping virtual address pages, I will need to implement the MMU functions in the kernel (as opposed to the loader functions).  So, let's see what we need:
+
+`MmuUnmapPage()` -- this function will unmap a page from memory given its virtual address (need not be page aligned).  It will return the frame number of the page that is being unmapped (since we might want to free it, or in the case of the heap remap that to a different page).
+`MmuMapToFrame()` -- this function wlil map a frame to a page, creating the Page Table if needed.  It will assume that the frame number is a good one (will not check for allocation) and will not accept frame number 0 (this is where my GDT, IDT, and TSS are stored).
+
+This should give me what I need to start coding again.  The problem I am also going to have is the shared `mmu.h` file.  I will need to relocate that to the loader if I can.
+
+---
+
+Without too much trouble, I was able to get my heap initialization to execute and I now have a working heap.  There is a little to clean up with this, so I am going to take a moment to review my code (I know I need to set a spinlock for the heap structures).  But in the meantime, the heap is created:
+
+```
+Heap Created
+  Heap Start Location: 0xd0000000
+  Current Heap Size..: 0x00010000
+  Heap End Location..: 0xd0010000
+```
+
+I have not tested any real allocations with the heap yet, but since the system runs, I think I will commit this code.  The next step will involve completing the PMM initialization by sending initialization messages from `kInit()` to the PMM to fully enable the PMM.
+
+---

@@ -1,11 +1,11 @@
 //===================================================================================================================
 // kernel/src/HeapFree.cc -- Free a block back into the heap
-// 
+//
 // Free a block back into the heap
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-07-26                          Initial version
 //  2012-09-16                          Leveraged from Century
@@ -19,7 +19,11 @@
 
 #include "types.h"
 #include "cpu.h"
+#include "spinlock.h"
 #include "heap.h"
+
+
+extern Spinlock_t heapLock;
 
 
 //
@@ -27,40 +31,43 @@
 //    ---------------------------------------
 void HeapFree(void *mem)
 {
-	OrderedList *entry = 0;
-	KHeapHeader *hdr;
-	KHeapFooter *ftr;
+	OrderedList_t *entry = 0;
+	KHeapHeader_t *hdr;
+	KHeapFooter_t *ftr;
 	regval_t flags;
-	
-	if (!mem) return;
-	
-	flags = DisableInterrupts();
-	
-	hdr = (KHeapHeader *)((char *)mem - sizeof(KHeapHeader));
-	ftr = (KHeapFooter *)((char *)hdr + hdr->size - sizeof(KHeapFooter));
-	HeapValidateHdr(hdr, "Heap structures have been overrun by data!!");
-	
-	HeapCheckHealth();
 
-	if (hdr->_magicUnion.isHole) goto exit;
-	if (hdr->_magicUnion.magicHole != HEAP_MAGIC || ftr->_magicUnion.magicHole != HEAP_MAGIC) goto exit;
-	if (ftr->hdr != hdr) goto exit;
-	
-	HeapCheckHealth();
-	entry = HeapMergeRight(hdr);
-	HeapCheckHealth();
-	
-	entry = HeapMergeLeft(hdr);
-	HeapCheckHealth();
-	if (entry) hdr = entry->block;		// reset header if changed
-	
-	if (!entry) entry = hdr->entry;		// if nothing changes, get this entry
-	
-	hdr->_magicUnion.isHole = ftr->_magicUnion.isHole = 1;
-	if (entry) HeapAddToList(entry);	// now add to the ordered list
-	else (void)HeapNewListEntry(hdr, 1);
-	
-exit:
-	HeapCheckHealth();
-	RestoreInterrupts(flags);
+	if (!mem) return;
+
+	SPIN_BLOCK(heapLock) {
+		flags = DisableInterrupts();
+
+		hdr = (KHeapHeader_t *)((byte_t *)mem - sizeof(KHeapHeader_t));
+		ftr = (KHeapFooter_t *)((byte_t *)hdr + hdr->size - sizeof(KHeapFooter_t));
+		HeapValidateHdr(hdr, "Heap structures have been overrun by data!!");
+
+		HeapCheckHealth();
+
+		if (hdr->_magicUnion.isHole) goto exit;
+		if (hdr->_magicUnion.magicHole != HEAP_MAGIC || ftr->_magicUnion.magicHole != HEAP_MAGIC) goto exit;
+		if (ftr->hdr != hdr) goto exit;
+
+		HeapCheckHealth();
+		entry = HeapMergeRight(hdr);
+		HeapCheckHealth();
+
+		entry = HeapMergeLeft(hdr);
+		HeapCheckHealth();
+		if (entry) hdr = entry->block;		// reset header if changed
+
+		if (!entry) entry = hdr->entry;		// if nothing changes, get this entry
+
+		hdr->_magicUnion.isHole = ftr->_magicUnion.isHole = 1;
+		if (entry) HeapAddToList(entry);	// now add to the ordered list
+		else (void)HeapNewListEntry(hdr, 1);
+
+	exit:
+		HeapCheckHealth();
+		RestoreInterrupts(flags);
+		SPIN_RLS(heapLock);
+	}
 }

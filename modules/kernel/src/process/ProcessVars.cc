@@ -44,13 +44,43 @@ NEW_LIST(procIdlePtyList);
 
 
 //
+// -- This is the stack for the idle process
+//    --------------------------------------
+uint32_t idleStack[512];
+
+
+//
+// -- This is the process structure for the idle process
+//    --------------------------------------------------
+Process_t idleProcess = {
+    0,                      // esp
+    0,                      // ss
+    0,                      // cr3
+    PID_IDLE,               // pid
+    (uint32_t)idleStack,    // stack location
+    512 * sizeof(uint32_t), // stack length
+    "Idle",                 // process name
+    0,                      // total quantum
+    PROC_RUN,               // process status
+    PTY_IDLE,               // the priority
+    0,                      // quantum left
+    false,                  // not held
+    {0},                    // the spinlock for this process
+    {0},                    // the status queue
+    {0},                    // the lock list
+    {0},                    // pending messages
+    NULL,                   // the previous payload
+};
+
+
+//
 // -- This is the process structure for the butler process
 //    ----------------------------------------------------
 Process_t butler = {
     0,                      // esp
     0,                      // ss
     0,                      // cr3
-    0,                      // pid
+    PID_BUTLER,             // pid
     0x200000 - 4096,        // stack location
     4096,                   // stack length
     "Butler",               // process name

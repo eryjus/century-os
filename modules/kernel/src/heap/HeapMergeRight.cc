@@ -1,11 +1,11 @@
 //===================================================================================================================
 // kernel/src/HeapMergeRight.cc -- Merge the freeing block with the block to the right if free as well
-// 
+//
 // Merge the freeing block with the block to the right if free as well
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-07-26                          Initial version
 //  2012-09-16                          Leveraged from Century
@@ -24,24 +24,24 @@
 //
 // -- Merge a new hole with the existing hols on the right side of this one in memory
 //    -------------------------------------------------------------------------------
-OrderedList *HeapMergeRight(KHeapHeader *hdr)
+OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr)
 {
-	KHeapFooter *rightFtr;
-	KHeapHeader *rightHdr;
-	
+	KHeapFooter_t *rightFtr;
+	KHeapHeader_t *rightHdr;
+
 	if (!hdr) HeapError("Bad Header passed into HeapMergeRight()", "");
 
-	rightHdr = (KHeapHeader *)((char *)hdr + hdr->size);
-	rightFtr = (KHeapFooter *)((char*)rightHdr + rightHdr->size - sizeof(KHeapFooter));
-	
-	if ((char *)rightFtr + sizeof(KHeapFooter) > kHeap->endAddr) return 0;
+	rightHdr = (KHeapHeader_t *)((byte_t *)hdr + hdr->size);
+	rightFtr = (KHeapFooter_t *)((byte_t *)rightHdr + rightHdr->size - sizeof(KHeapFooter_t));
+
+	if ((byte_t *)rightFtr + sizeof(KHeapFooter_t) > kHeap->endAddr) return 0;
 	HeapValidateHdr(rightHdr, "rightHeader in HeapMergeRight()");
 	if (!rightHdr->_magicUnion.isHole) return 0;		// make sure the left block is a hole
-	
+
 	HeapReleaseEntry(rightHdr->entry);
 	hdr->size += rightHdr->size;
 	rightFtr->hdr = hdr;
 	hdr->_magicUnion.isHole = rightFtr->_magicUnion.isHole = 1;
-	
+
 	return HeapNewListEntry(hdr, 0);
 }

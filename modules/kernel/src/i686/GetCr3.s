@@ -5,5 +5,5 @@ global GetCr3
 
 
 GetCr3:
-    mov     cr3,eax
+    mov     eax,cr3
     ret

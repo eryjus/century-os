@@ -36,6 +36,7 @@
 #include "process.h"
 #include "timer.h"
 #include "tss.h"
+#include "ipc.h"
 
 
 HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
@@ -80,22 +81,14 @@ void kInit(void)
 		}
 	}
 	TimerInit(250);
+	EnableInterrupts();
 	ProcessEnabled = true;
-//	HeapInit();
+	HeapInit();
 
-//#ifndef USE_APIC
-//	kprintf("Initializing PIT timer\n");
-//	InitTimer(TIMER_FREQ);
-//#else
-//	kprintf("Initializing APIC timer\n");
-//	InitAPIC(TIMER_FREQ);
-//#endif
 
 //	PciScanBus();
 
-	//	InitProcess();
 //	InitTTY();
-//	TTY15Init();
 
 	//
 	// -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
@@ -139,7 +132,6 @@ void kInit(void)
 //	SetProcPriority(currentProcess, PTY_IDLE);
 //	BREAKPOINT;
 
-	EnableInterrupts();
 
 	kprintf("Reached the end of initialization\n");
 
@@ -147,6 +139,17 @@ void kInit(void)
 	// -- Phase 5: Assume the butler process role
 	//	  ---------------------------------------
 
+	while (1) {
+		__asm("hlt");
+	}
+}
+
+
+//
+// -- This is ths Idle process
+//    ------------------------
+void idleMain(void)
+{
 	while (1) {
 		__asm("hlt");
 	}

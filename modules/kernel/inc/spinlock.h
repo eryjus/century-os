@@ -56,7 +56,7 @@ extern "C" void SpinlockClear(Spinlock_t *lock);
 // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
 //    ---------------------------------------------------------------------------------------------
 static inline void SpinlockLock(Spinlock_t *lock) {
-    kprintf("Attempting lock by %x at address %p\n", lock->lockHolder, lock);
+    kprintf("Attempting lock by %x at address %p\n", currentPID, lock);
     while (SpinlockCmpXchg(lock, 0, 1) != 0) { }
     lock->lockHolder = currentPID;
 }

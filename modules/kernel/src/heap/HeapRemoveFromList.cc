@@ -1,8 +1,8 @@
 //===================================================================================================================
 // kernel/src/HeapRemoveFromList.cc -- Remove an ordered list entry from the list
-// 
+//
 // Remove an ordered list entry from the list.
-// 
+//
 // On calling, the contents of entry have the following characteristics:
 // +-----------------------------------------------------------------+
 // | Entry                                                           |
@@ -14,7 +14,7 @@
 // +-----------------------------------------------------------------+
 // |  block->entry -- is equal to the parm entry                     |
 // +-----------------------------------------------------------------+
-// 
+//
 // On exit, the following characteristics:
 // +-----------------------------------------------------------------+
 // | Entry                                                           |
@@ -33,16 +33,16 @@
 // |  hKeap->heap16K    -- may be NULL on return if last entry is    |
 // |                       removed or nothing is >= 16384 bytes      |
 // +-----------------------------------------------------------------+
-// 
+//
 // if on entry, entry->next != null, then entry->next->prev is set to
 // entry->prev.
-// 
+//
 // if on entry, entry->prev != null, then entry->prev->next is set to
 // entry->next.
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-07-12                          Initial version
 //  2012-09-19                          Leveraged from Century
@@ -58,33 +58,33 @@
 //
 // -- Remove an entry from the Ordered List
 //    -------------------------------------
-void HeapRemoveFromList(OrderedList *entry)
+void HeapRemoveFromList(OrderedList_t *entry)
 {
 	if (!entry) HeapError("NULL entry in HeapRemoveFromList()", "");
 	HeapValidateHdr(entry->block, "HeapRemoveFromList()");
-	
-	if (kHeap->heapMemory == entry) { 
+
+	if (kHeap->heapMemory == entry) {
 		kHeap->heapMemory = kHeap->heapMemory->next;
 	}
-	
-	if (kHeap->heap512 == entry) { 
+
+	if (kHeap->heap512 == entry) {
 		kHeap->heap512 = kHeap->heap512->next;
 	}
-	
-	if (kHeap->heap1K == entry) { 
+
+	if (kHeap->heap1K == entry) {
 		kHeap->heap1K = kHeap->heap1K->next;
 	}
-	
-	if (kHeap->heap4K == entry) { 
+
+	if (kHeap->heap4K == entry) {
 		kHeap->heap4K = kHeap->heap4K->next;
 	}
-	
-	if (kHeap->heap16K == entry) { 
+
+	if (kHeap->heap16K == entry) {
 		kHeap->heap16K = kHeap->heap16K->next;
 	}
 
 	if (entry->next) entry->next->prev = entry->prev;
 	if (entry->prev) entry->prev->next = entry->next;
-	
+
 	entry->next = entry->prev = 0;
 }

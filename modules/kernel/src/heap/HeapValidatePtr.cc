@@ -1,11 +1,11 @@
 //===================================================================================================================
 // kernel/src/ValidateHeapPtr.cc -- Validate the heap pointer.
-// 
+//
 // Validate the heap pointer.
 //
 // ------------------------------------------------------------------------------------------------------------------
-//                                                                                                                 
-//     Date     Tracker  Version  Pgmr  Description                                                                         
+//
+//     Date     Tracker  Version  Pgmr  Description
 //  ----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2012-07-02                          Initial version
 //  2012-09-16                          Leveraged from Century
@@ -28,7 +28,7 @@ void HeapValidatePtr(const char *from)
 	if (!kHeap->heapMemory) {
 		HeapError(from, "Start of heapMemory is empty");
 	}
-	
+
 	if (!kHeap->heapMemory) return;
 
 	HeapValidateHdr(kHeap->heapMemory->block, from);
