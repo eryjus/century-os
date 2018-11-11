@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// timer.h -- The structures and function prototypes for the PIT timer
+//  timer.h -- The structures and function prototypes for the PIT timer
 //
-// Note that the use of the PIT is dependent on the use ouf the PIC (Programmable Interrupt Controller)
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Note that the use of the PIT is dependent on the use ouf the PIC (Programmable Interrupt Controller)
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

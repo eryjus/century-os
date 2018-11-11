@@ -1,16 +1,20 @@
 //===================================================================================================================
 //
-//  loader/src/modules/ModuleInit.cc -- Initialize all the loaded modules provided by Multiboot
+//  ModuleInit.cc -- Initialize all the loaded modules provided by Multiboot
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 //  This will read all the ELF header information and build the proper locations in memory.
 //
 //  Paging is not yet turned on, so we can easily initialize any newly allocated frames.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-27  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-Jun-27  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -24,6 +28,9 @@
 #include "modules.h"
 
 
+//
+// -- This holds the temporary location of the cr3 register while we are building
+//    ---------------------------------------------------------------------------
 extern ptrsize_t cr3;
 
 

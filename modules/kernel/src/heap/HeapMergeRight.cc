@@ -1,18 +1,23 @@
 //===================================================================================================================
-// kernel/src/HeapMergeRight.cc -- Merge the freeing block with the block to the right if free as well
 //
-// Merge the freeing block with the block to the right if free as well
+//  HeapMergeRight.cc -- Merge the freeing block with the block to the right if free as well
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Merge the freeing block with the block to the right if free as well
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-26                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2012-09-23    #90                   Fixed issue with calc'ing the right footer
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2013-09-13    #74                   Rewrite Debug.h to use assertions and write to TTY_LOG
-//  2018-06-01  Initial   0.1.0   ADCL  Copy this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-26                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2012-Sep-23    #90                   Fixed issue with calc'ing the right footer
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2013-Sep-13    #74                   Rewrite Debug.h to use assertions and write to TTY_LOG
+//  2018-Sep-01  Initial   0.1.0   ADCL  Copy this file from century32 to century-os
 //
 //===================================================================================================================
 

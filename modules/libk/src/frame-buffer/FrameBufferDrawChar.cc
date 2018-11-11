@@ -1,25 +1,25 @@
 //===================================================================================================================
 //
-//  libk/src/frame-buffer/FrameBufferDrawChar.cc -- Draw a character on to the screen
+//  FrameBufferDrawChar.cc -- Draw a character on to the screen
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// *** PROGRAMMING NOTE ***
+//  *** PROGRAMMING NOTE ***
 //
-// This function has some important shortcomings, which are detailed here:
-// * Line wrapping is not implemented
-// * Screen scrolling is not implemented
+//  This function has some important shortcomings, which are detailed here:
+//  * Line wrapping is not implemented
+//  * Screen scrolling is not implemented
 //
-// Therefore, only one page of data can be printed currently
+//  Therefore, only one page of data can be printed currently
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-05-03  Initial   0.0.0   ADCL  Initial version
-//  2018-06-13  Initial   0.1.0   ADCL  Copied this file from century to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-May-03  Initial   0.0.0   ADCL  Initial version
+//  2018-Jun-13  Initial   0.1.0   ADCL  Copied this file from century to century-os
 //
 //===================================================================================================================
 

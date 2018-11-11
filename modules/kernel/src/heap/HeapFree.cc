@@ -1,18 +1,23 @@
 //===================================================================================================================
-// kernel/src/HeapFree.cc -- Free a block back into the heap
 //
-// Free a block back into the heap
+//  HeapFree.cc -- Free a block back into the heap
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Free a block back into the heap
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-26                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2013-09-01    #80                   Re-implement Mutexes (that work now) (2018-05-31: removed)
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2013-09-13    #74                   Rewrite Debug.h to use assertions and write to TTY_LOG
-//  2018-05-31  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-26                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2013-Sep-01    #80                   Re-implement Mutexes (that work now) (2018-05-31: removed)
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2013-Sep-13    #74                   Rewrite Debug.h to use assertions and write to TTY_LOG
+//  2018-May-31  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 
@@ -23,6 +28,9 @@
 #include "heap.h"
 
 
+//
+// -- This is the spinlock used to control single access to the heap
+//    --------------------------------------------------------------
 extern Spinlock_t heapLock;
 
 

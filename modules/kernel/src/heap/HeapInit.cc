@@ -1,5 +1,10 @@
 //===================================================================================================================
+//
 //  HeapInit.cc -- Create and initialize the internal heap structures
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 //  Create and initialize the internal Century heap structures.
 //

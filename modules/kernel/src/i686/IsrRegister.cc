@@ -1,15 +1,20 @@
 //===================================================================================================================
-// kernel/src/IsrRegister.cc -- Register an ISR Handler to the table
 //
-// Also checks for an already registered handler and will not replace it if one already exists.
+//  IsrRegister.cc -- Register an ISR Handler to the table
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Also checks for an already registered handler and will not replace it if one already exists.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-21                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2018-07-06  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-21                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2018-Jul-06  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 

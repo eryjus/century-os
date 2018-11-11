@@ -1,6 +1,10 @@
 //===================================================================================================================
 //
-// kernel/src/process/ProcessVars.cc -- Global variables for process management
+// ProcessVars.cc -- Global variables for process management
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

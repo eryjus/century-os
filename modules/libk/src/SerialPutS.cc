@@ -1,16 +1,16 @@
 //===================================================================================================================
 //
-//  libk/src/x86-common/SerialPutS.cc -- Output a string to the serial port
+//  SerialPutS.cc -- Output a string to the serial port
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-07  Initial   0.0.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-Jun-07  Initial   0.0.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -18,7 +18,6 @@
 #include "cpu.h"
 #include "serial.h"
 
-extern uint16_t serialPort;
 
 //
 // -- Send a character string to a serial port

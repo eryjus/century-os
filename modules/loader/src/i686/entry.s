@@ -1,20 +1,20 @@
 ;;===================================================================================================================
 ;;
-;; loader/src/i686/entry.s -- This is the entry point for the x86 32-bit processors
+;;  entry.s -- This is the entry point for the x86 32-bit processors
 ;;
 ;;        Copyright (c)  2017-2018 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;
-;; Both multiboot 1 and 2 standards are supported.  This means that this loader can be booted by either GRUB
-;; and GRUB2.  We will let GRUB establish the video resolution.
+;;  Both multiboot 1 and 2 standards are supported.  This means that this loader can be booted by either GRUB
+;;  and GRUB2.  We will let GRUB establish the video resolution.
 ;;
-;; -----------------------------------------------------------------------------------------------------------------
+;; ------------------------------------------------------------------------------------------------------------------
 ;;
-;;    Date     Tracker  Version  Pgmr  Description
-;; ----------  -------  -------  ----  ---------------------------------------------------------------------------
-;; 2017-04-09  Initial   0.0.0   ADCL  Initial version
-;; 2018-06-02  Initial   0.1.0   ADCL  Copied this file from century to century-os
+;;     Date       Tracker  Version  Pgmr  Description
+;;  ------------  -------  -------  ----  --------------------------------------------------------------------------
+;;  2017-Apr-09  Initial   0.0.0   ADCL  Initial version
+;;  2018-Jun-02  Initial   0.1.0   ADCL  Copied this file from century to century-os
 ;;
 ;;===================================================================================================================
 
@@ -22,9 +22,9 @@
 ;;
 ;; -- Expose some global addresses
 ;;    ----------------------------
-global          _start
-global          systemFont
-global          Halt
+    global          _start
+    global          systemFont
+    global          Halt
 
 
 ;;

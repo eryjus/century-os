@@ -1,9 +1,9 @@
 ;;===================================================================================================================
 ;;
-;; ProcessSwitch.s -- Execute a task switch at the lowest switch
+;;  ProcessSwitch.s -- Execute a task switch at the lowest switch
 ;;
-;; This function will perform a voluntary task switch, as opposed to a preemptive switch.  Therefore, there will
-;; never need to have an EOI sent to the PIC/APIC.
+;;  This function will perform a voluntary task switch, as opposed to a preemptive switch.  Therefore, there will
+;;  never need to have an EOI sent to the PIC/APIC.
 ;;
 ;;  The following represent the stack structure based on the esp/frame set up at entry:
 ;;  +-----------+-----------+------------------------------------+
@@ -44,7 +44,7 @@
 ;;  | ebp - 52  | esp - 56  |  GS                                |
 ;;  +-----------+-----------+------------------------------------+
 ;;
-;; -----------------------------------------------------------------------------------------------------------------
+;; ------------------------------------------------------------------------------------------------------------------
 ;;
 ;;     Date      Tracker  Version  Pgmr  Description
 ;;  -----------  -------  -------  ----  ---------------------------------------------------------------------------
@@ -57,7 +57,7 @@
 ;;
 ;; -- Now, expose our function to everyone
 ;;    ------------------------------------
-global  ProcessSwitch
+	global  ProcessSwitch
 
 
 ;;
@@ -74,7 +74,9 @@ section ._text
 cpu		586
 
 
-
+;;
+;; -- Execute a process switch
+;;    ------------------------
 ProcessSwitch:
 		push	ebp					        ;; save the caller's frame pointer
 		mov		ebp,esp				        ;; setup up a frame
@@ -168,7 +170,6 @@ ChangeCPL:
 
 		pop		eax					        ;; pop cr3; discarded
 		pop		eax					        ;; pop cr0
-;		mov		cr0,eax				        ;; and restore it
 
 		pop		edi					        ;; restore edi
 		pop		esi					        ;; restore esi

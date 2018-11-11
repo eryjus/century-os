@@ -1,14 +1,18 @@
 //===================================================================================================================
 //
-//  loader/src/i686/MmuGetTableEntry.cc -- For a table, get the entry for the virtual address
+//  MmuGetTableEntry.cc -- For a table, get the entry for the virtual address
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 //  This function will allocate a new table if need be.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-06-27  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-Jun-27  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -18,6 +22,7 @@
 #include "serial.h"
 #include "cpu.h"
 #include "mmu.h"
+
 
 //
 // -- From the address, get the table entry shifting properly

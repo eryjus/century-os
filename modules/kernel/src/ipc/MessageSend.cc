@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// MessageSend.cc -- Send a message to a process by PID
+//  MessageSend.cc -- Send a message to a process by PID
 //
-// Send a message to a PID, copying the data and payload into kernel heap
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Send a message to a PID, copying the data and payload into kernel heap
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

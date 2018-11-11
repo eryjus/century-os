@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  inc/hw-disc.h -- Locally formatted copies of the multiboot information
+//  hw-disc.h -- Locally formatted copies of the multiboot information
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -8,11 +8,12 @@
 //
 // -----------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-06-03  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Jun-03  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
+
 
 #ifndef __HW_DISC_H__
 #define __HW_DISC_H__
@@ -22,6 +23,9 @@
 #include "cpu.h"
 
 
+//
+// -- Since this is all statically allocated, set some reasonable limits
+//    ------------------------------------------------------------------
 #define NUM_MMAP_ENTRIES        (25)
 #define MAX_MODULES             (10)
 #define MODULE_IDENT_LEN        (12)

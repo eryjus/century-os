@@ -1,15 +1,19 @@
 //===================================================================================================================
 //
-// ProcessNewPID.cc -- Get a new PID from the process table
+//  ProcessNewPID.cc -- Get a new PID from the process table
 //
-// The table can really be full.  So we will start with the last allocated PID number and check the next PID.
-// As long as we do not have an empty PID, we will continue and restart at the beginning if needed until we find
-// an open PID to use.  If we do not find anything we will issue an error message and end the system.  This failure
-// message will need to be cleaned up (Redmine #364).
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// Additionally, we may be able to still allocate a new PID if the reaper queue has something to process.  If this
-// is the case, we will want to signal the Butler process to hurry up and get the job done.  This is also added
-// to Redmine (#365).
+//  The table can really be full.  So we will start with the last allocated PID number and check the next PID.
+//  As long as we do not have an empty PID, we will continue and restart at the beginning if needed until we find
+//  an open PID to use.  If we do not find anything we will issue an error message and end the system.  This failure
+//  message will need to be cleaned up (Redmine #364).
+//
+//  Additionally, we may be able to still allocate a new PID if the reaper queue has something to process.  If this
+//  is the case, we will want to signal the Butler process to hurry up and get the job done.  This is also added
+//  to Redmine (#365).
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

@@ -1,17 +1,17 @@
 //===================================================================================================================
 //
-//  loader/src/frame-buffer/FrameBufferInit.cc -- Frame buffer initialization for the console
+//  FrameBufferInit.cc -- Frame buffer initialization for the console
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-05-03  Initial   0.0.0   ADCL  Initial version
-//  2018-06-13  Initial   0.1.0   ADCL  Copied this file from century (fb.c) to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-May-03  Initial   0.0.0   ADCL  Initial version
+//  2018-Jun-13  Initial   0.1.0   ADCL  Copied this file from century (fb.c) to century-os
 //
 //===================================================================================================================
 

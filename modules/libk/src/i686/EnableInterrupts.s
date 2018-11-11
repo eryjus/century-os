@@ -1,16 +1,20 @@
 ;;===================================================================================================================
 ;;
-;; libk/src/x86-common/EnableInterrupts.s -- Enable Interrupts
+;;  EnableInterrupts.s -- Enable Interrupts
 ;;
-;; Enable Interrupts
+;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Licensed under "THE BEER-WARE LICENSE"
+;;        See License.md for details.
 ;;
-;; -----------------------------------------------------------------------------------------------------------------
+;;  Enable Interrupts
 ;;
-;;    Date     Tracker  Version  Pgmr  Description
-;; ----------  -------  -------  ----  ----------------------------------------------------------------------------
-;; 2012-05-28  Initial           	   Initial version
-;; 2012-09-16  Initial                 Leveraged from Century
-;; 2018-05-25  Initial   0.1.0   ADCL  Copied this file from century23 to century-os
+;; ------------------------------------------------------------------------------------------------------------------
+;;
+;;    Date      Tracker  Version  Pgmr  Description
+;; -----------  -------  -------  ----  ----------------------------------------------------------------------------
+;; 2012-May-28  Initial           	   Initial version
+;; 2012-Sep-16  Initial                 Leveraged from Century
+;; 2018-May-25  Initial   0.1.0   ADCL  Copied this file from century23 to century-os
 ;;
 ;;===================================================================================================================
 
@@ -18,7 +22,7 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-global 	EnableInterrupts
+	global 	EnableInterrupts
 
 
 ;;

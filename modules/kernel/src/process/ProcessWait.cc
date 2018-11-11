@@ -1,11 +1,15 @@
 //===================================================================================================================
 //
-// ProcessWait.cc -- Put the process on the wait list and set the current status accordingly.
+//  ProcessWait.cc -- Put the process on the wait list and set the current status accordingly.
 //
-// This function will will never be called by a user process directly.  But with that said, it will also never be
-// called by any other process.  In other words, it will only be called indirectly by the currently running process.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// This makes the checking easier to accomplish.
+//  This function will will never be called by a user process directly.  But with that said, it will also never be
+//  called by any other process.  In other words, it will only be called indirectly by the currently running process.
+//
+//  This makes the checking easier to accomplish.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

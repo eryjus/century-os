@@ -1,15 +1,15 @@
 //===================================================================================================================
 //
-// errno.h -- Standard error codes used throughout CenturyOS.
+//  errno.h -- Standard error codes used throughout CenturyOS.
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// These are the standard error codes that can be returned.
+//  These are the standard error codes that can be returned.
 //
-// Full disclosure: this information was lifted from several GCC files.  To cover my bases, the license statement
-// is included here:
+//  Full disclosure: this information was lifted from several GCC files.  To cover my bases, the license statement
+//  is included here:
 //
 //      /* Copyright (C) 1991-2018 Free Software Foundation, Inc.
 //         This file is part of the GNU C Library.

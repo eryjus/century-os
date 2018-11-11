@@ -1,5 +1,9 @@
 //===================================================================================================================
-// syscall.h -- This is the kernel internal definitions for handling system calls
+//  syscall.h -- This is the kernel internal definitions for handling system calls
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

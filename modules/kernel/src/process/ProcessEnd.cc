@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// ProcessEnd.cc -- Self-terminate a process by ending normally
+//  ProcessEnd.cc -- Self-terminate a process by ending normally
 //
-// This will always be the running process.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  This will always be the running process.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

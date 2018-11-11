@@ -1,7 +1,12 @@
 //===================================================================================================================
-// SyscallHandler.cc -- Handler for system calls
 //
-// Handle system calls
+//  SyscallHandler.cc -- Handler for system calls
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Handle system calls
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

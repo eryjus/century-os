@@ -1,11 +1,15 @@
 //===================================================================================================================
 //
-// ProcessReady.cc -- Place a process into the proper queue based on its priority.
+//  ProcessReady.cc -- Place a process into the proper queue based on its priority.
 //
-// This process must be on the ready queue if it is on a queue at all.  Therefore it is the responsibility of any
-// calling function to remove it from its queue if it is on it.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// Unless the process is ending, the process status will be updated to PROC_RUN.
+//  This process must be on the ready queue if it is on a queue at all.  Therefore it is the responsibility of any
+//  calling function to remove it from its queue if it is on it.
+//
+//  Unless the process is ending, the process status will be updated to PROC_RUN.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

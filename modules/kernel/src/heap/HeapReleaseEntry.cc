@@ -1,43 +1,48 @@
 //===================================================================================================================
-// kernel/src/HeapReleaseEntry.cc -- Release an OrderedList Entry and put it back in the pool
 //
-// Release an OrderedList Entry and put it back in the pool of available entries to use.
+//  HeapReleaseEntry.cc -- Release an OrderedList Entry and put it back in the pool
 //
-// On calling, the contents of entry have the following characteristics:
-// +-----------------------------------------------------------------+
-// | Entry                                                           |
-// +-----------------------------------------------------------------+
-// |  block -- points to proper header                               |
-// |  size  -- the size of the block, with header/footer             |
-// |  prev  -- points to the previous (smaller) block (may be null)  |
-// |  next  -- points to the next (larger) block (may be null)       |
-// +-----------------------------------------------------------------+
-// |  block->entry -- is equal to the parm entry                     |
-// +-----------------------------------------------------------------+
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// On exit, the following characteristics:
-// +-----------------------------------------------------------------+
-// | Entry                                                           |
-// +-----------------------------------------------------------------+
-// |  block -- zero                                                  |
-// |  size  -- zero                                                  |
-// |  prev  -- zero [through RemoveFromList()]                       |
-// |  next  -- zero [through RemoveFromList()]                       |
-// +-----------------------------------------------------------------+
-// |  block->entry -- zero                                           |
-// +-----------------------------------------------------------------+
+//  Release an OrderedList Entry and put it back in the pool of available entries to use.
 //
-// if on entry, entry->next != null, then entry->next->prev is set to entry->prev.
+//  On calling, the contents of entry have the following characteristics:
+//  +-----------------------------------------------------------------+
+//  | Entry                                                           |
+//  +-----------------------------------------------------------------+
+//  |  block -- points to proper header                               |
+//  |  size  -- the size of the block, with header/footer             |
+//  |  prev  -- points to the previous (smaller) block (may be null)  |
+//  |  next  -- points to the next (larger) block (may be null)       |
+//  +-----------------------------------------------------------------+
+//  |  block->entry -- is equal to the parm entry                     |
+//  +-----------------------------------------------------------------+
 //
-// if on entry, entry->prev != null, then entry->prev->next is set to entry->next.
+//  On exit, the following characteristics:
+//  +-----------------------------------------------------------------+
+//  | Entry                                                           |
+//  +-----------------------------------------------------------------+
+//  |  block -- zero                                                  |
+//  |  size  -- zero                                                  |
+//  |  prev  -- zero [through RemoveFromList()]                       |
+//  |  next  -- zero [through RemoveFromList()]                       |
+//  +-----------------------------------------------------------------+
+//  |  block->entry -- zero                                           |
+//  +-----------------------------------------------------------------+
+//
+//  if on entry, entry->next != null, then entry->next->prev is set to entry->prev.
+//
+//  if on entry, entry->prev != null, then entry->prev->next is set to entry->next.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-03                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2018-06-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-03                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 

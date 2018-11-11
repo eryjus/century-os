@@ -1,6 +1,10 @@
 ;;===================================================================================================================
 ;;
-;; SendMessage.s -- Execute a System Call to send a message
+;;  SendMessage.s -- Execute a System Call to send a message
+;;
+;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Licensed under "THE BEER-WARE LICENSE"
+;;        See License.md for details.
 ;;
 ;; -----------------------------------------------------------------------------------------------------------------
 ;;
@@ -14,7 +18,7 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-global      SendMessage
+    global      SendMessage
 
 
 ;;

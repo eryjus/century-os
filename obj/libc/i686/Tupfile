@@ -13,17 +13,19 @@
 #####################################################################################################################
 
 
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = i686
+MOD = libc
+CC = $(ARCH)-elf-gcc
+
 include_rules
 
+SRC = $(WS)/modules/$(MOD)/src
 
-#
-# -- The following 2 macros are used to build the object files
-#    ---------------------------------------------------------
-!nasm = |> nasm -felf -g -w+all -i$(WS)/modules/libc/inc/ -i$(WS)/modules/libc/inc/i686/                        \
-        -i$(WS)/modules/libc/inc/x86-common/ -i$(WS)/inc/ -i$(WS)/inc/i686/ -i$(WS)/inc/x86-common/             \
-        -o %o %f |> %B.o
 
-#
-# -- These are the implicit build rules for the i686 loader object files
-#    -------------------------------------------------------------------
-: foreach $(WS)/modules/libc/src/*.s |> !nasm |>
+##
+## -- These are the implicit build rules for the i686 loader object files
+##    -------------------------------------------------------------------
+: foreach $(SRC)/*.s |> !nasm |>

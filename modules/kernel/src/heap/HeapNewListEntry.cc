@@ -1,16 +1,21 @@
 //===================================================================================================================
-// kernel/src/HeapNewListEntry.cc -- Create an OrderedList entry for the KHeapHeader pointer provided
 //
-// Create an OrderedList entry for the KHeapHeader pointer provided
+//  HeapNewListEntry.cc -- Create an OrderedList entry for the KHeapHeader pointer provided
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Create an OrderedList entry for the KHeapHeader pointer provided
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-03                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2018-06-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-03                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 

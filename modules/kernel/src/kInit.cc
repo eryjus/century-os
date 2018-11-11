@@ -1,27 +1,32 @@
 //===================================================================================================================
-// kernel/src/kInit.cc -- Initialize the kernel structures
 //
-// Initialize the kernel structures, preparing to formally start the OS.
+//  kInit.cc -- Initialize the kernel structures
 //
-// Initialization is going to be broken into several phases.  At a high level, the phases are:
-// 1) Required initialization to put the processor into a known and common state
-// 2) OS Structure Initialization
-// 3) Service Interrupts and hardware discovery
-// 4) Full interrupts enabled and user space initialization
-// 5) Become the butler process
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// The above is a starting point and will be expanded as we add support
+//  Initialize the kernel structures, preparing to formally start the OS.
 //
-// ------------------------------------------------------------------------------------------------------------------
+//  Initialization is going to be broken into several phases.  At a high level, the phases are:
+//  1) Required initialization to put the processor into a known and common state
+//  2) OS Structure Initialization
+//  3) Service Interrupts and hardware discovery
+//  4) Full interrupts enabled and user space initialization
+//  5) Become the butler process
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-09-15  Initial                 Initial version -- leveraged from Century: kmain
-//  2013-09-01    #82                   Add a mutex for screen operations (2018-05-25: temporarily removed)
-//  2013-09-03    #73                   Encapsulate Process Structure
-//  2013-09-13   #101                   Resolve issues splint exposes
-//  2018-05-25             0.1.0  ADCL  Copy this file from century32 to century-os
-//  2018-07-01  Initial    0.1.0  ADCL  Refactor this function to be strictly the kernel (not the loader)
+//  The above is a starting point and will be expanded as we add support
+//
+//  -----------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Sep-15  Initial                 Initial version -- leveraged from Century: kmain
+//  2013-Sep-01    #82                   Add a mutex for screen operations (2018-05-25: temporarily removed)
+//  2013-Sep-03    #73                   Encapsulate Process Structure
+//  2013-Sep-13   #101                   Resolve issues splint exposes
+//  2018-May-25             0.1.0  ADCL  Copy this file from century32 to century-os
+//  2018-Jul-01  Initial    0.1.0  ADCL  Refactor this function to be strictly the kernel (not the loader)
 //
 //===================================================================================================================
 
@@ -37,15 +42,25 @@
 #include "timer.h"
 #include "tss.h"
 #include "ipc.h"
+#include "pmm.h"
 
 
+//
+// -- This is the common hardware discovery structure passed in from the loader
+//    -------------------------------------------------------------------------
 HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
 
 
+//
+// -- A couple of local prototypes
+//    ----------------------------
 extern "C" void kInit(void);
 void PmmStart(Module_t *);
 
 
+//
+// -- For debugging to the serial port, this is the hardware port number
+//    ------------------------------------------------------------------
 uint16_t serialPort = 0x3f8;
 
 
@@ -85,10 +100,15 @@ void kInit(void)
 	ProcessEnabled = true;
 	HeapInit();
 
+	// -- let the Pmm know we are putting it in-charge
+	Message_t pmm;
+	kMemSetB(&pmm, 0, sizeof(Message_t));
 
-//	PciScanBus();
+	pmm.msg = PMM_INIT;
+	pmm.dataPayload = (void *)GetPmmBitmap();
+	pmm.payloadSize = GetPmmFrameCount() << 12;			// convert this to bytes
+	MessageSend(PID_PMM, &pmm);
 
-//	InitTTY();
 
 	//
 	// -- Phase 3: Service Interrupts only enabled, not ready for all interrupts

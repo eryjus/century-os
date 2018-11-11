@@ -1,6 +1,10 @@
 //===================================================================================================================
 //
-// MessageReceive.cc -- Receive a message, blocking if there is not one to received
+//  MessageReceive.cc -- Receive a message, blocking if there is not one to received
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

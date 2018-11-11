@@ -6,18 +6,18 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// This is a purpose-built function to load the PMM process into the structures and start it working.  This
-// function is required because the point in the kernel initialization where we launch this process.  I need
-// the PMM fully initialized before I can start using the Heap, which is used to create processes.
+//  This is a purpose-built function to load the PMM process into the structures and start it working.  This
+//  function is required because the point in the kernel initialization where we launch this process.  I need
+//  the PMM fully initialized before I can start using the Heap, which is used to create processes.
 //
-// To overcome this limitation, I am putting the stack in the PMM binary.  It will take up some additional space,
-// but the result is well worth it: I can load it very early in the kernel initialization.
+//  To overcome this limitation, I am putting the stack in the PMM binary.  It will take up some additional space,
+//  but the result is well worth it: I can load it very early in the kernel initialization.
 //
-// The coding challenge here is that this function needs to determine where the physical stack is so that it can
-// be mapped temporarily to populate it.
+//  The coding challenge here is that this function needs to determine where the physical stack is so that it can
+//  be mapped temporarily to populate it.
 //
-// Note: at the point we are executing this function, we are still a single process, so there is no need for
-// locking the spinlocks.
+//  Note: at the point we are executing this function, we are still a single process, so there is no need for
+//  locking the spinlocks.
 //
 // -----------------------------------------------------------------------------------------------------------------
 //

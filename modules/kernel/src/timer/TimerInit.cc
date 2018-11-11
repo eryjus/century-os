@@ -1,9 +1,13 @@
 //===================================================================================================================
 //
-// TimerInit.cc -- Initialize the Programmable Interrupt Timer (PIT)
+//  TimerInit.cc -- Initialize the Programmable Interrupt Timer (PIT)
 //
-// Note that this is only included for legacy reasons and Century-OS will prefer the Local APIC for the timer.
-// For the moment, it is also used for initialization.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Note that this is only included for legacy reasons and Century-OS will prefer the Local APIC for the timer.
+//  For the moment, it is also used for initialization.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

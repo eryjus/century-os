@@ -1,6 +1,6 @@
 /*******************************************************************************************************************/
 /*                                                                                                                 */
-/*  kernel/src/i686/loader.ld -- This is the linker script for locating the sections in the target binary          */
+/*  kernel.ld -- This is the linker script for locating the sections in the target binary                          */
 /*                                                                                                                 */
 /*        Copyright (c)  2017-2018 -- Adam Clark                                                                   */
 /*                                                                                                                 */

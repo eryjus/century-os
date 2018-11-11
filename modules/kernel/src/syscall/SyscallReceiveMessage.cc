@@ -1,7 +1,12 @@
 //===================================================================================================================
-// SyscallReceiveMessage.cc -- SYSCALL for POSIX `msgrcv()`
 //
-// SYSCALL to receive a message
+//  SyscallReceiveMessage.cc -- SYSCALL for POSIX `msgrcv()`
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  SYSCALL to receive a message
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

@@ -1,12 +1,16 @@
 //===================================================================================================================
 //
-// ProcessHold.cc -- Hold a process by putting it on the held queue
+//  ProcessHold.cc -- Hold a process by putting it on the held queue
 //
-// Perform a number of sanity checks and then remove the process from its current queue and then add it to the
-// procHeldList.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// Since this may be invoked as part of a user application, we need to assume that it will pass in invalid PIDs in
-// crazy states.
+//  Perform a number of sanity checks and then remove the process from its current queue and then add it to the
+//  procHeldList.
+//
+//  Since this may be invoked as part of a user application, we need to assume that it will pass in invalid PIDs in
+//  crazy states.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

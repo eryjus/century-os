@@ -1,14 +1,18 @@
 //===================================================================================================================
 //
-// kernel/inc/i686/types.h -- Type definitions specific to i686 architectures
+//  arch-types.h -- Type definitions specific to i686 architectures
 //
-// These types are architecture dependent.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// ------------------------------------------------------------------------------------------------------------------
+//  These types are architecture dependent.
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-25  Initial   0.1.0   ADCL  Initial version
+// -----------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-May-25  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -63,6 +67,18 @@ typedef struct isrRegs_t {
 	uint32_t cs;
 	uint32_t eflags;
 } isrRegs_t;
+
+
+//
+// -- The Interrupt Descriptor Table Entry
+//    ------------------------------------
+typedef struct IdtEntry {
+	uint16_t baseLow;
+	uint16_t sel;
+	uint8_t always0;
+	uint8_t flags;
+	uint16_t baseHigh;
+} __attribute__((packed)) IdtEntry;
 
 
 //

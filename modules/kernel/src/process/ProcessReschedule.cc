@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// ProcessReschedule.cc -- Reschedule to the next task
+//  ProcessReschedule.cc -- Reschedule to the next task
 //
-// This function will determine the next task to run and voluntarily switch to it.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  This function will determine the next task to run and voluntarily switch to it.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

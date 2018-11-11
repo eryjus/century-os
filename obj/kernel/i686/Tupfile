@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  obj/kernel/i686/Tupfile -- An alternative to the 'make' build system -- i686 kernel objects
+##  Tupfile -- An alternative to the 'make' build system -- i686 kernel objects
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
@@ -14,35 +14,30 @@
 #####################################################################################################################
 
 
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = i686
+MOD = kernel
+CC = $(ARCH)-elf-gcc
+
 include_rules
 
+SRC = $(WS)/modules/$(MOD)/src
 
-#
-# -- The following 2 macros are used to build the object files
-#    ---------------------------------------------------------
-!nasm = |> nasm -felf -g -w+all -i$(WS)/bin/i686/usr/include -i$(WS)/modules/kernel/inc/                        \
-        -i$(WS)/modules/kernel/inc/i686/ -i$(WS)/modules/kernel/inc/x86-common/ -i$(WS)/inc/ -i$(WS)/inc/i686/  \
-        -i$(WS)/inc/x86-common/ -o %o %f |> %B.o
 
-!i686-kernel-cc = |> i686-elf-gcc -g -fpic -ffreestanding -I $(WS)/bin/i686/usr/include                         \
-        -I $(WS)/modules/kernel/inc -I $(WS)/modules/libk/inc -I $(WS)/modules/kernel/inc/i686                  \
-        -I $(WS)/modules/kernel/inc/x86-common  -I $(WS)/inc -I $(WS)/inc/i686 -I $(WS)/inc/x86-common          \
-        -Wall -Werror -c -o %o %f |> %B.o
+##
+## -- These are the implicit build rules for the i686 kernel object files
+##    -------------------------------------------------------------------
+: foreach $(SRC)/$(ARCH)/*.s        | $(II) |> !nasm |>
 
-#
-# -- These are the implicit build rules for the i686 kernel object files
-#    -------------------------------------------------------------------
-: foreach $(WS)/modules/kernel/src/i686/*.s | $(II686) |> !nasm |>
-: foreach $(WS)/modules/kernel/src/x86-common/*.s | $(II686) |> !nasm |>
-
-: foreach $(WS)/modules/kernel/src/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/cpu/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/heap/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/i686/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/ipc/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/mmu/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/pmm/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/process/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/syscall/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/timer/*.cc | $(II686) |> !i686-kernel-cc |>
-: foreach $(WS)/modules/kernel/src/x86-common/*.cc | $(II686) |> !i686-kernel-cc |>
+: foreach $(SRC)/*.cc               | $(II) |> !cc |>
+: foreach $(SRC)/cpu/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/heap/*.cc          | $(II) |> !cc |>
+: foreach $(SRC)/$(ARCH)/*.cc       | $(II) |> !cc |>
+: foreach $(SRC)/ipc/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/mmu/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/pmm/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/process/*.cc       | $(II) |> !cc |>
+: foreach $(SRC)/syscall/*.cc       | $(II) |> !cc |>
+: foreach $(SRC)/timer/*.cc         | $(II) |> !cc |>

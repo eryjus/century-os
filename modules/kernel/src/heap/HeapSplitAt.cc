@@ -1,28 +1,33 @@
 //===================================================================================================================
-// kernel/src/HeapSplitAt.cc -- Split an entry to the provided adjustedSize
 //
-// Split an entry to the provided adjustToSize.  This includes adding a new entry for the newly created hole into
-// the heap list.
+//  HeapSplitAt.cc -- Split an entry to the provided adjustedSize
 //
-// +------------------------------------------------------------------+
-// |  The entry before splitting.  Split will occur at some location  |
-// |  within the entry.                                               |
-// +------------------------------------------------------------------+
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// +------------------+-----------------------------------------------+
-// |  The new header  |  A brand new entry inserted into the          |
-// |  and block of    |  ordered list for the remaining free memory.  |
-// |  memory.         |                                               |
-// +------------------+-----------------------------------------------+
+//  Split an entry to the provided adjustToSize.  This includes adding a new entry for the newly created hole into
+//  the heap list.
+//
+//  +------------------------------------------------------------------+
+//  |  The entry before splitting.  Split will occur at some location  |
+//  |  within the entry.                                               |
+//  +------------------------------------------------------------------+
+//
+//  +------------------+-----------------------------------------------+
+//  |  The new header  |  A brand new entry inserted into the          |
+//  |  and block of    |  ordered list for the remaining free memory.  |
+//  |  memory.         |                                               |
+//  +------------------+-----------------------------------------------+
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-04                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2018-06-01  Initial   0.1.0   ADCL  Copied this file from century32 tp century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-04                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 tp century-os
 //
 //===================================================================================================================
 

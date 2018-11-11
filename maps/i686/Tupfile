@@ -13,9 +13,18 @@
 #####################################################################################################################
 
 
-#
-# -- Create a map file by dumping the object
-#    ---------------------------------------
-: ../../bin/i686/boot/kernel.elf |> i686-elf-objdump -D %f > %o |> kernel-i686.map
-: ../../bin/i686/boot/loader.elf |> i686-elf-objdump -D %f > %o |> loader-i686.map
-: ../../bin/i686/boot/pmm.elf |> i686-elf-objdump -D %f > %o |> pmm-i686.map
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = i686
+DUMP = $(ARCH)-elf-objdump
+
+include_rules
+
+SRC = $(WS)/bin/$(ARCH)/boot
+
+
+##
+## -- Create a map file by dumping the object
+##    ---------------------------------------
+: foreach $(SRC)/*.elf |> !dump |>

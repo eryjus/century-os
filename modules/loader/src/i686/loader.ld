@@ -1,6 +1,6 @@
 /*******************************************************************************************************************/
 /*                                                                                                                 */
-/*  loader/src/i686/loader.ld -- This is the linker script for locating the sections in the target binary          */
+/*  loader.ld -- This is the linker script for locating the sections in the target binary                          */
 /*                                                                                                                 */
 /*        Copyright (c)  2017-2018 -- Adam Clark                                                                   */
 /*        Licensed under "THE BEER-WARE LICENSE"                                                                   */
@@ -8,16 +8,18 @@
 /*                                                                                                                 */
 /* --------------------------------------------------------------------------------------------------------------- */
 /*                                                                                                                 */
-/*     Date     Tracker  Version  Pgmr  Description                                                                */
-/*  ----------  -------  -------  ----  -------------------------------------------------------------------------  */
-/*  2017-04-14  Initial   0.0.0   ADCL  Initial version                                                            */
-/*  2018-06-02  Initial   0.1.0   ADCL  Copied from century to century-os                                          */
+/*     Date      Tracker  Version  Pgmr  Description                                                               */
+/*  -----------  -------  -------  ----  ------------------------------------------------------------------------  */
+/*  2017-Apr-14  Initial   0.0.0   ADCL  Initial version                                                           */
+/*  2018-Jun-02  Initial   0.1.0   ADCL  Copied from century to century-os                                         */
 /*                                                                                                                 */
 /*******************************************************************************************************************/
+
 
 OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
 OUTPUT_ARCH(i386)
 ENTRY(_start)
+
 
 SECTIONS {
     /*

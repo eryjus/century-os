@@ -1,14 +1,18 @@
 //===================================================================================================================
 //
-// loader/inc/serial.h -- Serial debugging functions
+//  serial.h -- Serial debugging functions
 //
-// These functions are used to send debugging information to the serial port.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  These functions are used to send debugging information to the serial port.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-06-27  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Jun-27  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 

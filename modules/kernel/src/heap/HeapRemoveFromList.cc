@@ -1,52 +1,57 @@
 //===================================================================================================================
-// kernel/src/HeapRemoveFromList.cc -- Remove an ordered list entry from the list
 //
-// Remove an ordered list entry from the list.
+//  HeapRemoveFromList.cc -- Remove an ordered list entry from the list
 //
-// On calling, the contents of entry have the following characteristics:
-// +-----------------------------------------------------------------+
-// | Entry                                                           |
-// +-----------------------------------------------------------------+
-// |  block -- points to proper header                               |
-// |  size  -- the size of the block, with header/footer             |
-// |  prev  -- points to the previous (smaller) block (may be null)  |
-// |  next  -- points to the next (larger) block (may be null)       |
-// +-----------------------------------------------------------------+
-// |  block->entry -- is equal to the parm entry                     |
-// +-----------------------------------------------------------------+
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// On exit, the following characteristics:
-// +-----------------------------------------------------------------+
-// | Entry                                                           |
-// +-----------------------------------------------------------------+
-// |  prev  -- zero                                                  |
-// |  next  -- zero                                                  |
-// +-----------------------------------------------------------------+
-// |  block->entry -- unchanged (an important fact to remember)      |
-// +-----------------------------------------------------------------+
-// |  hKeap->heapMemory -- may be NULL on return if last entry is    |
-// |                       removed                                   |
-// |  hKeap->heap512    -- may be NULL on return if last entry is    |
-// |                       removed or nothing is >= 512 bytes        |
-// |  hKeap->heap4K     -- may be NULL on return if last entry is    |
-// |                       removed or nothing is >= 4096 bytes       |
-// |  hKeap->heap16K    -- may be NULL on return if last entry is    |
-// |                       removed or nothing is >= 16384 bytes      |
-// +-----------------------------------------------------------------+
+//  Remove an ordered list entry from the list.
 //
-// if on entry, entry->next != null, then entry->next->prev is set to
-// entry->prev.
+//  On calling, the contents of entry have the following characteristics:
+//  +-----------------------------------------------------------------+
+//  | Entry                                                           |
+//  +-----------------------------------------------------------------+
+//  |  block -- points to proper header                               |
+//  |  size  -- the size of the block, with header/footer             |
+//  |  prev  -- points to the previous (smaller) block (may be null)  |
+//  |  next  -- points to the next (larger) block (may be null)       |
+//  +-----------------------------------------------------------------+
+//  |  block->entry -- is equal to the parm entry                     |
+//  +-----------------------------------------------------------------+
 //
-// if on entry, entry->prev != null, then entry->prev->next is set to
-// entry->next.
+//  On exit, the following characteristics:
+//  +-----------------------------------------------------------------+
+//  | Entry                                                           |
+//  +-----------------------------------------------------------------+
+//  |  prev  -- zero                                                  |
+//  |  next  -- zero                                                  |
+//  +-----------------------------------------------------------------+
+//  |  block->entry -- unchanged (an important fact to remember)      |
+//  +-----------------------------------------------------------------+
+//  |  hKeap->heapMemory -- may be NULL on return if last entry is    |
+//  |                       removed                                   |
+//  |  hKeap->heap512    -- may be NULL on return if last entry is    |
+//  |                       removed or nothing is >= 512 bytes        |
+//  |  hKeap->heap4K     -- may be NULL on return if last entry is    |
+//  |                       removed or nothing is >= 4096 bytes       |
+//  |  hKeap->heap16K    -- may be NULL on return if last entry is    |
+//  |                       removed or nothing is >= 16384 bytes      |
+//  +-----------------------------------------------------------------+
+//
+//  if on entry, entry->next != null, then entry->next->prev is set to
+//  entry->prev.
+//
+//  if on entry, entry->prev != null, then entry->prev->next is set to
+//  entry->next.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-12                          Initial version
-//  2012-09-19                          Leveraged from Century
-//  2018-06-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-12                          Initial version
+//  2012-Sep-19                          Leveraged from Century
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 

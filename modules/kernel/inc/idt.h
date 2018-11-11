@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// idt.cc -- These are functions related to interrupts
+//  idt.cc -- These are functions related to interrupts
 //
-// These are function prototypes for interrupts management.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  These are function prototypes for interrupts management.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
@@ -91,5 +95,6 @@ void IsrInt1f(isrRegs_t *regs);
 // -- The system call handler
 //    -----------------------
 void SyscallHandler(isrRegs_t *regs);
+
 
 #endif

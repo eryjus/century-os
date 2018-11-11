@@ -1,9 +1,13 @@
 //===================================================================================================================
 //
-// tss.h -- This is the structure for managing the TSS along with its companion structures
+//  tss.h -- This is the structure for managing the TSS along with its companion structures
 //
-// This file contains the structures for managing the TSS primarily.  However, since the GDT and the IDT also
-// both exist in the same frame, this file will cover those as well.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  This file contains the structures for managing the TSS primarily.  However, since the GDT and the IDT also
+//  both exist in the same frame, this file will cover those as well.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

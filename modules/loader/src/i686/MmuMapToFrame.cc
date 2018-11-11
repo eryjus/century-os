@@ -1,6 +1,10 @@
 //===================================================================================================================
 //
-//  loader/src/i686/MmuMapToFrame.cc -- Given the Paging tables, map the address to the frame provided
+//  MmuMapToFrame.cc -- Given the Paging tables, map the address to the frame provided
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 //  This function is a bit complicated.  We need to walk through the tables and entries in an organized manner in
 //  order to check if the address has already been mapped.  We need a few bits of information to make this work:
@@ -11,11 +15,11 @@
 //  * The index of the Page Table Entry we want for the address in question
 //  * The Page Table Entry for the address we are concerned with
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-06-24  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Jun-24  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 

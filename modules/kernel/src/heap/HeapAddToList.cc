@@ -1,15 +1,20 @@
 //===================================================================================================================
-// kernel/src/HeapAddToList.cc -- Add a new Ordered List Entry into the list in the proper place
 //
-// Add a new Ordered List Entry into the list in the proper place
+//  HeapAddToList.cc -- Add a new Ordered List Entry into the list in the proper place
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Add a new Ordered List Entry into the list in the proper place
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-11                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2018-06-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-11                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 

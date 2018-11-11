@@ -1,13 +1,19 @@
 ;;===================================================================================================================
-;; libk/src/i686/kStrLen.s -- calculate the length of a string
 ;;
-;; calculate the length of a string, returning the result in ax
+;;  kStrLen.s -- calculate the length of a string
 ;;
-;; -----------------------------------------------------------------------------------------------------------------
+;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Licensed under "THE BEER-WARE LICENSE"
+;;        See License.md for details.
 ;;
-;;    Date     Tracker  Version  Pgmr  Description
-;; ----------  -------  -------  ----  ----------------------------------------------------------------------------
-;; 2012-06-05                          Initial version
+;;  Calculate the length of a string, returning the result in ax
+;;
+;; ------------------------------------------------------------------------------------------------------------------
+;;
+;;     Date      Tracker  Version  Pgmr  Description
+;;  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+;;  2012-Jun-05                          Initial version
+;;
 ;;===================================================================================================================
 
 
@@ -29,19 +35,19 @@ cpu		586
 ;;    ----------------------------------
 kStrLen:
 	cld
-	push	ecx												; save this register
-	push	edi												; and this one
+	push	ecx												;; save this register
+	push	edi												;; and this one
 
-	mov		edi,[esp+12]									; get the string
-	mov		ecx,-1											; set max chars to scan (lots)
-	xor		eax,eax											; al holds the char to find (NULL)
+	mov		edi,[esp+12]									;; get the string
+	mov		ecx,-1											;; set max chars to scan (lots)
+	xor		eax,eax											;; al holds the char to find (NULL)
 
-	repne	scasb											; find '\0', decrementing ecx as you go
+	repne	scasb											;; find '\0', decrementing ecx as you go
 
-	not		ecx												; where did we start - take complement
-	mov		eax,ecx											; move it to return
-	dec		eax												; and subtract one
+	not		ecx												;; where did we start - take complement
+	mov		eax,ecx											;; move it to return
+	dec		eax												;; and subtract one
 
-	pop		edi												; restore the register
-	pop		ecx												; and this one
+	pop		edi												;; restore the register
+	pop		ecx												;; and this one
 	ret

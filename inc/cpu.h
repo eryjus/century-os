@@ -1,14 +1,18 @@
 //===================================================================================================================
 //
-// inc/cpu.h -- Standard CPU functions
+//  cpu.h -- Standard CPU functions
 //
-// These are the common functions that need to be implemented to manage the CPU resource by the OS.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// ------------------------------------------------------------------------------------------------------------------
+//  These are the common functions that need to be implemented to manage the CPU resource by the OS.
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-25  Initial   0.1.0   ADCL  Initial version as I move functions from century32
+// -----------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-May-25  Initial   0.1.0   ADCL  Initial version as I move functions from century32
 //
 //===================================================================================================================
 
@@ -19,6 +23,10 @@
 
 #include "types.h"
 
+
+//
+// -- Include the architecture-specific CPU stuff
+//    -------------------------------------------
 #include "arch-cpu.h"
 
 

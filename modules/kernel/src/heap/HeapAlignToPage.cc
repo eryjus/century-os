@@ -1,42 +1,47 @@
 //===================================================================================================================
-// kernel/src/HeapAlignToPage.cc -- Align a block to a page boundary
 //
-// Split an entry to the first page boundary after allocating the header.  This will result in a free block on the
-// left of the page boundary.  This block may be small and if so will need to be added to the previous block (which
-// is allocated by definition) or at the beginning of the heap memory (special case).
+//  HeapAlignToPage.cc -- Align a block to a page boundary
 //
-// +------------------------------------------------------------------+
-// |  The entry before splitting.  Split will occur at some location  |
-// |  within the entry.                                               |
-// +------------------------------------------------------------------+
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// One of 2 results will occur (as below):
+//  Split an entry to the first page boundary after allocating the header.  This will result in a free block on the
+//  left of the page boundary.  This block may be small and if so will need to be added to the previous block (which
+//  is allocated by definition) or at the beginning of the heap memory (special case).
 //
-//                  Page
-//                Boundary
-//                    |
-//                    |
-//                    V
-// +------------------+-----------------------------------------------+
-// |  A small block   |  A brand new entry inserted into the          |
-// |  too small to    |  ordered list for the remaining free memory.  |
-// |  add as a hole.  |                                               |
-// +------------------+-----------------------------------------------+
-// |  A block of new  |  A brand new entry inserted into the          |
-// |  free memory     |  ordered list for the remaining free memory.  |
-// |  inserted to lst |                                               |
-// +------------------+-----------------------------------------------+
+//  +------------------------------------------------------------------+
+//  |  The entry before splitting.  Split will occur at some location  |
+//  |  within the entry.                                               |
+//  +------------------------------------------------------------------+
+//
+//  One of 2 results will occur (as below):
+//
+//                   Page
+//                 Boundary
+//                     |
+//                     |
+//                     V
+//  +------------------+-----------------------------------------------+
+//  |  A small block   |  A brand new entry inserted into the          |
+//  |  too small to    |  ordered list for the remaining free memory.  |
+//  |  add as a hole.  |                                               |
+//  +------------------+-----------------------------------------------+
+//  |  A block of new  |  A brand new entry inserted into the          |
+//  |  free memory     |  ordered list for the remaining free memory.  |
+//  |  inserted to lst |                                               |
+//  +------------------+-----------------------------------------------+
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-04                          Initial version
-//  2012-07-28    #53                   Fix small blocks corruption
-//  2012-09-16                          Leveraged from Century
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2013-09-13    #74                   Rewrite Debug.h to use assertions and write to TTY_LOG
-//  2018-06-01  Initial   0.1.0   ADCL  Copy this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-04                          Initial version
+//  2012-Jul-28    #53                   Fix small blocks corruption
+//  2012-Sep-16                          Leveraged from Century
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2013-Sep-13    #74                   Rewrite Debug.h to use assertions and write to TTY_LOG
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copy this file from century32 to century-os
 //
 //===================================================================================================================
 

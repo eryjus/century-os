@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// ProcessTerminate.cc -- Terminate a process and put it on the Reaper queue
+//  ProcessTerminate.cc -- Terminate a process and put it on the Reaper queue
 //
-// This will operate on the process regardless of status.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  This will operate on the process regardless of status.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

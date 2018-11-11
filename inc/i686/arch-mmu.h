@@ -1,6 +1,10 @@
 //===================================================================================================================
 //
-//  inc/i686/arch-mmu.h -- The i686 structures for interfacing with the Memory Management Unit (MMU)
+//  arch-mmu.h -- The i686 structures for interfacing with the Memory Management Unit (MMU)
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 //  PAE is not going to be supported.  This is going to be considered another architecture if it is supported.
 //  This makes sense since the address space would change from 32-bits to 36-bits, and therefore requiring 64-bits
@@ -18,16 +22,16 @@
 //
 // -----------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-05-14  Initial   0.0.0   ADCL  Initial version
-//  2018-06-24  Initial   0.1.0   ADCL  Copied this file from century to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-May-14  Initial   0.0.0   ADCL  Initial version
+//  2018-Jun-24  Initial   0.1.0   ADCL  Copied this file from century to century-os
 //
 //===================================================================================================================
 
 
 #ifndef __MMU_H__
-#error "Do not include 'arch-mmu.h' directly; include 'mmu.h' instead, which will pick up this file."
+#   error "Do not include 'arch-mmu.h' directly; include 'mmu.h' instead, which will pick up this file."
 #endif
 
 

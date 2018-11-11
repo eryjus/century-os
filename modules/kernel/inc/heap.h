@@ -1,52 +1,56 @@
 //===================================================================================================================
 //
-// inc/heap.h -- Kernel Heap structures and functions
+//  heap.h -- Kernel Heap structures and functions
 //
-// This files contains the structures and definitions needed to manage and control the heap in Century.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// The basis for the design is lifted from Century32 (a 32-bit Hobby OS).
+//  This files contains the structures and definitions needed to manage and control the heap in Century.
 //
-// There are several structures that are used and maintained with the heap management.  The heap structure itself is
-// nothing more than a doubly linked list of free blocks of memory.  This linked list is also ordered based on the
-// size of the free block of memory.  Pointers are setup in the heap structure to point to blocks of certain sizes
-// in an attempt to speed up the allocation and deallocation process.  These pointers are at:
-// * the beginning of the heap (of course)
-// * >= 512 bytes
-// * >= 1K bytes
-// * >= 4K bytes
-// * >= 16K bytes
+//  The basis for the design is lifted from Century32 (a 32-bit Hobby OS).
 //
-// When a block of memory is requested, the size if first increased to cover the size of the header and footer as
-// well as adjusted up to the allocation alignment.  So, if 1 byte is requested (unlikely, but great for
-// illustration purposes), the size is increased to HEAP_SMALLEST and then the size of the header (KHeapHdr_size),
-// the size of the footer (KHeapFtr_size), and then aligned to the next 8 byte boundary up.
+//  There are several structures that are used and maintained with the heap management.  The heap structure itself
+//  is nothing more than a doubly linked list of free blocks of memory.  This linked list is also ordered based on
+//  the size of the free block of memory.  Pointers are setup in the heap structure to point to blocks of certain
+//  sizes in an attempt to speed up the allocation and deallocation process.  These pointers are at:
+//  * the beginning of the heap (of course)
+//  * >= 512 bytes
+//  * >= 1K bytes
+//  * >= 4K bytes
+//  * >= 16K bytes
 //
-// Free blocks are maintained in the heap structure as an ordered list by size, from smallest to biggest.  In
-// addition, when the ordered list is searched for the "best fit" (that is the class of algorithm used here), if
-// the adjusted request is >= 16K, then the search starts at the 16K pointer; >= 4K but < 16K, then the search starts
-// at the 4K pointer; >= 1K but < 4K, then the search starts at the 1K pointer; >= 512 bytes but < 1K, then the
-// search starts at the 512 bytes pointer; and, all other searches < 512 bytes are stated at the beginning.
+//  When a block of memory is requested, the size if first increased to cover the size of the header and footer as
+//  well as adjusted up to the allocation alignment.  So, if 1 byte is requested (unlikely, but great for
+//  illustration purposes), the size is increased to HEAP_SMALLEST and then the size of the header (KHeapHdr_size),
+//  the size of the footer (KHeapFtr_size), and then aligned to the next 8 byte boundary up.
 //
-// Note that if there are no memory blocks < 512 bytes, but blocks >= 512 bytes, then the beginning of the ordered
-// list will point to the first block no matter the size.  The rationale for this is simple: a larger block can
-// always be split to fulfill a request.
+//  Free blocks are maintained in the heap structure as an ordered list by size, from smallest to biggest.  In
+//  addition, when the ordered list is searched for the "best fit" (that is the class of algorithm used here), if
+//  the adjusted request is >= 16K, then the search starts at the 16K pointer; >= 4K but < 16K, then the search
+//  starts at the 4K pointer; >= 1K but < 4K, then the search starts at the 1K pointer; >= 512 bytes but < 1K, then
+//  the search starts at the 512 bytes pointer; and, all other searches < 512 bytes are stated at the beginning.
 //
-// On the other hand, if there are no blocks >= 16K bytes is size, then the >= 16K pointer will be NULL.  Again,
-// the rationale is simple: we cannot add up blocks to make a 16K block, so other measures need to be taken (create
-// more heap memory or return failure).
+//  Note that if there are no memory blocks < 512 bytes, but blocks >= 512 bytes, then the beginning of the ordered
+//  list will point to the first block no matter the size.  The rationale for this is simple: a larger block can
+//  always be split to fulfill a request.
 //
-// Finally, the dedicated ordered list array is going to be eliminated in this implementation.  Instead it will be
-// included as part of the header structure.  This change will allow for more than a fixed number of free blocks.
-// This should also simplify the implementation as well.
+//  On the other hand, if there are no blocks >= 16K bytes is size, then the >= 16K pointer will be NULL.  Again,
+//  the rationale is simple: we cannot add up blocks to make a 16K block, so other measures need to be taken (create
+//  more heap memory or return failure).
+//
+//  Finally, the dedicated ordered list array is going to be eliminated in this implementation.  Instead it will be
+//  included as part of the header structure.  This change will allow for more than a fixed number of free blocks.
+//  This should also simplify the implementation as well.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-06-30                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2018-05-30  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jun-30                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2018-May-30  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 
@@ -143,27 +147,110 @@ typedef struct KHeap_t {
 
 
 //
-// -- Global variables
-//    ----------------
+// -- Global heap variable
+//    --------------------
 extern KHeap_t *kHeap;
 
-void InitHeap(void);
+
+//
+// -- Add an entry of available memory to the ordered list of free memory by size
+//    ---------------------------------------------------------------------------
 void HeapAddToList(OrderedList_t *entry);
+
+
+//
+// -- Align an ordered list free memory block to a page boundary, creating a free block ahead of the aligned block
+//    ------------------------------------------------------------------------------------------------------------
 OrderedList_t *HeapAlignToPage(OrderedList_t *entry);
+
+
+//
+// -- Allocate  memory from the heap
+//    ------------------------------
 void *HeapAlloc(size_t size, bool align);
+
+
+//
+// -- Calculate how to adjust a block to align it to the frame
+//    --------------------------------------------------------
 ptrsize_t HeapCalcPageAdjustment(OrderedList_t *entry);
+
+
+//
+// -- Debugging function to monitor the health of the heap
+//    ----------------------------------------------------
 void HeapCheckHealth(void);
-void HeapError(const char *from, const char *desc);
+
+
+//
+// -- Panic error function when the heap has a problem
+//    ------------------------------------------------
+void __attribute__((noreturn)) HeapError(const char *from, const char *desc);
+
+
+//
+// -- Find a hole of the appropriate size (best fit method)
+//    -----------------------------------------------------
 OrderedList_t *HeapFindHole(size_t adjustedSize, bool align);
+
+
+//
+// -- Free a block of memory
+//    ----------------------
 void HeapFree(void *mem);
+
+
+//
+// -- Initialize the Heap
+//    -------------------
 void HeapInit(void);
+
+
+//
+// -- Insert a newly freed block into the ordered list
+//    ------------------------------------------------
 OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add);
+
+
+//
+// -- Merge a free block with a free block on the immediate left if it is really free
+//    -------------------------------------------------------------------------------
 OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr);
+
+
+//
+// -- Merge a free block with a free block on the immediate right if it is really free
+//    --------------------------------------------------------------------------------
 OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr);
+
+
+//
+// -- Release a entry from the ordered list
+//    -------------------------------------
 void HeapReleaseEntry(OrderedList_t *entry);
+
+
+//
+// -- Remove an entry from the list
+//    -----------------------------
 void HeapRemoveFromList(OrderedList_t *entry);
+
+
+//
+// -- Split a block into 2 blocks, creating ordered list entries for each
+//    -------------------------------------------------------------------
 KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize);
+
+
+//
+// -- Debugging functions to validate the header of a block
+//    -----------------------------------------------------
 void HeapValidateHdr(KHeapHeader_t *hdr, const char *from);
+
+
+//
+// -- Debugging function to validate the heap structure itself
+//    --------------------------------------------------------
 void HeapValidatePtr(const char *from);
 
 

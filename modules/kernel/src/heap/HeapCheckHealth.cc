@@ -1,13 +1,18 @@
 //===================================================================================================================
-// kernel/src/HeapCheckHealth.cc -- Check the health of the heap as we make changes
 //
-// Perform several sanity checks on the heap in order to verify its integrity is still good.
+//  HeapCheckHealth.cc -- Check the health of the heap as we make changes
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Perform several sanity checks on the heap in order to verify its integrity is still good.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-31  Initial   0.1.0   ADCL  Initial version (copied out of century32 -- HeapDump.c)
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-May-31  Initial   0.1.0   ADCL  Initial version (copied out of century32 -- HeapDump.c)
 //
 //===================================================================================================================
 

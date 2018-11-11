@@ -1,24 +1,24 @@
 //===================================================================================================================
 //
-// pmm.h -- The structures and functions for the Physical Memory Manager
+//  pmm.h -- The structures and functions for the Physical Memory Manager
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// The PMM will be managed via bitmap.  The bitmap will need to be sufficiently big enough for all the memory on
-// the system, which is determined at runtime.
+//  The PMM will be managed via bitmap.  The bitmap will need to be sufficiently big enough for all the memory on
+//  the system, which is determined at runtime.
 //
-// The bitmap is constructed so that a free frame has the value 1 set for the corresponding bit and a allocated
-// frame has a 0 for that bit.  This makes comparisons easy when looking for a frame: if the 32-bit value is 0,
-// then we know that all the frames are allocates and can move on.  On the other hand, any value other than 0
-// means we have at least 1 frame we can allocate.
+//  The bitmap is constructed so that a free frame has the value 1 set for the corresponding bit and a allocated
+//  frame has a 0 for that bit.  This makes comparisons easy when looking for a frame: if the 32-bit value is 0,
+//  then we know that all the frames are allocates and can move on.  On the other hand, any value other than 0
+//  means we have at least 1 frame we can allocate.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-10-30  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Oct-30  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -94,17 +94,7 @@ inline void PmmAllocFrameRange(frame_t frame, size_t cnt) {
 }
 
 
-//
-// -- These are the messages that the PMM manager will respond to
-//    -----------------------------------------------------------
-typedef enum {
-    PMM_NOOP,
-    PMM_FREE_FRAME,
-    PMM_ALLOC_FRAME,
-    PMM_FREE_RANGE,
-    PMM_ALLOC_RANGE,
-    PMM_NEW_FRAME,
-} PmmMessages_t;
+#include "pmm-msg.h"
 
 
 #endif

@@ -1,18 +1,18 @@
 //===================================================================================================================
 //
-// PmmFreeFrame.cc -- Free a frame back to the manager
+//  PmmFreeFrame.cc -- Free a frame back to the manager
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// Update the bitmap that the frame is available to be used somewhere else.
+//  Update the bitmap that the frame is available to be used somewhere else.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-10-30  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Oct-30  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 

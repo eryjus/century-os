@@ -1,17 +1,22 @@
 //===================================================================================================================
-// kernel/src/HeapValidateHdr.cc -- Validate heap header
 //
-// Validate the heap header, heap footer, and if is a hole the ordered list entry.
+//  HeapValidateHdr.cc -- Validate heap header
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Validate the heap header, heap footer, and if is a hole the ordered list entry.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-02                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2012-09-23                          Removed DUMP() define
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2018-05-31  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-02                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2012-Sep-23                          Removed DUMP() define
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2018-May-31  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 

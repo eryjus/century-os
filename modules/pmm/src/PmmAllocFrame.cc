@@ -1,18 +1,18 @@
 //===================================================================================================================
 //
-// PmmAllocFrame.cc -- Allocate a frame from the manager
+//  PmmAllocFrame.cc -- Allocate a frame from the manager
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// Verify that the frame is free and then allocate it if it is available.
+//  Verify that the frame is free and then allocate it if it is available.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-10-30  Initial   0.1.0   ADCL  Initial version
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Oct-30  Initial   0.1.0   ADCL  Initial version
 //
 //===================================================================================================================
 

@@ -1,4 +1,20 @@
-
+//===================================================================================================================
+//
+//  PmmMain.cc -- The main entry point for the Physical Memory Manager
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Update the bitmap that the frame is available to be used somewhere else.
+//
+// ------------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Oct-30  Initial   0.1.0   ADCL  Initial version
+//
+//===================================================================================================================
 
 
 #include "libc.h"
@@ -10,10 +26,14 @@
 //    --------------------------
 extern "C" void PmmMain(void)
 {
-    while (true) {
-        Message_t message;
-        Message_t reply = {0};
+    Message_t message;
+    Message_t reply = {0};
 
+    // -- we can set this up only until we receive the bitmap
+    message.dataPayload = pmmBitmap;
+    message.payloadSize = BITMAP_SIZE;
+
+    while (true) {
         ReceiveMessage(&message);
 
         switch (message.msg) {
@@ -37,6 +57,12 @@ extern "C" void PmmMain(void)
             reply.msg = PMM_NEW_FRAME;
             reply.parm1 = PmmNewFrame();
             SendMessage(message.pid, &reply);
+            break;
+
+        case PMM_INIT:
+            // -- clear the buffer so that we do not get a new message that overwrites the bitmap
+            message.dataPayload = NULL;
+            message.payloadSize = 0;
             break;
 
         default:

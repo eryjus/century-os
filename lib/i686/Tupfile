@@ -13,11 +13,17 @@
 #####################################################################################################################
 
 
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = i686
+AR = $(ARCH)-elf-ar
+
 include_rules
 
 
-#
-# -- The rules to make the targets in this folder
-#    --------------------------------------------
-: $(WS)/obj/libk/i686/*.o |> i686-elf-ar crs %o %f |> libk.a
-: $(WS)/obj/libc/i686/*.o |> i686-elf-ar crs %o %f |> libc.a
+##
+## -- The rules to make the targets in this folder
+##    --------------------------------------------
+: $(WS)/obj/libk/$(ARCH)/*.o |> !ar |> libk.a
+: $(WS)/obj/libc/$(ARCH)/*.o |> !ar |> libc.a

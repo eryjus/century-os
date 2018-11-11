@@ -1,12 +1,16 @@
 //===================================================================================================================
 //
-// ProcessRelease.cc -- Release a process that has been previously held and put it on the proper queue.
+//  ProcessRelease.cc -- Release a process that has been previously held and put it on the proper queue.
 //
-// Perform a number of sanity checks and then remove the process from the held queue and then add it to the
-// proper new queue.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
-// Since this may be invoked as part of a user application, we need to assume that it will pass in invalid PIDs in
-// crazy states.
+//  Perform a number of sanity checks and then remove the process from the held queue and then add it to the
+//  proper new queue.
+//
+//  Since this may be invoked as part of a user application, we need to assume that it will pass in invalid PIDs in
+//  crazy states.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

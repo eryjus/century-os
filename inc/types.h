@@ -1,14 +1,18 @@
 //===================================================================================================================
 //
-// inc/types.h -- Common type definitions for all architectures
+//  types.h -- Common type definitions for all architectures
 //
-// These types are architecture independent.  In the end, we add the architecture-specific types with the proper
-// size.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  These types are architecture independent.  In the end, we add the architecture-specific types with the proper
+//  size.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
-//  -----------  -------  -------  ----  --------------------------------------------------------------------------
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-May-24  Initial   0.1.0   ADCL  Initial version
 //  2018-Nov-04  Initial   0.1.0   ADCL  Added Compile Time Assertions from
 //                                       http://www.pixelbeat.org/programming/gcc/static_assert.html

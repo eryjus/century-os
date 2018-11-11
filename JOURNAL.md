@@ -2622,3 +2622,82 @@ Heap Created
 I have not tested any real allocations with the heap yet, but since the system runs, I think I will commit this code.  The next step will involve completing the PMM initialization by sending initialization messages from `kInit()` to the PMM to fully enable the PMM.
 
 ---
+
+OK, so now I need to get the kernel to initialize the PMM with the existing pmm bitmap information.  Since the kernel took posession of the CPU, no changes have been made.  Also, there is only a fraction of the total available memory that has been mapped into the bitmap....  Well, I assumed that, but it turns out that the entire (32-bit) memory has been mapped.  This, then, should be relatively simple to move to the PMM.
+
+The first thing I will need to do is define a common set of messages for the PMM.  This set of messages really needs to be defined once and used for both the PMM and the kernel.  The untimate goal is to eliminate libk, so that locaiton will be out.  `kernel/inc` and `pmm/inc` are both out because they are too specific.  I really want to get away from directly including `inc`, but the files therein should be able to be copied into the resulting `bin` for any architecture.  That really is the most likely spot.
+
+Now, when I do this, I will also want to make sure that `inc` is farther down the include path search order for all compiles.  That should be relatively easy to accomplish as well.  I will start with that.
+
+---
+
+Well that caused me to totally refactor my `Tupfile`s.  But they are cleaner and most of the settings were able to be pulled into the `Tuprules.tup` file.  The other thing that dawns on me that that I really need to start thinking about what I need to do to get to a final `v0.1.0` release -- things like what still needs to be documented?  What needs to be better organized?  Compile-time `#define`s for debugging code?  Eliminate `x86-common`?  Etc..
+
+So, now back to the PMM initialization....   I made the assumption that the heap was not going to be set up when I was going to initialize the PMM.  However it is and I have enough room to pass the entire bitmap.  But the SYSCALL does not have that available.
+
+But that will be tomorrow -- my wife wants to watch a movie.
+
+---
+
+### 2018-Nov-11
+
+OK, first order of business today is to update the Send Message SYSCALL to take a data payload.  The kernel version should be good and already coded.  Well no it's not.  And I think I specifically opted not to code that.  Well, time to correct that....
+
+I must just need more coffee -- it is coded.  Everything is built into the `Message_t` structure, so all I need to do is set the fields correctly.
+
+And once I got that all worked out, I now get this `#PF`:
+
+```
+Page Fault
+EAX: 0xcffffff8  EBX: 0xc0033860  ECX: 0xbab6badd
+EDX: 0x0000fff8  ESI: 0x00117349  EDI: 0x00000000
+EBP: 0xc0034f4c  ESP: 0xc0034f0c  SS: 0x10
+EIP: 0xc00011da  EFLAGS: 0x00200092
+CS: 0x8  DS: 0x10  ES: 0x10  FS: 0x10  GS: 0x10
+CR0: 0x80000011  CR2: 0xcffffffc  CR3: 0x00001000
+Trap: 0xe  Error: 0x0
+```
+
+So, this is for a faulting address `0xcffffffc` and in in the kernel code for `HeapMergeLeft()`.  Without looking at the code again yet, I have a feeling I am confusing the heap max limit address and the heap current end address.  Although...  the faulting address is actually 4 bytes before the start of the heap.
+
+It actually ended up being a quick fix.  I was calculating a theoretical left footer posisiton and then dereferencing that to get to a theoretical left heder position before checking to make sure the footer was still in heap memory:
+
+```C
+	thisFtr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
+	leftFtr = (KHeapFooter_t *)((char *)hdr - sizeof(KHeapFooter_t));
+	leftHdr = leftFtr->hdr;
+
+  	if ((byte_t *)leftHdr < kHeap->strAddr) return 0;
+```
+
+The end result is just a reorganization of these statements:
+
+```C
+	thisFtr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
+	leftFtr = (KHeapFooter_t *)((char *)hdr - sizeof(KHeapFooter_t));
+
+	// -- Check of this fits before dereferencing the pointer -- may end in `#PF` if first block
+	if ((byte_t *)leftHdr < kHeap->strAddr) return 0;
+	leftHdr = leftFtr->hdr;
+```
+
+For a microkernel, this should then complete the phase 2 initialization.  As a matter of fact, from this site (https://wiki.osdev.org/Microkernel), all I really need to be able to support is memory allocation, scheduling, and messaging.  I think I have at least at the base level all 3 of these working.  Do I really have a working (mostly complete) microkernel???
+
+I started by going through Redmine and checking what was open.  Several issues were able to be closed because they were handled by debugging the process switching.  Several others I pulled out of this version roadmap (at least for the moment) since they brought no additional value to the `v0.1.0` code.
+
+So, this means that what I started to consider last night very quickly came to reality and I need to consider what is left to call `v0.1.0` complete...:
+1. I need to complete all the documentation headers for all files.
+1. I need to make sure that all common files are not directly `#include`-able.  `pmm-msg.h` comes to mind inparticular.
+1. I want to eliminate `x86-common`.  Anything there should be in `i686` at this point.
+
+---
+
+WOW!!  Going through all the source files to update the comments, I found that `PmmNewFrame()` was never implemented....
+
+---
+
+I think I touched every source file getting my comments cleaned up.  I'm a really crappy commenter when it comes to the source header.  On the other hand, I do rather well with commenting the actual code.
+
+I think I am ready to commit this code as `v0.1.0`.
+
+---

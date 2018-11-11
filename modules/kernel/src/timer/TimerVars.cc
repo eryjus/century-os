@@ -1,6 +1,10 @@
 //===================================================================================================================
 //
-// TimerVars.cc -- The globals for the PIT
+//  TimerVars.cc -- The globals for the PIT
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

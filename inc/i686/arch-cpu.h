@@ -1,18 +1,22 @@
 //===================================================================================================================
 //
-// kernel/inc/i686/cpu.h -- This file contains the common definitions for setting up the 32-bit CPUs
+//  arch-cpu.h -- This file contains the definitions for setting up the Intel 32-bit CPUs
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
 //
 // -----------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-05-30  Initial   0.1.0   ADCL  Copied this file from century to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-May-30  Initial   0.1.0   ADCL  Copied this file from century to century-os
 //
 //===================================================================================================================
 
 
 #ifndef __CPU_H__
-#error "Do not include 'arch-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
+#   error "Do not include 'arch-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
 #endif
 
 
@@ -22,4 +26,8 @@
 #define BYTE_ALIGNMENT      4
 
 
-#include "x86-common-cpu.h"
+//
+// -- Change the page directory to the physical address provided
+//    ----------------------------------------------------------
+extern "C" void MmuSwitchPageDir(ptrsize_t physAddr);
+

@@ -1,10 +1,14 @@
 //===================================================================================================================
 //
-// ProcessCreate.h -- Create a new process
+//  ProcessCreate.h -- Create a new process
 //
-// Create a new process and add it into the ready queue.  The key to this function is to properly create the stack
-// such that it appears like a function call to the process entry point.  The stack needs to be prepared to mimick
-// a task switch as prepared by `ProcessSwitch()`.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Create a new process and add it into the ready queue.  The key to this function is to properly create the stack
+//  such that it appears like a function call to the process entry point.  The stack needs to be prepared to mimick
+//  a task switch as prepared by `ProcessSwitch()`.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

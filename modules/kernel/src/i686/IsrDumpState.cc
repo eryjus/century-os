@@ -1,3 +1,22 @@
+//===================================================================================================================
+//
+//  IsrDumpState.cc -- For exceptions, dump the current state of the processor from the registers
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+// ------------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-02                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2012-Sep-23                          Removed DUMP() define
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//
+//===================================================================================================================
 
 
 #include "types.h"

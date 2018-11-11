@@ -2,6 +2,10 @@
 //
 //  mmu.h -- This is the kernel MMU manager header.
 //
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
 //  All fo these functions are written so that PD[1023] is recursively mapped.  As a result, we know some things
 //  are in certain locations.  For example, the Page Directory itself starts at virtual address 0xfffff000, no
 //  matter what process we are in.  The Page Tables will be located at 0xffc00000 each.  This then means that in

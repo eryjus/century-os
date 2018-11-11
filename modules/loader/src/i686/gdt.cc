@@ -1,17 +1,17 @@
 //===================================================================================================================
 //
-//  loader/src/i686/gdt.c -- This is the GDT for the i686 architecture; which is x86 common architectures
+//  gdt.c -- This is the GDT for the i686 architecture; which is x86 common architectures
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-// -----------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-05-06  Initial   0.0.0   ADCL  Initial version
-//  2018-06-02  Initial   0.1.0   ADCL  Copied this file from century to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-May-06  Initial   0.0.0   ADCL  Initial version
+//  2018-Jun-02  Initial   0.1.0   ADCL  Copied this file from century to century-os
 //
 //===================================================================================================================
 

@@ -1,7 +1,12 @@
 //===================================================================================================================
-// SyscallSendMessage.cc -- SYSCALL for POSIX `msgsnd()`
 //
-// SYSCALL to send a message
+//  SyscallSendMessage.cc -- SYSCALL for POSIX `msgsnd()`
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  SYSCALL to send a message
 //
 // ------------------------------------------------------------------------------------------------------------------
 //

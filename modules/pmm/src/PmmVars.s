@@ -1,17 +1,17 @@
 ;;===================================================================================================================
 ;;
-;; PmmVars.s -- This file contains the global PMM variables
+;;  PmmVars.s -- This file contains the global PMM variables
 ;;
 ;;        Copyright (c)  2017-2018 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;
-;; All publicly exposed variables for the Physical Memory Manager (PMM) will be included in this file.
+;;  All publicly exposed variables for the Physical Memory Manager (PMM) will be included in this file.
 ;;
-;; -----------------------------------------------------------------------------------------------------------------
+;; ------------------------------------------------------------------------------------------------------------------
 ;;
 ;;     Date      Tracker  Version  Pgmr  Description
-;;  -----------  -------  -------  ----  --------------------------------------------------------------------------
+;;  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 ;;  2018-Nov-07  Initial   0.1.0   ADCL  Initial version
 ;;
 ;;===================================================================================================================

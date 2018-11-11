@@ -1,8 +1,12 @@
 //===================================================================================================================
 //
-// ipc.h -- Structures for Inter-Process Communication (IPC)
+//  ipc.h -- Structures for Inter-Process Communication (IPC)
 //
-// These are written initially for kernel messaging, but will also be used for user messages with a larger payload.
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  These are written initially for kernel messaging, but will also be used for user messages with a larger payload.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
@@ -23,17 +27,9 @@
 
 
 //
-// -- This is a kernel message.  The dataPayload member is not used by the kernel but might be with user messages
-//    -----------------------------------------------------------------------------------------------------------
-typedef struct Message_t {
-    ListHead_t::List_t list;
-    uint32_t msg;
-    uint32_t parm1;
-    uint32_t parm2;
-    PID_t pid;
-    size_t payloadSize;
-    void *dataPayload;
-} Message_t;
+// -- get the structure definition
+//    ----------------------------
+#include "ipc-msg.h"
 
 
 //

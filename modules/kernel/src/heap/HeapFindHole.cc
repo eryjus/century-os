@@ -1,23 +1,28 @@
 //===================================================================================================================
-// kernel/src/HeapFindHole.cc -- Find the smallest hole that has the size needed
 //
-// Find the smallest hole that has the size required.  Align the block as necessary and ensure the remaining block
-// is big enough.
+//  HeapFindHole.cc -- Find the smallest hole that has the size needed
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+//  Find the smallest hole that has the size required.  Align the block as necessary and ensure the remaining block
+//  is big enough.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-// IMPORTANT PROGRAMMING NOTE:
-// The calling function must guarantee that adjustedSize be >= sizeof(KHeapHeader) + sizeof(KHeapFooter) + 1.
-// This function will not check its validity.
+//  IMPORTANT PROGRAMMING NOTE:
+//  The calling function must guarantee that adjustedSize be >= sizeof(KHeapHeader) + sizeof(KHeapFooter) + 1.
+//  This function will not check its validity.
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
-//     Date     Tracker  Version  Pgmr  Description
-//  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-07-02                          Initial version
-//  2012-09-16                          Leveraged from Century
-//  2013-09-12   #101                   Resolve issues splint exposes
-//  2018-06-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2012-Jul-02                          Initial version
+//  2012-Sep-16                          Leveraged from Century
+//  2013-Sep-12   #101                   Resolve issues splint exposes
+//  2018-Jun-01  Initial   0.1.0   ADCL  Copied this file from century32 to century-os
 //
 //===================================================================================================================
 
