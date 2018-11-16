@@ -35,7 +35,7 @@
 #include "cpu.h"
 #include "fb.h"
 #include "hw-disc.h"
-#include "idt.h"
+#include "interrupt.h"
 #include "printf.h"
 #include "heap.h"
 #include "process.h"

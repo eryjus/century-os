@@ -11,6 +11,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2017-Jun-07  Initial   0.0.0   ADCL  Initial version
+//  2018-Nov-11  Initial   0.2.0   ADCL  Update the architecture abstraction for rpi2b
 //
 //===================================================================================================================
 
@@ -20,6 +21,7 @@
 #include "serial.h"
 #include "mmu.h"
 #include "modules.h"
+#include "cpu.h"
 #include "fb.h"
 
 
@@ -34,8 +36,6 @@ extern "C" void LoaderMain(void);
 //    -------------------------------
 void LoaderMain(void)
 {
-    extern ptrsize_t cr3;
-
     SerialInit();
     HwDiscovery();
 
@@ -48,13 +48,15 @@ void LoaderMain(void)
 
     FrameBufferPutS("Initialization Complete");
 
-    MmuSwitchPageDir(cr3);                  // also enabled paging
-    SetFrameBufferAddr((uint16_t *)0xfb000000);     // re-map the frame buffer now that paging is enabled
+    SetMmuTopAddr();                                            // also enabled paging
+    SetFrameBufferAddr((uint16_t *)FRAME_BUFFER_ADDRESS);       // re-map the frame buffer now that paging is enabled
 
 
     SerialPutS("Jumping to the kernel\n");
-    kMemMove((uint8_t *)0x00003000, localHwDisc, sizeof(HardwareDiscovery_t));
+    kMemMove((uint8_t *)HW_DISCOVERY_LOC, localHwDisc, sizeof(HardwareDiscovery_t));
     ent();
+
+    // -- We should never get to this place
     SerialPutS("Uh-Oh!!\n");
 
     while (1) {}

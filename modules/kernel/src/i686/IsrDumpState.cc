@@ -22,7 +22,7 @@
 #include "types.h"
 #include "printf.h"
 #include "cpu.h"
-#include "idt.h"
+#include "interrupt.h"
 
 
 void IsrDumpState(isrRegs_t *regs)

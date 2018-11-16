@@ -108,4 +108,16 @@ extern "C" regval_t GetCr3(void);
 void CpuGetCapabilities(void);
 
 
+//
+// -- Write to a Memory Mapped I/O Register
+//    -------------------------------------
+inline void MmioWrite(uint32_t reg, uint32_t data) { *(volatile uint32_t *)reg = data; }
+
+
+//
+// -- Read from a Memory Mapped I/O Register
+//    --------------------------------------
+inline uint32_t MmioRead(uint32_t reg) { return *(volatile uint32_t *)reg; }
+
+
 #endif

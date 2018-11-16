@@ -12,13 +12,14 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-May-25  Initial   0.1.0   ADCL  Initial version
+//  2018-May-25  Initial   0.1.0   ADCL  Initial
+//  2018-Nov-11  Initial   0.2.0   ADCL  Address architecture abstraction issues
 //
 //===================================================================================================================
 
 
 #ifndef __TYPES_H__
-#error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
+# 	error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
 #endif
 
 
@@ -91,3 +92,11 @@ typedef void (*isrFunc_t)(isrRegs_t *);
 // -- The definition of a NULL ISR Handler Function
 //    ---------------------------------------------
 const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
+
+
+//
+// -- The ISR Handlers
+//    ----------------
+extern isrFunc_t isrHandlers[256];
+
+

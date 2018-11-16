@@ -1,0 +1,97 @@
+#####################################################################################################################
+##
+##  Tuprules.tup -- These are the variables and macros needed to build century-os
+##
+##        Copyright (c)  2017-2018 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2018-Nov-15  Initial   0.2.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- This is the workspace home.  Change this to match your own absolute path to the root of the project
+##    ---------------------------------------------------------------------------------------------------
+WS = /home/adam/workspace/century-os
+
+
+##
+## -- Here is where the we might find some include files that will be read -- for build sequence
+##    ------------------------------------------------------------------------------------------
+II = $(WS)/bin/$(ARCH)/usr/include/*
+
+
+##
+## -- Build out the CFLAGS variable for g++
+##    -------------------------------------
+CFLAGS += -g
+CFLAGS += -fpic
+CFLAGS += -ffreestanding
+CFLAGS += -fno-unwind-tables
+CFLAGS += -fno-exceptions
+
+ifneq ($(ARCH),rpi2b)
+CFLAGS += -mno-red-zone
+endif
+
+CFLAGS += -I $(WS)/bin/$(ARCH)/usr/include
+CFLAGS += -I $(WS)/modules/$(MOD)/inc
+CFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)
+CFLAGS += -I $(WS)/inc
+CFLAGS += -I $(WS)/inc/$(ARCH)
+CFLAGS += -Wall
+CFLAGS += -Werror
+CFLAGS += -c
+
+##
+## -- Build out the NFLAGS variable -- for nasm
+##    -----------------------------------------
+NFLAGS += -felf
+NFLAGS += -g
+NFLAGS += -w+all
+NFLAGS += -i$(WS)/bin/$(ARCH)/usr/include
+NFLAGS += -i$(WS)/modules/$(MOD)/inc/
+NFLAGS += -i$(WS)/modules/$(MOD)/inc/$(ARCH)/
+NFLAGS += -i$(WS)/inc/
+NFLAGS += -i$(WS)/inc/$(ARCH)/
+
+
+##
+## -- Build out the AFLAGS variable -- for gas
+##    ----------------------------------------
+CFLAGS += -g
+CFLAGS += -fpic
+CFLAGS += -ffreestanding
+AFLAGS += -I $(WS)/bin/$(ARCH)/usr/include
+AFLAGS += -I $(WS)/modules/$(MOD)/inc/
+AFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)/
+AFLAGS += -I $(WS)/inc/
+AFLAGS += -I $(WS)/inc/$(ARCH)/
+CFLAGS += -Wall
+CFLAGS += -Werror
+CFLAGS += -c
+
+
+##
+## -- Build out the LDFLAGS variable -- for ld (through g++)
+##    ------------------------------------------------------
+LDFLAGS += -g
+LDFLAGS += -ffreestanding
+LDFLAGS += -O2
+LDFLAGS += -nostdlib
+LDFLAGS += -z max-page-size=0x1000
+LDFLAGS += -L $(WS)/lib/$(ARCH)
+
+
+##
+## -- Create the !macros
+##    ------------------
+!ar = |> $(AR) crs %o %f |>
+!cc = |> $(CC) $(CFLAGS) -o %o %f |> %B.o
+!nasm = |> nasm $(NFLAGS) -o %o %f |> %B.o
+!as = |> $(AS) $(AFLAGS) -o %o %f |> %B.o
+!dump = |> $(DUMP) -D %f > %o |> %B.o

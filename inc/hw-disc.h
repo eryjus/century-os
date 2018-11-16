@@ -319,4 +319,5 @@ inline uint16_t GetColPos(void) { return localHwDisc->colPos; }
 inline void SetRowPos(uint16_t p) { localHwDisc->rowPos = p; }
 inline uint16_t GetRowPos(void) { return localHwDisc->rowPos; }
 
+
 #endif

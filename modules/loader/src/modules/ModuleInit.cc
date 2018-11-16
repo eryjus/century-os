@@ -29,12 +29,6 @@
 
 
 //
-// -- This holds the temporary location of the cr3 register while we are building
-//    ---------------------------------------------------------------------------
-extern ptrsize_t cr3;
-
-
-//
 // -- Initialize the modules multiboot handed off to us
 //    -------------------------------------------------
 kernEntry_t ModuleInit(void)
@@ -65,7 +59,7 @@ kernEntry_t ModuleInit(void)
                 && modName[4] == 'e' && modName[5] == 'l') {
             haveKernel = true;
             thisIsKernel = true;
-            modCr3 = cr3;
+            modCr3 = GetMmuTopAddr();
         } else {
             modCr3 = PmmFrameToLinear(PmmNewFrame());
 

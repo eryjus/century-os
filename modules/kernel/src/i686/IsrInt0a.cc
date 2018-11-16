@@ -19,7 +19,7 @@
 
 #include "types.h"
 #include "printf.h"
-#include "idt.h"
+#include "interrupt.h"
 
 
 //

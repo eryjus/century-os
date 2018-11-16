@@ -67,7 +67,7 @@
 .SILENT:
 
 
-all: init
+all:
 	tup
 
 
@@ -110,20 +110,40 @@ debug-x86_64: x86_64-iso
 	qemu-system-x86_64 -m 8192 -serial stdio -cdrom iso/x86_64.iso -s -S
 
 
+#
+# -- This rule and the following recipe is used to build a disk image that can be booted:
+#    * create a disk image, size = 20MB
+#    * make the partition table, partition it, and set it to bootable
+#    * map the partitions from the image file
+#    * write an ext2 file system to the first partition
+#    * create a temporary mount point
+#    * Mount the filesystem via loopback
+#    * copy the files to the disk
+#    * unmount the device
+#    * unmap the image
+#
+#    In the event of an error along the way, the image is umounted and the partitions unmapped.
+#    Finally, if the error cleanup is completely suffessful, then false is called to fail the
+#    recipe.
+#    ------------------------------------------------------------------------------------------------
 rpi2b-iso: all
 	rm -fR iso/rpi2b.img
 	cp -fR bin/rpi2b/* sysroot/rpi2b/
 	find sysroot/rpi2b -type f -name Tupfile -delete
 	mkdir -p ./p1
-	dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1M
-	parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 1 20 set 1 boot on
-	sudo kpartx -as iso/rpi2b.img || true
-	sudo mkfs.ext2 /dev/mapper/loop0p1
-	sudo mount /dev/mapper/loop0p1 ./p1
-	sudo cp -R sysroot/rpi2b/* p1/
-	sudo umount ./p1
-	sudo kpartx -d iso/rpi2b.img
-	rm -fR ./p1
+	(																						\
+		dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1048576;								\
+		parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 1 20 set 1 boot on; 		\
+		sudo losetup -v -L -P /dev/loop0 iso/rpi2b.img;										\
+		sudo mkfs.ext2 /dev/loop0p1;														\
+		sudo mount /dev/loop0p1 ./p1;														\
+		sudo cp -R sysroot/rpi2b/* p1/;														\
+		sudo umount ./p1;																	\
+		sudo losetup -v -d /dev/loop0;														\
+	) || (																					\
+		sudo umount ./p1;																	\
+		sudo losetup -v -d /dev/loop0;														\
+	) || false
 
 
 run-rpi2b: rpi2b-iso
@@ -133,10 +153,3 @@ run-rpi2b: rpi2b-iso
 debug-rpi2b: rpi2b-iso
 	qemu-system-arm -m 256 -M raspi2 -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -s -S
 
-
-init: Tuprules.tup
-
-
-Tuprules.tup: Makefile
-	echo "WS = `pwd`" > $@
-	echo "II686 = \$$(WS)/bin/i686/usr/include/*" >> $@

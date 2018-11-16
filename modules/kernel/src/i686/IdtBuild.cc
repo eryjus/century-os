@@ -19,7 +19,7 @@
 
 #include "locations.h"
 #include "cpu.h"
-#include "idt.h"
+#include "interrupt.h"
 
 
 //

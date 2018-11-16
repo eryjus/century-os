@@ -1,0 +1,41 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to the 'make' build system -- rpi2b loader objects
+##
+##        Copyright (c)  2017-2018 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2018-Nov-11  Initial   0.2.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = rpi2b
+MOD = loader
+CC = arm-eabi-gcc
+AS = arm-eabi-as
+
+include_rules
+
+SRC = $(WS)/modules/$(MOD)/src
+
+
+##
+## -- These are the implicit build rules for the i686 loader object files
+##    -------------------------------------------------------------------
+: foreach $(SRC)/$(ARCH)/*.s        |> !as |>
+: foreach $(SRC)/mmu/*.s            $(SRC)/mmu/$(ARCH)/*.s              |> !nasm |>
+
+: foreach $(SRC)/*.cc               $(SRC)/$(ARCH)/*.cc                 |> !cc |>
+: foreach $(SRC)/frame-buffer/*.cc  |> !cc |>
+: foreach $(SRC)/hardware/*.cc      |> !cc |>
+: foreach $(SRC)/mmu/*.cc           $(SRC)/mmu/$(ARCH)/*.cc             |> !cc |>
+: foreach $(SRC)/modules/*.cc       |> !cc |>
+: foreach $(SRC)/pmm/*.cc           |> !cc |>
+: foreach $(SRC)/serial/*.cc        $(SRC)/serial/$(ARCH)/*.cc          |> !cc |>

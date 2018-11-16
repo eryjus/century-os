@@ -16,6 +16,7 @@
 //  2018-May-24  Initial   0.1.0   ADCL  Initial version
 //  2018-Nov-04  Initial   0.1.0   ADCL  Added Compile Time Assertions from
 //                                       http://www.pixelbeat.org/programming/gcc/static_assert.html
+//  2018-Nov-11  Initial   0.2.0   ADCL  Address architecture abstraction issues
 //
 //===================================================================================================================
 
@@ -89,12 +90,6 @@ typedef uint32_t PID_t;
 // -- Now include the architecture-specific types
 //    -------------------------------------------
 #include "arch-types.h"
-
-
-//
-// -- The ISR Handlers
-//    ----------------
-extern isrFunc_t isrHandlers[256];
 
 
 //

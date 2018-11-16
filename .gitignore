@@ -8,7 +8,8 @@ sysroot
 iso
 *.old
 org.kde.konsole.desktop
-Tuprules.tup
+
+p1
 
 obj/**/*.o
 maps/**/*.map

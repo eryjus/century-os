@@ -19,7 +19,7 @@
 
 #include "types.h"
 #include "syscall.h"
-#include "idt.h"
+#include "interrupt.h"
 
 #include <errno.h>
 

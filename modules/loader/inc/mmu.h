@@ -24,6 +24,7 @@
 
 #include "types.h"
 #include "arch-mmu.h"
+//#include "arch-mmu-loader.h"
 
 
 //
@@ -45,27 +46,12 @@ void MmuInit(void);
 
 
 //
-// -- Get a table entry from the table address and the desired virtual address
-//    ------------------------------------------------------------------------
-pageEntry_t *MmuGetTableEntry(pageEntry_t *table, ptrsize_t addr, int shift, bool alloc);
-
-
-//
-// -- Walk the page tables and get the frame for an address
-//    -----------------------------------------------------
-frame_t MmuGetFrameForAddr(ptrsize_t cr3Phys, ptrsize_t addr);
-
-
-//
 // -- Dump the paging tables
 //    ----------------------
 void MmuDumpTables(ptrsize_t addr);
 
 
-//
-// -- Get an address from a page entry
-//    --------------------------------
-inline pageEntry_t *MmuGetAddrFromEntry(pageEntry_t *e) { return (pageEntry_t *)((e->frame) << 12); }
+#include "arch-mmu-loader.h"
 
 
 #endif

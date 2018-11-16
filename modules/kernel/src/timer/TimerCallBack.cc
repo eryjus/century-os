@@ -46,7 +46,7 @@
 #include "types.h"
 #include "cpu.h"
 #include "process.h"
-#include "idt.h"
+#include "interrupt.h"
 #include "timer.h"
 
 

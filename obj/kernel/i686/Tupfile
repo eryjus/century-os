@@ -31,13 +31,13 @@ SRC = $(WS)/modules/$(MOD)/src
 ##    -------------------------------------------------------------------
 : foreach $(SRC)/$(ARCH)/*.s        | $(II) |> !nasm |>
 
-: foreach $(SRC)/*.cc               | $(II) |> !cc |>
+: foreach $(SRC)/*.cc           $(SRC)/$(ARCH)/*.cc             | $(II) |> !cc |>
 : foreach $(SRC)/cpu/*.cc           | $(II) |> !cc |>
 : foreach $(SRC)/heap/*.cc          | $(II) |> !cc |>
-: foreach $(SRC)/$(ARCH)/*.cc       | $(II) |> !cc |>
 : foreach $(SRC)/ipc/*.cc           | $(II) |> !cc |>
-: foreach $(SRC)/mmu/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/mmu/*.cc       $(SRC)/mmu/$(ARCH)/*.cc         | $(II) |> !cc |>
 : foreach $(SRC)/pmm/*.cc           | $(II) |> !cc |>
 : foreach $(SRC)/process/*.cc       | $(II) |> !cc |>
+: foreach $(SRC)/serial/*.cc    $(SRC)/serial/$(ARCH)/*.cc      | $(II) |> !cc |>
 : foreach $(SRC)/syscall/*.cc       | $(II) |> !cc |>
 : foreach $(SRC)/timer/*.cc         | $(II) |> !cc |>

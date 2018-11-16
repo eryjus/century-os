@@ -2701,3 +2701,545 @@ I think I touched every source file getting my comments cleaned up.  I'm a reall
 I think I am ready to commit this code as `v0.1.0`.
 
 ---
+
+So, now with that commit, I have a decision to make: Do I develop wide first and add an architecture?  Or do I develop deep first and add functionality for more satisfaction?
+
+I asked this question on the `#osdev` IRC channel and had this exchange:
+
+```
+[15:54] <eryjus> poll for those who have been there: I am happy with my v0.1 of my microkernel for now and ultimately my plan is to support other architectures -- would you recommend going wide and add an architecture first, or deep and build out other fucntionality first?
+[15:54] <geist> probably adding at least one more is useful
+[15:55] <geist> it tends to point out where your architecture abstractions are weak
+[15:55] <eryjus> I'm certain there is a ton of opportunity there....
+[16:01] <eryjus> Building deep on top of flaws like that does not seem like a good idea...
+```
+
+I think I am going to take that advice and work on the `rpi2b` architecture.  This is so significantly different than the x86 architecture that if there are any abstraction issues they will be evident quickly.  There will be lots of problems.
+
+The first thing I need to do is to refresh my `rpi-boot` project to be able to boot an RPi2b emulator.  This was an easy recompile and copy the resulting `kernel-qemu.img` to `~/bin`.  To compile this, I also need to `export CROSS_COMPILE=arm-eabi-`.
+
+I already have a cross-compiler for the rpi2b architecture, so all I really need to do is get into it.
+
+---
+
+I think it is going to be important to discuss the differences between the architectures as I work through the issues.  As a result, I will spend a little time discussing each file and the issues in encounter with each.  I expect to be bouncing around a bit as I work my way through the issues.  I am generally working on the last file that failed, so a lot is going to depend on what the last one is.
+
+I started with creating the 3 `arch-*.h` files and moving what was appropriate to those files.  With that, I am working on the `LoaderMain.cc` file.  Here are the problems I am dealing with at the moment:
+* The `loader` file `mmu.h` is poorly named.  It contains several architecture-dependent function prototypes.
+* The x86 architecture uses register `cr3` to control the top of the paging tables.  However, the rpi2b architecture uses several CP15 registers to control the MMU.
+* As a result of the issue above, the function `MmuSwitchPageDir()` is architecture dependent.
+* The Framebuffer address is hard-coded and should be defined in an architecture-dependent header.
+* The HW discovery structure location that is sent to the kernel is hard-coded and should be defined in an architecture-dependent header.
+
+---
+
+After the `LoaderMain.cc`, it took quite a while to get the `Tupfile`s worked out so that I could continue to try to get a full executable image ready for debugging.  So, with that said, `tup` is trying to link the kernel first.  The file `kinit.cc` appears to be the one reporting the errors last at this point.  But most of the errors are happening on `idt.h`, or at least the ones that are still left on the screen.  Certainly the Interrupt Descriptor Table (or IDT) is an intel-specific thing, so I will need to refactor that name and everything that touches it.  Once I rename this file to be `interrupt.h` all kinds of things break.
+
+I now have the kernel's `MmuMapToFrame()` function that is coming up.  This is clearly going to be very architecture dependent.  But the questions now becomes how to organize it.  Do I create a folder with-in each sub-module for each architecture?  Or a sub-module within each architecture?  Tonight I am leaning toward the latter, but we will see how I feen about it tomorrow.
+
+---
+
+### 2018-Nov-12
+
+Today I spent a bit of time looking at what would be the best way to handle the architecture question with `tup`.  There are several solutions but nothing that would make things super easy to handle.  So, I will create an architecture folder within each sub-module.  Starting with the MMU.
+
+I am going to focus on getting the loader for rpi2b processed.  There are going to be enough issues with that to keep me busy for a while.
+
+I was able to find my loader's `entry.s` from century and copied it in.  However, this is written in AT&T syntax while `nasm` is Intel syntax.  Moreover, `nasm` does not support anything other than x86, which really sucks.  So, it's back to GNU Asm....  However, there is a directive I can include in the source to switch to Intel syntax: `.intel_syntax noprefix`.  I will start by adding that to the rpi2b asm files and then retrofit that back into the i686 files once I have a working rpi2b architecture.  I'm not sure how much will break while I am transitioning this code.
+
+---
+
+Well, it looks like my cross-compiler was not built to be able to support intel syntax.  I will have to rebuild it at some point.  But for now, I am going to just suffer through the AT&T syntax -- after all it is not an Intel CPU I am assembling for!!   Duh!!!
+
+Ok, `entry.s` is assembling.  But I have this error when trying to link that reads:
+
+```
+/home/adam/opt/cross/lib/gcc/arm-eabi/6.3.0/libgcc.a(pr-support.o): In function `_Unwind_GetTextRelBase':
+/home/adam/devkit/build-gcc/arm-eabi/libgcc/../../../gcc-6.3.0/libgcc/config/arm/pr-support.c:384: undefined reference to `abort'
+```
+
+What bothers me is that I should not be including anything.  I am not sure where this is coming from and I need to try to dig that out.
+
+Well, after a **lot** of digging and reading about issues on the inter-webs, I finally found the 2 options I needed: `-fno-unwind-tables -fno-excpetions`.  I have added that to CFLAGS and the loader compiles properly.  Well, as properly as it can while still missing functions that need to be ported.  My i686 loader still compiles properly as well.
+
+---
+
+### 2018-Nov-13
+
+Today I am going to tackle the serial port for debugging.  There is a key difference between the x86 and ARM architectures where the x86 uses IO ports to read and write data for a device and to control the devices whereas the ARM uses Memory Mapped IO (MMIO) to do the same thing.  So, with MMIO, configuring and writing to the serial port is as easy as writing to memory locations.  I believe that later versions of x86-family have increasing MMIO abilities but leave the IO ports in place as well for backward compaitibility.
+
+So, my current error list when trying to compile my `loader.elf` binary are:
+
+```
+[adam@os-dev century-os]$ tup bin/rpi2b/boot/loader.elf
+ [ETA~=<1s Remaining=0 ] 100%
+* 1) bin/rpi2b/boot: arm-eabi-gcc -T /home/adam/workspace/century-os/modules/loader/src/rpi2b/loader.ld -g -ffreestanding -O2 -nostdlib -L /home/adam/workspace/century-os/lib/rpi2b -z max-page-size=0x1000 -o loader.elf /home/adam/workspace/century-os/obj/loader/rpi2b/FrameBufferInit.o /home/adam/workspace/century-os/obj/loader/rpi2b/LoaderMain.o /home/adam/workspace/century-os/obj/loader/rpi2b/ModuleInit.o /home/adam/workspace/century-os/obj/loader/rpi2b/PmmInit.o /home/adam/workspace/century-os/obj/loader/rpi2b/PmmNewFrame.o /home/adam/workspace/century-os/obj/loader/rpi2b/entry.o /home/adam/workspace/century-os/obj/loader/rpi2b/hw-disc.o /home/adam/workspace/century-os/obj/loader/rpi2b/mb1.o /home/adam/workspace/century-os/obj/loader/rpi2b/mb2.o /home/adam/workspace/century-os/lib/rpi2b/libk.a /home/adam/workspace/century-os/modules/loader/src/rpi2b/loader.ld -lgcc -lk;
+/home/adam/workspace/century-os/obj/loader/rpi2b/LoaderMain.o: In function `LoaderMain':
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:39: undefined reference to `SerialInit()'
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:40: undefined reference to `HwDiscovery()'
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:46: undefined reference to `MmuInit()'
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:51: undefined reference to `SetMmuTopAddr()'
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:56: undefined reference to `kMemMove'
+/home/adam/workspace/century-os/obj/loader/rpi2b/ModuleInit.o: In function `ModuleInit()':
+/home/adam/workspace/century-os/modules/loader/src/modules/ModuleInit.cc:73: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/modules/loader/src/modules/ModuleInit.cc:125: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/modules/loader/src/modules/ModuleInit.cc:137: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
+/home/adam/workspace/century-os/modules/loader/src/modules/ModuleInit.cc:158: undefined reference to `cr3'
+/home/adam/workspace/century-os/obj/loader/rpi2b/PmmInit.o: In function `PmmInit()':
+/home/adam/workspace/century-os/modules/loader/src/pmm/PmmInit.cc:66: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/obj/loader/rpi2b/PmmNewFrame.o: In function `PmmNewFrame()':
+/home/adam/workspace/century-os/modules/loader/src/pmm/PmmNewFrame.cc:35: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/obj/loader/rpi2b/mb1.o: In function `AddModule(unsigned long long, unsigned long long, char*)':
+/home/adam/workspace/century-os/inc/hw-disc.h:244: undefined reference to `kStrCpy'
+/home/adam/workspace/century-os/lib/rpi2b/libk.a(FrameBufferClear.o): In function `FrameBufferClear()':
+/home/adam/workspace/century-os/modules/libk/src/frame-buffer/FrameBufferClear.cc:36: undefined reference to `kMemSetW'
+/home/adam/workspace/century-os/lib/rpi2b/libk.a(SerialPutChar.o): In function `SerialPutChar(char)':
+/home/adam/workspace/century-os/modules/libk/src/SerialPutChar.cc:27: undefined reference to `inb'
+/home/adam/workspace/century-os/modules/libk/src/SerialPutChar.cc:29: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/libk/src/SerialPutChar.cc:30: undefined reference to `serialPort'
+collect2: error: ld returned 1 exit status
+ *** tup errors ***
+ *** Command ID=3975 failed with return value 1
+tup error: Expected to write to file 'loader.elf' from cmd 3975 but didn't
+ [ ] 100%
+ *** tup: 1 job failed.
+[adam@os-dev century-os]$ tup bin/i686/boot/loader.elf
+ [  ETA~=<1s Remaining=0    ] 100%
+ skipped 138 commands.
+ ```
+
+So, looking at this list, all of the Serial port implementations will need to be pulled into an architecture folder.  But the prototypes will all need to be consistent.  This is a good small subsystem to take on for a first exercise.
+
+First, the `serial.h` file in in `libk`.  Since my goal is to eliminate the `libk` module, I will move that into the loader includes and copy it into the kernel includes at the same time -- yes, 2 copies of the same file.  I will have to take on some de-dup effort.
+
+In the meantime, I have created a `serial` submodule with architecture folders therein.  I have moved the `Serial*()` functions from `libk` to the loader.  And I have started looking at the MMIO inlines that will be used to interact with the uart on rpi2b (Do I really need to type the architecture every time now? -- I guess I better get used to it...).  I started to put the MMIO functions into the `arch-cpu.h` file, but realized that with the APIC I will want these for the x86 family as well.  So, into `cpu.h` they go.  For now.
+
+I was able to extract all the relevant function lines from `uart-dev.c` from century to match the configuration for i686.  The serial port is set for 38400 baud, 8-N-1 for both architectures now.  rpi2b `SerialInit()` function requires a `BusyWait()` function, which in turn required a read of a low level system timer.  I had to bring those all over as well.
+
+I want to note that the low level system timer is not emulated properly in the `qemu` version I am running, so I had to put in a patch to work around it.  I believe that we should be able to pull that patch out at some point.  But, today is not the day.
+
+When I try to link, I have a bunch of references to `SerialPutS()` now.  I will take that on next, along with `SerialPutChar()` since there is a strong dependency there.
+
+Actually, looking at it, `SerialPutS()` is hardware independent!  I get a freebee!  Actually, so is `SerialPutHex()`.  So, that really only leaves `SerialPutChar()`.
+
+That was not too bad....
+
+I did get this message on linking:
+
+```
+/home/adam/workspace/century-os/modules/loader/src/rpi2b/SysTimerCount.s:28: undefined reference to `ST_CLO'
+```
+
+This is directly related to this function:
+
+```asy
+SysTimerCount:
+	ldr		r0,=ST_CLO                  @@ load the base address of the system timer
+	ldrd	r0,r1,[r0]                  @@ Get the 64-bit timer "count" into r1:r0
+	mov		pc,lr						@@ return
+```
+
+The problem is that the assembler is not throwing an error on undefined references.  I will work on sorting that out next.  Well, it looks like `as` assumes that all unknowns are defined in another file and there is no way to change that behavior.  At least that's I found.
+
+---
+
+I think I will take on `kMemSetB()` next.  It will give me a reason to refresh my ARM assembler...  It dawns on me that I have not really actually done much ARM assembly coding.  I have written a few fuctions that get and return a value, but nothing that actually takes a parameter and does something with it.
+
+---
+
+I managed to get both `kMemSetB()` and `kMemSetW()` written.  I have no clue how successful I was in getting the memory block right...   I guess I will have to debug some when I can get it to compile.
+
+I am down to a few functions left.  `kStrCpy()` is the next one I will tackle.
+
+Ok, I have all the lower level memory functions done.  I have only a few issues left to tackle:
+
+```
+/home/adam/workspace/century-os/obj/loader/rpi2b/LoaderMain.o: In function `LoaderMain':
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:40: undefined reference to `HwDiscovery()'
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:46: undefined reference to `MmuInit()'
+/home/adam/workspace/century-os/modules/loader/src/LoaderMain.cc:51: undefined reference to `SetMmuTopAddr()'
+/home/adam/workspace/century-os/obj/loader/rpi2b/ModuleInit.o: In function `ModuleInit()':
+/home/adam/workspace/century-os/modules/loader/src/modules/ModuleInit.cc:137: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
+/home/adam/workspace/century-os/modules/loader/src/modules/ModuleInit.cc:158: undefined reference to `cr3'
+```
+
+These should all be C functions and some will be quite complicated (I'm dreading `MmuInit()`!).
+
+---
+
+### 2018-Nov-14
+
+I started the day by taking care of everything but the MMU for the rpi2b architecture.  Before I go on, I want to pull everything out of the rpi2b build except for the loader.  This way I can actually test the loader sooner.  It may not do much now, but I have a lot of reading to do before I can even attempt to set up the rpi2b MMU.
+
+Here are some notes as I read through the documentation:
+* The TTL1 must be 16K aligned and is 16K in length
+* There are 4096 TTL1 entries, each is 4 bytes long
+* Each TTL1 Entry can look at 1MB of physical memory
+* A word to ARM is 4 bytes long (a half-word is 2 bytes)
+* A TTL2 table is 1K in length, which makes a mess of the 4K frame unless we put multiple in a single frame
+* There are 256 TTL2 entries in a single 1K table
+* There are 1K X 4096 or 4MB of TTL2 Tables that would need to be mapped
+* If I was to map the tables, I would need TTL1 entries 4095, 4094, 4093, and 4092 to accomplish the TTL2 table mappings
+* This would also leave 4 additional TTL1 mappings I would also need to build out to access the TTL1 table
+* TTL2 tables would be from addresses `0xffc00000` to `0xffffffff`; TTL1 tables would be from `0xffbfc000` to `0xffbfffff`
+
+---
+
+After checking on #osdev, I learned that there is a TTLB0 and TTLB1 register pair.  TTLB0 is intended to be used for user processes and TTLB1 is for system processes.  I can set the number of bits to distinguish between the 2 tables to be 1 bit.  This means that addresses from `0x00000000` to `0x7fffffff` will refer to TTLB0 and addresses from `0x80000000` to `0xffffffff` will refer to TTLB1.  The key here is that when I perform a task switch, I only have to be concerned with updating the TTLB0 for the new target process.  The TTLB1 is static.
+
+Now, the drawback is that the address space for my processes just got reduced (or at least if I plan to have them remain the same between x86 and rpi2b).
+
+If I am reading the documentation correctly, the TTLB1 address must be 16K in length and 16K aligned (but 1 for the entire OS) while the TTLB0 address would only need to be 8K aligned and 8K in length (1 per non-kernel process).
+
+So, how then to manage the mappings to the table structures.  I think the original thoughts still apply: the top 2M + 16K (only half the addresses are relevant, so only half the TTL2 tables are needed) are used to map the kernel.  And then for processes, use the the top 2M + 8K for the map, up to address `0x7fffffff`.
+
+I think I have a memory layout and a design to start with.  The good news is I only have to start with the kernel mapping in the loader since all I need is kernel mappings for the loader.
+
+When I come back, I think it's time to put some code down to start the implementation.
+
+---
+
+Ok, so, I need to map this out...  starting with the kernel:
+* `kTTL1` will be located at `0xffbfc000`.  The address of that table will be static.
+* The index `n1` into `kTTL1` will be calculated as `vAddr >> 20` (0 to 4095)
+* `kTTL2` tables will begin at `0xffc00000`.  This starting address will be static.
+* The `kTTL2` table that backs `kTTL1[n1]` will be located at `kTTL2 + (1024 * n1)`.
+* The index `n2` into `kTTL2` will be calculated as `(vAddr >> 12) & 0xff`
+
+---
+
+Well, crap!!!  I just lost an uncommitted copy of `Tuprules.tup`!!!  I'm depressed.
+
+---
+
+### 2018-Nov-15
+
+OK, I need to start building out the `Tuprules.tup` file again.  What is really bothering me is that I really have no clue what happened and how to prevent it again.  I know I can stage the changes in `git` more often and I should have done that 5 minutes before it happened.  But I didn't and here I am.  Just in case, I am going to start with a reboot today.
+
+---
+
+Well, I was able to get everything to compile again.  I was able to stage the files and when I tried to make this command automatically overwrite the target image filesystem, it resets Tuprules.tup!
+
+```
+	sudo mkfs.ext2 /dev/mapper/loop0p1
+```
+
+I was able to recover my file from `git`.  But I will have to deal with the following prompt for a while:
+
+```
+20+0 records in
+20+0 records out
+20971520 bytes (21 MB, 20 MiB) copied, 0.0155924 s, 1.3 GB/s
+mke2fs 1.44.2 (14-May-2018)
+/dev/mapper/loop0p1 contains a ext2 file system
+        last mounted on /home/adam/workspace/century-os/p1 on Thu Nov 15 15:18:08 2018
+Proceed anyway? (y,N) y
+Discarding device blocks: done
+Creating filesystem with 18432 1k blocks and 4608 inodes
+Filesystem UUID: 78feccc7-54a2-4b7c-9057-4d0e1ddc2d3e
+Superblock backups stored on blocks:
+        8193
+
+Allocating group tables: done
+Writing inode tables: done
+Writing superblocks and filesystem accounting information: done
+```
+
+Actually I figured it out!!  I forgot I had added the following to the `Makefile`:
+
+```
+Tuprules.tup: Makefile
+	echo "WS = `pwd`" > $@
+	echo "II686 = \$$(WS)/bin/i686/usr/include/*" >> $@
+```
+
+I removed that part of the code.
+
+So, running the rpi2b loader, and I am now getting these errors and is now the subject of my debugging efforts.
+
+```
+Welcome to Rpi bootloader
+Compiled on Nov 11 2018 at 16:12:41
+ARM system type is c43
+EMMC: bcm_2708_power_off(): property mailbox did not return a valid response.
+EMMC: BCM2708 controller did not power cycle successfully
+EMMC: vendor 24, sdversion 1, slot_status 0
+EMMC: WARNING: old SDHCI version detected
+SD: found a valid version 1.0 and 1.01 SD card
+MBR: found valid MBR on device emmc0
+EXT2: not a valid ext2 filesystem on emmc0_0
+MBR: found total of 1 partition(s)
+MAIN: device list:
+VFS: unable to determine device name when parsing /boot/rpi_boot.cfg
+VFS: unable to determine device name when parsing /boot/rpi-boot.cfg
+VFS: unable to determine device name when parsing /boot/grub/grub.cfg
+MAIN: No bootloader configuration file found
+```
+
+I have mounted the image and I am able to confirm that `/boot/grub/grub.cfg` exists.
+
+So, I need to back up a bit.  The EXT2 error message is certainly a problem.  So, is the Welcome message coming from `rpi-boot`?  It is; I found the following in the main.cc file:
+
+```C
+    printf("Welcome to Rpi bootloader\n");
+	printf("Compiled on %s at %s\n", __DATE__, __TIME__);
+	printf("ARM system type is %x\n", arm_m_type);
+```
+
+So, let's go see what the problem is with EXT2.  This is the check that is being made:
+
+```C
+	// Confirm its ext2
+	if(*(uint16_t *)&sb[56] != 0xef53)
+	{
+		printf("EXT2: not a valid ext2 filesystem on %s\n", parent->device_name);
+		return -1;
+	}
+```
+
+So, this is something I can check in the file system.  Let's see how to get this done...
+
+```
+[adam@os-dev century-os]$ sudo kpartx -as iso/rpi2b.img
+[adam@os-dev century-os]$ sudo debugfs /dev/mapper/loop0p1
+debugfs:  stats
+Filesystem volume name:   <none>
+Last mounted on:          /home/adam/workspace/century-os/p1
+Filesystem UUID:          1a506bae-56cf-4450-9589-3d60b6691d00
+Filesystem magic number:  0xEF53
+...
+```
+
+So, there is a discrepancy between what the superblock is reporting and what `rpi-boot` is reading.  This all looks to be correct.  However, I am left wondering if the disk image that `rpi-boot` is expecting is un-partitioned.
+
+---
+
+So, I want to document what I have found so far.  I have been digging through the `rpi-boot` code and I belive the problem is the formation of my disk.  `rpi-boot` assumes that the EXT2 partition actually starts in sector 2 (0-based) while I am building my partition from 1MB.  Rather than take on fixing the `rpi-boot` code (which I think I may do at some point), I will see if I can get the `parted` script to build the disk right.
+
+For example, when I create the disk image using this command, I get:
+```
+parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 4s 100% set 1 boot on
+
+MBR: partition number 0 (emmc0_0) of type 83, start sector 4, sector count 40956, p_offset 1be
+EXT2: looking for a filesytem on emmc0_0
+block_read: performing multi block read (2 blocks) from block 2 on emmc0_0
+```
+
+```
+parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 3s 100% set 1 boot on
+
+MBR: partition number 0 (emmc0_0) of type 83, start sector 3, sector count 40957, p_offset 1be
+EXT2: looking for a filesytem on emmc0_0
+block_read: performing multi block read (2 blocks) from block 2 on emmc0_0
+```
+
+```
+parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 1 100% set 1 boot on
+
+MBR: partition number 0 (emmc0_0) of type 83, start sector 2048, sector count 38912, p_offset 1be
+EXT2: looking for a filesytem on emmc0_0
+block_read: performing multi block read (2 blocks) from block 2 on emmc0_0
+```
+
+The short story here is that no matter how the disk is partitioned, `rpi-boot` is reading from block #2 every time.  It is not taking the partition table and its start offset into account.  This is the offending line:
+
+```C
+int r = block_read(parent, sb, 1024, 1024 / parent->block_size);
+```
+
+The `block_read` prototype looks like this:
+
+```C
+size_t block_read(struct block_device *dev, uint8_t *buf, size_t buf_size, uint32_t starting_block);
+```
+
+The line that prints the debug code is:
+
+```C
+printf("block_read: performing multi block read (%i blocks) from "
+			"block %i on %s\n", buf_size / dev->block_size, starting_block,
+			dev->device_name);
+```
+
+This is telling.  It explains that I ahve a specific request to read from block 2 (passed in).  The buffer size / block size is reporting back as 2 blocks (or really 2 sectors) -- since this read is specifically looking at the superblock.  I have a feeling that the concern is complicated by the use of the term block when is should be sector.
+
+So, I have tested through starting sector 8 and nothing will boot.
+
+---
+
+Well, it looks like I'm going to have to debug the `rpi-boot` solution.  It is not loading the correct sectory for me.  I am struggling because this is not a task I wanted to have to take on.  I have one more thing to try -- which is loading my loader directly.  And that did not work easily either.
+
+On the other hand...
+
+```
+adam@os-dev century-os]$ sudo kpartx -uv iso/rpi2b.img
+add map loop61p1 (253:60): 0 40958 linear 7:61 2
+[adam@os-dev century-os]$ sudo kpartx -uv iso/rpi2b.img
+add map loop62p1 (253:61): 0 40958 linear 7:62 2
+[adam@os-dev century-os]$ sudo kpartx -uv iso/rpi2b.img
+add map loop63p1 (253:62): 0 40958 linear 7:63 2
+[adam@os-dev century-os]$ sudo kpartx -anv iso/rpi2b.img
+add map loop64p1 (253:63): 0 40958 linear 7:64 2
+[adam@os-dev century-os]$ sudo kpartx -anv iso/rpi2b.img
+add map loop65p1 (253:64): 0 40958 linear 7:65 2
+```
+
+Each execution of kpartx is creating a new device map.  I'm too tired for this!
+
+---
+
+### 2018-Nov-16
+
+It's amazing how a little sleep can help.  I recalled that I had the build working at one point -- the one I am currently having trouble with.  I was able to dig out the `Makefile` from an earlier version of the code: https://github.com/eryjus/century-old/blob/master/Makefile#L117.
+
+The difference with the github version is that I have several statements in a couple of parenthetical statements -- executed as a group.  It is this grouping that I think I am missing now.  I'm going to set it up and then reboot to clean my system and then give it a try.  Or a couple of tries.
+
+---
+
+Ok, after the reboot, my `/dev/mapper` folder has the following:
+
+```
+[adam@os-dev ~]$ cd /dev/mapper
+[adam@os-dev mapper]$ ls -al
+total 0
+drwxr-xr-x.  2 root root     120 Nov 16 14:37 .
+drwxr-xr-x. 20 root root    3900 Nov 16 14:38 ..
+crw-------.  1 root root 10, 236 Nov 16 14:37 control
+lrwxrwxrwx.  1 root root       7 Nov 16 14:37 fedora-home -> ../dm-2
+lrwxrwxrwx.  1 root root       7 Nov 16 14:37 fedora-root -> ../dm-0
+lrwxrwxrwx.  1 root root       7 Nov 16 14:37 fedora-swap -> ../dm-1
+```
+
+So, everthing is cleaned up -- I am no longer at loop70p1....  Now, for a test compile.  With 2 test compiles, I end up with this:
+
+```
+[adam@os-dev mapper]$ ls -al
+total 0
+drwxr-xr-x.  2 root root     160 Nov 16 14:50 .
+drwxr-xr-x. 20 root root    3980 Nov 16 14:50 ..
+crw-------.  1 root root 10, 236 Nov 16 14:37 control
+lrwxrwxrwx.  1 root root       7 Nov 16 14:37 fedora-home -> ../dm-2
+lrwxrwxrwx.  1 root root       7 Nov 16 14:37 fedora-root -> ../dm-0
+lrwxrwxrwx.  1 root root       7 Nov 16 14:37 fedora-swap -> ../dm-1
+lrwxrwxrwx.  1 root root       7 Nov 16 14:50 loop0p1 -> ../dm-3
+lrwxrwxrwx.  1 root root       7 Nov 16 14:50 loop1p1 -> ../dm-4
+```
+
+So, I still have the same problem.  This has got to be the first thing I tackle.
+
+---
+
+After a few reboots and some line-by-line testing, I have finally settled on the following:
+
+```
+#
+# -- This rule and the following recipe is used to build a disk image that can be booted:
+#    * create a disk image, size = 20MB
+#    * make the partition table, partition it, and set it to bootable
+#    * map the partitions from the image file
+#    * write an ext2 file system to the first partition
+#    * create a temporary mount point
+#    * Mount the filesystem via loopback
+#    * copy the files to the disk
+#    * unmount the device
+#    * unmap the image
+#
+#    In the event of an error along the way, the image is umounted and the partitions unmapped.
+#    Finally, if the error cleanup is completely suffessful, then false is called to fail the
+#    recipe.
+#    ------------------------------------------------------------------------------------------------
+rpi2b-iso: all
+	rm -fR iso/rpi2b.img
+	cp -fR bin/rpi2b/* sysroot/rpi2b/
+	find sysroot/rpi2b -type f -name Tupfile -delete
+	mkdir -p ./p1
+	(																						\
+		dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1048576;								\
+		parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 1 20 set 1 boot on; 		\
+		sudo losetup -v -L -P /dev/loop0 iso/rpi2b.img;										\
+		sudo mkfs.ext2 /dev/loop0p1;														\
+		sudo mount /dev/loop0p1 ./p1;														\
+		sudo cp -R sysroot/rpi2b/* p1/;														\
+		sudo umount ./p1;																	\
+		sudo losetup -v -d /dev/loop0;														\
+	) || (																					\
+		sudo umount ./p1;																	\
+		sudo losetup -v -d /dev/loop0;														\
+	) || false
+```
+
+This appears to be working.
+
+Now I need to back out all the changes to `rpi-boot` and start testing all over again.  I cannot assume that anything I was seeing before was not related to the mal-formed disk image I kept reading.  I get all kinds of new and different stuff!
+
+```
+SD: read() card ready, reading from block 2048
+SD: issuing command CMD18
+SD: multi block transfer, awaiting block 0 ready
+SD: block 0 transfer complete
+SD: multi block transfer, awaiting block 1 ready
+SD: block 1 transfer complete
+SD: command completed successfully
+SD: data read successful
+MULTIBOOT: no valid multiboot header found in /boot/loader.elf
+cfg_parse: multiboot failed with -1
+```
+
+I certainly need to back out all the debugging `#define`s so that I can get a cleaner boot and try to get to the root of the problem now.  And I get cleaner messages:
+
+```
+Welcome to Rpi bootloader
+Compiled on Nov 16 2018 at 15:43:38
+ARM system type is c43
+EMMC: bcm_2708_power_off(): property mailbox did not return a valid response.
+EMMC: BCM2708 controller did not power cycle successfully
+EMMC: vendor 24, sdversion 1, slot_status 0
+EMMC: WARNING: old SDHCI version detected
+SD: found a valid version 1.0 and 1.01 SD card
+MBR: found valid MBR on device emmc0
+EXT2: found an ext2 filesystem on emmc0_0
+MBR: found total of 1 partition(s)
+MAIN: device list: emmc0_0(ext2)
+MAIN: Found bootloader configuration: /boot/rpi_boot.cfg
+MULTIBOOT: no valid multiboot header found in /boot/loader.elf
+cfg_parse: multiboot failed with -1
+```
+
+This is so much better!!
+
+So, this is relatively easy to track down.  `readelf -a bin/boot/loader.elf` yields the following:
+
+```
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x010000 0x00100000 0x00100000 0x12004 0x13334 RWE 0x10000
+```
+
+THe offset must be in the first 4K for the Multiboot specification.  I am at 256K.  A simple flag addition solved this problem.
+
+```
+LDFLAGS += -z max-page-size=0x1000
+```
+
+So, now I am booting and getting nothing done!  I cannot say for sure just how far I have gotten.  But it is huge progress over last night.
+
+```
+Welcome to Rpi bootloader
+Compiled on Nov 16 2018 at 15:43:38
+ARM system type is c43
+EMMC: bcm_2708_power_off(): property mailbox did not return a valid response.
+EMMC: BCM2708 controller did not power cycle successfully
+EMMC: vendor 24, sdversion 1, slot_status 0
+EMMC: WARNING: old SDHCI version detected
+SD: found a valid version 1.0 and 1.01 SD card
+MBR: found valid MBR on device emmc0
+EXT2: found an ext2 filesystem on emmc0_0
+MBR: found total of 1 partition(s)
+MAIN: device list: emmc0_0(ext2)
+MAIN: Found bootloader configuration: /boot/rpi_boot.cfg
+MULTIBOOT: loaded kernel /boot/loader.elf
+BOOT: multiboot load
+```
+
+But at this point, I need to commit the code.  I am able to boot properly into the loader but it locks up.
+

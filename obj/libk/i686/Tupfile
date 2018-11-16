@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  obj/libk/i686/Tupfile -- An alternative to the 'make' build system -- i686 libk objects
+##  Tupfile -- An alternative to the 'make' build system -- i686 libk objects
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
