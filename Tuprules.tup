@@ -63,17 +63,12 @@ NFLAGS += -i$(WS)/inc/$(ARCH)/
 ##
 ## -- Build out the AFLAGS variable -- for gas
 ##    ----------------------------------------
-CFLAGS += -g
-CFLAGS += -fpic
-CFLAGS += -ffreestanding
 AFLAGS += -I $(WS)/bin/$(ARCH)/usr/include
 AFLAGS += -I $(WS)/modules/$(MOD)/inc/
 AFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)/
 AFLAGS += -I $(WS)/inc/
 AFLAGS += -I $(WS)/inc/$(ARCH)/
-CFLAGS += -Wall
-CFLAGS += -Werror
-CFLAGS += -c
+AFLAGS += -c
 
 
 ##
@@ -94,4 +89,4 @@ LDFLAGS += -L $(WS)/lib/$(ARCH)
 !cc = |> $(CC) $(CFLAGS) -o %o %f |> %B.o
 !nasm = |> nasm $(NFLAGS) -o %o %f |> %B.o
 !as = |> $(AS) $(AFLAGS) -o %o %f |> %B.o
-!dump = |> $(DUMP) -D %f > %o |> %B.o
+!dump = |> $(DUMP) -D %f > %o |> %B.map

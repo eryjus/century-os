@@ -140,9 +140,11 @@ rpi2b-iso: all
 		sudo cp -R sysroot/rpi2b/* p1/;														\
 		sudo umount ./p1;																	\
 		sudo losetup -v -d /dev/loop0;														\
+		rm -fR ./p1																			\
 	) || (																					\
 		sudo umount ./p1;																	\
 		sudo losetup -v -d /dev/loop0;														\
+		rm -fR ./p1																			\
 	) || false
 
 

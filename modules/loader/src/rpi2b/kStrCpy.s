@@ -35,11 +35,13 @@ kStrCpy:
     push    {r3}                                    @@ we're going to use r3, so we will be nice and save it
 
 .loop:
-    ldrb    r3,[r1]!                                @@ get the next character and update the address
+    ldrb    r3,[r1]                                 @@ get the next character
+    add     r1,#1                                   @@ update the address
     cmp     r3,#0                                   @@ is this the end of the string?
     beq     .out                                    @@ if so we leave
 
-    strb    r3,[r0]!                                @@ store the value in r3 to the mem at addr r0 and update r0
+    strb    r3,[r0]                                 @@ store the value in r3 to the mem at addr r0
+    add     r0,#1                                   @@ update the address
     b       .loop                                   @@ loop
 
 .out:

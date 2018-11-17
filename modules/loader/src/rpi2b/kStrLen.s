@@ -36,7 +36,8 @@ kStrLen:
     eor     r0,r0                                   @@ clear our return value to 0
 
 .loop:
-    ldrb    r1,[r3]!                                @@ get the next character and update the address
+    ldrb    r1,[r3]                                 @@ get the next character
+    add     r3,#1                                   @@ update the address
     cmp     r1,#0                                   @@ is this the end of the string?
     beq     .out                                    @@ if so we leave
 

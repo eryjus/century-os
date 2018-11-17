@@ -25,5 +25,4 @@ include_rules
 ##
 ## -- The rules to make the targets in this folder
 ##    --------------------------------------------
-: $(WS)/obj/libk/$(ARCH)/*.o |> !ar |> libk.a
 : $(WS)/obj/libc/$(ARCH)/*.o |> !ar |> libc.a

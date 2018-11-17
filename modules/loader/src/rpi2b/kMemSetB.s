@@ -39,6 +39,7 @@ kMemSetB:
     cmp     r2,#0                                   @@ have we filled all the bytes?
     moveq   pc,lr                                   @@ if we are done, leave
 
-    strb    r1,[r0]!                                @@ store the value in r1 to the mem at addr r0 and update r0
+    strb    r1,[r0]                                 @@ store the value in r1 to the mem at addr r0
+    add     r1,#1                                   @@ increment the address
     sub     r2,#1                                   @@ decrement the numebr of bytes
     b       kMemSetB                                @@ loop

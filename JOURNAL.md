@@ -3243,3 +3243,192 @@ BOOT: multiboot load
 
 But at this point, I need to commit the code.  I am able to boot properly into the loader but it locks up.
 
+---
+
+Let's get into determining where the problem is...  I know I am passing all the edits to get to the loader.  Let's start with addresses.  I want to make sure that the address the loader is being loaded at is a good address.  To do this, I can compare to century where I was able to boot with `qemu` at one point.
+
+The addresses look good.  So, I'm going to take a step back....  Thinking this through, the `rpi-boot` code is able to write to the serial port and it shows up on the command line as output.  This is what I want to do with my code.  `rpi-boot` works; mine does not.  One thing I am wondering is if `rpi-boot` uses the mini-UART or the PL011 UART.  I need to compare the 2 solutions to see what the differences are.
+
+`rpi-boot` uses the following base UART address:
+
+```C
+#define UART0_BASE			0x20201000
+```
+
+I use:
+
+```C
+#define HW_BASE             (0x3f000000)
+#define UART_BASE           (HW_BASE+0x201000)          // The UART base register
+```
+
+So, I am using the incorrect address.  However, changing the base hardware address did nothing.  I changed it back.
+
+A line-by-line comparison shows that I had an inequality comparison as an equality check, fixed here:
+
+```C
+void SerialPutChar(char byte)
+{
+    while ((MmioRead(UART_BASE + UART_FR) & UARTFR_TXFF) != 0) { }
+
+    MmioWrite(UART_BASE + UART_DR, byte);
+}
+```
+
+Changing this check results in lots of additional debugging info:
+
+```
+BOOT: multiboot load
+Serial port initialized!
+Setting basic memory information
+/boot/loader.elf
+Module information present
+Setting memory map data
+
+Frame Buffer is at: 0x0c100000; The pitch is: 0x00000500; The height is: 0x000001e0
+```
+
+However, I am not getting a lot of information from `rpi-boot` about the system.  The good thing is that every rpi2b has basically the same config and this can be hard coded.  For the record, it looks like I am getting the following information from `rpi-boot1`:
+* Basic Memory info
+* Command line
+* Module Info
+* Memory Map
+* Boot loader name (most likely, but blank)
+* Frame buffer info
+
+This covers the critical information for rpi2b (particularly the middle 2 points for century).  The next thing to look at with loader is the temporary PMM initialization.  The next step is to add some debugging statements to figure out where the problem is.
+
+This check came up empty:
+
+```C
+    // -- pages now holds the bitmap aligned to 4K right up to the EBDA or 640K boundary; set to no available memory
+    SerialPutS("Getting ready to init the bitmap\n");
+    kMemSetB((void *)start, 0, PmmFrameToLinear(pages));
+    SerialPutS("Done clearing the bitmap\n");
+```
+
+I got both lines.  However, I never get here:
+
+```C
+    // -- Allocate the loaded modules
+    SerialPutS("About to allocate the module locations\n");
+    if (HaveModData()) {
+```
+
+I do get past this point:
+
+```C
+       PmmFreeFrameRange(frame, length);
+    }
+    SerialPutS("Past the Memory Map\n");
+```
+
+So, in short, my problem is somewhere in these lines:
+
+```C
+    SerialPutS("Past the Memory Map\n");
+
+    // -- The GDT is at linear address 0 and make it unavailable
+    PmmAllocFrame(0);
+
+    // -- Page Directory is not available
+    PmmAllocFrame(1);
+
+    // -- The area between the EBDA and 1MB is allocated
+    PmmAllocFrameRange(PmmLinearToFrame(GetEbda()), 0x100 - PmmLinearToFrame(GetEbda()));
+
+    // -- now that all our memory is available, set the loader space to be not available; _loader* already aligned
+    frame_t ls = PmmLinearToFrame((ptrsize_t)_loaderStart);
+    frame_t le = PmmLinearToFrame((ptrsize_t)_loaderEnd);
+    PmmAllocFrameRange(ls, le - ls);        // _loaderEnd is already page aligned, so no need to add 1 page.
+
+    // -- Allocate the Frame Buffer
+    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), 1024 * 768 * 2);
+
+    // -- Allocate the loaded modules
+    SerialPutS("About to allocate the module locations\n");
+```
+
+Which makes me wonder if the EBDA is a problem, since the rpi2b doesn't have one.  Well, a quick test begs to differ...
+
+```C
+    SerialPutS("Allocating EBDA\n");
+    PmmAllocFrameRange(PmmLinearToFrame(GetEbda()), 0x100 - PmmLinearToFrame(GetEbda()));
+    SerialPutS("Allocated EBDA\n");
+```
+
+... where I get both lines out output.  It may not be right, but they both execute.  Finally the following debug line executes, so the problem must be in the FrameBuffer allocation since the module locations debug locations do not print:
+
+```C
+    SerialPutS("Allocated EBDA\n");
+
+    // -- now that all our memory is available, set the loader space to be not available; _loader* already aligned
+    frame_t ls = PmmLinearToFrame((ptrsize_t)_loaderStart);
+    frame_t le = PmmLinearToFrame((ptrsize_t)_loaderEnd);
+    PmmAllocFrameRange(ls, le - ls);        // _loaderEnd is already page aligned, so no need to add 1 page.
+    SerialPutS("Loader allocated\n");
+
+    // -- Allocate the Frame Buffer
+    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), 1024 * 768 * 2);
+
+```
+
+I was finally able to whittle this down the the following frame buffer operation where it was allocating a huge number of frames:
+
+```C
+    SerialPutS("Frame Buffer Address: "); SerialPutHex((ptrsize_t)GetFrameBufferAddr()); SerialPutChar('\n');
+    SerialPutS("Number of frames to allocate: "); SerialPutHex(1024 * 768 * 2); SerialPutChar('\n');
+    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), (1024 * 768 * 2) >> 12);
+```
+
+The bug was that the number of frames was not adjusted -- it was just a byte count.  With this change my boot sequence looks like this:
+
+```
+BOOT: multiboot load
+Serial port initialized!
+Setting basic memory information
+/boot/loader.elf
+Module information present
+Setting memory map data
+
+Frame Buffer is at: 0x0c100000; The pitch is: 0x00000500; The height is: 0x000001e0
+Getting ready to init the bitmap
+Done clearing the bitmap
+Past the Memory Map
+Loader allocated
+Frame Buffer Address: 0x0c100000
+Number of frames to allocate: 0x00180000
+About to allocate the module locations
+Phyiscal Memory Manager Initialized
+Unable to locate Kernel...  Halting!
+```
+
+This is good news -- everything is executing and it is looking for the kernel which is not present.  I cleaned up the debugging code.  However, with that said, the screen is not clearing and I'm certain I did not complete the MMU initialization.  I am getting a message on the screen, but the screen is not clearing first.
+
+I will look into the FrameBuffer tomorrow as it is the next thing in order in `LoaderInit()`.
+
+---
+
+### 2018-Nov-17
+
+So, I was thinking last night...  Of the tracable portions that happen in the `LoadreInit()` function, the FrameBuffer is giving me trouble.  But, it's not the frame buffer.  I am getting the greeting message properly shown.  The problem is that the screen is not clearing properly.  This clear screen function is written in assembly and is using the registers from the ABI...  both of which are likely wrong.  I coudld re-implement these functions in C and bypass both problems, but I really need to make sure I have this dialed in.
+
+Well, the ABI understanding was correct.  This is a good thing.  However, the assembly instruction was not correct.  I was trying to auto-increment an address:
+
+```
+    strh    r1,[r0]!                                @@ store the value in r1 to the mem at addr r0 and update r0
+```
+
+For whatever reason, this was creating a problem, and likely an alignment data abort that my software did not pick up.  I changed the code to this:
+
+```
+    strh    r1,[r0]                                 @@ store the value in r1 to the mem at addr r0
+    add     r0,#2                                   @@ move to the next address
+```
+
+... and this worked.
+
+This now brings me to `MmuInit()` -- the next big thing.  But first a commit.  Oh, did I mention I finally got all of libk eliminated?
+
+
+

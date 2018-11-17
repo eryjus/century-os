@@ -39,6 +39,7 @@ kMemSetW:
     cmp     r2,#0                                   @@ have we filled all the half words?
     moveq   pc,lr                                   @@ if we are done, leave
 
-    strh    r1,[r0]!                                @@ store the value in r1 to the mem at addr r0 and update r0
-    sub     r2,#1                                   @@ decrement the numebr of hald words
-    b       kMemSetB                                @@ loop
+    strh    r1,[r0]                                 @@ store the value in r1 to the mem at addr r0
+    add     r0,#2                                   @@ move to the next address
+    sub     r2,#1                                   @@ decrement the numebr of half words
+    b       kMemSetW                                @@ loop

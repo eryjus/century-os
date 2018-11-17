@@ -65,6 +65,7 @@ void PmmInit(void)
     // -- pages now holds the bitmap aligned to 4K right up to the EBDA or 640K boundary; set to no available memory
     kMemSetB((void *)start, 0, PmmFrameToLinear(pages));
 
+
     // -- now we loop through the available memory and set the frames to be available
     for (int i = 0; i < GetMMapEntryCount(); i ++) {
         frame = PmmLinearToFrame(GetAvailMemStart(i));
@@ -79,8 +80,10 @@ void PmmInit(void)
     // -- Page Directory is not available
     PmmAllocFrame(1);
 
-    // -- The area between the EBDA and 1MB is allocated
-    PmmAllocFrameRange(PmmLinearToFrame(GetEbda()), 0x100 - PmmLinearToFrame(GetEbda()));
+    // -- The area between the EBDA and 1MB is allocated (if exists)
+    if (GetEbda() != 0) {
+        PmmAllocFrameRange(PmmLinearToFrame(GetEbda()), 0x100 - PmmLinearToFrame(GetEbda()));
+    }
 
     // -- now that all our memory is available, set the loader space to be not available; _loader* already aligned
     frame_t ls = PmmLinearToFrame((ptrsize_t)_loaderStart);
@@ -88,7 +91,7 @@ void PmmInit(void)
     PmmAllocFrameRange(ls, le - ls);        // _loaderEnd is already page aligned, so no need to add 1 page.
 
     // -- Allocate the Frame Buffer
-    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), 1024 * 768 * 2);
+    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), (1024 * 768 * 2) >> 12);
 
     // -- Allocate the loaded modules
     if (HaveModData()) {

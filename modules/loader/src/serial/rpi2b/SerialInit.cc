@@ -16,6 +16,7 @@
 
 
 #include "cpu.h"
+#include "hw.h"
 #include "serial.h"
 
 
@@ -43,27 +44,28 @@ void SerialInit(void)
                                             UARTIMSC_RTIM | UARTIMSC_TXIM | UARTIMSC_RXIM | UARTIMSC_CTSMIM);
 
     // -- Enable the FIFO queues
-    MmioWrite(UART_BASE + UART_LCRH, UARTLCRH_FEN);
+//    MmioWrite(UART_BASE + UART_LCRH, UARTLCRH_FEN);
 
     // -- Set the parameters for the uart: 38400, 8, N, 1
-    uint32_t iBaud;
-    uint32_t fBaud;
-    uint32_t lcrh = 0;
+//    uint32_t iBaud;
+//    uint32_t fBaud;
+//    uint32_t lcrh = 0;
 
     // -- Set the data width size
-    lcrh |= SH_UARTLCRHWLEN_8;
+//    lcrh |= SH_UARTLCRHWLEN_8;
 
     // -- calculate the baud rate integer and fractional divisor parts.  Note this works since it can be calculated
     //    statically at compile time -- even for fBaud since iBaud is constant.
-    iBaud = 3000000 / (16 * 38400);
-    fBaud = ((((3000000 / (16 * 38400)) - (iBaud * 100)) * 64) + 50) / 100;
+//    iBaud = 3000000 / (16 * 38400);
+//    fBaud = ((((3000000 / (16 * 38400)) - (iBaud * 100)) * 64) + 50) / 100;
 
     // -- Finally, configure the UART
-    MmioWrite(UART_BASE + UART_IBRD, iBaud);
-    MmioWrite(UART_BASE + UART_FBRD, fBaud);
-    MmioWrite(UART_BASE + UART_LCRH, lcrh);
+//    MmioWrite(UART_BASE + UART_IBRD, iBaud);
+//    MmioWrite(UART_BASE + UART_FBRD, fBaud);
+//    MmioWrite(UART_BASE + UART_LCRH, lcrh);
 
     // -- Enable the newly configured UART (not transmitting/receiving yet)
-    MmioWrite(UART_BASE + UART_CR, UARTCR_EN);
+    MmioWrite(UART_BASE + UART_CR, UARTCR_EN | UARTCR_RXE | UARTCR_TXE);
 
+    SerialPutS("Serial port initialized!\n");
 }
