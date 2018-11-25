@@ -21,6 +21,7 @@
 
 
 #include "types.h"
+#include "pmm.h"
 #include "cpu.h"
 
 
@@ -33,7 +34,7 @@ extern ptrsize_t ttl1;
 //
 // -- This inline function will install the paging structures to the right place
 //    --------------------------------------------------------------------------
-inline void SetMmuTopAddr(void) { ttl1 = 0x1000; }
+void SetMmuTopAddr(void);
 
 
 //
@@ -41,3 +42,20 @@ inline void SetMmuTopAddr(void) { ttl1 = 0x1000; }
 //    ----------------------------------------------------------
 inline ptrsize_t GetMmuTopAddr(void) { return ttl1; }
 
+
+//
+// -- Create a new Ttl2 table
+//    -----------------------
+void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr);
+
+
+//
+// -- Is paging enabled?
+//    ------------------
+extern "C" bool MmuIsEnabled(void);
+
+
+//
+// -- Set the TTLB0, TTLB1, and # control bits and enable paging
+//    ----------------------------------------------------------
+extern "C" void MmuEnablePaging(ptrsize_t ttl1);

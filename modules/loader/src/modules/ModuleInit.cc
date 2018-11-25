@@ -21,7 +21,7 @@
 
 #include "hw-disc.h"
 #include "pmm.h"
-#include "mmu.h"
+#include "mmu-loader.h"
 #include "cpu.h"
 #include "serial.h"
 #include "elf.h"

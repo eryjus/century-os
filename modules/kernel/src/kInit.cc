@@ -40,9 +40,9 @@
 #include "heap.h"
 #include "process.h"
 #include "timer.h"
-#include "tss.h"
 #include "ipc.h"
 #include "pmm.h"
+#include "tss.h"
 
 
 //
@@ -160,7 +160,7 @@ void kInit(void)
 	//	  ---------------------------------------
 
 	while (1) {
-		__asm("hlt");
+		HaltCpu();
 	}
 }
 
@@ -171,6 +171,6 @@ void kInit(void)
 void idleMain(void)
 {
 	while (1) {
-		__asm("hlt");
+		HaltCpu();
 	}
 }

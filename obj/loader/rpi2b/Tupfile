@@ -29,8 +29,8 @@ SRC = $(WS)/modules/$(MOD)/src
 ##
 ## -- These are the implicit build rules for the i686 loader object files
 ##    -------------------------------------------------------------------
-: foreach $(SRC)/$(ARCH)/*.s        |> !as |>
-: foreach $(SRC)/mmu/*.s            $(SRC)/mmu/$(ARCH)/*.s              |> !nasm |>
+: foreach $(SRC)/$(ARCH)/*.s                                            |> !as |>
+: foreach $(SRC)/mmu/*.s            $(SRC)/mmu/$(ARCH)/*.s              |> !as |>
 
 : foreach $(SRC)/*.cc               $(SRC)/$(ARCH)/*.cc                 |> !cc |>
 : foreach $(SRC)/frame-buffer/*.cc  |> !cc |>

@@ -3411,7 +3411,7 @@ I will look into the FrameBuffer tomorrow as it is the next thing in order in `L
 
 ### 2018-Nov-17
 
-So, I was thinking last night...  Of the tracable portions that happen in the `LoadreInit()` function, the FrameBuffer is giving me trouble.  But, it's not the frame buffer.  I am getting the greeting message properly shown.  The problem is that the screen is not clearing properly.  This clear screen function is written in assembly and is using the registers from the ABI...  both of which are likely wrong.  I coudld re-implement these functions in C and bypass both problems, but I really need to make sure I have this dialed in.
+So, I was thinking last night...  Of the tracable portions that happen in the `LoaderInit()` function, the FrameBuffer is giving me trouble.  But, it's not the frame buffer.  I am getting the greeting message properly shown.  The problem is that the screen is not clearing properly.  This clear screen function is written in assembly and is using the registers from the ABI...  both of which are likely wrong.  I coudld re-implement these functions in C and bypass both problems, but I really need to make sure I have this dialed in.
 
 Well, the ABI understanding was correct.  This is a good thing.  However, the assembly instruction was not correct.  I was trying to auto-increment an address:
 
@@ -3429,6 +3429,1011 @@ For whatever reason, this was creating a problem, and likely an alignment data a
 ... and this worked.
 
 This now brings me to `MmuInit()` -- the next big thing.  But first a commit.  Oh, did I mention I finally got all of libk eliminated?
+
+---
+
+### 2018-Nov-18
+
+This morning I am going to use what time I have to put some details into the MMU initialization.  Right now, the function is merely a stub so that I could get the loader to compile and I could try to run it to make sure I had all my basics right.  Good thing I did since I had a couple days of some pretty big issues to work through for the rpi2b build system.
+
+I will start by allocating 16K for the kernel TTL1 table.  Recall from **2018-Nov-14** that I will be splitting the address space in half for the user (where bit 31 == 0) and kernel (where bit 31 == 1).
+
+So, I will allocate this table and set it up.
+
+As I write the first lines of code, I realize that I really have no clue what the rpi2b memory map looks like.  Since my PMM allocates by specific frame or from the last frame we know of, this makes it difficult to allocate memory without knowing where things are.  So I will print the memory map to the serial port.  I get only 1 block of physical memory:
+
+```
+Upper memory limit: 0x0c000000
+Grub Reports available memory at 0x00000000 for 0x0000c000 frames
+```
+
+Now, where to put the TTL1 table.  I think the best thing to do is to put the table up high, well out fo the way.  Let me start allocating at frame number 0xb000 or more to the point: `GetUpperMemLimit() - 0x1000000`.
+
+Ok, now I have a design decision to make.  The TTL2 table is 1K, and I can fit 4 of them into a single frame.  The question is this: do I map the 4 TTL2 tables to be consecutive such that a request to set up a TTL2 table results in `% 4 == 0`, `% 4 == 1`, `% 4 == 2`, and `% 4 == 3` all being mapped?  Or do I just map the singular TTL2 table and leave the remaining 3 frames available for additional TTL2 tables to be mapped at a later time?  Here's the concern: I am planning on putting the TTL2 tables in order at specific memory addresses so that I can mimic the recursive mappings from x86.  Since 4 of them fit into a frame, this requires me to have them in order.  I would rather save on memory, but I think the management method I have chosen will trump that desire.
+
+So, what to I need to implement?  Let's start with an `MmuMapToFrame()` function.  Taking a top-down approach, this will drive the additional functions I will need to implement.  I will follow the same parameter convention I have with x86.
+
+---
+
+Looking at `MmuMakeTtl2Table()`, this is quite a bit more work without the native "recurisve mapping" trick.  I have to handle the tables to access the tables separately and explicitly.  It's a bit more work but is very doable.
+
+So, I have the function written.  It's recursive and I have one of those feelings I have written a function that will generate a stack overflow.  Testing will tell, but note that I have my doubts already.
+
+I got the loader to compiler and I am now going to set up to complete the mapping for the TTL1 table into the management area.  This will be at address 0xffbfc000 for 4 pages.
+
+Well, my first execution was anti-climactic:
+
+```
+Creating a new TTL2 table for address 0xffbfc000
+Creating a new TTL2 table for address 0xffbfd000
+Creating a new TTL2 table for address 0xffbfe000
+Creating a new TTL2 table for address 0xffbff000
+Unable to locate Kernel...  Halting!
+```
+
+So I commented out this line:
+
+```
+    if (addr >= 0xffbfc000 && addr < 0xffc00000) return;
+```
+
+... and I now have these results:
+
+```
+Creating a new TTL2 table for address 0xffbfc000
+  The new frame is 0x0000b004
+Creating a new TTL2 table for address 0xffc00000
+  The new frame is 0x0000b005
+Creating a new TTL2 table for address 0x3fc00000
+  The new frame is 0x0000b006
+Attempting do map already mapped address 0xffc00000
+Creating a new TTL2 table for address 0x7fc00000
+  The new frame is 0x0000b007
+Attempting do map already mapped address 0xffc00000
+Attempting do map already mapped address 0x3fc00000
+Creating a new TTL2 table for address 0xbfc00000
+  The new frame is 0x0000b008
+Attempting do map already mapped address 0xffc00000
+Attempting do map already mapped address 0x3fc00000
+Attempting do map already mapped address 0x7fc00000
+< Completed the table creation for 0xbfc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0x7fc00000
+Attempting do map already mapped address 0x7fc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0x3fc00000
+Attempting do map already mapped address 0x3fc00000
+Attempting do map already mapped address 0x7fc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0xffc00000
+Attempting do map already mapped address 0xffc00000
+Attempting do map already mapped address 0x3fc00000
+Attempting do map already mapped address 0x7fc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0xffbfc000
+Creating a new TTL2 table for address 0xffbfd000
+  The new frame is 0x0000b009
+Attempting do map already mapped address 0xffc00000
+Attempting do map already mapped address 0x3fc00000
+Attempting do map already mapped address 0x7fc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0xffbfd000
+Creating a new TTL2 table for address 0xffbfe000
+  The new frame is 0x0000b00a
+Attempting do map already mapped address 0xffc00000
+Attempting do map already mapped address 0x3fc00000
+Attempting do map already mapped address 0x7fc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0xffbfe000
+Creating a new TTL2 table for address 0xffbff000
+  The new frame is 0x0000b00b
+Attempting do map already mapped address 0xffc00000
+Attempting do map already mapped address 0x3fc00000
+Attempting do map already mapped address 0x7fc00000
+Attempting do map already mapped address 0xbfc00000
+< Completed the table creation for 0xffbff000
+Attempting do map already mapped address 0xffbff000
+Unable to locate Kernel...  Halting!
+```
+
+This is neither the stack overflow I expected nor the result I really want.
+
+So, let's pick apart the first bits of this:
+1. A request to map address 0xffbfc000 -- which is the first page for the TTL1 table.
+1. A new frame is allocated: 0xb004.
+1. A level 2 request to map address 0xffc00000 -- which is the first location for virtual addresses 0x00000000 to 0x00400000.  *This is incorrect.*
+1. A new frame is allocated: 0xb005.
+1. A level 3 request to map address 0x3fc00000.  *No way this is right.*
+1. There is not point in continuing the analysis.
+
+I found a shifting problem with my calculations.
+
+```
+MmuMapToFrame(ttl1, 0xffc00000 + ((i << 20) * 1024), ttl2Frame, true, true);
+```
+
+The `<< 20` portion was removed and I am now getting the recursion problem I was expecting:
+
+```
+Mapping address 0xffbfc000 to frame 0x0000b000
+Creating a new TTL2 table for address 0xffbfc000
+  The new frame is 0x0000b004
+  The base ttl2 index is 0x00000ff8
+Mapping address 0xffffe000 to frame 0x0000b004
+Creating a new TTL2 table for address 0xffffe000
+  The new frame is 0x0000b005
+  The base ttl2 index is 0x00000ffc
+Mapping address 0xfffff000 to frame 0x0000b005
+Creating a new TTL2 table for address 0xfffff000
+  The new frame is 0x0000b006
+  The base ttl2 index is 0x00000ffc
+Mapping address 0xfffff000 to frame 0x0000b006
+Creating a new TTL2 table for address 0xfffff000
+```
+
+---
+
+### 2018-Nov-19
+
+I need to start today by finishing up my thoughts from yesterday.  I am mapping the first address to the first frame of the TTL1 for management.  This is address 0xffbfc000.  This address will not yet have an associated TTL2 table.  I will get this table and map it into the TTL1 entry for address 0xffbfc000.  It will also need to be mapped into the address for the TTL2 management address.  The index into the TTL1 table is 0xffb, and the address for the TTL2 table for managing this frame is (0xffc00000 + (0xffb * 1024)), or 0xffffec00.  So, something is not right -- either my calculations or the code.
+
+It looks like I am confusing the mapping for the management portion of the tables.  I need to back that recursive call back out and rethink that.
+
+The TTL1 table has 4096 * 4-byte entries (16K).  Each entry therefore controls access to 1M of memory.
+
+There are 4096 TTL2 tables, each 1K in length.  Each table contains 256 entries.  All of these tables will take up 1024 frames, or 4MB, and will have a total of 1048576 entries.  These tables will start at 0xffc00000 and will be contiguous.
+
+Each entry in the TTL2 table could be indexed by the address from 0x00000 to 0xfffff, or 20 bits or vAddr >> 12.  And then to get the address of the TTL2 entry for a TTL2 table in the management addresses, it would be (((vAddr >> 12) * 4) + 0xffc00000).
+
+I now see that I am working with frames and need to be working with 1K physical addresses, so I added a shift here and renamed the variable accordingly:
+
+```C
+    frame_t ttl2PAddr = allocFrom << 2;         // Adjust to 1K accuracy
+```
+
+Taking this step by step in the code, I finally think I have something that works.  It certainly does what I expect.
+
+```C
+    // Here we need to get the TTL1 entry for the management address.
+    ptrsize_t mgmtTtl2Addr = 0xffc00000 + ((addr >> 12) * 4);
+    int mgmtTtl1Index = mgmtTtl2Addr >> 20;
+    Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
+
+    SerialPutS("  The TTL1 management index for this address is "); SerialPutHex(mgmtTtl1Index); SerialPutChar('\n');
+
+    // If the TTL1 Entry for the management address is faulted; create a new TTL2 table
+    if (mgmtTtl1Entry->fault == 0b00) {
+        MmuMakeTtl2Table(ttl1, mgmtTtl2Addr);
+    }
+```
+
+The resuls are:
+
+```
+Mapping address 0xffbfc000 to frame 0x0000b000
+Creating a new TTL2 table for address 0xffbfc000
+  The new frame is 0x0000b004
+  The base ttl2 base addr is 0x0002c010
+  The base ttl2 index is 0x00000ff8
+  The TTL1 management index for this address is 0x00000fff
+Creating a new TTL2 table for address 0xffffeff0
+  The new frame is 0x0000b005
+  The base ttl2 base addr is 0x0002c014
+  The base ttl2 index is 0x00000ffc
+  The TTL1 management index for this address is 0x00000fff
+< Completed the table creation for 0xffffeff0
+< Completed the table creation for 0xffbfc000
+Mapping address 0xffbfd000 to frame 0x0000b400
+Creating a new TTL2 table for address 0xffbfd000
+  The new frame is 0x0000b006
+  The base ttl2 base addr is 0x0002c018
+  The base ttl2 index is 0x00000ff8
+  The TTL1 management index for this address is 0x00000fff
+< Completed the table creation for 0xffbfd000
+Mapping address 0xffbfe000 to frame 0x0000b800
+Creating a new TTL2 table for address 0xffbfe000
+  The new frame is 0x0000b007
+  The base ttl2 base addr is 0x0002c01c
+  The base ttl2 index is 0x00000ff8
+  The TTL1 management index for this address is 0x00000fff
+< Completed the table creation for 0xffbfe000
+Mapping address 0xffbff000 to frame 0x0000bc00
+Creating a new TTL2 table for address 0xffbff000
+  The new frame is 0x0000b008
+  The base ttl2 base addr is 0x0002c020
+  The base ttl2 index is 0x00000ff8
+  The TTL1 management index for this address is 0x00000fff
+< Completed the table creation for 0xffbff000
+```
+
+This should allow me to initialize the MMU from `MmuInit()`.
+
+---
+
+I am misusing the word 'frame' in all my rpi2b architecture... because it was grandfathered in from the x86 code in the form `MmuMapToFrame()`.  I need to rename this function to be architecture agnostic.  Later.
+
+---
+
+So, here's the problem I am having: I am just not getting my head around the fact that the second level table is only 1K in size.  In my head, I am not keeping track of where I am looking for an ordinal frame number and a 1K TTL2 table.  for example, the following block of code is horribly wrong:
+
+```C
+    frame_t ttl1 = allocFrom;
+
+    // ---- snip ----
+
+    // -- Map the TTL1 table to location 0xffbfc000
+    MmuMapToFrame(ttl1, 0xffbfc000, ttl1, true, true);
+    MmuMapToFrame(ttl1, 0xffbfd000, ttl1 + 1024, true, true);
+    MmuMapToFrame(ttl1, 0xffbfe000, ttl1 + 2048, true, true);
+    MmuMapToFrame(ttl1, 0xffbff000, ttl1 + 3072, true, true);
+```
+
+The reason is that the variable `ttl1` is a `frame_t` type and the very next frame should be the next one in the TTL1 table.
+
+---
+
+### 2018-Nov-20
+
+Let me see if I can keep this straight today as I'm working through all this code....  I have some hope, but not high hopes.
+
+---
+
+OK, I whittled down the address I was mapping to just one and focused in on getting all my calculations consistent with the requirements.  I finally have a good page mapped (or at least consistently wrong if it is wrong).  The output with all my debugging code is:
+
+```
+Set up the TTL1 management table
+Mapping address 0xffbfc000 to frame 0x0b000000
+  Ttl1 index is: 0x0b000000[0x00000ffb]
+Creating a new TTL2 table for address 0xffbfc000
+  The new frame is 0x0000b004
+  The base ttl2 1K location is 0x0002c010
+  The ttl1 index is 0x00000ff8
+  Set the TTL1 table index 0x00000ff8 to 1K location 0x0002c010
+  Set the TTL1 table index 0x00000ff9 to 1K location 0x0002c011
+  Set the TTL1 table index 0x00000ffa to 1K location 0x0002c012
+  Set the TTL1 table index 0x00000ffb to 1K location 0x0002c013
+  The management address for this Ttl2 table is 0xffffeff0
+    The base location is 0xffc00000
+    The table offset is  0x003fec00
+    The entry offset is  0x000003f0
+  The TTL1 management index for this address is 0x00000fff
+Creating a new TTL2 table for address 0xffffeff0
+  The new frame is 0x0000b005
+  The base ttl2 1K location is 0x0002c014
+  The ttl1 index is 0x00000ffc
+  Set the TTL1 table index 0x00000ffc to 1K location 0x0002c014
+  Set the TTL1 table index 0x00000ffd to 1K location 0x0002c015
+  Set the TTL1 table index 0x00000ffe to 1K location 0x0002c016
+  Set the TTL1 table index 0x00000fff to 1K location 0x0002c017
+  The management address for this Ttl2 table is 0xfffffff8
+    The base location is 0xffc00000
+    The table offset is  0x003ffc00
+    The entry offset is  0x000003f8
+  The TTL1 management index for this address is 0x00000fff
+< Completed the table creation for 0xffffeff0
+< Completed the table creation for 0xffbfc000
+  Ttl2 location is: 0x0b004c00[0x000000fc]
+Checking our work
+
+MmuDumpTables: Walking the page tables for address 0xffbfc000
+Level  Tabl-Addr     Index        Entry Addr    Next PAddr    fault
+-----  ----------    ----------   ----------    ----------    -----
+TTL1   0x0b000000    0x00000ffb   0x0b003fec    0x0b004c00     01
+TTL2   0x0b004c00    0x000000fc   0x0b004ff0    0x00000000     10
+```
+
+I have checked all the math and it all looks good for now.  No stack overflow.  Now I will start to put in the additional addresses I need to map.
+
+I have removed a number of debugging statements using `#if 0` preprocessor directives, so you as can see what the heck I had to go through to get this code debugged.
+
+With that, I have all the major components of the loader done except the module initialization.  For that to work, I need a kernel to compile.  So, I'm back to architecture abstraction.
+
+---
+
+For `interrupt.h`, nearly everything in this file is specific to i686, so I have moved the contents to `arch-interrupt.h`.  Done.
+
+Now, for compiling kInit.cc, there is a structure `isrRegs_t` which is not defined on the rpi2b architecture.  I will need to get that defined.  Which means I need to figure out what the architecture really does.  Additionally, I am getting a message: `Error: selected processor does not support 'wfi' in ARM mode`.  However, is should.
+
+So, I created the `isrRegs_t` structure to be as follows:
+
+```
+//
+// -- This is the order of the registers on the stack
+//    -----------------------------------------------
+typedef struct isrRegs_t {
+	uint32_t r0;
+	uint32_t r1;
+	uint32_t r2;
+	uint32_t r3;
+	uint32_t r4;
+	uint32_t r5;
+	uint32_t r6;
+	uint32_t r7;
+	uint32_t r8;
+	uint32_t r9;
+	uint32_t r10;
+	uint32_t r11;
+	uint32_t r12;
+	uint32_t r13;
+	uint32_t r14;
+	uint32_t r15;
+} isrRegs_t;
+```
+
+This will certainly change, but it takes care of the basic requirements of the interrupt for ARM.  Also, I had to add the following to the `Tuprules.tup` file to handle the `wfi` instruction:
+
+```
+ifneq ($(ARCH),rpi2b)
+CFLAGS += -mno-red-zone
+else
+CFLAGS += -mcpu=cortex-a7
+endif
+```
+
+`kInit.cc` now compiles.
+
+On to `HeapAlloc.cc`.  I need a constant for `BYTE_ALIGNMENT`.  That was a quick fix.
+
+In `HeapInit.cc`, there are references to `pageTable_t` which is incorrect for rpi2b.  This reference is coming from `mmu.h`.
+
+This is creating a problem between the loader and the kernel.  Each has its own `mmu.h` file and I need to keep them separate.  So, I will eliminate completely the `mmu.h` create either `mmu-loader.h` and `mmu-kernel.h` and everything `inc/$(ARCH)/arch-*.h` fill be renamed to `inc/$(ARCH)/arch-*-prevalent.h` -- not that the contents are common to all architectures but that the contents are used by multiple modules.
+
+I will work on this now and get the other modules to compile -- beore I tackle `mmu.h` from the kernel.
+
+---
+
+### 2018-Nov-21
+
+I spent the first part of the day organizing the kernel so that all the `.o` files compile.  I know I am going to have a bunch of issues linking the resulting `kernel.elf` file.  There are several things I am going to have to re-build when I try to actually link the `kernel.elf`.  And as I expected:
+
+```
+/home/adam/opt/cross/lib/gcc/arm-eabi/6.3.0/../../../../arm-eabi/bin/ld: warning: cannot find entry symbol _start; defaulting to 0000000080000000
+/home/adam/workspace/century-os/obj/kernel/rpi2b/CpuTssInit.o: In function `CpuTssInit()':
+/home/adam/workspace/century-os/modules/kernel/src/cpu/CpuTssInit.cc:29: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/modules/kernel/src/cpu/CpuTssInit.cc:35: undefined reference to `Ltr'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/FrameBufferClear.o: In function `FrameBufferClear()':
+/home/adam/workspace/century-os/modules/kernel/src/frame-buffer/FrameBufferClear.cc:36: undefined reference to `kMemSetW'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/FrameBufferDrawChar.o: In function `FrameBufferDrawChar(char)':
+/home/adam/workspace/century-os/modules/kernel/src/frame-buffer/FrameBufferDrawChar.cc:79: undefined reference to `systemFont'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/FrameBufferParseRGB.o: In function `FrameBufferParseRGB(char const*)':
+/home/adam/workspace/century-os/modules/kernel/src/frame-buffer/FrameBufferParseRGB.cc:42: undefined reference to `kStrLen'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapAlloc.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapAlloc.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapAlloc.o: In function `HeapAlloc(unsigned int, bool)':
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapAlloc.cc:57: undefined reference to `DisableInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapAlloc.cc:76: undefined reference to `RestoreInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapAlloc.cc:91: undefined reference to `RestoreInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapAlloc.cc:112: undefined reference to `RestoreInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapAlloc.cc:123: undefined reference to `RestoreInterrupts'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapError.o: In function `HeapError(char const*, char const*)':
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapError.cc:32: undefined reference to `DisableInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapError.cc:34: undefined reference to `Halt'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapFree.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapFree.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapFree.o: In function `HeapFree(void*)':
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapFree.cc:50: undefined reference to `DisableInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapFree.cc:78: undefined reference to `RestoreInterrupts'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapInit.o: In function `HeapInit()':
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapInit.cc:76: undefined reference to `MmuUnmapPage(unsigned long)'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapInit.cc:77: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, int)'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapInit.cc:83: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/MessageReceive.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/MessageReceive.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/MessageReceive.o: In function `MessageReceive(Message_t*)':
+/home/adam/workspace/century-os/modules/kernel/src/ipc/MessageReceive.cc:59: undefined reference to `kMemMove'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/MessageSend.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/MessageSend.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/MessageSend.o: In function `MessageSend(unsigned long, Message_t*)':
+/home/adam/workspace/century-os/modules/kernel/src/ipc/MessageSend.cc:51: undefined reference to `kMemMove'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/PmmAllocFrame.o: In function `PmmAllocFrame()':
+/home/adam/workspace/century-os/modules/kernel/src/pmm/PmmAllocFrame.cc:34: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessCreate.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessCreate.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessCreate.o: In function `ProcessCreate(char const*, unsigned long, unsigned long, ...)':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessCreate.cc:57: undefined reference to `Halt'
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessCreate.cc:66: undefined reference to `kMemSetB'
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessCreate.cc:104: undefined reference to `GetCr3'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessEnd.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessEnd.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessEnd.o: In function `ProcessEnd()':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessEnd.cc:90: undefined reference to `Halt'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessHold.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessHold.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessInit.o: In function `ProcessInit()':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessInit.cc:53: undefined reference to `GetCr3'
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessInit.cc:62: undefined reference to `GetCr3'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessNewPID.o: In function `ProcessNewPID()':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessNewPID.cc:51: undefined reference to `Halt'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReady.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReady.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReady.o: In function `ProcessReady(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessReady.cc:107: undefined reference to `ProcessSwitch'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessRelease.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessRelease.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessRelease.o: In function `ProcessRelease(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessRelease.cc:73: undefined reference to `ProcessSwitch'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReschedule.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReschedule.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReschedule.o: In function `ProcessReschedule()':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessReschedule.cc:74: undefined reference to `Halt'
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessReschedule.cc:83: undefined reference to `ProcessSwitch'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessTerminate.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessTerminate.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessWait.o: In function `SpinlockLock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:64: undefined reference to `SpinlockCmpXchg'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessWait.o: In function `SpinlockUnlock(Spinlock_t*)':
+/home/adam/workspace/century-os/modules/kernel/inc/spinlock.h:73: undefined reference to `SpinlockClear'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/SerialInit.o: In function `SerialInit()':
+/home/adam/workspace/century-os/modules/kernel/src/serial/rpi2b/SerialInit.cc:33: undefined reference to `BusyWait(unsigned long)'
+/home/adam/workspace/century-os/modules/kernel/src/serial/rpi2b/SerialInit.cc:35: undefined reference to `BusyWait(unsigned long)'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/TimerEoi.o: In function `TimerEoi(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerEoi.cc:29: undefined reference to `outb'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/TimerInit.o: In function `TimerInit(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:42: undefined reference to `DisableInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:45: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:46: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:47: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:48: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:49: undefined reference to `outb'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/TimerInit.o:/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:50: more undefined references to `outb' follow
+/home/adam/workspace/century-os/obj/kernel/rpi2b/TimerInit.o: In function `TimerInit(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:60: undefined reference to `IsrRegister(unsigned char, void (*)(isrRegs_t*))'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:62: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:63: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:64: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:68: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:69: undefined reference to `outb'
+/home/adam/workspace/century-os/modules/kernel/src/timer/TimerInit.cc:71: undefined reference to `RestoreInterrupts'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/kInit.o: In function `kInit':
+/home/adam/workspace/century-os/modules/kernel/src/kInit.cc:94: undefined reference to `PmmStart(Module_t*)'
+/home/adam/workspace/century-os/modules/kernel/src/kInit.cc:99: undefined reference to `EnableInterrupts'
+/home/adam/workspace/century-os/modules/kernel/src/kInit.cc:105: undefined reference to `kMemSetB'
+```
+
+With this list, a couple of things stand out to me right away:
+* My abstractions are not clean since rpi2b is still looking for `out()` and should have failed at compiling the source to a `.o`.
+* I am not compiling everything since `kMemSetB()` is implemented and should be found.
+* The function `TssInit()` should not exist for rpi2b -- right at the top of the list.
+
+So, I'm going to first take care of the top error (about `_start`).  For i686, the `_start` symbol is in the `loader.s` file in the `$(ARCH)` folder.  The `rpi2b` folder is conspicuously empty and quite a number of my problems will be addressed by putting the right functions in that folder.
+
+I copied nearly all the files from the loader to the kernel for the rpi2b architecture.  This cleaned up several errors but there is still quite a bit to solve.
+
+I also corrected the existence of `in()`, `out()`, and `GetCr3()` in the rpi2b architecture.  This caused several more functions to fail compile, which of course meant they needed to be moved into respective architecture specific folders.
+
+Now, I can get into the architcture-specific functions I need to learn how to properly implement -- starting with `EnableInterrupts()`.  Why?  Because it's the last thing on the list of errors at this point, of course!
+
+---
+
+The ARM CPU has a Current Program Status Register (CPSR) that contains several bits that indicate what exceptions can be fed through to the CPU.  There are 3 such bits: A, I, and F, such that:
+* CPSR:A is bit 8 and controls imprecice data aborts
+* CPSR:I is bit 7 and controls IRQ interrupts
+* CPSR:F is bit 6 and controls FIQ interrupts
+
+A value of `1` in any of these 3 bits disables interrupts of that type.  Therefore, to enable interrupts, I will need to read the CPSR, clear bits 6:8, and then write the CPSR.
+
+* The opcode `mrs` can read the CPSR in the form (I think, anyway) `mrs r0,cpsr`.
+* The opcode `msr` can write the CPSR in the form (I think, anyway) `msr cpsr,r0`.
+* Therefore, the only thing I need to do in between is `and r0,~0x01c0` to clear the proper bits.
+
+With this, I should have enough to implement the `EnableInterrupts()` function for rpi2b.
+
+Using `EnableInterrupts()` as a template, I can create `DisableInterrupts()` which will return the state of the interrupts flags only  (which is a difference from the x86 implementation) and `RestoreInterrupts()` which will restore the state of the interrupt flags only (which is a difference from the x86 implementation).
+
+Those all compile and the missing references have gone away.
+
+The next thing to look at is Spinlocks.  There are a lot of referenced to those functions and once those are cleaned up, I might actually have a small set of remaining functions I can actually stub out to start some testing.
+
+---
+
+ARM has an opcode `strex` which is an atomic operation similar to the x86 `lock cmpxchg` operation.  Section 1.3.2 of this manual has a sample for implementing a mutex: http://infocenter.arm.com/help/topic/com.arm.doc.dht0008a/DHT0008A_arm_synchronization_primitives.pdf.  This link has the standards for implementing a stack frame: https://thinkingeek.com/2014/05/11/arm-assembler-raspberry-pi-chapter-18/.
+
+The first function I want to implement is `SpinlockCmpXchg()`, but that is i686 specific naming -- I need to clean that up.
+
+And now with `SpinlockAtomicLock()` and `SpinlockClear()` both written, here is my current error list:
+
+```
+/home/adam/workspace/century-os/obj/kernel/rpi2b/CpuTssInit.o: In function `CpuTssInit()':
+/home/adam/workspace/century-os/modules/kernel/src/cpu/CpuTssInit.cc:35: undefined reference to `Ltr'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/HeapInit.o: In function `HeapInit()':
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapInit.cc:76: undefined reference to `MmuUnmapPage(unsigned long)'
+/home/adam/workspace/century-os/modules/kernel/src/heap/HeapInit.cc:77: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, int)'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReady.o: In function `ProcessReady(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessReady.cc:107: undefined reference to `ProcessSwitch'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessRelease.o: In function `ProcessRelease(unsigned long)':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessRelease.cc:73: undefined reference to `ProcessSwitch'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/ProcessReschedule.o: In function `ProcessReschedule()':
+/home/adam/workspace/century-os/modules/kernel/src/process/ProcessReschedule.cc:83: undefined reference to `ProcessSwitch'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/TimerVars.o:(.data.rel+0x0): undefined reference to `TimerInit(unsigned long)'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/TimerVars.o:(.data.rel+0x4): undefined reference to `TimerEoi(unsigned long)'
+/home/adam/workspace/century-os/obj/kernel/rpi2b/kInit.o: In function `kInit':
+/home/adam/workspace/century-os/modules/kernel/src/kInit.cc:90: undefined reference to `ProcessInit()'
+/home/adam/workspace/century-os/modules/kernel/src/kInit.cc:94: undefined reference to `PmmStart(Module_t*)'
+/home/adam/workspace/century-os/modules/kernel/src/kInit.cc:98: undefined reference to `TimerInit(unsigned long)'
+```
+
+The function `CpuTssInit()` should not exist for the rpi2b architecture.  I will deal with that next.
+
+---
+
+I finally have a compiled `kernel.elf`.  With this, I now have a kernel module I can try to find from the loader.  But that will start tomorrow.  It's a late night.
+
+---
+
+This morning, I am realizing that I am not getting any information about the modules back from `rpi-boot`.  I am not sure why -- if it is a limitation in `rpi-boot` to pass this information back or if it is just not loading the modules.  To get there, I will need to add some debugging code to determine if there is a concern with actually getting the module info or not.  This will be in the MB1 parser.
+
+With this block of code:
+
+```C
+        SerialPutS("Module information present\n");
+
+        for (m = (Mb1Mods_t *)mb1Data->modAddr, i = 0; i < mb1Data->modCount; i ++) {
+            SerialPutS("   Found Module: ");
+            SerialPutS(m[i].modIdent);
+            SerialPutS("\n");
+            AddModule(m[i].modStart, m[i].modEnd, m[i].modIdent);
+        }
+```
+
+I can tell that the module information block is present but there is no data in it.  I can confirm that this works for i686:
+
+```
+Module information present
+   Found Module: kernel
+   Found Module: pmm
+```
+
+But for rpi2b, I only get this:
+
+```
+Module information present
+```
+
+So, it looks like I'm going to have to look at the `rpi-boot` code to see what the difference might be.  In `rpi-boot`, the code is there so I should see:
+
+```C
+	module_add(address, address + (uint32_t)bytes_read, name);
+
+	printf("MODULE: %s loaded\n", name);
+```
+
+Let's go to the logs to see what is there.  There's nothing about a MODULE being present:
+
+```
+ARM system type is c43
+EMMC: bcm_2708_power_off(): property mailbox did not return a valid response.
+EMMC: BCM2708 controller did not power cycle successfully
+EMMC: vendor 24, sdversion 1, slot_status 0
+EMMC: WARNING: old SDHCI version detected
+SD: found a valid version 1.0 and 1.01 SD card
+MBR: found valid MBR on device emmc0
+EXT2: found an ext2 filesystem on emmc0_0
+MBR: found total of 1 partition(s)
+MAIN: device list: emmc0_0(ext2)
+MAIN: Found bootloader configuration: /boot/rpi_boot.cfg
+MULTIBOOT: loaded kernel /boot/loader.elf
+BOOT: multiboot load
+Serial port initialized!
+Setting basic memory information
+/boot/loader.elf
+Module information present
+Setting memory map data
+```
+
+I would expect the MODULE line to be between the MULTIBOOT line and the BOOT line.  Now, before I get too crazy on this, I need to determine if I have an image that is being updated or not.  I had that problem before... and I'm not going to waste a ton of time debugging something without verifying that first.  The easiest way to check is to break the MULTIBOOT line so the `loader.elf` will not load.  And I am still having a problem (imagine my expletives here!).
+
+Ok, here is what is odd to me: the image has the correct `grub.cfg` file.
+
+```
+[adam@os-dev grub]$ cat grub.cfg
+multiboot /boot/loader.elfx
+module /boot/kernel.elf kernel
+boot
+```
+
+Do I have an old test file left over in my `sysroot`?  I have to.  The `rpi_boot.cfg` is taking precidence.  And as a matter fo fact, I see it in the logs above.
+
+```
+[adam@os-dev boot]$ ls
+total 346
+drwxr-xr-x. 2 root root   1024 Nov 22 07:53 grub
+-rwxr-xr-x. 1 root root 166292 Nov 22 07:53 kernel.elf
+-rwxr-xr-x. 1 root root 101388 Nov 22 07:53 loader.elf
+-rwxr-xr-x. 1 root root  73732 Nov 22 07:53 loader.img
+-rw-r--r--. 1 root root     32 Nov 22 07:53 rpi_boot.cfg
+```
+
+And after clearing out the `sysroot/rpi2b` folder, I now get this:
+
+```
+Welcome to Rpi bootloader
+Compiled on Nov 16 2018 at 15:43:38
+ARM system type is c43
+EMMC: bcm_2708_power_off(): property mailbox did not return a valid response.
+EMMC: BCM2708 controller did not power cycle successfully
+EMMC: vendor 24, sdversion 1, slot_status 0
+EMMC: WARNING: old SDHCI version detected
+SD: found a valid version 1.0 and 1.01 SD card
+MBR: found valid MBR on device emmc0
+EXT2: found an ext2 filesystem on emmc0_0
+MBR: found total of 1 partition(s)
+MAIN: device list: emmc0_0(ext2)
+MAIN: Found bootloader configuration: /boot/grub/grub.cfg
+MULTIBOOT: loaded kernel /boot/loader.elf
+MODULE: cannot load file kernel
+cfg_parse: module failed with -1
+```
+
+I'm picking up the correct boot config file.  But I now have a problem with the MODULE line.  Going back to the `rpi-boot` code, the reason is that the file cannot be found:
+
+```C
+	// Load a module
+	FILE *fp = fopen(name, "r");
+	if(!fp)
+	{
+		printf("MODULE: cannot load file %s\n", name);
+		return -1;
+	}
+```
+
+This time it is a bug in `rpi-boot`.  The value of `name` is `kernel` whereas the value of `file` is `/boot/kernel.elf`.  I will make this change and write a commit for `rpi-boot`.  The pull request is here: https://github.com/jncronin/rpi-boot/pull/22.
+
+Now, with that change, I am getting the kernel module loaded.  The loader is also trying to map the kernel into upper memory.  I am getting one failure for a page already mapped:
+
+```
+Initializing Modules:
+kernel
+   Starting Address: 0x0011c000
+   FileSize = 0x0000743b; MemSize = 0x0000743b; FileOffset = 0x00001000
+      Attempting to map page 0x80000000 to frame 0x0000011d
+Attempting to map already mapped address 0x80000000
+      Attempting to map page 0x80001000 to frame 0x0000011e
+      Attempting to map page 0x80002000 to frame 0x0000011f
+      Attempting to map page 0x80003000 to frame 0x00000120
+      Attempting to map page 0x80004000 to frame 0x00000121
+      Attempting to map page 0x80005000 to frame 0x00000122
+      Attempting to map page 0x80006000 to frame 0x00000123
+      Attempting to map page 0x80007000 to frame 0x00000124
+   FileSize = 0x0001b20c; MemSize = 0x00051838; FileOffset = 0x00009000
+      Attempting to map page 0x80008000 to frame 0x00000125
+      Attempting to map page 0x80009000 to frame 0x00000126
+      Attempting to map page 0x8000a000 to frame 0x00000127
+      Attempting to map page 0x8000b000 to frame 0x00000128
+```
+
+However, I am not sure what is mapped there.  I do not see anything that is explicitly mapping that location.   Maybe if I report the frame it is mapped to I can have a clue on where to look.  It's already mapped to frame 0.  That's no help.  I also noticed that I am getting some odd frame numbers in when setting up the `.bss` section.
+
+```
+      Attempting to map page 0x80024000 to frame 0x00020002
+      Attempting to map page 0x80025000 to frame 0x0002000d
+      Attempting to map page 0x80026000 to frame 0x0002000e
+      Attempting to map page 0x80027000 to frame 0x0002000f
+      Attempting to map page 0x80028000 to frame 0x00020010
+```
+
+...  and when I look at the map for the `kernel.elf`, I am seeting lots of space that need not be there:
+
+```
+Disassembly of section .bss:
+
+80024000 <heapLock>:
+	...
+
+80025000 <heapMemoryBlock>:
+	...
+
+80035000 <fixedList>:
+	...
+
+80039000 <fixedListUsed>:
+80039000:	00000000 	andeq	r0, r0, r0
+
+80039004 <_ZL5_heap>:
+	...
+
+80039024 <currentPID>:
+80039024:	00000000 	andeq	r0, r0, r0
+
+80039028 <procs>:
+```
+
+The binary sizes are not horrible (232K for i686 and 162K for rpi2b).  But `readelf -a bin/rpi2b/boot/kernel.elf` is interesting!
+
+```
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        80000000 001000 005f10 00  AX  0   0  8
+  [ 2] .rodata           PROGBITS        80006000 007000 00143b 00   A  0   0  4
+  [ 3] .stab             PROGBITS        80008000 009000 01af51 04  WA  0   0  4
+  [ 4] .data             PROGBITS        80023000 024000 00020c 00  WA  0   0  4
+  [ 5] .bss              NOBITS          80024000 02420c 035838 00  WA  0   0 4096
+  [ 6] .ARM.attributes   ARM_ATTRIBUTES  00000000 02420c 000039 00      0   0  1
+  [ 7] ._text            PROGBITS        00000000 024248 000004 00      0   0  4
+  [ 8] .symtab           SYMTAB          00000000 02424c 0034a0 10      9 712  4
+  [ 9] .strtab           STRTAB          00000000 0276ec 00109c 00      0   0  1
+  [10] .shstrtab         STRTAB          00000000 028788 000051 00      0   0  1
+```
+
+There is a leftover `._text` section that is added after the `.bss` section.  And more importantly it's a `PROGBITS` type.
+
+But other than that, the size of `.bss` is actually very similar between i686 and rpi2b.
+
+So, now, back to my problem.  Something is mapping address `0x80000000` or making the system think that the address is already mapped.  So, I need to re-enable all that debugging code and then take a pedantic walk through the results.
+
+With all my debugging code turned on, I see this:
+
+```
+Initializing Modules:
+kernel
+   Starting Address: 0x0011d000
+   FileSize = 0x0000743b; MemSize = 0x0000743b; FileOffset = 0x00001000
+      Attempting to map page 0x80000000 to frame 0x0000011e
+Mapping address 0x80000000 to frame 0x0000011e
+  Ttl1 index is: 0x0b000000[0x00000800]
+Creating a new TTL2 table for address 0x80000000
+  The new frame is 0x0000b008
+  The base ttl2 1K location is 0x0002c020
+  The ttl1 index is 0x00000800
+  Set the TTL1 table index 0x00000800 to 1K location 0x0002c020
+  Set the TTL1 table index 0x00000801 to 1K location 0x0002c021
+  Set the TTL1 table index 0x00000802 to 1K location 0x0002c022
+  Set the TTL1 table index 0x00000803 to 1K location 0x0002c023
+  The management address for this Ttl2 table is 0xffe00000
+    The base location is 0xffc00000
+    The table offset is  0x00200000
+    The entry offset is  0x00000000
+  The TTL1 management index for this address is 0x00000ffe
+< Completed the table creation for 0x80000000
+  Ttl2 location is: 0x0b008000[0x00000000]
+Attempting to map already mapped address 0x80000000 (mapped to: 0x00000000); Fault is: 0x00000003
+```
+
+This makes me wonder if the `kMemSetB()` function is working properly.  I think I will replace it with a C version and see if I get different results.  And it works.  This tells me that my assembly language versions are not correct and need to be debugged.
+
+---
+
+Lots of debugging to the serial port later and I think it is not the `kMemSetB()` function but my calculations for mapping the pages that is the problem somewhere.  Or more to the point, something that is overwriting something.
+
+---
+
+I stopped the loader after initializing the TTL1 table with `kMemSetB()` and then investigated the memory with `gdb`.  What I saw is this:
+
+```
+(gdb) x/xw 0x0b000000
+0xb000000:      0x000000ff
+(gdb)
+0xb000004:      0x00000000
+(gdb)
+0xb000008:      0x00000000
+(gdb)
+0xb00000c:      0x00000000
+(gdb)
+```
+
+In addition, when I looked at each TTL2 table, the first byte was always 0xff.  So, my `kMemSetB()` function is somehow skipping the first byte.
+
+And there it is!  Right in front of my face the whole time!
+
+```
+    strb    r1,[r0]                                 @@ store the value in r1 to the mem at addr r0
+    add     r1,#1                                   @@ increment the address
+    sub     r2,#1                                   @@ decrement the numebr of bytes
+    b       kMemSetB                                @@ loop
+```
+
+I was incrementing the value to store, not the address in which to store the value!
+
+---
+
+This morning I am going to start researching why I have no memory available until I get way high in the frame count.  My concern is this:
+
+```
+      Attempting to map page 0x80021000 to frame 0x0000013e
+      Attempting to map page 0x80022000 to frame 0x0000013f
+      Attempting to map page 0x80023000 to frame 0x00000140
+Checking from frame 0x00000144
+      Attempting to map page 0x80024000 to frame 0x00020002
+Checking from frame 0x00000144
+      Attempting to map page 0x80025000 to frame 0x0002000d
+Checking from frame 0x00000144
+      Attempting to map page 0x80026000 to frame 0x0002000e
+Checking from frame 0x00000144
+      Attempting to map page 0x80027000 to frame 0x0002000f
+Checking from frame 0x00000144
+      Attempting to map page 0x80028000 to frame 0x00020010
+Checking from frame 0x00000144
+```
+
+At this point, we should be finding frames at frame number 144, not up in about 20000.  The means my PMM initiialization has gone wrong and I will be adding code there to debug that.
+
+I realized that the `start` for the PMMBitmap had wrapped around `0x00000000` back to high memory, so I added the following code to keep it in lower memory:
+
+```
+    if (start) {                            // -- if we are not dealing with an ebda (and therefore not x86)
+        start -= PmmFrameToLinear(pages);
+    }
+```
+
+This has caused the loader to lock up now.  I definitely have some problems here and will need to continue to debug for rpi2b -- and pray I don't break i686!
+
+For rpi2b, I moved the bitmap from frame 0 to frame 1 and that worked.  It appears there is something that does not like frame 0 in some way.  I'm Ok with leaving that unusable if is helps with `NULL` pointer assignments.  And, at this point, I am getting all the proper allocations from the PMM.  But to be certain, I am going to continue to check the rest of this since I was not able to verify modules before I had a compiling kernel.
+
+I might be writing off the end of the bitmap for the frame buffer:
+
+```
+Upper memory limit: 0x0c000000
+0x00000001 pages are needed to hold the PMM Bitmap
+   these pages will start at 0x00004000
+PMM Bitmap cleared and ready for marking unusable space
+Grub Reports available memory at 0x00000000 for 0x0000c000 frames
+Marking frames 0 and 1 used
+Marking the loader space as used starting at frame 0x00000100 for 0x00000018 frames.
+Marking the frame buffer space as used starting at frame 0x0c100000 for 0x00000180 frames.
+Marking the module kernel space as used starting at frame 0x0000011d for 0x00000029 frames.
+Finally, marking the stack, hardware communication area, kernel heap, and this bitmap frames as used.
+Phyiscal Memory Manager Initialized
+```
+
+I think the rpi2b does not report that memory at all.  My PMM functions do not check bounds, I a need to protect that in `PmmInit()`.  Also, I want to call out that I am starting to add debugging code `#define`s in the individual files like this:
+
+```C
+#ifndef DEBUG_PMM
+#   define DEBUG_PMM 0
+#endif
+
+// --- snip ---
+
+#if DEBUG_PMM == 1
+// Some debugging output
+#endif
+```
+
+This way I can turn debugging on more globally as a compile time option or in the individual files.
+
+OK, I am now finally to the point where I can enable paging properly.  This will set the TTLB0 register and set the number of bits to 0 (meaning everything is in the one paging table and there is no user-space table).  Later in the kernel when I initialize the process structures, I will change this to 1 bit and use 2 tables.
+
+I feel like I am relatively close to buttoning up the last of the loader.  I am not yet able to jump to the kernel so I have no clue where I am at there yet -- but I'm sure it's bad.
+
+---
+
+### 2018-Nov-24
+
+Today my plan is to try to get the MMU enabled for the rpi2b archetecture.  Well, more to the point: research how to get the MMU enabled.  Since this archetecture is rather foreign to me, it takes a lot of research for me to understand what is required.
+
+I know that I need to interact with Co-Processor 15 (`cp15`) and I will use `mcr` and `mrc` opcodes to interact with the registers.  There are several registers I will need to interact with for various reasons.
+* Register 0 is a read-only register for TLB information.  I am not interested in this register for setting up the MMU.
+* Regoster 1 contains the M bit (whether the MMU is enabled or disabled).  The M bit is bit 0.  I assume the M is set to 0 before I get to it.  I will need to code a test to investigate this.
+* Register 2 contains the Translation Table Base registers and control.  There are 3 sub-registers of this:
+    * 0 is base 0 -- the one will hold the user-space table mappings.  It will be the same as the kernel-space mappings for the purposes of the loader and late kernel initialization.  All other flags I will set to 0 for the moment, as I am not going to enable caching.
+    * 1 is base 1, which will hold the kernel base table.  I will populate this in the loader.  All other flags I will set to 0 for the moment, as I am not going to enable caching.
+    * And, 2 is the control register.  In the loader, this will be set to 1 bit, which means that if the most significant bit is 0, TTBR0 will be used and if that bit is set to 1, TTBR1 will be used.  Since they are the same, they will be the same tables.
+* Register 3 is Domain Access Control, wihch I am not using.  This will be unchanged.
+* Register 4 is reserved, so I will not touch it.
+* Register 5 is a Fault Status Register.  It contains 2 sub-registers, neither of which I am using at this point.
+* Register 6 is a Fault Address Register (which feels a little like `cr2` from x86 family).  I am not using that yet.
+* Register 7 does not exist.
+* Register 8 controls the TLB and has several functions.  I will leave all this at the default for now.
+* Register 9 does not exist.
+* Register 10 is the TLB Lockdown.  Again, I am not controlling this explicitly so I will leave this at the default.
+* Register 11 does not exist.
+* Register 12 does not exist.
+* Register 13 contains the Process ID registers.  These need to be updated with a process change, so this will need to change with the TTBR0 register when swapping processes.  There are 2 sub-registers here, the Process ID and the Context ID.  More on these later.
+
+So, to enable the MMU, I need to perform the following steps:
+1. Check the current state of the MMU (Register 1[M]).  If it is already enabled, report so.  Should I disable before moving on?  Probably not since we will probably fault and lock up.
+1. Write the TTLR0 value into Register 2/opcode 0.
+1. Write the TTLR1 value into Register 2/opcode 1.
+1. Write the number of bits to consider for the TTLR evaluation into Register 2/opcode 2 (this will be 1 bit).
+1. Enable paging by writing a `1` to Register 1[M].
+1. plan for the worst, but hope for the best.
+
+---
+
+I got everything written, and the the system locked up.  It's about what I figured would happen, but now I have to figure out how to debug this since I am not able to output much to the screen.
+
+Step debugging with `gdb` gives me some results with registers:
+
+```
+(gdb) info reg
+r0             0xc50079 12910713
+r1             0xa      10
+r2             0xa      10
+r3             0xb000000        184549376
+r4             0x105000 1069056
+r5             0x0      0
+r6             0x0      0
+r7             0x0      0
+r8             0x0      0
+r9             0x118000 1146880
+r10            0x2d227  184871
+r11            0x7b4    1972
+r12            0x7a0    1952
+sp             0x7a8    0x7a8
+lr             0x102fc8 1060808
+pc             0x100e78 0x100e78 <MmuEnablePaging+24>
+cpsr           0x600001d3       1610613203
+fpscr          0x0      0
+fpsid          0x410430f0       1090793712
+fpexc          0x0      0
+(gdb) stepi
+^C
+Thread 1 received signal SIGINT, Interrupt.
+0x0000000c in ?? ()
+(gdb) info reg
+r0             0xc50079 12910713
+r1             0xa      10
+r2             0xa      10
+r3             0xb000000        184549376
+r4             0x105000 1069056
+r5             0x0      0
+r6             0x0      0
+r7             0x0      0
+r8             0x0      0
+r9             0x118000 1146880
+r10            0x2d227  184871
+r11            0x7b4    1972
+r12            0x7a0    1952
+sp             0x0      0x0
+lr             0x10     16
+pc             0xc      0xc
+cpsr           0x600001d7       1610613207
+fpscr          0x0      0
+fpsid          0x410430f0       1090793712
+fpexc          0x0      0
+```
+
+First, `pc` has a crazy offset, probably dereferencing a `NULL` value.  `lr` and `sp` also have addresses that appear to be relative to `NULL`.
+
+For the moment, I think the paging tables are built properly.  I did, however, make some assumptions about the TTBR0 and TTBR1 registers.  I will start there.
+
+I reviewed the Domain setup and the default Domain (0b00) access is to throw faults.  So, I will try to correct that and see where that gets me.  And while it needed to be done, it did not solve all my problems.  Now I am looking at the flags for each table level.
+
+---
+
+I can finally confirm that I have been able to enable the MMU and I am executing code after that is complete.  However, the system is still locking up.  I was able to trace that to a stack operation which locks up the system.  The stack is broken on rpi2b.
+
+---
+
+### 2018-Nov-25
+
+I took care of the stack, which had been hard-coded in the loader to be at address `0x800`.  Now I have debugged again and I have problems with the MMIO locations.  These are in user-space starting at address `0x3f...` and really need to be mapped up above `0x80000000`, but also identity mapped for the loader to finish up.
+
+I need to find the proper address range for the MMIO locations, and determine a place to put the IO ports for the kernel.  The addresses for SoC peripherals is from `0x3f000000` to `0x3fffffff`.  I think for the rpi2b kernel, I will map this space into `0xfa000000`.
+
+With that, I am able to get to the point where I am jumping to the kernel.  I am not sure if I make it there without a fault, but everything in the loader appears to be working properly at this point.  Certainly I am able to get the MMU enabled and continue processing, which was a big deal to accomplish.
+
+I know I am making it to the kernel, but I am not getting any kind of greeting message from the kernel to the screen or to the serial port.  I was able to step-debug to confirm this fact.  I am going to commit this code now, since quite a bit has changed.  Then I can focus on completing the kernel for rpi2b.
+
+---
+
+
+
+
+
+
 
 
 

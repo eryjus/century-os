@@ -21,3 +21,9 @@
 #   error "Do not include 'arch-interrupt.h' directly.  Include 'interrupt.h' and this file will be included"
 #endif
 
+//
+// -- Build the IDT and populate its gates; initialize the handlers to NULL
+//    ---------------------------------------------------------------------
+inline void IdtBuild(void) {}
+
+

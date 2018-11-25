@@ -27,7 +27,7 @@
 //
 // -- Include the architecture-specific CPU stuff
 //    -------------------------------------------
-#include "arch-cpu.h"
+#include "arch-cpu-prevalent.h"
 
 
 //
@@ -82,24 +82,6 @@ extern "C" void kStrCpy(char *dest, char *src);
 // -- Get the length of a string
 //    --------------------------
 extern "C" size_t kStrLen(const char *s);
-
-
-//
-// -- Get a byte from an I/O Port
-//    ---------------------------
-extern "C" uint8_t inb(uint16_t port);
-
-
-//
-// -- Output a byte to an I/O Port
-//    ----------------------------
-extern "C" void outb(uint16_t port, uint8_t byte);
-
-
-//
-// -- Get the CR3 value
-//    -----------------
-extern "C" regval_t GetCr3(void);
 
 
 //

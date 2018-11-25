@@ -36,6 +36,11 @@
 #include "pmm.h"
 
 
+#ifndef DEBUG_PMM
+#   define DEBUG_PMM 0
+#endif
+
+
 //
 // -- initialize the physical portion of the memory manager
 //    -----------------------------------------------------
@@ -56,8 +61,20 @@ void PmmInit(void)
     size_t pages = (GetUpperMemLimit() >> (12 + 3 + 12)) + (GetUpperMemLimit()&0x7fff?1:0);
     uint32_t *start = (uint32_t *)(GetEbda()?GetEbda():GetAvailLowerMem());
 
-    start -= PmmFrameToLinear(pages);
+    SerialPutS("Upper memory limit: "); SerialPutHex(GetUpperMemLimit()); SerialPutChar('\n');
+
+    if (!start) {                               // -- if we are not dealing with an ebda (and therefore not x86)
+        start = (uint32_t *)0x4000;             //      make it the first page after the hardware comm area
+    } else {
+        start -= PmmFrameToLinear(pages);       // -- and if x86 family adjust backwards
+    }
+
     start = (uint32_t *)((ptrsize_t)start & ~0x0fff);
+
+#if DEBUG_PMM == 1
+    SerialPutHex(pages); SerialPutS(" pages are needed to hold the PMM Bitmap\n");
+    SerialPutS("   these pages will start at "); SerialPutHex((uint32_t)start); SerialPutChar('\n');
+#endif
 
     SetPmmBitmap(start);
     SetPmmFrameCount(pages);
@@ -65,14 +82,24 @@ void PmmInit(void)
     // -- pages now holds the bitmap aligned to 4K right up to the EBDA or 640K boundary; set to no available memory
     kMemSetB((void *)start, 0, PmmFrameToLinear(pages));
 
+#if DEBUG_PMM == 1
+    SerialPutS("PMM Bitmap cleared and ready for marking unusable space\n");
+#endif
 
     // -- now we loop through the available memory and set the frames to be available
     for (int i = 0; i < GetMMapEntryCount(); i ++) {
         frame = PmmLinearToFrame(GetAvailMemStart(i));
         length = PmmLinearToFrame(GetAvailMemLength(i));
 
+        SerialPutS("Grub Reports available memory at "); SerialPutHex(frame); SerialPutS(" for ");
+                SerialPutHex(length); SerialPutS(" frames\n");
+
         PmmFreeFrameRange(frame, length);
     }
+
+#if DEBUG_PMM == 1
+    SerialPutS("Marking frames 0 and 1 used\n");
+#endif
 
     // -- The GDT is at linear address 0 and make it unavailable
     PmmAllocFrame(0);
@@ -82,16 +109,34 @@ void PmmInit(void)
 
     // -- The area between the EBDA and 1MB is allocated (if exists)
     if (GetEbda() != 0) {
+#if DEBUG_PMM == 1
+        SerialPutS("Marking Ebda as used\n");
+#endif
+
         PmmAllocFrameRange(PmmLinearToFrame(GetEbda()), 0x100 - PmmLinearToFrame(GetEbda()));
     }
 
     // -- now that all our memory is available, set the loader space to be not available; _loader* already aligned
     frame_t ls = PmmLinearToFrame((ptrsize_t)_loaderStart);
     frame_t le = PmmLinearToFrame((ptrsize_t)_loaderEnd);
+
+#if DEBUG_PMM == 1
+    SerialPutS("Marking the loader space as used starting at frame "); SerialPutHex(ls); SerialPutS(" for ");
+            SerialPutHex(le - ls); SerialPutS(" frames.\n");
+#endif
+
     PmmAllocFrameRange(ls, le - ls);        // _loaderEnd is already page aligned, so no need to add 1 page.
 
+#if DEBUG_PMM == 1
+    SerialPutS("Marking the frame buffer space as used starting at frame ");
+            SerialPutHex((ptrsize_t)GetFrameBufferAddr()); SerialPutS(" for "); SerialPutHex((1024 * 768 * 2) >> 12);
+            SerialPutS(" frames.\n");
+#endif
+
     // -- Allocate the Frame Buffer
-    PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), (1024 * 768 * 2) >> 12);
+    if ((ptrsize_t)GetFrameBufferAddr() < GetUpperMemLimit()) {
+        PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), (1024 * 768 * 2) >> 12);
+    }
 
     // -- Allocate the loaded modules
     if (HaveModData()) {
@@ -99,10 +144,21 @@ void PmmInit(void)
             frame = PmmLinearToFrame(GetAvailModuleStart(i));
             length = PmmLinearToFrame(GetAvailModuleEnd(i)) - frame + 1;
 
+#if DEBUG_PMM == 1
+            SerialPutS("Marking the module "); SerialPutS(GetAvailModuleIdent(i));
+                    SerialPutS(" space as used starting at frame "); SerialPutHex(frame); SerialPutS(" for ");
+                    SerialPutHex(length); SerialPutS(" frames.\n");
+#endif
+
             PmmAllocFrameRange(frame, length);
         }
     }
 
+
+#if DEBUG_PMM == 1
+            SerialPutS("Finally, marking the stack, hardware communication area, kernel heap, and this "
+                    "bitmap frames as used.\n");
+#endif
     // -- we have a 4K stack that is upper-bound at 2MB
     PmmAllocFrame(PmmLinearToFrame(0x200000 - 4096));
 

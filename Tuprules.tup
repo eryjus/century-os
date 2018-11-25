@@ -36,6 +36,8 @@ CFLAGS += -fno-exceptions
 
 ifneq ($(ARCH),rpi2b)
 CFLAGS += -mno-red-zone
+else
+CFLAGS += -mcpu=cortex-a7
 endif
 
 CFLAGS += -I $(WS)/bin/$(ARCH)/usr/include

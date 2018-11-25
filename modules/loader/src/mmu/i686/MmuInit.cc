@@ -19,7 +19,7 @@
 #include "pmm.h"
 #include "hw-disc.h"
 #include "serial.h"
-#include "mmu.h"
+#include "mmu-loader.h"
 
 
 //

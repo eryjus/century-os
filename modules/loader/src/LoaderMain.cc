@@ -19,7 +19,7 @@
 #include "hw-disc.h"
 #include "pmm.h"
 #include "serial.h"
-#include "mmu.h"
+#include "mmu-loader.h"
 #include "modules.h"
 #include "cpu.h"
 #include "fb.h"
@@ -42,7 +42,7 @@ void LoaderMain(void)
     // -- Theoretically, after this point, there should be very little architecture-dependent code
     PmmInit();
     FrameBufferInit();
-    FrameBufferPutS("Welcome to Century-OS");
+    FrameBufferPutS("Welcome to Century-OS\n");
     MmuInit();
     kernEntry_t ent = ModuleInit();
 
@@ -52,8 +52,8 @@ void LoaderMain(void)
     SetFrameBufferAddr((uint16_t *)FRAME_BUFFER_ADDRESS);       // re-map the frame buffer now that paging is enabled
 
 
-    SerialPutS("Jumping to the kernel\n");
     kMemMove((uint8_t *)HW_DISCOVERY_LOC, localHwDisc, sizeof(HardwareDiscovery_t));
+    SerialPutS("Jumping to the kernel\n");
     ent();
 
     // -- We should never get to this place

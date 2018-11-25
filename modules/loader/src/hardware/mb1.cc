@@ -201,6 +201,7 @@ void Mb1Parse(void)
         SerialPutS("Module information present\n");
 
         for (m = (Mb1Mods_t *)mb1Data->modAddr, i = 0; i < mb1Data->modCount; i ++) {
+            SerialPutS("   Found Module: ");
             SerialPutS(m[i].modIdent);
             SerialPutS("\n");
             AddModule(m[i].modStart, m[i].modEnd, m[i].modIdent);

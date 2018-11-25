@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  mmu.h -- This is the kernel MMU manager header.
+//  mmu-kernel.h -- This is the kernel MMU manager header.
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -29,7 +29,8 @@
 #include <stdbool.h>
 
 #include "types.h"
-#include "arch-mmu.h"
+#include "arch-mmu-prevalent.h"
+#include "arch-mmu-kernel.h"
 
 
 //
@@ -39,19 +40,6 @@ enum {
     PG_KRN = 0x00000001,
     PG_WRT = 0x00000002,
 };
-
-
-//
-// -- These are the helper functions to make MMU management nearly painless
-//    ---------------------------------------------------------------------
-inline int MmuGetPDIndexFromAddr(ptrsize_t addr) { return (addr >> 22) & 0x3ff; }
-inline int MmuGetPTIndexFromAddr(ptrsize_t addr) { return (addr >> 12) & 0x3ff; }
-inline pageEntry_t *MmuGetPDAddress(void) { return (pageEntry_t *)0xfffff000; }
-inline pageEntry_t *MmuGetPTAddress(ptrsize_t addr) {
-    return (pageEntry_t *)(0xffc00000 + (MmuGetPDIndexFromAddr(addr) * 0x1000));
-}
-inline pageEntry_t *MmuGetPDEntry(ptrsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
-inline pageEntry_t *MmuGetPTEntry(ptrsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }
 
 
 //

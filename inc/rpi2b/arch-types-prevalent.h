@@ -18,7 +18,7 @@
 
 
 #ifndef __TYPES_H__
-#   error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
+#   error "Do not include 'arch-types-prevalent.h' directly; include 'types.h' instead, which will pick up this file."
 #endif
 
 
@@ -40,3 +40,24 @@ typedef uint32_t frame_t;
 typedef uint32_t regval_t;
 
 
+//
+// -- This is the order of the registers on the stack
+//    -----------------------------------------------
+typedef struct isrRegs_t {
+	uint32_t r0;
+	uint32_t r1;
+	uint32_t r2;
+	uint32_t r3;
+	uint32_t r4;
+	uint32_t r5;
+	uint32_t r6;
+	uint32_t r7;
+	uint32_t r8;
+	uint32_t r9;
+	uint32_t r10;
+	uint32_t r11;
+	uint32_t r12;
+	uint32_t r13;
+	uint32_t r14;
+	uint32_t r15;
+} isrRegs_t;

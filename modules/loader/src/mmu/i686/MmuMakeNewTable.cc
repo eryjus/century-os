@@ -17,7 +17,7 @@
 
 #include "cpu.h"
 #include "pmm.h"
-#include "mmu.h"
+#include "mmu-loader.h"
 
 
 //

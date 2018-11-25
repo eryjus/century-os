@@ -18,7 +18,7 @@
 #include "types.h"
 #include "serial.h"
 #include "pmm.h"
-#include "mmu.h"
+#include "mmu-loader.h"
 
 
 //

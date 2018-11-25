@@ -19,7 +19,7 @@
 
 
 #ifndef __TYPES_H__
-# 	error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
+# 	error "Do not include 'arch-types-prevalent.h' directly; include 'types.h' instead, which will pick up this file."
 #endif
 
 
@@ -80,23 +80,5 @@ typedef struct IdtEntry {
 	uint8_t flags;
 	uint16_t baseHigh;
 } __attribute__((packed)) IdtEntry;
-
-
-//
-// -- This is the prototype definition for an ISR handler routine
-//    -----------------------------------------------------------
-typedef void (*isrFunc_t)(isrRegs_t *);
-
-
-//
-// -- The definition of a NULL ISR Handler Function
-//    ---------------------------------------------
-const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
-
-
-//
-// -- The ISR Handlers
-//    ----------------
-extern isrFunc_t isrHandlers[256];
 
 

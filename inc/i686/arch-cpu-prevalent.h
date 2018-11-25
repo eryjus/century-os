@@ -16,7 +16,7 @@
 
 
 #ifndef __CPU_H__
-#   error "Do not include 'arch-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
+#   error "Do not include 'arch-cpu-prevalent.h' directly; include 'cpu.h' instead, which will pick up this file."
 #endif
 
 
@@ -37,3 +37,29 @@ extern "C" void MmuSwitchPageDir(ptrsize_t physAddr);
 //    ----------------------------------------------------------
 #define HW_DISCOVERY_LOC            0x00003000
 #define FRAME_BUFFER_ADDRESS        0xfb000000
+
+
+//
+// -- a lightweight function to halt the cpu
+//    --------------------------------------
+inline void HaltCpu(void) { __asm("hlt"); }
+
+
+//
+// -- Get a byte from an I/O Port
+//    ---------------------------
+extern "C" uint8_t inb(uint16_t port);
+
+
+//
+// -- Output a byte to an I/O Port
+//    ----------------------------
+extern "C" void outb(uint16_t port, uint8_t byte);
+
+
+//
+// -- Get the CR3 value
+//    -----------------
+extern "C" regval_t GetCr3(void);
+
+

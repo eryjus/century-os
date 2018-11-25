@@ -19,12 +19,7 @@ include_rules
 #
 # -- Create the grub.cfg file
 #    ------------------------
-#: |>  	echo   "multiboot /boot/loader.elf"							 > %o;		\
-#        echo   "module /boot/kernel.elf"                            >> %o;      \
-#		echo   "boot"						  						>> %o;		\
-#   |> grub.cfg
-
-
-: |>    echo   "multiboot /boot/loader.elf"                          > %o;      \
+:   |>  echo   "multiboot /boot/loader.elf"                          > %o;      \
+        echo   "module /boot/kernel.elf kernel"                     >> %o;      \
         echo   "boot"                                               >> %o;      \
     |> grub.cfg

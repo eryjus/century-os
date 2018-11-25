@@ -47,7 +47,7 @@ typedef struct Spinlock_t {
 //
 // -- This is an atomic function to lock a spinlock
 //    ---------------------------------------------
-extern "C" int32_t SpinlockCmpXchg(Spinlock_t *lock, int32_t expected, int32_t newVal);
+extern "C" int32_t SpinlockAtomicLock(Spinlock_t *lock, int32_t expected, int32_t newVal);
 
 
 //
@@ -61,7 +61,7 @@ extern "C" void SpinlockClear(Spinlock_t *lock);
 //    ---------------------------------------------------------------------------------------------
 static inline void SpinlockLock(Spinlock_t *lock) {
     kprintf("Attempting lock by %x at address %p\n", currentPID, lock);
-    while (SpinlockCmpXchg(lock, 0, 1) != 0) { }
+    while (SpinlockAtomicLock(lock, 0, 1) != 0) { }
     lock->lockHolder = currentPID;
 }
 

@@ -30,7 +30,7 @@
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
-section ._text
+section .text
 cpu		586
 
 

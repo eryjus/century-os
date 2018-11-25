@@ -16,6 +16,7 @@
 
 
 #include "cpu.h"
+#include "hw.h"
 #include "serial.h"
 
 

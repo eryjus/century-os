@@ -29,16 +29,16 @@ SRC = $(WS)/modules/$(MOD)/src
 ##
 ## -- These are the implicit build rules for the i686 kernel object files
 ##    -------------------------------------------------------------------
-: foreach $(SRC)/$(ARCH)/*.s        | $(II) |> !nasm |>
+: foreach $(SRC)/$(ARCH)/*.s                                        | $(II) |> !nasm |>
 
 : foreach $(SRC)/*.cc               $(SRC)/$(ARCH)/*.cc             | $(II) |> !cc |>
-: foreach $(SRC)/cpu/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/cpu/*.cc           $(SRC)/cpu/$(ARCH)/*.cc         | $(II) |> !cc |>
 : foreach $(SRC)/frame-buffer/*.cc                                  | $(II) |> !cc |>
-: foreach $(SRC)/heap/*.cc          | $(II) |> !cc |>
-: foreach $(SRC)/ipc/*.cc           | $(II) |> !cc |>
+: foreach $(SRC)/heap/*.cc                                          | $(II) |> !cc |>
+: foreach $(SRC)/ipc/*.cc                                           | $(II) |> !cc |>
 : foreach $(SRC)/mmu/*.cc           $(SRC)/mmu/$(ARCH)/*.cc         | $(II) |> !cc |>
-: foreach $(SRC)/pmm/*.cc           | $(II) |> !cc |>
-: foreach $(SRC)/process/*.cc       | $(II) |> !cc |>
+: foreach $(SRC)/pmm/*.cc           $(SRC)/pmm/$(ARCH)/*.cc         | $(II) |> !cc |>
+: foreach $(SRC)/process/*.cc       $(SRC)/process/$(ARCH)/*.cc     | $(II) |> !cc |>
 : foreach $(SRC)/serial/*.cc        $(SRC)/serial/$(ARCH)/*.cc      | $(II) |> !cc |>
-: foreach $(SRC)/syscall/*.cc       | $(II) |> !cc |>
-: foreach $(SRC)/timer/*.cc         | $(II) |> !cc |>
+: foreach $(SRC)/syscall/*.cc       $(SRC)/syscall/$(ARCH)/*.cc     | $(II) |> !cc |>
+: foreach $(SRC)/timer/*.cc         $(SRC)/timer/$(ARCH)/*.cc       | $(II) |> !cc |>

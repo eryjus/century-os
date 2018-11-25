@@ -199,7 +199,7 @@ Halt:
 ;;
 ;; -- This is where we include the binary data for the system font
 ;;    ------------------------------------------------------------
-section         .data
+section         .rodata
 
 systemFont:
 incbin          "system-font.bin"

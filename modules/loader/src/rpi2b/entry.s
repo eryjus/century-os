@@ -36,6 +36,13 @@
 .equ            MAGIC,0x1badb002
 .equ            FLAGS,1<<1 | 1<<2
 
+
+@@
+@@ -- This is the stack size
+@@    ----------------------
+.equ            STACK_SIZE,4096
+
+
 @@
 @@ -- This is the multiboot 1 header
 @@    ------------------------------
@@ -76,7 +83,7 @@ wait_loop:
 .section    .text
 
 initialize:
-    ldr     sp,=0x800                    @@ set up a stack
+    ldr     sp,=stackend                @@ set up a stack
 
 
 @@
@@ -122,9 +129,9 @@ systemFont:
 .incbin         "system-font.bin"
 
 
-.section        .bootstack
-stack32:
-    .rept       1024
+.section        .bss
+stack:
+    .rept       STACK_SIZE
     .byte       0
     .endr
 stackend:

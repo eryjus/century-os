@@ -22,7 +22,7 @@
 
 
 #ifndef __MMU_H__
-#   error "Do not include 'arch-mmu.h' directly; include 'mmu.h' instead, which will pick up this file."
+#   error "Do not include 'arch-mmu-prevalent.h' directly; include 'mmu.h' instead, which will pick up this file."
 #endif
 
 

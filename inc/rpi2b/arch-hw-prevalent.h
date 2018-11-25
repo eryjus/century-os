@@ -22,7 +22,7 @@
 
 
 #ifndef __HW_H__
-#   error "Do not include 'arch-hw.h' directly.  Include 'hw.h' to pick up this file."
+#   error "Do not include 'arch-hw-prevalent.h' directly.  Include 'hw.h' to pick up this file."
 #endif
 
 

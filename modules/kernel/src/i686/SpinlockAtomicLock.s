@@ -1,6 +1,6 @@
 ;;===================================================================================================================
 ;;
-;;  SpinlockCmpXchg.s -- Atomically CMPXCHG a value for a spinlock
+;;  SpinlockAtomicLock.s -- Atomically CMPXCHG a value for a spinlock
 ;;
 ;;        Copyright (c)  2017-2018 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
@@ -36,7 +36,7 @@
 ;;
 ;; -- Now, we need some things from other functions imported
 ;;    ------------------------------------------------------
-global  SpinlockCmpXchg
+global  SpinlockAtomicLock
 
 
 ;;
@@ -49,7 +49,7 @@ cpu		586
 ;;
 ;; -- Perform the compare and exchange
 ;;    --------------------------------
-SpinlockCmpXchg:
+SpinlockAtomicLock:
 		push		ebp						;; save the stack frame
 		mov			ebp,esp					;; create a new stack frame
 		push	    ebx				        ;; save the ebx register

@@ -89,7 +89,7 @@ typedef uint32_t PID_t;
 //
 // -- Now include the architecture-specific types
 //    -------------------------------------------
-#include "arch-types.h"
+#include "arch-types-prevalent.h"
 
 
 //
@@ -102,6 +102,24 @@ extern volatile PID_t currentPID;
 // -- This is a generic byte definition
 //    ---------------------------------
 typedef uint8_t byte_t;
+
+
+//
+// -- This is the prototype definition for an ISR handler routine
+//    -----------------------------------------------------------
+typedef void (*isrFunc_t)(isrRegs_t *);
+
+
+//
+// -- The definition of a NULL ISR Handler Function
+//    ---------------------------------------------
+const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
+
+
+//
+// -- The ISR Handlers
+//    ----------------
+extern isrFunc_t isrHandlers[256];
 
 
 #endif

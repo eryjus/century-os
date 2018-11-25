@@ -21,6 +21,11 @@
 #include "pmm.h"
 
 
+#ifndef DEBUG_PMM
+#   define DEBUG_PMM 0
+#endif
+
+
 //
 // -- Allocate a frame for use (not going to do this too much here...)
 //    ----------------------------------------------------------------
@@ -29,6 +34,10 @@ frame_t PmmNewFrame(void)
     frame_t frame;
 
     if ((frame = GetModHightestFrame()) > 0x000fffff) frame = 0x000fffff;
+
+#if DEBUG_PMM == 1
+    SerialPutS("Checking from frame "); SerialPutHex(frame); SerialPutChar('\n');
+#endif
 
     while (true && frame != GetPmmFrameCount()) {
         if (!PmmIsFrameAlloc(frame)) {

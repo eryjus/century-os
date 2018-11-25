@@ -128,6 +128,7 @@ debug-x86_64: x86_64-iso
 #    ------------------------------------------------------------------------------------------------
 rpi2b-iso: all
 	rm -fR iso/rpi2b.img
+	rm -fR sysroot/rpi2b/*
 	cp -fR bin/rpi2b/* sysroot/rpi2b/
 	find sysroot/rpi2b -type f -name Tupfile -delete
 	mkdir -p ./p1
@@ -142,6 +143,7 @@ rpi2b-iso: all
 		sudo losetup -v -d /dev/loop0;														\
 		rm -fR ./p1																			\
 	) || (																					\
+		echo "Something went wrong in the build!"  											\
 		sudo umount ./p1;																	\
 		sudo losetup -v -d /dev/loop0;														\
 		rm -fR ./p1																			\

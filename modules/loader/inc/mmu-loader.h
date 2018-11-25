@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  mmu.h -- The general purpose mmu interface file.
+//  mmu-loader.h -- The general purpose mmu interface file.
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -23,8 +23,7 @@
 #include <stdbool.h>
 
 #include "types.h"
-#include "arch-mmu.h"
-//#include "arch-mmu-loader.h"
+#include "arch-mmu-prevalent.h"
 
 
 //

@@ -35,7 +35,7 @@
 #include "types.h"
 #include "serial.h"
 #include "printf.h"
-#include "mmu.h"
+#include "mmu-kernel.h"
 #include "heap.h"
 
 

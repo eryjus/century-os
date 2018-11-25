@@ -23,7 +23,7 @@
 
 #include "cpu.h"
 #include "printf.h"
-#include "mmu.h"
+#include "mmu-kernel.h"
 
 
 //

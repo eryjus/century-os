@@ -21,7 +21,7 @@
 #include "pmm.h"
 #include "serial.h"
 #include "cpu.h"
-#include "mmu.h"
+#include "mmu-loader.h"
 
 
 //

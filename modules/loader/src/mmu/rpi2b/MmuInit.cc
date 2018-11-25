@@ -1,10 +1,117 @@
+//===================================================================================================================
+//
+//  MmuInit.cc -- Initialize the Memory Management Unit for rpi2b
+//
+//        Copyright (c)  2017-2018 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+// ------------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2018-Nov-18  Initial   0.2.0   ADCL  Initial version
+//
+//===================================================================================================================
+
 
 #include "types.h"
+#include "pmm.h"
+#include "hw-disc.h"
+#include "serial.h"
+#include "mmu-loader.h"
 
 
+extern uint8_t _loaderStart[];
+extern uint8_t _loaderEnd[];
+extern "C" void LoaderMain(void);
+
+frame_t allocFrom;
 ptrsize_t ttl1;
+
 
 void MmuInit(void)
 {
+    ptrsize_t addr;
+    frame_t f;
 
+    SerialPutS("Set up the TTL1 management table\n");
+    allocFrom = PmmLinearToFrame(GetUpperMemLimit()) - 0x1000;
+
+    // -- get 4 frames from the PMM for the ttl1 table; 4 frames = 16K
+    ttl1 = PmmFrameToLinear(allocFrom);
+    PmmAllocFrameRange(allocFrom, 4);
+    allocFrom += 4;
+
+    // -- set up the ttl1 and clear it
+    kMemSetB((void *)ttl1, 0, 1024 * 16);
+
+    // -- Map the TTL1 table to location 0xffbfc000
+    MmuMapToFrame(ttl1, 0xffbfc000, PmmLinearToFrame(ttl1), true, true);
+    MmuMapToFrame(ttl1, 0xffbfd000, PmmLinearToFrame(ttl1) + 1, true, true);
+    MmuMapToFrame(ttl1, 0xffbfe000, PmmLinearToFrame(ttl1) + 2, true, true);
+    MmuMapToFrame(ttl1, 0xffbff000, PmmLinearToFrame(ttl1) + 3, true, true);
+
+    // -- Identity map the loader
+    SerialPutS("Loader Start: ");
+    SerialPutHex((uint32_t)&_loaderStart);
+    SerialPutS("\nLoader End: ");
+    SerialPutHex((uint32_t)&_loaderEnd);
+    SerialPutS("\n");
+
+    // -- Identity map the loader
+    SerialPutS("Identity Map the Loader");
+    for (addr = (ptrsize_t)&_loaderStart; addr < (ptrsize_t)&_loaderEnd; addr += 0x1000) {
+        SerialPutChar('.');
+        MmuMapToFrame(ttl1, addr, PmmLinearToFrame(addr), true, false);
+    }
+    SerialPutChar('\n');
+
+    // -- Map the frame buffer
+    SerialPutS("Map FrameBuffer "); SerialPutHex(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight())));
+    for (f = PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), addr = 0xfb000000;
+            f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
+            f ++, addr += 0x1000) {
+        SerialPutChar('.');
+        MmuMapToFrame(ttl1, addr, f, true, true);
+    }
+    SerialPutChar('\n');
+
+    // -- need to identity-map the stack
+    SerialPutS("Map Stack\n");
+    MmuMapToFrame(ttl1, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096), true, false);
+
+    // -- identity map the hardware data strucure
+    SerialPutS("Map Hardware Discovery Struture\n");
+    MmuMapToFrame(ttl1, 0x00003000, 3, true, false);
+
+    // -- identity map the MMIO addresses 0x3f000000 to 0x3fffffff
+    SerialPutS("Identity map MMIO");
+    for (addr = 0x3f000000; addr < 0x3fffffff; addr += 4096) {
+        SerialPutChar('.');
+        MmuMapToFrame(ttl1, addr, PmmLinearToFrame(addr), true, false);
+    }
+
+    // -- also map the MMIO addresses into upper memory
+    SerialPutS("\nMap  MMIO to kernel space");
+    for (addr = 0xf2000000, f = PmmLinearToFrame(0x3f000000); addr < 0xf2ffffff; addr += 4096, f ++) {
+        SerialPutChar('.');
+        MmuMapToFrame(ttl1, addr, f, true, false);
+    }
+
+    //
+    // -- Dump some addresses from the cr3 tables to check validity
+    //    ---------------------------------------------------------
+    SerialPutS("Checking our work\n");
+    MmuDumpTables(0xffbfc000); // The TTL1 location
+    MmuDumpTables(0xffbfd000);
+    MmuDumpTables(0xffbfe000);
+    MmuDumpTables(0xffbff000);
+    MmuDumpTables((ptrsize_t)&_loaderStart); // The loader location
+    MmuDumpTables(0x28172948);  // An address that should not be mapped
+    MmuDumpTables(0xfb000000);  // The start of the frame buffer
+    MmuDumpTables(0xfd010000);  // One Page Fault Address
+    MmuDumpTables((ptrsize_t)LoaderMain);
+    MmuDumpTables(0x80000000);
+    MmuDumpTables((ptrsize_t)MmuEnablePaging);
 }

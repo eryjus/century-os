@@ -17,7 +17,7 @@
 
 
 #ifndef __CPU_H__
-#   error "Do not include 'arch-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
+#   error "Do not include 'arch-cpu-prevalent.h' directly; include 'cpu.h' instead, which will pick up this file."
 #endif
 
 
@@ -25,10 +25,17 @@
 
 
 //
+// -- This is the natural byte alignment for this architecture
+//    --------------------------------------------------------
+#define BYTE_ALIGNMENT      4
+
+
+//
 // -- These are some addresses we need for this CPU architecture
 //    ----------------------------------------------------------
 #define HW_DISCOVERY_LOC            0x00003000
 #define FRAME_BUFFER_ADDRESS        0xfb000000
+
 
 //
 // -- Read the low level timer value
@@ -41,3 +48,8 @@ extern "C" uint64_t SysTimerCount(void);
 //    -------------------------------------------------------
 void BusyWait(uint32_t microSecs);
 
+
+//
+// -- a lightweight function to halt the cpu
+//    --------------------------------------
+inline void HaltCpu(void) { __asm("wfi"); }

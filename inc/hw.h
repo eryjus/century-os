@@ -19,7 +19,7 @@
 #define __HW_H__
 
 
-#include "arch-hw.h"
+#include "arch-hw-prevalent.h"
 
 
 #endif

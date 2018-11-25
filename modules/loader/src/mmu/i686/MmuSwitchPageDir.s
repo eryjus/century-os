@@ -32,7 +32,7 @@ global	MmuSwitchPageDir
 ;;
 ;; -- This is the begging of the code segment
 ;;    ---------------------------------------
-section ._text
+section .text
 cpu		586
 
 
