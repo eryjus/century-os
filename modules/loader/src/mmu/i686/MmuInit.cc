@@ -18,7 +18,7 @@
 #include "cpu.h"
 #include "pmm.h"
 #include "hw-disc.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "mmu-loader.h"
 
 
@@ -69,7 +69,7 @@ void MmuInit(void)
 
     // -- Map the GDT/IDT to the final location
     SerialPutS("\nMap GDT/IDT\n");
-    MmuMapToFrame(cr3, 0xff401000, PmmLinearToFrame(0x00000000), true, false);
+    MmuMapToFrame(cr3, GDT_ADDRESS, PmmLinearToFrame(0x00000000), true, false);
 
     // -- Identity map the loader
     SerialPutS("Loader Start: ");
@@ -87,7 +87,7 @@ void MmuInit(void)
 
     // -- Finally, map the frame buffer
     SerialPutS("\nMap FrameBuffer "); SerialPutHex(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight())));
-    for (frame_t f = PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), addr = 0xfb000000;
+    for (frame_t f = PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), addr = FRAME_BUFFER_VADDR;
             f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
             f ++, addr += 0x1000) {
         SerialPutChar('.');
@@ -114,12 +114,12 @@ void MmuInit(void)
     // -- Dump some addresses from the cr3 tables to check validity
     //    ---------------------------------------------------------
     SerialPutS("Checking our work\n");
-    MmuDumpTables(0xfffff000); // Recursive Map
+    MmuDumpTables(RECURSIVE_PD_VADDR); // Recursive Map
     MmuDumpTables(640 * 1024); // Print 640K
-    MmuDumpTables(0xff401000); // The GDT/IDT location
+    MmuDumpTables(GDT_ADDRESS); // The GDT/IDT location
     MmuDumpTables((ptrsize_t)&_loaderStart); // The loader location
     MmuDumpTables(0x28172948);  // An address that should not be mapped
-    MmuDumpTables(0xfb000000);  // The start of the frame buffer
+    MmuDumpTables(FRAME_BUFFER_VADDR);  // The start of the frame buffer
     MmuDumpTables(0xfd010000);  // One Page Fault Address
 
     MmuDumpTables((ptrsize_t)LoaderMain);

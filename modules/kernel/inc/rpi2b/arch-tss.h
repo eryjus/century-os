@@ -19,3 +19,9 @@
 // -- Dummy function to mimic the TSS initialization
 //    ----------------------------------------------
 inline void CpuTssInit(void) { }
+
+
+//
+// -- This is the size of the short exception stacks
+//    ----------------------------------------------
+#define EXCEPTION_STACK_SIZE  512

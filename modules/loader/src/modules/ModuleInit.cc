@@ -23,7 +23,7 @@
 #include "pmm.h"
 #include "mmu-loader.h"
 #include "cpu.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "elf.h"
 #include "modules.h"
 

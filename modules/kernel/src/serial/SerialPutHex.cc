@@ -16,7 +16,7 @@
 
 
 #include "types.h"
-#include "serial.h"
+#include "serial-kernel.h"
 #include "cpu.h"
 
 

@@ -16,8 +16,8 @@
 
 
 #include "cpu.h"
-#include "hw.h"
-#include "serial.h"
+#include "hw-kernel.h"
+#include "serial-kernel.h"
 
 
 //

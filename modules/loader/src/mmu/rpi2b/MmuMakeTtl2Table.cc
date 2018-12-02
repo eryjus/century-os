@@ -24,7 +24,7 @@
 
 #include "types.h"
 #include "cpu.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "pmm.h"
 #include "mmu-loader.h"
 
@@ -108,7 +108,7 @@ void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr)
 
     // Here we need to get the TTL1 entry for the management address.
     int ttl2Offset = (addr >> 20) & 0xfff;
-    ptrsize_t mgmtTtl2Addr = 0xffc00000 + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
+    ptrsize_t mgmtTtl2Addr = TTL2_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
     int mgmtTtl1Index = mgmtTtl2Addr >> 20;
     Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
 

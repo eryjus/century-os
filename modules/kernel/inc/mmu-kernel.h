@@ -66,7 +66,5 @@ frame_t MmuUnmapPage(ptrsize_t addr);
 
 #define PROCESS_STACK_BUILD 0xff441000
 
-#define KERNEL_PAGE_DIR     0xfffff000
-
 
 #endif

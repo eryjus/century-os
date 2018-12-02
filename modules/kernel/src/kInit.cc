@@ -153,6 +153,7 @@ void kInit(void)
 //	BREAKPOINT;
 
 
+	EnterSystemMode();
 	kprintf("Reached the end of initialization\n");
 
 	//

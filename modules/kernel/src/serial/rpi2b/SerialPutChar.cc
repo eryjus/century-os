@@ -16,8 +16,8 @@
 
 
 #include "cpu.h"
-#include "hw.h"
-#include "serial.h"
+#include "hw-kernel.h"
+#include "serial-kernel.h"
 
 
 //
@@ -25,7 +25,7 @@
 //    ------------------------------------
 void SerialPutChar(char byte)
 {
-    while ((MmioRead(UART_BASE + UART_FR) & UARTFR_TXFF) == 0) { }
+    while ((MmioRead(UART_BASE + UART_FR) & UARTFR_TXFF) != 0) { }
 
     MmioWrite(UART_BASE + UART_DR, byte);
 }

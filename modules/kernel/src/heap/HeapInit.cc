@@ -33,7 +33,7 @@
 
 
 #include "types.h"
-#include "serial.h"
+#include "serial-kernel.h"
 #include "printf.h"
 #include "mmu-kernel.h"
 #include "heap.h"
@@ -90,7 +90,7 @@ void HeapInit(void)
 
 	_heap.strAddr = (byte_t *)heapStart;
 	_heap.endAddr = ((byte_t *)_heap.strAddr) + fixedList[0].size;
-	_heap.maxAddr = (byte_t *)0xfb000000;
+	_heap.maxAddr = (byte_t *)FRAME_BUFFER_VADDR;
 
 	_heap.heapMemory = _heap.heap512 = _heap.heap1K =
 			_heap.heap4K = _heap.heap16K = &fixedList[0];

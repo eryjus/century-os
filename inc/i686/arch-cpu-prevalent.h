@@ -36,13 +36,18 @@ extern "C" void MmuSwitchPageDir(ptrsize_t physAddr);
 // -- These are some addresses we need for this CPU architecture
 //    ----------------------------------------------------------
 #define HW_DISCOVERY_LOC            0x00003000
-#define FRAME_BUFFER_ADDRESS        0xfb000000
 
 
 //
 // -- a lightweight function to halt the cpu
 //    --------------------------------------
 inline void HaltCpu(void) { __asm("hlt"); }
+
+
+//
+// -- A dummy function to enter system mode, since this is for the ARM
+//    ----------------------------------------------------------------
+extern "C" inline void EnterSystemMode(void) {}
 
 
 //

@@ -44,6 +44,7 @@ typedef uint32_t regval_t;
 // -- This is the order of the registers on the stack
 //    -----------------------------------------------
 typedef struct isrRegs_t {
+	uint32_t cpsr;
 	uint32_t r0;
 	uint32_t r1;
 	uint32_t r2;
@@ -57,7 +58,6 @@ typedef struct isrRegs_t {
 	uint32_t r10;
 	uint32_t r11;
 	uint32_t r12;
-	uint32_t r13;
-	uint32_t r14;
-	uint32_t r15;
+	uint32_t sp;
+	uint32_t lr;
 } isrRegs_t;

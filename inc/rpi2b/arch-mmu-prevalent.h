@@ -30,6 +30,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "types.h"
+
 
 //
 // -- The Translation Table Level 1 structure (TTL1)
@@ -59,5 +61,21 @@ typedef struct Ttl2_t {
 } __attribute__((packed)) Ttl2_t;
 
 
+//
+// -- This is the location of the frame buffer
+//    ----------------------------------------
+const ptrsize_t FRAME_BUFFER_VADDR = 0xfb000000;
 
+
+//
+// -- This is the location of the TTL1/TTL2 Tables
+//    --------------------------------------------
+const ptrsize_t TTL1_VADDR = 0x80400000;
+const ptrsize_t TTL2_VADDR = 0x80000000;
+
+
+//
+// -- This is the location of the exception vector table
+//    --------------------------------------------------
+const ptrsize_t EXCEPT_VECTOR_TABLE = 0xff401000;
 

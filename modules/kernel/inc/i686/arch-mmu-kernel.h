@@ -25,9 +25,9 @@
 //    ---------------------------------------------------------------------
 inline int MmuGetPDIndexFromAddr(ptrsize_t addr) { return (addr >> 22) & 0x3ff; }
 inline int MmuGetPTIndexFromAddr(ptrsize_t addr) { return (addr >> 12) & 0x3ff; }
-inline pageEntry_t *MmuGetPDAddress(void) { return (pageEntry_t *)0xfffff000; }
+inline pageEntry_t *MmuGetPDAddress(void) { return (pageEntry_t *)RECURSIVE_PD_VADDR; }
 inline pageEntry_t *MmuGetPTAddress(ptrsize_t addr) {
-    return (pageEntry_t *)(0xffc00000 + (MmuGetPDIndexFromAddr(addr) * 0x1000));
+    return (pageEntry_t *)(RECURSIVE_VADDR + (MmuGetPDIndexFromAddr(addr) * 0x1000));
 }
 inline pageEntry_t *MmuGetPDEntry(ptrsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
 inline pageEntry_t *MmuGetPTEntry(ptrsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }

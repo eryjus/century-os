@@ -4325,7 +4325,7 @@ Today my plan is to try to get the MMU enabled for the rpi2b archetecture.  Well
 
 I know that I need to interact with Co-Processor 15 (`cp15`) and I will use `mcr` and `mrc` opcodes to interact with the registers.  There are several registers I will need to interact with for various reasons.
 * Register 0 is a read-only register for TLB information.  I am not interested in this register for setting up the MMU.
-* Regoster 1 contains the M bit (whether the MMU is enabled or disabled).  The M bit is bit 0.  I assume the M is set to 0 before I get to it.  I will need to code a test to investigate this.
+* Register 1 contains the M bit (whether the MMU is enabled or disabled).  The M bit is bit 0.  I assume the M is set to 0 before I get to it.  I will need to code a test to investigate this.
 * Register 2 contains the Translation Table Base registers and control.  There are 3 sub-registers of this:
     * 0 is base 0 -- the one will hold the user-space table mappings.  It will be the same as the kernel-space mappings for the purposes of the loader and late kernel initialization.  All other flags I will set to 0 for the moment, as I am not going to enable caching.
     * 1 is base 1, which will hold the kernel base table.  I will populate this in the loader.  All other flags I will set to 0 for the moment, as I am not going to enable caching.
@@ -4429,11 +4429,237 @@ I know I am making it to the kernel, but I am not getting any kind of greeting m
 
 ---
 
+Now, with that out of the way, the first order of business is going to be to get some output from `kprintf()`.  This is both the first thing that needs to take place and the only debugging output apparatus I have for the kernel.
+
+The problem I am starting with is that I am now being driven into a situation where the rpi2b hardware is loader-speciific and I will have another version for the kernel for the kernel.  I do not want to duplicate this work, so I will have to build an abstraction here that works for both the loader and the kernel.  At the same time, I also found a file name duplication for `serial.h` that I need to correct.  Since the exercise is nearly the same, I will take them both on together.
+
+For output to the serial port, I commented out the serial port greeting and was able to get the frame buffer to change colors and write the greeting.  So, I just need to figure out what is happening with the serial port output.  I know that the loader was writing to the serial port properly, but the kernel is trying to write to an adjusted address.
+
+Silly me!  I had the same issue with `==` vs `!=` in the kernel `SerialPutChar()` that I had in the loader and I did not correct both instances.  I am now getting `kprintf()` output.
+
+I am getting a bit of output, but the system still locks.  I know I have lots of stuff stubbed out that all need to get fixed.  The first thing that `kinit()` does is build the IDT for x86.  There is an equivalent process to get a fault handler built for rpi2b and get that installed.  This is what I will need to take on next.  I need to have visibility into the errors when they happen.  There are several things that will all need to take place to get this initialized.  There is an interrupt controller and a number of fault handlers that all need to be figured out and coded.
+
+---
+
+Reading up on how interrupts (exceptions) work, I have figured out that the actual `pc` value can indicate which exception has occurred if the table has not been set up.  In particular, based on the value in `pc`, it can be determined what exception has occurred:
+* `0x00` -- reset
+* `0x04` -- unused
+* `0x08` -- supervisor call
+* `0x0c` -- prefetch abort
+* `0x10` -- data abort
+* `0x14` -- unused
+* `0x18` -- IRQ interrupt
+* `0x1c` -- FIQ interrupt
+
+These locations can only be at base `0x00000000` or `0xffff0000` and are virtual addresses.  Since we will be using upper addresses for the OS (`0x80000000` and greater), code will need to be moved and mapped to this upper location.  To make matters worse, the only thing that can be done is a single word-sized instruction, which leaves a 24-bit offet to the actual target code.  So, this code must be somewhere about `0xff800000` but no farther away.  Ultimately, I am going to need a specially built page mapped to that address (`0xffff0000`) that contains a table of addresses just a little higher in memory for jumping to the kernel proper.  This will be in the form: `ldr pc,[pc,#0x20]`.  Now, the problem is that this location is buried in the 'pseudo-recursive' MMU tables.  If it is not obviuos, I will need to rewrite the loader's MMU initialization -- and I need to take this task on now before I get into the interrupt/exception initialization.
+
+At the same time, I need to revisit the virtual memory map as I would like to be able to align the 32-bit architectures better than I have at this point.  I have created discrepancies in the memory map from above and the one in README.md.  The target on README.md takes precedence, but it will take some time to refactor the x86 architecture to properly align.  I indend this to be completed in v0.2.1 and will create the Redmine version now to accomplish this.
+
+---
+
+After making several changes to create constants for the hard-coded values, I was able to change the location of the TTL1/TTL2 tables to `0x80400000` and `0x80000000` respectively.
+
+This is a change since the TTL1 tables now come *after* the TTL2 tables whereas this was originally programmed to be *before*.  However, a test shows that this still works by only changing the constant values.  This is a good thing.  I need to do more of this!  This now will free up the memory required to set up the interrupt table.
+
+I want to call out here that I believe I will be coding something that makes no sense and need to call it out.  The ARM ARM section 5.2.2 calls out that if `r15` or `pc` is used as the base register for loading an address, the actual value used in `pc + 8`, or "the address of the instruction plus 8".
+
+---
+
+### 2018-Nov-26
+
+My UPS just ate itself.  It took a while to reboot everything, but so far it has all come back up properly.
+
+Now, to get back to the interrupt table.  I need to determine if I am going to build this statically and relocate it or build it dynamically in the proper location.  Each of the `ldr` instructions would be the same, so it would not be too much of a stretch to build it during initialization.  I would just need to determine the actual instruction bits.  This should be able to be done with a simple `.s` file.
+
+This quick file gave me the results I was looking for:
+
+```
+intReset:
+    ldr     pc,[pc,#(8-8)]
+intAbort:
+    ldr     pc,[pc,#(8-8)]
+
+resetTarget:
+    .word   kInit
+    .word   kInit
+```
+
+That is to say the `ldr` opcodes were loading the proper addresses.
+
+```
+80005f0c <intReset>:
+80005f0c:	e59ff000 	ldr	pc, [pc]	; 80005f14 <resetTarget>
+
+80005f10 <intAbort>:
+80005f10:	e59ff000 	ldr	pc, [pc]	; 80005f18 <resetTarget+0x4>
+
+80005f14 <resetTarget>:
+80005f14:	800056a0 	andhi	r5, r0, r0, lsr #13
+80005f18:	800056a0 	andhi	r5, r0, r0, lsr #13
+```
+
+It just so happens that `#(8-8)` is what I was playing with for this test, but the real structure will be something like `#(0x20-8)`.  Or, much more to the point: `0xe59ff018`.
+
+---
+
+I wrote functions to handle the MMU mappings.  The problem with them at this point is that I am only dealing with the kernel space at the moment -- not the user space mappings from `0x00000000` to `0x7fffffff`.  Well, they are all put into the kernel space maps.
+
+I was also be able to write and document the `InterruptVector_t` structure.
+
+---
+
+### 2018-Nov-27
+
+I am short on time today, so the task today is to determine how to relocate the interrupt vector table from `0x00000000` to `0xffff0000`.  This has something to do with a control register, and I presume `cp15` before I even start reading.  But, that is the research task of the day.  Sorry, it's called an "exception vector table".  I have been writing it wrong.
+
+I see that the SCTLR register, bit 13 controls the Vector Base Address Register value.  The SCTLR is cp15,c1.  When this bit is set to 0, the address is `0x00000000` and software can remap the location using the VBAR.  On the other hand, when this value is 1, the address is `0xffff0000` and software cannot remap this value.  Hmmm...  am I missing something?
+
+It looks like I can read the VBAR register with the following opcode:
+
+```
+mrc p15,0,r0,c12,c0,0
+```
+
+writing this register back out with `mcr` should allow me to set a fixed address for the exception vector table.
+
+So, I asked this question on `freenode#osdev` and got the following response:
+
+```
+[19:55] <eryjus> For those who know the RPi, am I reading the documentation right for the exception vector table (VBAR)?  If I leave p15:c1:13 clear, I can set p15:c12 to any address I want and I am not limited to 0x0 and 0xffff0000?
+[19:55] <geist> eryjus: yes
+```
+
+This means that I am actually able to move the TTL tables back to `0xffc00000` (less 4 frames) and I can put the exception vector table in the same location as the IDT for x86.  This will allow me to move the heap as well back to `0x80000000` and the MMIO addresses to the top of the kernel data location.  This far better aligns with much of the existing x86 architecture and I will not have to perform major surgery to the x86 code to get things aligned properly.
+
+So, with that said, tomorrow I will make the attempt to write to those registers to see if I can get the addresses set proeprly.
+
+---
+
+### 2018-Nov-28
+
+Going back to setting this exception vectory table address, the base virtual address of the GDT/TSS/IDT in the x86 family is `0xff401000`.  All 3 structures are located in this same frame in x86.  I want to use that same address for the exception vector table for rpi2b.  So this is what I will attempt to set up and then create a fault to test it.
+
+Well, when I set the registers, there was no error.  I then set up for a test to generate a fault by reading a bad address: `x = *(uint32_t *)0x89723984;`, and this generates a fault, but the address I want to see in the `pc` register is not correct.
+
+My function to set this up looks like this:
+
+```
+IdtSetAddr:
+    mrc     p15,0,r0,c1,c0,0
+    and     r0,r0,#(~(1<<13))
+    mrc     p15,0,r0,c1,c0,0
+
+    mov     r0,#0xff40
+    lsl     r0,#12
+    add     r0,#0x1000
+    mrc     p15,0,r0,c12,c0,0
+
+    mov     pc,lr
+```
+
+Of course, I confused the `mrc` and `mcr` opcodes.  Correcting those solved my issue.
+
+```
+(gdb) info reg
+r0             0xff41000        267653120
+r1             0xa      10
+r2             0xa      10
+r3             0x89723984       -1989002876
+r4             0x80009000       -2147446784
+r5             0x0      0
+r6             0x0      0
+r7             0x0      0
+r8             0x0      0
+r9             0x11a000 1155072
+r10            0x2d227  184871
+r11            0x80024fc4       -2147332156
+r12            0x118f98 1150872
+sp             0x0      0x0
+lr             0xff41010        267653136
+pc             0xff4100c        0xff4100c
+cpsr           0x600001d7       1610613207
+fpscr          0x0      0
+fpsid          0x410430f0       1090793712
+fpexc          0x0      0
+```
+
+---
+
+I found an endian-ness problem with my hard-coded jump instruction.  I got that fixed and now the faulting `lr` is `0xff042004`.  This means I managed to execute something, but not sure how much and what took place.
+
+---
+
+It's getting late and I'm not getting anywhere.  I'm going to call it a night and try again tomorrow.
+
+---
+
+### 2018-Nov-29
+
+I have been thinking about tooling.  I am wondering if there are any better (free) ARM emulators.
+
+After asking on `freenode#osdev`, I now have access to the debugger (`-monitor stdio`) and I found that I have an endian-ness problem.  I switched it back.  The behavior is the same, but I get farther down the code before I run into problems.  Here is the output from the qemu logs:
+
+```
+0x80003060:  e8bd8830  pop      {r4, r5, fp, pc}
+
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600003f
+...with DFSR 0x5 DFAR 0x89723984
+----------------
+IN:
+0xff401010:  e59ff018  ldr      pc, [pc, #0x18]
+
+----------------
+IN:
+0x80002c54:  e92d4800  push     {fp, lr}
+0x80002c58:  e28db004  add      fp, sp, #4
+0x80002c5c:  e59f300c  ldr      r3, [pc, #0xc]
+0x80002c60:  e08f3003  add      r3, pc, r3
+0x80002c64:  e1a00003  mov      r0, r3
+0x80002c68:  eb000e45  bl       #2147509636
+
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600007f
+...with DFSR 0x805 DFAR 0xfffffff8
+```
+
+This tells me that the Exception Vector Table worked and my Data fault handler really did get control.  However, there appears to be no stack set up.  I have more reading to do, but no time tonight.  But I do think the best thing is to take on getting a proper register dump written so I can debug better.
+
+The Stack Pointer (`r13`) is indeed clear.  I need to determine why.
+
+---
+
+### 2018-Nov-30
+
+I started searching last night and found it today.  The stack register (`sp` or `r13`) is replaced on an abort.  This table of banked registers is important to keep in mind -- it is in the ARM ARM on page A2-5 and is Figure A2-1.
+
+In trying to get access to the `cspr` and `sp` from the exception, I realize that I am in supervisor mode and probably want to be in system mode.  The reason for this is that I will want access to the registers from the interrupt.  Since the registers are banked, each mode has its own register.  When I am handling an interrupt, I probably want to switch into supervisor (svc) mode.
+
+The following link provides an example:  https://github.com/littlekernel/lk/blob/master/arch/arm/arm/exceptions.S#L75.
+
+I am able to get a dump of the registers, but I cannot guarantee I have all the right registers.  I need to continue to work with my code and the instructions with the example above.
+
+---
+
+### 2018-Dec-01
+
+At the moment, I am changing into system mode as soon as the kernel gets control.  That is a bit too early and I really want to be in svc mode for most of the initialization, changing to system mode right at the end of iniitializaiton, before assuming the butler role.
+
+I also do not have a ton of time today, so all I am able to get done is to stub out the rest of the exception handlers to that they all print registers and lock the system to review.
+
+Christmas party for about 100 people today....
 
 
+---
 
+### 2018-Dec-02
 
+This morning, I am calling my `IdtBuild()` function complete.  Well, mostly.  There will be some changes as I get other things up and running (the timer is a prime example).  But I am not going to take those changes on now.
 
+Also, there is no TSS to initialize with rpi2b, so that is done.  The rest of phase 1 initialization is related to greeting the user and updating the frame buffer.  Those are done as well.  So, I can call phase 1 initialization complete.
 
+The next thing up is to initialize the process structures for rpi2b.  I expect that there will be some changes needed for the architecture -- in particular the things that need to be saved on the stack.
 
 

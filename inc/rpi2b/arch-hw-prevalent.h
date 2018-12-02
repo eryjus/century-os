@@ -26,10 +26,15 @@
 #endif
 
 
+#ifndef KERNEL_OFFSET
+#   define KERNEL_OFFSET 0
+#endif
+
+
 //
 // -- This is the hardware MMIO base location -- everything is based off this location
 //    --------------------------------------------------------------------------------
-#define HW_BASE             (0x3f000000)
+#define HW_BASE             (0x3f000000 + KERNEL_OFFSET)
 
 
 //-------------------------------------------------------------------------------------------------------------------

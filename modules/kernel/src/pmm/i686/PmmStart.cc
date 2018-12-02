@@ -171,7 +171,7 @@ void PmmStart(Module_t *pmmMod)
     //    ----------------------------------------------------------------------------------------------------------
     kprintf("PmmStart(): Copying the kernel Page Tables\n");
     for (i = 768; i <= 1021; i ++) {
-        pd[i] = ((pageEntry_t *)0xfffff000)[i];
+        pd[i] = ((pageEntry_t *)RECURSIVE_PD_VADDR)[i];
     }
 
     // -- we also need to map the PMM into the new address space

@@ -49,6 +49,19 @@ The only key function I am giving up is the ability to build an architecture or 
 
 You can find `tup` at: http://gittup.org/gittup/.
 
+I also have a few `sudo` commands built into the `Makefile`.  If you do not want to be prompted for a password with each build, you can edit your `sudoers` file as appropriate for your distro, in the following manner:
+
+```
+user ALL=(root) NOPASSWD:/usr/sbin/losetup
+user ALL=(root) NOPASSWD:/usr/sbin/mkfs.ext2
+user ALL=(root) NOPASSWD:/usr/sbin/mkfs.fat
+user ALL=(root) NOPASSWD:/usr/bin/mount
+user ALL=(root) NOPASSWD:/usr/bin/umount
+user ALL=(root) NOPASSWD:/usr/bin/cp
+```
+
+This is a personal decision based on your own security needs.  For more information, see `man sudoers`.
+
 
 ***Issue Tracking***
 
@@ -56,3 +69,24 @@ Many of the things I find and log myself are not placed into the public repo bug
 
 Redmine is an open source issue tracking application can be found here: https://www.redmine.org/.
 
+
+***Virtual Memory Map***
+
+It is important to identify the virtual memory layout and have that documented so that it can be referred back to at any time.  My goal is to keep things relatively consistent across multiple architectures.  I have documented some portions of the memory map in JOURNAL.md.  There are discrepancies between what is in that document and this one; this document takes precedence for the virtual memory map.
+
+
+**32-bit Memory Map**
+
+| Start Address | Size |   `i686` Usage    |     `rpi2b` Usage      |
+|:-------------:|:----:|:-----------------:|:----------------------:|
+|  0x0000 0000  |  2G  |    User Space     |      User Space        |
+|  0x8000 0000  |  1G  |   Kernel Heap     |     Kernel Heap        |
+|  0xc000 0000  | 928M | Kernel Code/Data  |    Kernel Code/Data    |
+|  0xfa00 0000  | 16M  |      Unused       |     MMIO Addresses     |
+|  0xfb00 0000  | 76M  |   Video Buffer    |     Video Buffer       |
+|  0xffc0 0000  | >4M  | Recursive Mapping |      TTL tables        |
+
+
+**64-bit Memory Map**
+
+As yet, this is undefined.

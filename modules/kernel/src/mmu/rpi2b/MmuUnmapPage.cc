@@ -25,6 +25,12 @@
 //    ---------------------------------------------
 frame_t MmuUnmapPage(ptrsize_t addr)
 {
-    kprintf("Unmap a page from the MMU for rpi2b here\n");
-    Halt();
+    static Ttl2_t *ttl2Tables = (Ttl2_t *)TTL2_VADDR;
+    Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
+
+    if (ttl2Entry->fault == 0b00) return 0;
+
+    frame_t rv = ttl2Entry->frame;
+    *(uint32_t *)ttl2Entry = 0;
+    return rv;
 }

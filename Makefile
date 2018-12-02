@@ -155,5 +155,5 @@ run-rpi2b: rpi2b-iso
 
 
 debug-rpi2b: rpi2b-iso
-	qemu-system-arm -m 256 -M raspi2 -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -s -S
+	qemu-system-arm -m 256 -M raspi2 -monitor stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -S
 

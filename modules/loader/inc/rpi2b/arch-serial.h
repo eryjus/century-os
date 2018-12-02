@@ -16,10 +16,10 @@
 
 
 #ifndef __SERIAL_H__
-#   error "Do not include 'arch-serial-loader.h' directly.  Instead, include 'serial.h'"
+#   error "Do not include 'arch-serial-loader.h' directly.  Instead, include 'serial-kernel.h'"
 #endif
 
 
 #include "types.h"
-#include "hw.h"
+#include "hw-loader.h"
 

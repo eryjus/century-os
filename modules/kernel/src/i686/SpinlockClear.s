@@ -48,7 +48,7 @@ SpinlockClear:
 		push	    ebx				        ;; save the ebx register
 
 		mov		    ebx,[ebp+8]	            ;; get the address of the spinlock struct (note: offset is 0)
-LOCK   	mov		    dword [ebx],0	        ;; set the value to 0 -- notice the LOCK prefix
+       	mov		    dword [ebx],0	        ;; set the value to 0 -- notice the LOCK prefix
 
 		pop		    ebx				        ;; restore the ebx register
 		pop			ebp						;; restore stack frame

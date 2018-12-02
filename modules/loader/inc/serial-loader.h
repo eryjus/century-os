@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  serial.h -- Serial debugging functions
+//  serial-loader.h -- Serial debugging functions
 //
 //        Copyright (c)  2017-2018 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -23,12 +23,7 @@
 
 
 #include "types.h"
-
-
-//
-// -- This is the serial port we will use for debugging info
-//    ------------------------------------------------------
-extern uint16_t serialPort;
+#include "arch-serial.h"
 
 
 //

@@ -19,7 +19,7 @@
 
 #include "types.h"
 #include "pmm.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "cpu.h"
 #include "mmu-loader.h"
 

@@ -16,7 +16,7 @@
 
 
 #include "types.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "mmu-loader.h"
 
 

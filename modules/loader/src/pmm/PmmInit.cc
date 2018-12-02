@@ -31,7 +31,7 @@
 
 
 #include "types.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "cpu.h"
 #include "pmm.h"
 

@@ -59,3 +59,22 @@ typedef struct pageEntry_t {
 //    -------------------------------------------------------------------
 pageEntry_t *MmuMakeNewTable(pageEntry_t *e);
 
+
+//
+// -- This is the location of the frame buffer
+//    ----------------------------------------
+const ptrsize_t FRAME_BUFFER_VADDR = 0xfb000000;
+
+
+//
+// -- This is the recursive mapping location
+//    --------------------------------------
+const ptrsize_t RECURSIVE_VADDR = 0xffc00000;
+const ptrsize_t RECURSIVE_PD_VADDR = 0xfffff000;
+
+
+//
+// -- These are critical CPU structure locations
+//    ------------------------------------------
+const ptrsize_t GDT_ADDRESS = 0xff401000;
+const ptrsize_t IDT_ADDRESS = 0xff401800;

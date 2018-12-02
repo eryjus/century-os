@@ -17,6 +17,7 @@
 
 #include "bda.h"
 #include "cpu.h"
+#include "serial-loader.h"
 
 
 //

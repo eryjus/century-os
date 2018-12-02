@@ -15,13 +15,14 @@
 //===================================================================================================================
 
 
+#include "mmu-kernel.h"
 #include "tss.h"
 
 
 //
 // -- Point to the CPU structures in virtual memory
 //    ---------------------------------------------
-Frame0_t *cpuStructs = (Frame0_t *)0xff401000;
+Frame0_t *cpuStructs = (Frame0_t *)GDT_ADDRESS;
 
 
 //

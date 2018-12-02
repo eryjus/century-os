@@ -35,6 +35,7 @@
 _start:
 
 initialize:
+    cps     #0x13                       @@ switch to svc mode, ensure we have a stack for the kernel
     ldr     sp,=_stackEnd               @@ set up a stack
     bl      kInit
 

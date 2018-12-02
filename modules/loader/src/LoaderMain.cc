@@ -18,7 +18,7 @@
 
 #include "hw-disc.h"
 #include "pmm.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "mmu-loader.h"
 #include "modules.h"
 #include "cpu.h"
@@ -49,7 +49,7 @@ void LoaderMain(void)
     FrameBufferPutS("Initialization Complete");
 
     SetMmuTopAddr();                                            // also enabled paging
-    SetFrameBufferAddr((uint16_t *)FRAME_BUFFER_ADDRESS);       // re-map the frame buffer now that paging is enabled
+    SetFrameBufferAddr((uint16_t *)FRAME_BUFFER_VADDR);         // re-map the frame buffer now that paging is enabled
 
 
     kMemMove((uint8_t *)HW_DISCOVERY_LOC, localHwDisc, sizeof(HardwareDiscovery_t));

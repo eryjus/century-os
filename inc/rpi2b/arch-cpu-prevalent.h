@@ -53,3 +53,10 @@ void BusyWait(uint32_t microSecs);
 // -- a lightweight function to halt the cpu
 //    --------------------------------------
 inline void HaltCpu(void) { __asm("wfi"); }
+
+
+//
+// -- A dummy function to enter system mode, since this is for the ARM
+//    ----------------------------------------------------------------
+extern "C" void EnterSystemMode(void);
+

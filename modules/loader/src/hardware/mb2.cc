@@ -16,7 +16,7 @@
 
 
 #include "types.h"
-#include "serial.h"
+#include "serial-loader.h"
 #include "hw-disc.h"
 
 
