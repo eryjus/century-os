@@ -86,6 +86,7 @@
 #define SH_AUXMUIIR(x)    (((x)&0x3)<<1)                // Shift the bits for this field
 
 
+// TODO: check this against the PL011 docs
 #define AUX_MU_LCR_REG      (HW_BASE+0x21504c)          // Mini UART Line Control
 //-------------------------------------------------------------------------------------------------------------------
 #define AUXMULCR_DLAB       (1<<7)                      // Set to access baud rate register; clear for operation
@@ -4186,6 +4187,3 @@
 #define UARTTDR_TDR         (0x7ff)                     // Written to FIFO when ITCR1=1
 
 
-//-------------------------------------------------------------------------------------------------------------------
-// The ARM Timer -- not recommended to be used to accurately time anything, so will not be used.
-//-------------------------------------------------------------------------------------------------------------------

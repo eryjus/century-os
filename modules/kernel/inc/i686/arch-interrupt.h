@@ -71,3 +71,9 @@ void IsrInt1e(isrRegs_t *regs);
 void IsrInt1f(isrRegs_t *regs);
 
 
+//
+// -- A Local prototype to prevent the compiler from name mangling
+//    ------------------------------------------------------------
+extern "C" void IsrHandler(isrRegs_t regs);
+
+

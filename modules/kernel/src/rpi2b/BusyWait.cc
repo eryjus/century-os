@@ -37,6 +37,6 @@ void BusyWait(uint32_t microSecs)
     volatile uint64_t start = SysTimerCount();      // use volatile to prevent the compiler from optimizing away
     uint64_t target = start + microSecs;
 
-    if (start == 0) while (start) --start;
+    if (start == 0) while (microSecs) --microSecs;
     else while (SysTimerCount() < target) {}
 }

@@ -39,13 +39,15 @@
 
 
 #include "types.h"
+#include "cpu.h"
+#include "printf.h"
+#include "hw-kernel.h"
 
 
 //
 // -- This is the code that will be placed in each of the vector locations (not the targets)
 //    Note that this is written in little-endian order for: 0xe59ff018
 //    --------------------------------------------------------------------------------------
-//#define IVEC_JUMP_ASM       (0x18f09fe5)
 #define IVEC_JUMP_ASM       (0xe59ff018)
 
 
@@ -76,5 +78,12 @@ typedef struct InterruptVector_t {
 // -- Build the IDT and populate its gates; initialize the handlers to NULL
 //    ---------------------------------------------------------------------
 void IdtBuild(void);
+
+
+//
+// -- A Local prototype to prevent the compiler from name mangling
+//    ------------------------------------------------------------
+extern "C" void IsrHandler(isrRegs_t *regs);
+
 
 

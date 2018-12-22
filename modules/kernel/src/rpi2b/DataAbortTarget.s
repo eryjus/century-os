@@ -31,23 +31,33 @@
 @@ -- This will set up the processor for handling a Data Abort
 @@    --------------------------------------------------------
 DataAbortTarget:
+    sub         lr,lr,#8                                    @@ adjust the return address
+    srsdb       sp!,#0x13                                   @@ save spsr and lr to the svc stack
     cpsid       ifa,#0x13                                   @@ switch to supervisor mode; disable interrupts
-    stm         sp,{r14}^                                   @@ taking these one at a time, we will save the registers
-    stm         sp,{r13}^
-    push        {r12}
-    push        {r11}
-    push        {r10}
-    push        {r9}
-    push        {r8}
-    push        {r7}
-    push        {r6}
-    push        {r5}
-    push        {r4}
-    push        {r3}
-    push        {r2}
-    push        {r1}
+
+    push        {r0-r12}                                    @@ push r0 to r12 onto the stack
+
+    mov         r0,#0x17                                    @@ mode is Abort, or 0x17
     push        {r0}
-    mrs         r0,spsr
-    push        {r0}
-    mov         r0,sp
-    bl          DataAbortHandler                            @@ never returns
+
+    push        {sp}
+    push        {lr}                                        @@ push the sp and lr registers
+
+    sub         sp,#8                                       @@ make room for the user-space sp and lr registers
+    stmia       sp,{sp,lr}^                                 @@ taking these one at a time, we will save the registers
+
+    mov         r0,sp                                       @@ set the register list for the called function
+    bl          DataAbortHandler                            @@ Handle the interrupt
+
+    ldmia       sp,{sp,lr}^                                 @@ restore the user sp and lr
+    add         sp,#8                                       @@ update the tack pointer
+
+    pop         {lr}                                        @@ restore the sp and lr for svc mode
+    add         sp,#4                                       @@ throw away the stack pointer
+
+    pop         {r0}                                        @@ pop the temporary r0 value - overwritten later
+
+    pop         {r0-r12}                                    @@ restore all the working registers
+
+    rfeia       sp!                                         @@ return from the exception
+

@@ -40,12 +40,11 @@ InterruptVector_t *exceptVect = (InterruptVector_t *)EXCEPT_VECTOR_TABLE;
 //    -------------------------------------------------------
 extern "C" void ResetTarget(void) __attribute__((noreturn));
 extern "C" void UndefinedTarget(void) __attribute__((noreturn));
-extern "C" void SuperTarget(void) __attribute__((noreturn));
+extern "C" void SuperTarget(void);
 extern "C" void PrefetchTarget(void) __attribute__((noreturn));
 extern "C" void DataAbortTarget(void) __attribute__((noreturn));
-extern "C" void UnusedTarget(void) __attribute__((noreturn));
-extern "C" void IRQTarget(void) __attribute__((noreturn));
-extern "C" void FIQTarget(void) __attribute__((noreturn));
+extern "C" void IRQTarget(void);
+extern "C" void FIQTarget(void);
 
 
 //
@@ -69,7 +68,7 @@ void IdtBuild(void)
     exceptVect->supervisorCallTarget = (ptrsize_t)SuperTarget;
     exceptVect->perfetchAbortTarget = (ptrsize_t)PrefetchTarget;
     exceptVect->dataAbortTarget = (ptrsize_t)DataAbortTarget;
-    exceptVect->unusedTarget = (ptrsize_t)UnusedTarget;
+    exceptVect->unusedTarget = (ptrsize_t)NULL;                     // Never used
     exceptVect->irqInterruptTarget = (ptrsize_t)IRQTarget;
     exceptVect->fiqInterruptTarget = (ptrsize_t)FIQTarget;
 }

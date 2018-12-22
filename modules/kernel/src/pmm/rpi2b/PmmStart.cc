@@ -24,9 +24,9 @@
 // -- This is the purposeful process structure for the PMM
 //    ----------------------------------------------------
 Process_t pmmProcess = {
-    0,                      // esp
+    0,                      // stack pointer
     0,                      // ss
-    0,                      // cr3
+    0,                      // page tables
     PID_PMM,                // pid
     0x80000000,             // stack location (fixed!)
     4096,                   // stack length

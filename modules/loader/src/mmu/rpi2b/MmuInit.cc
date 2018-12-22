@@ -47,10 +47,10 @@ void MmuInit(void)
     kMemSetB((void *)ttl1, 0, 1024 * 16);
 
     // -- Map the TTL1 table to location TTL1_VADDR
-    MmuMapToFrame(ttl1, TTL1_VADDR, PmmLinearToFrame(ttl1), true, true);
-    MmuMapToFrame(ttl1, TTL1_VADDR + 0x1000, PmmLinearToFrame(ttl1) + 1, true, true);
-    MmuMapToFrame(ttl1, TTL1_VADDR + 0x2000, PmmLinearToFrame(ttl1) + 2, true, true);
-    MmuMapToFrame(ttl1, TTL1_VADDR + 0x3000, PmmLinearToFrame(ttl1) + 3, true, true);
+    MmuMapToFrame(ttl1, TTL1_VADDR, PmmLinearToFrame(ttl1), true, false);
+    MmuMapToFrame(ttl1, TTL1_VADDR + 0x1000, PmmLinearToFrame(ttl1) + 1, true, false);
+    MmuMapToFrame(ttl1, TTL1_VADDR + 0x2000, PmmLinearToFrame(ttl1) + 2, true, false);
+    MmuMapToFrame(ttl1, TTL1_VADDR + 0x3000, PmmLinearToFrame(ttl1) + 3, true, false);
 
     // -- Identity map the loader
     SerialPutS("Loader Start: ");
@@ -76,7 +76,7 @@ void MmuInit(void)
             f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
             f ++, addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, f, true, true);
+        MmuMapToFrame(ttl1, addr, f, true, false);
     }
     SerialPutChar('\n');
 
@@ -92,24 +92,24 @@ void MmuInit(void)
     SerialPutS("Map Interrupt Vector Table to some new frame for future use\n");
     MmuMapToFrame(ttl1, EXCEPT_VECTOR_TABLE, PmmNewFrame(), true, false);
 
-    // -- identity map the MMIO addresses 0x3f000000 to 0x3fffffff
+    // -- identity map the MMIO addresses 0x3f000000 to 0x40000100
     SerialPutS("Identity map MMIO");
-    for (addr = 0x3f000000; addr < 0x3fffffff; addr += 4096) {
+    for (addr = 0x3f000000; addr < 0x40000100; addr += 4096) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, PmmLinearToFrame(addr), true, false);
+        MmuMapToFrame(ttl1, addr, PmmLinearToFrame(addr), true, true);
     }
 
     // -- also map the MMIO addresses into upper memory
     SerialPutS("\nMap  MMIO to kernel space");
-    for (addr = 0xf2000000, f = PmmLinearToFrame(0x3f000000); addr < 0xf2ffffff; addr += 4096, f ++) {
+    for (addr = 0xf2000000, f = PmmLinearToFrame(0x3f000000); addr < 0xf3000100; addr += 4096, f ++) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, f, true, false);
+        MmuMapToFrame(ttl1, addr, f, true, true);
     }
 
     //
     // -- Dump some addresses from the cr3 tables to check validity
     //    ---------------------------------------------------------
-    SerialPutS("Checking our work\n");
+    SerialPutS("\nChecking our work\n");
     MmuDumpTables(TTL1_VADDR); // The TTL1 location
     MmuDumpTables(TTL1_VADDR + 0x1000);
     MmuDumpTables(TTL1_VADDR + 0x2000);

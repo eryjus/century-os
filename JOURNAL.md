@@ -4651,7 +4651,6 @@ I also do not have a ton of time today, so all I am able to get done is to stub 
 
 Christmas party for about 100 people today....
 
-
 ---
 
 ### 2018-Dec-02
@@ -4662,4 +4661,1061 @@ Also, there is no TSS to initialize with rpi2b, so that is done.  The rest of ph
 
 The next thing up is to initialize the process structures for rpi2b.  I expect that there will be some changes needed for the architecture -- in particular the things that need to be saved on the stack.
 
+I commited this code.
+
+---
+
+My current i686 process structure looks like this:
+
+```C
+//
+// -- This is a process structure
+//    ---------------------------
+typedef struct Process_t {
+    regval_t esp;                       // This is the process current esp value (when not executing)
+    regval_t ss;                        // This is the process ss value
+    regval_t cr3;                       // This is the process cr3 value
+    PID_t pid;                          // This is the PID of this process
+    ptrsize_t ssAddr;                   // This is the address of the process stack
+    size_t ssLength;                    // This is the length of the process stack
+    char command[MAX_CMD_LEN];          // The identifying command, includes the terminating null
+    size_t totalQuantum;                // This is the total quantum used by this process
+    ProcStatus_t status;                // This is the process status
+    ProcPriority_t priority;            // This is the process priority
+    int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
+    bool isHeld;                        // Is this process held and on the Held list?
+    struct Spinlock_t lock;             // This is the lock needed to read/change values
+    ListHead_t::List_t stsQueue;        // This is the location on the current status queue
+    ListHead_t lockList;                // This is the list of currently held locks (for the butler to release)
+    ListHead_t messages;                // This is the queue of messages for this process
+    void *prevPayload;                  // This is the previous payload in case the process did not allocate enough
+} __attribute__((packed)) Process_t;
+```
+
+The first 3 fields in this structure are the specific to the x86 architecture.  They have little to no bearing on the rpi2b architecture.  The `esp` could be renamed to the `stackPointer` and then it would be relevant.  `cr3` could be renamed to `pageTables` and this would allow me to store the `TTBR0` value.  `ss` is totally irrelevant.  But I also can't help thinking that there are additional fields I need for the rpi2b.  I remember that there is a "process ID" register (or something like it) that needs to get updated at the same time as the `TTBR0`, and I will need to store that somewhere as well.
+
+I'm going to start by renaming those 2 fields and comiling to address the fall-out from that change.  Note, I am not changing the position of any field.  Just the name.
+
+---
+
+It appears (though I am not totally convinced) the the Context ID registers in `cp15` are related to the Fast Context Switch Extension (FCSE) and are optional to what I am going to be doing.  So, I should not really need to save any other registers in the `Process_t` type.  It was an easy task to get the `ProcessInit()` function written.  It merely establishes the structures but I do not yet have enough of the system built to actually exercise these structures and work out any issues.  I think I am going to have to make an effort to organize the pushes properly to make sure I have the `cpsr` on the stack and room to get this value in the rgisters.  I will have to take this on once I get the Timer initialized.
+
+Now, with that said, I have no clue what the Timer looks like in rpi2b.
+
+---
+
+I now know I need to read the CBAR to determine the base address register.  This is located in `cp15` in register `c15`.  Then, at offset `0x1000` I can then get access to the GIC.  Once I have the GIC, I can use that to configure the interrupts from the timer.
+
+---
+
+### 2018-Dec-03
+
+Well, this is the last day before I take vacation.  I am not sure what I will be able to do while I am on vacation since my wife is one of those that measures the success of a vacation based on how tired we are when we get back....
+
+For the short time I have, I will be looking at the Generic Interrupt Controller (GIC).  I think the first thing to do is to confirm I have a proper GIC.  This should be able to be done by reading `(HW_BASE + 0x1000 + 0x008)` or the `GICD_IIDR`.  The value in this read-only register should be `0x0100143b`.
+
+---
+
+Hmmm....  I'm not finding the GIC...  I notice the following the the TRM:
+
+> Memory regions used for these registers must be marked as Device or Strongly-ordered in the translation tables.
+
+> Memory regions marked as Normal Memory cannot access any of the GIC registers, instead access caches or external memory as required.
+
+This means I will need to update my MMU initialization to set this to be device memory.  I have 2 unused parameters that I can leverage for this, so it should be a simple update to make this change.
+
+---
+
+So reading further, it appears that the BCM2836 SoC does not have a GIC included with it.  Well, that makes a mess.  I need to go back through and figure out how I will be handling interrupts.
+
+---
+
+### 2018-Dec-04
+
+Not going to be able to do much tonight.  However, I am going to try to work on getting the timer working and firing interrupts.  I really do not expect too much in the way of accomplishments.
+
+Another thing I might work on is the initialization sequence in the loader, which is not really 100% correct.
+
+---
+
+## 2018-Dec-05
+
+This morning I was able to narrow this down to a timer problem, not an interrupt problem.  I did this by printing the polled status of the interrupt pending register.  I will start with that assumption and clean that up first.
+
+---
+
+I was able to finally get an interrupt.  I was able to get the interrupt by enabling every interrupt possible:
+
+```C
+    MmioWrite(INT_IRQENB0, 0xffffffff);
+    MmioWrite(INT_IRQENB1, 0xffffffff);
+    MmioWrite(INT_IRQENB2, 0xffffffff);
+```
+
+From here I am going to use the process of elimination to determine which interrupt it is.
+
+I find that the bit that enables the IRQ is in (INT_IRQENB2|1<<25), or INTENB2IRQ53.  This is i2c_int.
+
+Well, I have the interrupt firing....  Now, I want to make sure I get the registers processes properly so that I can output them properly.
+
+Comparing the output of the qemu logs to that of what is output to the serial port, the qemu logs show:
+
+```
+IN:
+0x80002d58:  f10e01d3  cpsid    aif, #0x13
+
+R00=60000013 R01=02000000 R02=02000000 R03=f200b214
+R04=8000a000 R05=00000000 R06=00000000 R07=00000000
+R08=00000000 R09=0011b000 R10=0002d227 R11=80028fcc
+R12=00119f98 R13=00000000 R14=8000017c R15=80002d58
+PSR=60000192 -ZC- A NS irq32
+```
+
+... and the serial logs show:
+
+```
+IRQ:
+ R0: 0x60000013   R1: 0x02000000   R2: 0x02000000
+ R3: 0xf200b214   R4: 0x8000a000   R5: 0x00000000
+ R6: 0x00000000   R7: 0x00000000   R8: 0x00000000
+ R9: 0x0011b000  R10: 0x0002d227  R11: 0x80028fcc
+R12: 0x00119f98   SP: 0x00000000   LR: 0x80028fb4
+CPSR: 0x00000000
+```
+
+This shows that only the `lr` and `cpsr` registers are incorrect, and the `pc` register is not captured.
+
+---
+
+There are a few things I need to make sure I get in line so that I am coding properly.  For the record, I am referring to this example code to make sure I get things in line: https://github.com/littlekernel/lk/blob/master/arch/arm/arm/exceptions.S.
+
+From this data, I am compiling a table of the what is located where so that I can build the stack properly going in and restore the system state properly departing.
+
+| Position |   FIQ    |   IRQ    | Data Abort | Pref Abort |   SVC    |   UND    |
+|:--------:|:--------:|:--------:|:----------:|:----------:|:--------:|:--------:|
+|   +4c    | spsr_fiq | spsr_irq |  spsr_dta  |  spsr_pre  | spsr_svc | spsr_und |
+|   +48    | lr_fiq-4 | lr_irq-4 |  lr_dta-8  |  lr_pre-4  |  lr_svc  |  lr_und  |
+|   +44    | fiq_type | irq_type |  dta_type  |  pre_type  | svc_type | und_type |
+|   +40    |    r0    |    r0    |     r0     |     r0     |    r0    |    r0    |
+|   +3c    |    r1    |    r1    |     r1     |     r1     |    r1    |    r1    |
+|   +38    |    r2    |    r2    |     r2     |     r2     |    r2    |    r2    |
+|   +34    |    r3    |    r3    |     r3     |     r3     |    r3    |    r3    |
+|   +30    |    r4    |    r4    |     r4     |     r4     |    r4    |    r4    |
+|   +2c    |    r5    |    r5    |     r5     |     r5     |    r5    |    r5    |
+|   +28    |    r6    |    r6    |     r6     |     r6     |    r6    |    r6    |
+|   +24    |    r7    |    r7    |     r7     |     r7     |    r7    |    r7    |
+|   +20    |    r8^   |    r8    |     r8     |     r8     |    r8    |    r8    |
+|   +1c    |    r9^   |    r9    |     r9     |     r9     |    r9    |    r9    |
+|   +18    |   r10^   |   r10    |    r10     |    r10     |   r10    |   r10    |
+|   +14    |   r11^   |   r11    |    r11     |    r11     |   r11    |   r11    |
+|   +10    |   r12^   |   r12    |    r12     |    r12     |   r12    |   r12    |
+|    +c    |    sp^   |    sp    |     sp     |     sp     |    sp    |    sp    |
+|    +8    |  lr_svc  |  lr_svc  |   lr_svc   |   lr_svc   |  lr_svc  |  lr_svc  |
+|    +4    |  sp_usr  |  sp_usr  |   sp_usr   |   sp_usr   |  sp_usr  |  sp_usr  |
+|    r0    |  lr_usr  |  lr_usr  |   lr_usr   |   lr_usr   |  lr_usr  |  lr_usr  |
+
+Given time tomorrow, I will start to commit this to code.  I will need both the entry and the exit coded as the goal is to be able to have the timer IRQ fire and then be able to continue processing.
+
+---
+
+### 2018-Dec-06
+
+Well, I was able to get the interrupt to fire repeatedly and dump the contents of the registers to the serial port with each iteration.  I am not totally convinced that the contents are 100% corect, but it works for now.  I need to copy the logic to the other exception handlers, but the core logic works.  It's also important to note that the above table is not 100% accurate already.
+
+---
+
+Well, it looks like the exception handlers are degrading into several data exceptions.  So, I will need to get to the bottom of this -- I may not have had that as well dialed in as I thought.  Well, it turns out I was not setting r0 to be the address of the registers on the stack, a simple fix.
+
+I have built out the IRQ dispatch table for the rpi2b.  I need to register a timer callback function and then I should be able to get the scheduler started.
+
+---
+
+I have added the `TimerCallback()` function to the `IsrHandler` table and ended up with a Data Fault, with the following data:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+The CBAR reports the base address as 0x3f000000
+Setting the scalar value to 0x83126e for frequency 0xfa
+Data Exception:
+At address: 0x8002af3c
+ R0: 0xfffffe3f   R1: 0xfffffe3f   R2: 0x00000035
+ R3: 0x80041024   R4: 0x8000a000   R5: 0x00000000
+ R6: 0x00000000   R7: 0x00000000   R8: 0x00000000
+ R9: 0x0011b000  R10: 0x0002d227  R11: 0x8002afac
+R12: 0x00119f98   SP: 0x800036ec   LR_ret: 0x8000678c
+SPSR_ret: 0xf800011f     type: 0x17
+
+Additional Data Points:
+User LR: 0x00000000  User SP: 0x00000000
+Svc LR: 0x8002af4c
+```
+
+So, I am back to debugging.  Starting with the return `lr`, the function is `RestoreInterrupts()`.  So far, the only place I think this is called in when registering an ISR handler.  I want to make sure I am getting through that function properly.  The fault is generated from `RestoreInterrupts()`, so I need to clean that up.
+
+---
+
+### 2018-Dec-09
+
+My IRQ handler appears to be getting multiple interrupts at once, or I am not really clearing out the interrupt.  Tracing the interrupts that are left over, I have something from register 2 (bit 9) and something from the uart (bit 19).  However, what is clear is that I need to ensure that I am comparing one bit at a time rather than expecting only a single bit to be set.  I also believe I am having trouble with actually acknowledging an interrupt (or in x86 work issuing an End of Ineterrupt).
+
+The first order of business is to change `IsrHandler()` from being driven by a `switch` statment to a number of `if-then-else` statements.
+
+---
+
+At the moment my timer has stopped firing, and the uart is firing with every character written, even though I think I have asked it not to and even masked it out.
+
+---
+
+### 2018-Dec-10
+
+I am still trying to get the timer working.  I am still on vacation and working remotely on this.  I fly home tomorrow and will get into some really hard debugging when I return.  However, in the meantime, I am working on trying to identify the proper location for this timer in the qemu source code.
+
+---
+
+### 2018-Dec-11
+
+Well, it appears that I have been reading the incorrect documentation.  I need to be looking at the BCM2836 SoC and instead I have been reading the BCM2835 SoC docs.
+
+So, with that said, I will need to revisit the `TimerInit()` function to make sure I am using the correct locations to manage the timer.
+
+---
+
+And after trying again with the new (proper?) register locations, I am still not getting anywhere.  I need to sleep on this again.
+
+---
+
+### 2018-Dec-12
+
+Well, still no success here.  I did reach out on `#osdev` for some help....
+
+With no quick reply, I am going back to basics.  I believe that I am working without a GIC.  I need to confirm this first.
+
+OK, so I read and updated what I thought was the GIC Distributor enable bit and read back the results.  This came back as `0x00`.  So, this tells me I am updating the wrong address or there is no GIC.  I still need to research a bit more.  Instead, I will read the `GICD_IIDR` register and report its results and is a read only register.
+
+So, the CBAR (Configuration Base Address Register) holds the location of the GIC (`0x3f000000`), and the Distributor is located at offset `0x1000` (`0x3f001000`), I can conclude that I am reading the correct location (this is identity mapped still).  So, I am able to conclude that I do not have a GIC in this system, which is what I thought.
+
+So, in the BCM2836 documentation, there is a timer prescalar which has a reset value of 0.  When that is 0 there is in effect a divide-by-zero situation that can occur.  I am not sure how the CPU handles this condition, but the reset value is reported as 0.  So, I will try setting a value for this register.  I wrote 1, which made no difference in behavior.
+
+---
+
+Reviewing the qemu source, I see the following code for initializing the `raspi2` machine (which I am using):
+
+```C
+        /* Connect timers from the CPU to the interrupt controller */
+        qdev_connect_gpio_out(DEVICE(&s->cpus[n]), GTIMER_PHYS,
+                qdev_get_gpio_in_named(DEVICE(&s->control), "cntpnsirq", n));
+        qdev_connect_gpio_out(DEVICE(&s->cpus[n]), GTIMER_VIRT,
+                qdev_get_gpio_in_named(DEVICE(&s->control), "cntvirq", n));
+        qdev_connect_gpio_out(DEVICE(&s->cpus[n]), GTIMER_HYP,
+                qdev_get_gpio_in_named(DEVICE(&s->control), "cnthpirq", n));
+        qdev_connect_gpio_out(DEVICE(&s->cpus[n]), GTIMER_SEC,
+                qdev_get_gpio_in_named(DEVICE(&s->control), "cntpsirq", n));
+```
+
+This is happening for each core.  Therefore, I looked to see what the `cntpsirq` meant.  The ARM TRM states:
+
+> Secure physical timer event
+
+... while the `cntpnsirq` is the non-secure version.  So, I think I need to set up to use this timer -- at least for qemu.
+
+---
+
+So, I wrote the following debug code and have some results from it:
+
+```C
+    // -- this results on no change
+    kprintf("Set the control register from %p\n", MmioRead(TMR_BASE + 0x00));
+    MmioWrite(TMR_BASE + 0x00, 0x00);
+
+    // -- I do not believe the documetation is correct on this
+    kprintf("Set the prescalar register from %p\n", MmioRead(TMR_BASE + 0x08));
+    MmioWrite(TMR_BASE + 0x08, 0x80000000);
+
+    // -- Shows as 0 (unimplemented?)
+    kprintf("The core timer is currently %p : %p\n", MmioRead(TMR_BASE + 0x20), MmioRead(TMR_BASE + 0x1c));
+
+    // -- Set the GPU routing flags -- results in no change
+    kprintf("Set the GPU Routing from %p\n", MmioRead(TMR_BASE + 0x0c));
+    MmioWrite(TMR_BASE + 0x0c, 0x00);
+
+    // -- Here we set the routing for the timer
+    kprintf("Set the timer routing from %p\n", MmioRead(TMR_BASE + 0x40));
+    MmioWrite(TMR_BASE + 0x40, 0x00000020);
+
+    // -- Additional routing for the timer -- results on no change
+    kprintf("Route the local timer to core 0/IRQ changed from %p\n", MmioRead(TMR_BASE + 0x24));
+    MmioWrite(TMR_BASE + 0x24, 0x00);
+
+    // -- Set the core interrupt sources
+    kprintf("Set the core 0 interrupt sources from %p\n", MmioRead(TMR_BASE + 0x60));
+    MmioWrite(TMR_BASE + 0x60, 0x00000020);
+
+    // -- Enable the timer and interrupt (reload value of 0x100)
+    kprintf("Enable the timer/interrupt from %p\n", MmioRead(TMR_BASE + 0x34));
+    MmioWrite(TMR_BASE + 0x34, 0x30000100);
+
+    // -- Reload and reset timer
+    kprintf("Reload and reset timer from %p\n", MmioRead(TMR_BASE + 0x38));
+    MmioWrite(TMR_BASE + 0x38, 0xc0000000);
+
+
+    kprintf("The core timer is currently %p : %p\n", MmioRead(TMR_BASE + 0x20), MmioRead(TMR_BASE + 0x1c));
+```
+
+... resulting in
+
+```
+Set the control register from 0x00000000
+Set the prescalar register from 0x00000000
+The core timer is currently 0x00000000 : 0x00000000
+Set the GPU Routing from 0x00000000
+Set the timer routing from 0x00000000
+Route the local timer to core 0/IRQ changed from 0x00000000
+Set the core 0 interrupt sources from 0x00000000
+Enable the timer/interrupt from 0x00000000
+Reload and reset timer from 0x00000000
+The core timer is currently 0x00000000 : 0x00000000
+```
+
+One thing I notice from this is that all the registers are starting at 0.  This may or may not be a bad thing, but I need to check that my updates are being maintained.
+
+Checking my updates results in the following:
+
+```
+Set the control register from 0x00000000
+Set the prescalar register from 0x00000000
+... checking the update: 0x00000000
+The core timer is currently 0x00000000 : 0x00000000
+Set the GPU Routing from 0x00000000
+Set the timer routing from 0x00000000
+... checking the update: 0x00000020
+Route the local timer to core 0/IRQ changed from 0x00000000
+Set the core 0 interrupt sources from 0x00000000
+... checking the update: 0x00000000
+Enable the timer/interrupt from 0x00000000
+... checking the update: 0x00000000
+Reload and reset timer from 0x00000000
+The core timer is currently 0x00000000 : 0x00000000
+```
+
+The only thing that is properly updated is the 'Core0 Interrupt Source` register.  The rest appear to be unimplemented by qemu.
+
+---
+
+### 2018-Dec-13
+
+OK, I have some progress today!  Not sure if I can turn that into results yet, but I have figured out where I should be looking.  I think.
+
+I started looking into the Raspbian source.  I found 2 files that are directly linked to the BCM2836 chip and more to the point to the timer I am trying to get running.  These are:
+* https://github.com/raspberrypi/linux/blob/3b01f059d2ef9e48aca5174fc7f3b5c40fe2488c/include/linux/irqchip/irq-bcm2836.h
+* https://github.com/raspberrypi/linux/blob/3b01f059d2ef9e48aca5174fc7f3b5c40fe2488c/drivers/irqchip/irq-bcm2836.c
+
+Both of these files together demonstrate that that I am looking in the correct spot for implementing this timer stuff.  So, I started wondering about qemu and if it is supported or not.  Well the file `hw/intc/bcm2836_control.c` shows that it is implemented.
+
+So, this is a per-core timer and I just need to set it up properly to get the results I am looking for....  Easy, right???!!
+
+The first thing that Raspbian does is initialize the timer frequency.  This is to register LOCAL_PRESCALAR or offset `0x008`.  However, there does not appear to be a relevant register in the qemu emulation.  I will want to do this on real hardware, but the subsequent read will not return anything of value.  This agrees with my results from yesterday.
+
+Further on the setting up of the frequency, the calculation as documented in the Raspbian code is: `timer_freq = input_freq * (2 ^ 31) / prescalar`.  The `input_freq` is 19.2MHz.  Raspbian sets this to a 1:1 against the crystal clock, resulting in 19.2 MHz, and an increment of 1.  I believe (but have not confirmed) that the qemu frequency is set to the emulation loop frequency only.
+
+After that, Raspbian then goes through the trouble to register the IRQs for each of the 4 timer events: Hypervisor physical timer event, Non-secure physical timer event, Secure physical timer event, and Virtual timer event... plus the GPU Fast IRQ and PMU Fast IRQ (which I am not dealing with at the moment).  I do not believe this really does much with the hardware but instead registers handlers in the internal kernel structures.  At which point the initialization is complete.
+
+Now, there are 2 functions `bcm2836_arm_irqchip_mask_per_cpu_irq()` and `bcm2836_arm_irqchip_unmask_per_cpu_irq()` which do some bit twiddling for the `LOCAL_TIMER_INT_CONTROL0` register.  But the point here is that there is really nothing fancy going on here.  This equates to the routing for the timer at offset `0x40` which is implemented in qemu and is able to be read back properly (as I saw yesterday).
+
+---
+
+So, I am wondering if I don't have some other problem like a permissions thing with the paging tables.  I may have to dig a bit deeper into the qemu code to see what might be preventing this from firing.  I might even have to write some debugging output into qemu and recompile it.
+
+---
+
+It dawns on me that the paging can be eliminated as a cause for problems by writing a special test into the loader -- before paging is enabled.  In this test, I would need to set up the irq table and duplicate some of that setup.  This would all be temporary of course.  Or, better yet, maybe I need a special purpose program that will exercise the timer.  I will sleep on this thought and pick this back up in the morning.
+
+---
+
+### 2018-Dec-14
+
+I thought a lot about this last night and today during my day job.  If I want do to bare metal, I will need to actually start up a new archetecture that bypasses `rpi-boot`.  However, I think my problems lie in the MMU layer.  If this is the case, all I need to do is create a new module that is rpi2b only and create a binary for that module.  I can add that to the `grub.cfg` file and then boot to that module easy enough for testing.  I will start with the approach so that I can try to get a working timer.  Now, how will I know if I do?  I do not have an act led I can flash in QEMU and I am completely unprepared for real hardware at this point.
+
+I have routines that I can copy from the loader to output to the serial port.  This will also generate IRQs so that I can check that the IRQs are working properly as well.  With this, I think there is enough to set a basic plan for working with hardware without the MMU getting in the way.
+
+A couple of things for the record:
+* I will be committing this module as well
+* `rpi-timer` will be the module's name
+
+---
+
+My first obstacle is that the `rpi-boot` tools does not support menuing.  Therefore, I cannot have this selected by menu option at boot time.  I could hack `rpi-boot` to allow this, but not today.  The alternative is to make changes in `bin/rpi2b/boot/grub/Tupfile` to allow the alternative and for now comment and uncomment these steps.
+
+---
+
+Ok, my first attempt to get the timer to fire has not worked.  I really did not expect it to, but I was hopeful.  The code is very simple, with most of it related to setting up the serial port for debugging.  The first thing I want to do for debugging is to set up the UART to generate interrupts so that I can test whether my IVT is configured right.
+
+This test yielded no interrupts.  So, I can only conclude I have a problem with my IVT setup somehow.
+
+So, I am getting an IRQ.
+
+```
+Taking exception 5 [IRQ]
+...from EL1 to EL1
+...with ESR 0x13/0x4e000000
+----------------
+IN:
+0x00000018:  e59ff018  ldr      pc, [pc, #0x18]
+```
+
+This is good.  But then right after this:
+
+```
+----------------
+IN:
+0xe24ee004:  00000000  andeq    r0, r0, r0
+
+----------------
+IN:
+0xe24ee008:  00000000  andeq    r0, r0, r0
+
+----------------
+IN:
+0xe24ee00c:  00000000  andeq    r0, r0, r0
+```
+
+The code runs off to nowhere and executes a bunch of `0x00000000` values!  What I need now is a .map of my `rpi-timer.elf` code.  Well, I had it, created automatically.
+
+---
+
+The problem appears to have been in the packing of the IVT.  Adding that (and one other change to types) cleared up the problem and I am getting IRQs.  Now, with the serial port generating IRQs and the timer (possibly) generating IRQs, I need to start filtering this down so that I know where everything is coming from.  First, I know where the UART IRQ is coming from, so I will start by disabling that right after enabling it.
+
+It looks like I am really getting a timer IRQ.
+
+Here is the code that is enabling the IRQs:
+
+```C
+    // -- Enable all IRQs
+    MmioWrite(INT_IRQENB0, 0xffffffff);
+    MmioWrite(INT_IRQENB1, 0xffffffff);
+    MmioWrite(INT_IRQENB2, 0xffffffff);
+    MmioWrite(INT_IRQDIS2, 0x02000000);             // immediately disable the serial IRQ
+```
+
+So, let's narrow down which one really needs to be enabled.  Starting by eliminating `INT_IRQENB2`.  And eliminating that stopped my interrupts.  But I am still getting all my debugging output:
+
+```
+Serial port initialized!
+Interrupt Vector Table is set up
+Timer is initialized -- interrupts should be happening
+```
+
+So, the interrupt I am looking for is in `INT_IRQENB2`.  I believe that this coming from IRQ54, based on some previous experiments.  I'm going to check that first.  But that does not enable those interrupts.  Double checking my previous test, though, I confirmed that the interrupt is coming from `INT_IRQENB2` somewhere (also meaning there is no point in investigating `INT_IRQENB0` or `INT_IRQENB1` any further).
+
+Now on the other hand, I am not getting the final message written, so I may not be actually getting to the end of the code and really really getting a timer to fire.  This could really be recursive UART interrupts.  The solution to this is to figure out and filter out any UART interrupts and not perform a `SerialPutChar()` function for a UART interrupt.
+
+Yes, as a matter of fact, when I filter out the IRQ for the UART, I was only getting a false sense of security on the timer interrupt.
+
+Well, hang on!  My debugging output is still missing the last line:
+
+```
+Serial port initialized!
+Interrupt Vector Table is set up
+```
+
+Could it be that I am just burying the qemu emulator in interrupts and it cannot get to the end point??  I can test this by changing the scalar value to something very low, say 0x100 and should be able to at least see the final line of code.  No, that's not the answer.  I need to go back to look at the UART IRQ.  I need to disable that again.  That got me to the end.  I believe that my problem is that I am not resetting that interrupt request, meaning that I am caught in a recursive interrupt -- the interrupt is handled but as soon as interrupts are enabled again there is another one to handle because there has not been a reset.  I will focus on getting that addressed.
+
+I finally had to clear the interrupt pending flags in `UART_BASE + UART_ICR` to get the flooding to stop.  I am now getting to the end of my debugging output again, but I still have a lower presacalar value.  The higher value has no impact.
+
+So, this means I am no longer getting the UART IRQs and I am not getting any timer interrupts...  even though everything is enabled.
+
+Let me think this through (sticking my registers to core 0 only and typing all the addresses as offsets from `0x40000000`):
+* `0x40` is routes the individual timers to the proper IRQ or FIQ for each of the 4 timer classes.  I am setting this in my code.
+* `0x60` is the IRQ source for the core.  This is not being set in my code, and I believe it should be.
+* `0x34` enables the timer and it is not being set in my code.  It probably should be.
+* `0x24` sets up the local timer routing to IRQ/FIQ for which core.  The default is to route to IRQ on core 0 which is what I want.  I do not believe there is a need to set this register.
+
+So, I have 2 registers I can try to set up.  I wil take them in turn, starting with `0x34`.  This did not work, so I will disable this line and try register `0x60`.  This did not work either, so now to try them both.  And that did not work either.
+
+---
+
+OK, so with this advice from `#osdev`:
+
+```
+[19:17] <mrvn> have you tried using an actual RPi2?
+[19:17] <mrvn> make sure your code works before trying to fiddle with the emulator.
+```
+
+I am now trying to get a working bootable NOOBS image for my real hardware.  The problem here is what is in the root directory and what to replace with my code.  A directory listing shows this:
+
+```
+[adam@adamlt usb]$ ls
+total 34782
+drwxr-xr-x. 5 root root    16384 Dec 14 20:16 .
+drwxr-xr-x. 4 root root     4096 Dec 14 20:05 ..
+-rwxr-xr-x. 1 root root    23315 Nov 13 09:09 bcm2708-rpi-0-w.dtb
+-rwxr-xr-x. 1 root root    22812 Nov 13 09:09 bcm2708-rpi-b.dtb
+-rwxr-xr-x. 1 root root    23071 Nov 13 09:09 bcm2708-rpi-b-plus.dtb
+-rwxr-xr-x. 1 root root    22589 Nov 13 09:09 bcm2708-rpi-cm.dtb
+-rwxr-xr-x. 1 root root    24115 Nov 13 09:09 bcm2709-rpi-2-b.dtb
+-rwxr-xr-x. 1 root root    25311 Nov 13 09:09 bcm2710-rpi-3-b.dtb
+-rwxr-xr-x. 1 root root    25574 Nov 13 09:09 bcm2710-rpi-3-b-plus.dtb
+-rwxr-xr-x. 1 root root    24087 Nov 13 09:09 bcm2710-rpi-cm3.dtb
+-rwxr-xr-x. 1 root root    52116 Nov 13 09:09 bootcode.bin
+-rwxr-xr-x. 1 root root      303 Nov 13 09:09 BUILD-DATA
+drwxr-xr-x. 3 root root     2048 Nov 13 09:09 defaults
+-rwxr-xr-x. 1 root root     2356 Nov 13 09:09 INSTRUCTIONS-README.txt
+drwxr-xr-x. 2 root root     2048 Nov 13 09:09 os
+drwxr-xr-x. 2 root root    12288 Nov 13 09:08 overlays
+-rwxr-xr-x. 1 root root  3060512 Nov 13 09:09 recovery7.img.sav
+-rwxr-xr-x. 1 root root       85 Dec 31  1979 recovery.cmdline
+-rwxr-xr-x. 1 root root   677988 Nov 13 09:09 recovery.elf
+-rwxr-xr-x. 1 root root        0 Nov 13 09:09 RECOVERY_FILES_DO_NOT_EDIT
+-rwxr-xr-x. 1 root root  2995120 Nov 13 09:09 recovery.img
+-rwxr-xr-x. 1 root root 28569600 Nov 13 09:09 recovery.rfs
+-rwxr-xr-x. 1 root root     9728 Nov 13 09:09 riscos-boot.bin
+```
+
+Notice I have renamed the `recovery7.img` file to `recovery7.img.sav`.  NOOBS no longer boots, so I should be able to replace the `recovery7.img` file with my own version of that and be able to test.
+
+---
+
+OK, I'm wrapping up for the night.  I was able to find several samples from an old git repo (https://github.com/dwelch67/raspberrypi.git) that was already on my system.  None of them appear to implement a timer like I want, but there was a UART program to blast characters so that I could debug the hardware setup.  I finally an able to confirm that my hardware and the `screen` command are working -- I can get the characters on the screen.  The bit rate is 115200, so I will have to do some monkeying around with my code to get it set up properly.  However, I have a model I can work against to try to get my little program working for real hardware.  I am not working on my kernel mind, just the `rpi-timer` app.
+
+So I just realized that the UART program I was just testing with is using the Aux UART (a little mini thing that has limited capability) and the one I have coded against is the full UART.  That could make a difference!
+
+---
+
+### 2018-Dec-15
+
+I think I have made the decision to re-document some of this Rpi archetecture into my own format.  There are just so many errors, I really have no idea what works and what does not.  I'm finding errata all over the place and I think it will be good to consolidate it into 1 proper document I can refer to.
+
+To do this, I will use my work computer and MS OneNote.  I have basket installed on my development workstation, but that does not provide the clean interface I want if I am going to take this on.  On the other hand, we have Office365 and I might be able to create a more global notebook and access it from the web.  Let me look at this.
+
+---
+
+I was able to get the UART documented and clean up some of the errata associated with that feature.  This was done with OneNote and is stored online at the following link (well, at least for now): https://andersondubose-my.sharepoint.com/:o:/g/personal/aclark_anderson-dubose_com/EvZDPp9tqlREs9Zj-pu_OEcBFz8DWkDGP89V2LAm_l4FZg?e=XlGPT1.  I may need to find a new home for this, but for now it will suffice.  Currently, this does not appear to be visible to anyone without an Office365 account.
+
+My next task tomorrow it so lay this new documentation side-by-side to determine the differences between the PL011 UART and the Aux Mini-UART.
+
+---
+
+### 2018-Dec-16
+
+Today I found the PL011 Technical Reference Manual.  It will clear up a few things.
+
+I have been debating a bit over whether to use the mini-UART (which is proven to work on real hardware) or the PL011 UART.  I think in my timer test, I want to go with something that is guaranteed to work since the point is to get the timer working properly and fire an IRQ.  So, with that, I will change the addressing to be the mini-UART.
+
+Despite my best efforts today, I am still not getting any output on the serial line to `screen`.  I tested again the `uart01.bin` program to make sure everything is wired properly and it is -- I get the proper output.  So, I am back to an exhaustive debugging cycle to get the mini-UART working properly -- starting by commenting out all the code that is not related to the UART.
+
+---
+
+No matter what me efforts, I am still not able to get serial output to happen.  However, when I test the `uart01.bin`, it works just fine.  At this point, I am going to comment out all my code and just copy in the C code from `uart01.c` and see what happens.
+
+I'm honestly debating at this point if my code is ever getting control.  I am also wondering if using the C++ compiler is creating a problem.
+
+---
+
+I recompiled the `uart01.bin` file with my cross-compiler.  It does not work.  So, my cross-compiler is suspect.
+
+---
+
+3 recompile attempts later....  Well, I'm having trouble getting `crosstools-ng` to drop the cross-compiler in the right location.
+
+---
+
+Make that 6 attempts to make the cross-compiler and I think I finally have something more viable.  Instead of working with the `arm-eabi-*` toolchain, I am going to have to change over to use the `armv7-rpi2-linux-gnueabihf-*` toolchain.  This is going to require that I change all the `Tupfile`s and update all my compile commands.
+
+I got those changes made and I went right back to my `rpi-timer` test to see what I could get to work -- nothing.  I was a bit too ambitious.  Tomorrow....
+
+---
+
+### 2018-Dec-17
+
+Today I will take a look at my code to make sure I am getting serial output properly.  This will be my primary focus.
+
+---
+
+So, no matter what I do, the `rpi-timer.img` test does not work.  However, the `uart01.bin` test does.  There are some differences here:
+* Compiler parameters
+* C vs C++ compilers
+* Extra code
+
+What I need to do is start by eliminating the differences (the more prevalent right now are the compiler parameters) and see if I can get anything to run.
+
+---
+
+OK, I am going to stop working on `rpi-timer` for now and create a `uart01` built into my project.  It will start as a direct copy of the sameple code just to integrate it into the the build system.
+
+---
+
+OK, my first test did not work.  I wanted to capture the commands that do work, which are my target at the moment:
+
+```
+[adam@os-dev uart01]$ make
+armv7-rpi2-linux-gnueabihf-as vectors.s -o vectors.o
+armv7-rpi2-linux-gnueabihf-gcc -Wall  -O2 -nostdlib -nostartfiles -ffreestanding -c uart01.c -o uart01.o
+armv7-rpi2-linux-gnueabihf-ld vectors.o uart01.o -T memmap -o uart01.elf
+armv7-rpi2-linux-gnueabihf-objdump -D uart01.elf > uart01.list
+armv7-rpi2-linux-gnueabihf-objcopy uart01.elf -O ihex uart01.hex
+armv7-rpi2-linux-gnueabihf-objcopy uart01.elf -O binary uart01.bin
+```
+
+The `tup` commands are:
+
+```
+[adam@os-dev century-os]$ tup bin/rpi2b/boot/uart01.img
+[ tup ] [0.000s] Scanning filesystem...
+[ tup ] [0.014s] Reading in new environment variables...
+[ tup ] [0.015s] No Tupfiles to parse.
+[ tup ] [0.015s] No files to delete.
+[ tup ] [0.015s] Executing Commands...
+ 1) [0.024s] obj/uart01/rpi2b: armv7-rpi2-linux-gnueabihf-as /home/adam/workspace/century-os/modules/uart01/src/rpi2b/vectors.s -o vectors.o
+ 2) [0.082s] obj/uart01/rpi2b: armv7-rpi2-linux-gnueabihf-gcc -Wall -O2 -nostdlib -nostartfiles -ffreestanding -c /home/adam/workspace/century-os/modules/uart01/src/rpi2b/uart01.c -o uart01.o
+ 3) [0.022s] bin/rpi2b/boot: armv7-rpi2-linux-gnueabihf-ld /home/adam/workspace/century-os/obj/uart01/rpi2b/uart01.o /home/adam/workspace/century-os/obj/uart01/rpi2b/vectors.o -T /home/adam/workspace/century-os/modules/uart01/src/rpi2b/memmap -o uart01.elf
+ 4) [0.011s] bin/rpi2b/boot: armv7-rpi2-linux-gnueabihf-objcopy uart01.elf -O binary uart01.img
+ [    ] 100%
+[ tup ] [0.151s] Partial update complete: skipped 1 commands.
+```
+
+Taking the `tup` commands and removing the path information, I end up with:
+
+```
+[adam@os-dev century-os]$ tup bin/rpi2b/boot/uart01.img
+armv7-rpi2-linux-gnueabihf-as vectors.s -o vectors.o
+armv7-rpi2-linux-gnueabihf-gcc -Wall -O2 -nostdlib -nostartfiles -ffreestanding -c uart01.c -o uart01.o
+armv7-rpi2-linux-gnueabihf-ld uart01.o vectors.o -T memmap -o uart01.elf
+armv7-rpi2-linux-gnueabihf-objcopy uart01.elf -O binary uart01.img
+```
+
+Laying these commands on top of each other and aligning for spacing, I get the following:
+
+```
+armv7-rpi2-linux-gnueabihf-as vectors.s -o vectors.o
+armv7-rpi2-linux-gnueabihf-as vectors.s -o vectors.o
+
+armv7-rpi2-linux-gnueabihf-gcc -Wall  -O2 -nostdlib -nostartfiles -ffreestanding -c uart01.c -o uart01.o
+armv7-rpi2-linux-gnueabihf-gcc -Wall  -O2 -nostdlib -nostartfiles -ffreestanding -c uart01.c -o uart01.o
+
+armv7-rpi2-linux-gnueabihf-ld vectors.o uart01.o -T memmap -o uart01.elf
+armv7-rpi2-linux-gnueabihf-ld uart01.o vectors.o -T memmap -o uart01.elf
+
+armv7-rpi2-linux-gnueabihf-objcopy uart01.elf -O binary uart01.bin
+armv7-rpi2-linux-gnueabihf-objcopy uart01.elf -O binary uart01.img
+```
+
+Materially they are the same, with the only exceptions being the extension of the target name (`.bin` vs. `.img`) and the order of the object files being linked.  Since this is a binary with not specifiied entry point, the first instruction is supposed to be the start of the file.  I belive that this is my problem.
+
+And it was.  The order of the modules in the binary file are not in the right order and the entry point was not the first byte in the file.  That was a painful lesson I hope I don't forget soon.
+
+---
+
+### 2018-Dec-18
+
+I have a renewed sense of hope today getting into the coding.  At least I what I was doing wrong in getting the basics in line.  Such a stupid mistake, I'm actually embarrassed.
+
+Today I will move back to the `rpi-timer` code and see what I can do there.  I feel much more confident in getting the code running now that I concretely know what the problem was.  This simple change allowed me to run the uart code to blast characters.  Now, I should be able to go back to my original purpose-built test -- which of course did not work!
+
+I went for it all.  I am going to start by aligning the gcc parameters and see where that get me.
+
+---
+
+OK, things are compiling and running better now.  But I am still in the C compiler and I need to get to C++.  This is the next step.  This went relatively easily.  Next is to get the system to compile again.  And that is done.
+
+So, now I want to start working on getting timer working.  This is still in the `rpi-timer` code, but is disabled at the moment.  I will start by enabling each bit at a time and testing to see where we end up.
+
+---
+
+Now, I'm getting somewhere.  I am trying to write the IVT data, starting with address `0x00000000`.  This assignment is not completing, or more to the point the next debugging line is not being written to the serial port.
+
+I moved the interrupts to 1MB and the IVT initialization completes.   However, when interrupts are enabled, I am not getting anything.  I did program the timer, but have not checked if I am getting incrementing values.  I will enable that next.
+
+OK, so everything works now up until enabling interrupts.  One last test on that since having added the infinite loop.
+
+---
+
+That still did not work.  So, enabling interrupts is killing my little program.  I am probably getting an interrupt and it is not working properly.  I will need to figure out how to sort that, but tomorrow.
+
+---
+
+### 2018-Dec-19
+
+OK, so today I am going to work on getting the IVT table configured properly, since that is the most likely cause for interrupts locking up the system.  To do this, I need to figure out what where to check and manage HIVECS.
+
+---
+
+The location of the bit that set HIVECS is actually `SCTLR.V`.  Now with Cortex A7, I should be able to set the `VBAR` (or Vector Base Address Register) to be whatever I want.  I currently have it set at 1MB (`0x100000`).  However, I am not getting anything to collect the interrupt properly.
+
+So, my next step is going to be in inquire on the different register addresses and output them to the serial port before enabling interrupts.  This means I will need my `SerialPutHex()` function.
+
+OK, so here is where my test is at:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+Timer is initialized -- interrupts should be happening
+```
+
+The key things here is that the `VBAR` is set correctly and the `SCTLR.V` bit is clear.
+
+Adding in the VBAR table dump, I get the following results:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xeafffe7d
+Timer is initialized -- interrupts should be happening
+```
+
+THis finds something interesting, as the jump (or technically the `b` instruction) appears to be a relative offset.  I am not totally 100% sure of the `nop` opcodes, but they are all consistent so that odds are in my favor.  I will decode those anyway to be sure.
+
+Adding in the code to make sure I get to the correct location from the Vector Table (and enabling interrupts again), I am getting the following:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xe51f0000
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008054
+```
+
+Notice I am not getting the initialization message.  So, something is still very wrong.  This config looks correct.  Let me see if I can force an undefined instruction with interrupts disabled.
+
+The undefined instruction behavior is no different than the IRQ behavior.  Maybe the code that backs this is not working right anyway.
+
+---
+
+### 2018-Dec-20
+
+Ok, I really need to figure out some way to test my code here....  I think I have a few options:
+* Write an asm function with a jump to the IVT location.  I should be able to get the `'#'` character to the serial port once.
+* Run this in qemu, fixing everything to have the proper offsets to be loaded by the qemu emulator (the entry point is different).  I should be able to debug a little bit from here.
+
+I think I am going to start with the first option since I do not trust qemu to emulate anything rpi properly at the moment.
+
+---
+
+OK, with my first test, I am jumping to the location of the IVT in code (not the target location).  This test results in what I am looking for: a xingle `'#'` character printed.
+
+```
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xe51f0000
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008058
+#
+```
+
+Now for test #2: jump to location `0x100000`, or 1MB.  This test also worked, yielding the same results as above.
+
+So, what does this tell me?  Let's see here:
+1. The code is sound under the normal execution stream.
+1. When I have some kind of exception, the system locks up.
+1. My target location at 1MB is a good one and the code is being set properly there.
+1. `IRQHandler()` sets a reasonable stack location and I can use it properly under a normal execution stream.
+
+I made a change where the `IRQHandler()` function puts the CPU into supervisor mode.  This did not have a good result as the rpi locked up as soon as interrupts were enabled.  So, I think I am going to have to try with qemu to see what I can find.
+
+---
+
+OK, it looks like qemu emulated the program fine, but never enabled interrupts (or at least the timer does not fire).  On real hardware, an appear to be getting some exception that is crashing the system that I cannot trace.
+
+---
+
+### 2018-Dec-21
+
+Once again, I am debating whether to pursue working on qemu (where I am not getting the same issues as on real hardware, but different things are breaking) or to pursue debugging on heal hardware (where my ability to actually do debugging and investigation is almost totally eliminated).  On one hand, I cannot duplicate the problem at hand and on the other I cannot debug the problem.  Not a fun choice at all.
+
+Well, I have proven that the actual code I have written for the Interrupt Vectors and the target will work.  I get the `'#'` character.  So, something else must be happening at the system level, or the interrupts are not being routed properly.  I need to check that code carefully, as my checks have all be surface checks so far.  I am not sure exactly how much code or debugging I will really get done today....  I expect today to look much more like research than anything.
+
+---
+
+### 2018-Dec-22
+
+Today I am continunig the work on documenting the Interrupt Controller (IC) and checking my code against the specification.
+
+In the interest of being 100% accurate in my code, I did add in the following into the timer initialization today:
+
+```C
+    // -- for good measure, disable the FIQ
+    MmioWrite(INT_FIQCONTROL, 0x0);
+```
+
+This disables the FIQ interrupt path.  I honestly do not expect this to make a difference in my test (and therefore will not test it).
+
+The other thing I notice is that I am enabling the world, which is not the real intent here.  I really need to just enable the 1 interrupt for the timer.  So, I will disable everything and then go back and enable only the ARM Timer.
+
+---
+
+Now that I have some changes to test, I am getting really odd characters to the screen.  I am not sure if this is due to the changes I made or if the OS needs a reboot to clean something up.  To test this, I am going to run an older executable to see what results I get.  The older binary worked perfectly, so there is a problem with my code.  The results I am getting are just garbage to the screen:
+
+```
+'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½Äï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ï¿½94aï¿½Òºhï¿½Iï¿½8s#=tï¿½\F\Xu`ï¿½c
+?ï¿½ï¿½,ï¿½ï¿½/Kï¿½]ï¿½Iï¿½Uï¿½YVï¿½Hï¿½>Jï¿½`Hpï¿½d&ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½~ï¿½<;hï¿½ï¿½(ï¿½ï¿½{XNï¿½ï¿½ï¿½ï¿½fL1kï¿½ï¿½,ï¿½Ó¥ï¿½Fï¿½ï¿½ï¿½q}ÚRa2ï¿½ÍNYNï¿½ï¿½ï¿½,ï¿½ï¿½IlVï¿½Xbï¿½ï¿½ï¿½ï¿½,ï¿½Fï¿½ï¿½nï¿½ï¿½wï¿½ï¿½ï¿½sï¿½ï¿½ï¿½o$ï¿½ï¿½ï¿½>ï¿½Aï¿½ï¿½-AkË±ï¿½ï¿½Cï¿½=ï¿½ï¿½ï¿½ï¿½Zï¿½gï¿½Tï¿½ï¿½-&uï¿½ï¿½[ï¿½0ï¿½ï¿½ï¿½,ï¿½Kï¿½ï¿½*Uï¿½;Nï¿½ï¿½ï¿½ï¿½ï¿½C%ï¿½/Ô°ï¿ï¿½ï¿½ï¿½zï¿½m(Åï¿½ï¿½^*ï¿½/ï¿½z[ï¿½"#ï¿½ï¿½4rï¿½Kï¿½yï¿½^ï¿½q?4ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½!ï¿½ï¿½_ï¿½ï¿½Cmï¿½ï¿½ï¿½ï¿½YHï¿½B\ï¿½ï¿½jï¿½oï¿½zï¿½ï¿½srï¿½Bï¿½ï¿½ï¿½" ï¿½$Lï¿½/ï¿½ï¿½ï¿½_ï¿½jE>ï¿½8ï¿½ï¿½ï¿½0ï¿½Îdï¿½
+```
+
+... and lots of it.  I am not sure if interrupts are enabled when I get control.  I'm going to start with an explicit disable and if that does not change things, I'm going to comment out enabling the interrupts.  I want to check the output of the debugging code I have added.
+
+Hmmm...  as I'm thinking about this and fixing up my code, I am wondering if I might be having an IRQ routed to another core, waking it up somehow.  I guess it's possible but I have no clue how it will behave.
+
+I explicitly disabled interrupts and commented out the `EnableInterrupts()` function call and I am still getting garbage to the screen -- however based on the timing of the garbage and the relative length of the garbage, I believe it is getting to the end of the program whereas before commenting out the `EnableInterrupts()` call it was not.
+
+I am going to start my troubleshooting by commenting out the 5 lines of code I added.  These are here:
+
+```C
+    // -- for good measure, disable the FIQ
+//    MmioWrite(INT_FIQCONTROL, 0x0);
+
+    // -- Disable all IRQs -- write to clear, anything that is high will be pulled low
+//    MmioWrite(INT_IRQDIS0, 0xffffffff);
+//    MmioWrite(INT_IRQDIS1, 0xffffffff);
+//    MmioWrite(INT_IRQDIS2, 0xffffffff);
+
+    // -- Now I should be able to set up the timer, which will be done locally
+    MmioWrite(TMR_BASE + 0x00, 0x00);               // this register is not emulated by qemu
+    MmioWrite(TMR_BASE + 0x08, 0x80000000);         // this register is not emulated by qemu
+    MmioWrite(TMR_BASE + 0x40, 0x00000020);         // select as IRQ for core 0
+    MmioWrite(TMR_BASE + 0x60, 0xfff);              // enable IRQs from all devices from local timer down
+    MmioWrite(TMR_BASE + 0x34, 0x8 | (1<<28) | (1<<29));  // set up the counter for the timer and start it
+    MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
+
+    // -- Now, enable the ARM Timer interrupt only
+//    MmioWrite(INT_IRQENB0, 1);
+```
+
+I will run this test to see if I can get proper output again....  Still garbage!!
+
+OK, there were 3 lines I removed as well.  These enabled all interrupts no matter what they were.  I will try to put them back in.  And still garbage!!
+
+I did find that the program was linked to address `0x10000` still for qemu.  Made this change and will now test again.  OK, that restored it again.  It's the stupid things that get you sometimes.
+
+I'm going to reinstate all my code and try again.  This worked and I have been able to determine the the IRQ Enable bit can be read.  Now, to try again with interrupts enabled.  This is still locking up and not getting to the end.  I really did not expect much of a different result.
+
+So, now I need to look more into the BCM2836 chip related to multiple cores and see that I need to do to get that routes properly.  I found that I had the `nCNTPNSIRQ` interrupt routed to the FIQ (which is of course disabled).  So, I have made that change but I'm not ready to test yet.  I also wrote the register to route the local timer interrupt to core 0 IRQ.
+
+Now for a test....  No change in behavior.
+
+---
+
+OK, to try to think this through...  I have 4 tests that I can try.  These tests are controlled by which of the following lines are commented:
+
+```C
+//    IvtFunc();                      // This is an explicit jump to the start of the Interrupt Vectors -- works
+//    Undef();                        // This will generate an undefined exception -- does not work
+//    EnableInterrupts();             // This enables interrupts and the timer should start firing -- does not work
+```
+
+My `IRQHandler()` function is a one-shot handler that just prints a `'#'` character to the serial port and then `Halt()`s the CPU.  When the `IRQHandler()` function is called, I do not expect the cpu to return to perform any additional processing.
+
+I am setting the location of the Interrupt Vector Table with the following code as soon as my code gets control and all cores except 0 are quieted down:
+
+```
+initialize:
+    mov     r0,#0x100000                @@ The location of the vector base address register (1MB)
+    mcr     p15,0,r0,c12,c0,0           @@ Write this location to the Vector Base Address Register
+```
+
+#### Test 1
+
+All of the lines are commented out.  This will drop the code into a loop that reads the timer value to ensure that it is incrementing.  This will print the following to the serial port:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xe51f0000
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008078
+  The Basic Interrupt register is : 0x00000001
+Timer is initialized -- interrupts should be happening
+The timer value is: 0x00a4a5ad
+The timer value is: 0x013a59d9
+The timer value is: 0x01d00e2b
+The timer value is: 0x0265c368
+The timer value is: 0x02fb77fe
+The timer value is: 0x03912c8e
+The timer value is: 0x0426e2ea
+The timer value is: 0x04bc9729
+The timer value is: 0x05524bea
+The timer value is: 0x05e801b6
+```
+
+The actual values of the timer value will be slightly different, but all-in-all, this is the result and it is consistent.  These are the expected results, so this test passes.
+
+
+#### Test 2
+
+This test is performed by uncommenting the following line:
+
+```C
+    IvtFunc();                      // This is an explicit jump to the start of the Interrupt Vectors -- works
+```
+
+The code that performs this jump to the first Interrupt Vector is:
+
+```
+IvtFunc:
+    mov     r0,#0x100000                @@ The location of the vector base address register (1MB)
+    mov     pc,r0                       @@ and jump to that location
+```
+
+In this function, there is an explicit jumpt to the first interrupt vector.  In this test, I am expecting a `'#'` character to be printed and I should not see the line reading `Timer is initialized -- interrupts should be happening`.
+
+My results look like this:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xe51f0000
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008078
+  The Basic Interrupt register is : 0x00000001
+#
+```
+
+These are the expected results and this test passes.
+
+
+#### Test 3
+
+This test is performed ny uncommenting the following line:
+
+```C
+    Undef();                        // This will generate an undefined exception -- does not work
+```
+
+In this function, there is a jump to an assembly function that executes an undefined instruction.  This instruction looks like this from the disassembly:
+
+```
+00008074 <Undef>:
+    8074:	ffffffff 			; <UNDEFINED> instruction: 0xffffffff
+```
+
+I am expecting the exact same results as Test 2, where I see a `'#'` character on the screen.  The results are the same as Test 2 without the `'#'` character, as shown below:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xe51f0000
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008078
+  The Basic Interrupt register is : 0x00000001
+```
+
+This test fails as the `'#'` character is not written to the serial port.
+
+
+#### Test 4
+
+This test is performed ny uncommenting the following line:
+
+```C
+    EnableInterrupts();             // This enables interrupts and the timer should start firing -- does not work
+```
+
+In this function, interrupts are enabled and I expect the timer to fire an IRQ almost immediately.  `IRQHandler()` will get control and write a `'#'` character to the serial port and then stop processing.
+
+The results of this test are the exact same as with Test 3:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+  VBAR: 0x00100000
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe1a00000
+  The code at VBAR[1] is: 0xe1a00000
+  The code at VBAR[2] is: 0xe1a00000
+  The code at VBAR[3] is: 0xe1a00000
+  The code at VBAR[4] is: 0xe1a00000
+  The code at VBAR[5] is: 0xe1a00000
+  The code at VBAR[6] is: 0xe1a00000
+  The code at VBAR[7] is: 0xe51f0000
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008078
+  The Basic Interrupt register is : 0x00000001
+```
+
+This test fails as the `'#'` character is not written to the serial port.
+
+
+#### Conclusion
+
+The conclusion I can draw from this is that there is something witht the state of the cpu that is causing a problem on an exception/interrupt.  Whether that is something with the `cpsr` or the registers, I am not sure.
+
+However, with that said, I am not disabling the interrupts when switching modes, so I might be having a recursive interrupt problem...  Let me test that; setting up for test 2....  That test failed.
+
+At this point, I am going to commit these changes to github so that I can ask for help....
 

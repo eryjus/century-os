@@ -18,7 +18,7 @@
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
 MOD = libc
-CC = arm-eabi-gcc
+CC = armv7-rpi2-linux-gnueabihf-gcc
 
 include_rules
 

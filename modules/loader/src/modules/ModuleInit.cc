@@ -33,7 +33,7 @@
 //    -------------------------------------------------
 kernEntry_t ModuleInit(void)
 {
-    kernEntry_t entry;
+    kernEntry_t entry = 0;
     ptrsize_t modCr3;
 
     if (!HaveModData()) {

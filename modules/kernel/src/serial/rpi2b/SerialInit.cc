@@ -36,12 +36,10 @@ void SerialInit(void)
     MmioWrite(GPIO_GPPUDCLK1, 0x00000000);              // LEARN: Why does this make sense?
 
     // -- Clear any pending interrupts
-    MmioWrite(UART_BASE + UART_ICR, UARTMIS_OEIC | UARTMIS_BEIC | UARTMIS_PEIC | UARTMIS_FEIC |
-                                           UARTMIS_RTIC | UARTMIS_TXIC | UARTMIS_RXIC | UARTMIS_CTSMIC);
+    MmioWrite(UART_BASE + UART_ICR, 0xffffffff);
 
     // -- Mask all interrupts
-    MmioWrite(UART_BASE + UART_IMSC, UARTIMSC_OEIM | UARTIMSC_BEIM | UARTIMSC_PEIM | UARTIMSC_FEIM |
-                                            UARTIMSC_RTIM | UARTIMSC_TXIM | UARTIMSC_RXIM | UARTIMSC_CTSMIM);
+    MmioWrite(UART_BASE + UART_IMSC, 0);
 
     // -- Enable the FIFO queues
     MmioWrite(UART_BASE + UART_LCRH, UARTLCRH_FEN);

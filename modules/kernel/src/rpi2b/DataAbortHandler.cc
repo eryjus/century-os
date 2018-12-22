@@ -25,4 +25,5 @@ extern "C" void DataAbortHandler(isrRegs_t *regs)
 {
     kprintf("Data Exception:\n");
     IsrDumpState(regs);
+    Halt();
 }

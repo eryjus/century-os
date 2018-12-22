@@ -37,7 +37,7 @@
 //    -------------------------------------------
 OrderedList_t *HeapFindHole(size_t adjustedSize, bool align)
 {
-	OrderedList_t *wrk;
+	OrderedList_t *wrk = NULL;
 	size_t wrkSize;
 
 	// First determine the right starting point for searching.

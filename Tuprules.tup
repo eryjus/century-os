@@ -28,16 +28,18 @@ II = $(WS)/bin/$(ARCH)/usr/include/*
 ##
 ## -- Build out the CFLAGS variable for g++
 ##    -------------------------------------
-CFLAGS += -g
-CFLAGS += -fpic
-CFLAGS += -ffreestanding
+CFLAGS += -ffreestanding -nostdlib -nostartfiles
 CFLAGS += -fno-unwind-tables
 CFLAGS += -fno-exceptions
+CFLAGS += -O2
 
 ifneq ($(ARCH),rpi2b)
+CFLAGS += -g
 CFLAGS += -mno-red-zone
+CFLAGS += -fpic
+CFLAGS += -Werror
 else
-CFLAGS += -mcpu=cortex-a7
+#CFLAGS += -mcpu=cortex-a7
 endif
 
 CFLAGS += -I $(WS)/bin/$(ARCH)/usr/include
@@ -46,7 +48,6 @@ CFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)
 CFLAGS += -I $(WS)/inc
 CFLAGS += -I $(WS)/inc/$(ARCH)
 CFLAGS += -Wall
-CFLAGS += -Werror
 CFLAGS += -c
 
 ##
@@ -70,18 +71,20 @@ AFLAGS += -I $(WS)/modules/$(MOD)/inc/
 AFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)/
 AFLAGS += -I $(WS)/inc/
 AFLAGS += -I $(WS)/inc/$(ARCH)/
-AFLAGS += -c
+#AFLAGS += -c
 
 
 ##
 ## -- Build out the LDFLAGS variable -- for ld (through g++)
 ##    ------------------------------------------------------
+ifneq ($(ARCH),rpi2b)
 LDFLAGS += -g
 LDFLAGS += -ffreestanding
 LDFLAGS += -O2
 LDFLAGS += -nostdlib
 LDFLAGS += -z max-page-size=0x1000
 LDFLAGS += -L $(WS)/lib/$(ARCH)
+endif
 
 
 ##

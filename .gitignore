@@ -16,6 +16,7 @@ maps/**/*.map
 
 bin/**/*.cfg
 bin/**/*.elf
+bin/**/*.img
 
 lib/**/*.a
 *.log

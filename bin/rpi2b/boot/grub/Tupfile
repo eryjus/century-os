@@ -4,11 +4,16 @@
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
+##  Note that the 2 options for `grub.cfg` are mutually exclusive.  Only one configuration can be active at build
+##  time.
+##
 ## ------------------------------------------------------------------------------------------------------------------
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 ##  2017-Nov-11  Initial   0.2.0   ADCL  Initial version
+##  2018-Dec-14  Initial   0.2.0   ADCL  Add an option (by commenting/un-commenting) to boot a near-bare-metal
+##                                       timer test binary
 ##
 #####################################################################################################################
 
@@ -16,10 +21,19 @@
 include_rules
 
 
-#
-# -- Create the grub.cfg file
-#    ------------------------
-:   |>  echo   "multiboot /boot/loader.elf"                          > %o;      \
-        echo   "module /boot/kernel.elf kernel"                     >> %o;      \
+##
+## -- Create the grub.cfg file
+##    ------------------------
+##:   |>  echo   "multiboot /boot/loader.elf"                          > %o;      \
+##        echo   "module /boot/kernel.elf kernel"                     >> %o;      \
+##        echo   "boot"                                               >> %o;      \
+##    |> grub.cfg
+
+
+
+##
+## -- An alternative boot configuration to launch the timer test binary
+##    -----------------------------------------------------------------
+:   |>  echo   "multiboot /boot/rpi-timer.elf"                       > %o;      \
         echo   "boot"                                               >> %o;      \
     |> grub.cfg

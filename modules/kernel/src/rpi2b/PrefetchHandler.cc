@@ -25,4 +25,5 @@ extern "C" void PrefetchHandler(isrRegs_t *regs)
 {
     kprintf("Prefetch Abort:\n");
     IsrDumpState(regs);
+    Halt();
 }

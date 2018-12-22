@@ -34,7 +34,6 @@
 @@    -------------------------------------------------------
 RestoreInterrupts:
     push    {r1}                                    @@ be nice and save r1 even though we are not required to
-    mvn     r0,r0                                   @@ bitwise not on r0
     mrs     r1,cpsr                                 @@ Get the Current Program Status Register
     and     r1,#~0x000001c0                         @@ Clear the bits that disable interrupts
     orr     r1,r0                                   @@ Restore the bits that disable interrupts from the parameter

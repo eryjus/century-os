@@ -60,3 +60,15 @@ inline void HaltCpu(void) { __asm("wfi"); }
 //    ----------------------------------------------------------------
 extern "C" void EnterSystemMode(void);
 
+
+//
+// -- Get the TTBR0
+//    -------------
+extern "C" regval_t GetTTBR0(void);
+
+
+//
+// -- Get the CBAR
+//    ------------
+extern "C" regval_t GetCBAR(void);
+

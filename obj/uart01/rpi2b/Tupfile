@@ -1,0 +1,36 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to the 'make' build system -- rpi2b uart01 objects
+##
+##        Copyright (c)  2017-2018 -- Adam Clark
+##
+##  This build will start as a direct copy of the sample code
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2018-Dec-17  Initial   0.2.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+CC = armv7-rpi2-linux-gnueabihf-gcc
+AS = armv7-rpi2-linux-gnueabihf-as
+
+WS = /home/adam/workspace/century-os
+MOD = uart01
+ARCH = rpi2b
+SRC = $(WS)/modules/$(MOD)/src
+FLAGS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding
+
+
+##
+## -- These are the implicit build rules for the i686 loader object files
+##    -------------------------------------------------------------------
+: $(SRC)/$(ARCH)/vectors.s              |> $(AS) %f -o %o               |> vectors.o
+: $(SRC)/$(ARCH)/uart01.c               |> $(CC) $(FLAGS) -c %f -o %o   |> uart01.o
+

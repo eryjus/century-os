@@ -23,12 +23,6 @@
 
 
 //
-// -- A Local prototype to prevent the compiler from name mangling
-//    ------------------------------------------------------------
-extern "C" void IsrHandler(isrRegs_t regs);
-
-
-//
 // -- The ISR Handler Table
 //    ---------------------
 isrFunc_t isrHandlers[256] = {NULL_ISR};

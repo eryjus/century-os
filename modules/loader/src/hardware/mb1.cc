@@ -153,7 +153,7 @@ MB1 *mb1Data = 0;
 //
 // -- A quick MACRO to help determine if a flag is set
 //    ------------------------------------------------
-#define CHECK_FLAG(f) (mb1Data->flags && (1<<f))
+#define CHECK_FLAG(f) ((mb1Data->flags != 0) && ((1<<f) != 0))
 
 
 //

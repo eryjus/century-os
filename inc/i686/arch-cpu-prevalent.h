@@ -68,3 +68,4 @@ extern "C" void outb(uint16_t port, uint8_t byte);
 extern "C" regval_t GetCr3(void);
 
 
+inline regval_t GetCBAR(void) { return 0xffffffff; }

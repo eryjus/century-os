@@ -196,32 +196,32 @@ void PmmStart(Module_t *pmmMod)
     kMemSetB((void *)PROCESS_STACK_BUILD, 0, 4096);
 
     kprintf("PmmStart(): Build the stack\n");
-	pmmProcess.ss = 0x23;
+    pmmProcess.ss = 0x23;
 
-	regval_t *msp = (regval_t *)(PROCESS_STACK_BUILD + 4096);
+    regval_t *msp = (regval_t *)(PROCESS_STACK_BUILD + 4096);
 
     // -- note there are no parameters; TODO: create a SYSCALL to self-terminate
-    *(-- msp) = (ptrsize_t)0xff000000;	                        // Force a page fault in the forbidden range
-	*(-- msp) = (ptrsize_t)pmmMod->entry;           	        // our entry point -- simulated context switch
+    *(-- msp) = (ptrsize_t)0xff000000;                          // Force a page fault in the forbidden range
+    *(-- msp) = (ptrsize_t)pmmMod->entry;                       // our entry point -- simulated context switch
     *(-- msp) = (regval_t)0;                                    // ebp
-	*(-- msp) = (regval_t)INIT_FLAGS;			                // flags
-	*(-- msp) = (regval_t)0;					                // eax
-	*(-- msp) = (regval_t)0;					                // ebx
-	*(-- msp) = (regval_t)0;					                // ecx
-	*(-- msp) = (regval_t)0;					                // edx
-	*(-- msp) = (regval_t)0;					                // esi
-	*(-- msp) = (regval_t)0;					                // edi
-	*(-- msp) = (regval_t)0;					                // cr0
-	*(-- msp) = pmmMod->cr3;                                    // cr3
+    *(-- msp) = (regval_t)INIT_FLAGS;                           // flags
+    *(-- msp) = (regval_t)0;                                    // eax
+    *(-- msp) = (regval_t)0;                                    // ebx
+    *(-- msp) = (regval_t)0;                                    // ecx
+    *(-- msp) = (regval_t)0;                                    // edx
+    *(-- msp) = (regval_t)0;                                    // esi
+    *(-- msp) = (regval_t)0;                                    // edi
+    *(-- msp) = (regval_t)0;                                    // cr0
+    *(-- msp) = pmmMod->cr3;                                    // cr3
 
-	*(-- msp) = (regval_t)0x23;				                    // ds
-	*(-- msp) = (regval_t)0x23;				                    // es
-	*(-- msp) = (regval_t)0x23;				                    // fs
-	*(-- msp) = (regval_t)0x23;				                    // gs
+    *(-- msp) = (regval_t)0x23;                                 // ds
+    *(-- msp) = (regval_t)0x23;                                 // es
+    *(-- msp) = (regval_t)0x23;                                 // fs
+    *(-- msp) = (regval_t)0x23;                                 // gs
 
-	pmmProcess.esp = ((regval_t)msp - PROCESS_STACK_BUILD) + 0x80000000;
-	pmmProcess.status = PROC_RUN;
-    pmmProcess.cr3 = pmmMod->cr3;
+    pmmProcess.stackPointer = ((regval_t)msp - PROCESS_STACK_BUILD) + 0x80000000;
+    pmmProcess.status = PROC_RUN;
+    pmmProcess.pageTables = pmmMod->cr3;
 
     KernelUnmap(PROCESS_STACK_BUILD);
     kprintf("PmmStart(): All done\n");

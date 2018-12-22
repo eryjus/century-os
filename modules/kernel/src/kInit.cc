@@ -43,6 +43,7 @@
 #include "ipc.h"
 #include "pmm.h"
 #include "tss.h"
+#include "hw-kernel.h"
 
 
 //
@@ -69,100 +70,101 @@ uint16_t serialPort = 0x3f8;
 //    -------------------------------------------------------------------------
 void kInit(void)
 {
-	//
-	// -- Phase 1: Required by the processor to setup the proper state
-	//             Greet the user from the kernel.
-	//    ------------------------------------------------------------
-	IdtBuild();
-	CpuTssInit();
-	kprintf("Welcome to CenturyOS -- a hobby operating system\n");
-	kprintf("    (initializing...)\n");
+    //
+    // -- Phase 1: Required by the processor to setup the proper state
+    //             Greet the user from the kernel.
+    //    ------------------------------------------------------------
+    IdtBuild();
+    CpuTssInit();
+    kprintf("Welcome to CenturyOS -- a hobby operating system\n");
+    kprintf("    (initializing...)\n");
 
     SetBgColor(FrameBufferParseRGB("#404040"));
     SetFgColor(0xffff);
-	FrameBufferClear();
-	FrameBufferPutS("Welcome to CenturyOS -- a hobby operating system\n");
-	FrameBufferPutS("    (initializing...)\n");
+    FrameBufferClear();
+    FrameBufferPutS("Welcome to CenturyOS -- a hobby operating system\n");
+    FrameBufferPutS("    (initializing...)\n");
 
-	//
-	// -- Phase 2: Required OS Structure Initialization
-	//    ---------------------------------------------
-	ProcessInit();
-	for (int i = 0; i < GetModCount(); i ++) {
-		char *s = GetAvailModuleIdent(i);
-		if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && s[3] == 0) {
-			PmmStart(&localHwDisc->mods[i]);
-			break;
-		}
-	}
-	TimerInit(250);
-	EnableInterrupts();
-	ProcessEnabled = true;
-	HeapInit();
+    //
+    // -- Phase 2: Required OS Structure Initialization
+    //    ---------------------------------------------
+    ProcessInit();
+//    for (int i = 0; i < GetModCount(); i ++) {
+//        char *s = GetAvailModuleIdent(i);
+//        if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && s[3] == 0) {
+//            PmmStart(&localHwDisc->mods[i]);
+//            break;
+//        }
+//    }
+    TimerInit(250);
+    EnableInterrupts();
+    ProcessEnabled = true;
+    while(1) { if (MmioRead(0x40000034) & 0x80000000) kprintf("*"); }
+    HeapInit();
 
-	// -- let the Pmm know we are putting it in-charge
-	Message_t pmm;
-	kMemSetB(&pmm, 0, sizeof(Message_t));
+    // -- let the Pmm know we are putting it in-charge
+    Message_t pmm;
+    kMemSetB(&pmm, 0, sizeof(Message_t));
 
-	pmm.msg = PMM_INIT;
-	pmm.dataPayload = (void *)GetPmmBitmap();
-	pmm.payloadSize = GetPmmFrameCount() << 12;			// convert this to bytes
-	MessageSend(PID_PMM, &pmm);
-
-
-	//
-	// -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
-	//             Includes hardware discovery and initialization
-	//    ----------------------------------------------------------------------
-
-//	kprintf("\nEnabling Interrupts & Driver Initialization starting...\n");
-
-//	EnableInterrupts();
-//	schedulerEnabled = 1;
-//	InitPS2();
-//	InitKeyboard();
-
-//	debuggerPID = CreateProcess("Kernel Debugger", (uint32)DbgProcess, 0);
-//	kprintf("Debugger PID = %lu\n", debuggerPID);
-
-//	wrk = globalProcess.next;
-//	do {
-//		kprintf("%ld %s\n", GetProcPID(GLOBAL2PROC(wrk)), GetProcCommand(GLOBAL2PROC(wrk)));
-
-//		wrk = wrk->next;
-//	} while (wrk != &globalProcess);
-//	hang();
-
-	//
-	// -- Phase 4: Full interrupts enabled, user space prepared
-	//             Includes loading and starting device drivers
-	//	  -----------------------------------------------------
-
-//	kprintf("\nStarting User Space\n");
-//	readyForInterrupts = 1;
-
-//	SetTTY(TTY_DEBUGGER);
-
-//	if (tty15Mode != TTY15_NONE) SetTTY(TTYF);
-
-	//
-	// -- Phase 5: Become the Butler Process
-	//    ----------------------------------
-
-//	SetProcPriority(currentProcess, PTY_IDLE);
-//	BREAKPOINT;
+    pmm.msg = PMM_INIT;
+    pmm.dataPayload = (void *)GetPmmBitmap();
+    pmm.payloadSize = GetPmmFrameCount() << 12;            // convert this to bytes
+    MessageSend(PID_PMM, &pmm);
 
 
-	EnterSystemMode();
-	kprintf("Reached the end of initialization\n");
+    //
+    // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
+    //             Includes hardware discovery and initialization
+    //    ----------------------------------------------------------------------
 
-	//
-	// -- Phase 5: Assume the butler process role
-	//	  ---------------------------------------
+//    kprintf("\nEnabling Interrupts & Driver Initialization starting...\n");
 
-	while (1) {
-		HaltCpu();
-	}
+//    EnableInterrupts();
+//    schedulerEnabled = 1;
+//    InitPS2();
+//    InitKeyboard();
+
+//    debuggerPID = CreateProcess("Kernel Debugger", (uint32)DbgProcess, 0);
+//    kprintf("Debugger PID = %lu\n", debuggerPID);
+
+//    wrk = globalProcess.next;
+//    do {
+//        kprintf("%ld %s\n", GetProcPID(GLOBAL2PROC(wrk)), GetProcCommand(GLOBAL2PROC(wrk)));
+
+//        wrk = wrk->next;
+//    } while (wrk != &globalProcess);
+//    hang();
+
+    //
+    // -- Phase 4: Full interrupts enabled, user space prepared
+    //             Includes loading and starting device drivers
+    //      -----------------------------------------------------
+
+//    kprintf("\nStarting User Space\n");
+//    readyForInterrupts = 1;
+
+//    SetTTY(TTY_DEBUGGER);
+
+//    if (tty15Mode != TTY15_NONE) SetTTY(TTYF);
+
+    //
+    // -- Phase 5: Become the Butler Process
+    //    ----------------------------------
+
+//    SetProcPriority(currentProcess, PTY_IDLE);
+//    BREAKPOINT;
+
+
+    EnterSystemMode();
+    kprintf("Reached the end of initialization\n");
+
+    //
+    // -- Phase 5: Assume the butler process role
+    //      ---------------------------------------
+
+    while (1) {
+        HaltCpu();
+    }
 }
 
 
@@ -171,7 +173,7 @@ void kInit(void)
 //    ------------------------
 void idleMain(void)
 {
-	while (1) {
-		HaltCpu();
-	}
+    while (1) {
+        HaltCpu();
+    }
 }

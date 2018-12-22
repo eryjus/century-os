@@ -23,6 +23,6 @@
 
 extern "C" void IRQHandler(isrRegs_t *regs)
 {
-    kprintf("IRQ:\n");
-    IsrDumpState(regs);
+    kprintf("O");
+    IsrHandler(regs);
 }

@@ -23,6 +23,5 @@
 
 extern "C" void FIQHandler(isrRegs_t *regs)
 {
-    kprintf("FIQ:\n");
-    IsrDumpState(regs);
+    IsrHandler(regs);
 }
