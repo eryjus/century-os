@@ -12,7 +12,7 @@ org.kde.konsole.desktop
 p1
 
 obj/**/*.o
-maps/**/*.map
+##maps/**/*.map
 
 bin/**/*.cfg
 bin/**/*.elf

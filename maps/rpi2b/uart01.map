@@ -1,0 +1,133 @@
+
+/home/adam/workspace/century-os/bin/rpi2b/boot/uart01.elf:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+00008000 <_start>:
+    8000:	e3a0d902 	mov	sp, #32768	; 0x8000
+    8004:	eb00000c 	bl	803c <notmain>
+
+00008008 <hang>:
+    8008:	eafffffe 	b	8008 <hang>
+
+0000800c <PUT32>:
+    800c:	e5801000 	str	r1, [r0]
+    8010:	e12fff1e 	bx	lr
+
+00008014 <GET32>:
+    8014:	e5900000 	ldr	r0, [r0]
+    8018:	e12fff1e 	bx	lr
+
+0000801c <dummy>:
+    801c:	e12fff1e 	bx	lr
+
+00008020 <uart_putc>:
+    8020:	e3a02a05 	mov	r2, #20480	; 0x5000
+    8024:	e3432f21 	movt	r2, #16161	; 0x3f21
+    8028:	e5923054 	ldr	r3, [r2, #84]	; 0x54
+    802c:	e3130020 	tst	r3, #32
+    8030:	0afffffc 	beq	8028 <uart_putc+0x8>
+    8034:	e5820040 	str	r0, [r2, #64]	; 0x40
+    8038:	e12fff1e 	bx	lr
+
+0000803c <notmain>:
+    803c:	e3a03a05 	mov	r3, #20480	; 0x5000
+    8040:	e3a01000 	mov	r1, #0
+    8044:	e3433f21 	movt	r3, #16161	; 0x3f21
+    8048:	e3a00001 	mov	r0, #1
+    804c:	e3431f20 	movt	r1, #16160	; 0x3f20
+    8050:	e3a02000 	mov	r2, #0
+    8054:	e92d4010 	push	{r4, lr}
+    8058:	e3a0c0c6 	mov	ip, #198	; 0xc6
+    805c:	e5830004 	str	r0, [r3, #4]
+    8060:	e3a0e003 	mov	lr, #3
+    8064:	e5832044 	str	r2, [r3, #68]	; 0x44
+    8068:	e300010e 	movw	r0, #270	; 0x10e
+    806c:	e5832060 	str	r2, [r3, #96]	; 0x60
+    8070:	e1a04002 	mov	r4, r2
+    8074:	e583e04c 	str	lr, [r3, #76]	; 0x4c
+    8078:	e5832050 	str	r2, [r3, #80]	; 0x50
+    807c:	e5832044 	str	r2, [r3, #68]	; 0x44
+    8080:	e583c048 	str	ip, [r3, #72]	; 0x48
+    8084:	e5830068 	str	r0, [r3, #104]	; 0x68
+    8088:	e5913004 	ldr	r3, [r1, #4]
+    808c:	e3c33a07 	bic	r3, r3, #28672	; 0x7000
+    8090:	e3833a02 	orr	r3, r3, #8192	; 0x2000
+    8094:	e5813004 	str	r3, [r1, #4]
+    8098:	e5812094 	str	r2, [r1, #148]	; 0x94
+    809c:	e1a00004 	mov	r0, r4
+    80a0:	e2844001 	add	r4, r4, #1
+    80a4:	ebffffdc 	bl	801c <dummy>
+    80a8:	e3540096 	cmp	r4, #150	; 0x96
+    80ac:	1afffffa 	bne	809c <notmain+0x60>
+    80b0:	e3a03000 	mov	r3, #0
+    80b4:	e3a02901 	mov	r2, #16384	; 0x4000
+    80b8:	e1a04003 	mov	r4, r3
+    80bc:	e3433f20 	movt	r3, #16160	; 0x3f20
+    80c0:	e5832098 	str	r2, [r3, #152]	; 0x98
+    80c4:	e1a00004 	mov	r0, r4
+    80c8:	e2844001 	add	r4, r4, #1
+    80cc:	ebffffd2 	bl	801c <dummy>
+    80d0:	e3540096 	cmp	r4, #150	; 0x96
+    80d4:	1afffffa 	bne	80c4 <notmain+0x88>
+    80d8:	e3a02000 	mov	r2, #0
+    80dc:	e3a01a05 	mov	r1, #20480	; 0x5000
+    80e0:	e3431f21 	movt	r1, #16161	; 0x3f21
+    80e4:	e1a00002 	mov	r0, r2
+    80e8:	e3432f20 	movt	r2, #16160	; 0x3f20
+    80ec:	e1a03000 	mov	r3, r0
+    80f0:	e5820098 	str	r0, [r2, #152]	; 0x98
+    80f4:	e1a02001 	mov	r2, r1
+    80f8:	e3a00002 	mov	r0, #2
+    80fc:	e5810060 	str	r0, [r1, #96]	; 0x60
+    8100:	e2030007 	and	r0, r3, #7
+    8104:	e2831001 	add	r1, r3, #1
+    8108:	e2800030 	add	r0, r0, #48	; 0x30
+    810c:	e5923054 	ldr	r3, [r2, #84]	; 0x54
+    8110:	e3130020 	tst	r3, #32
+    8114:	0afffffc 	beq	810c <notmain+0xd0>
+    8118:	e5820040 	str	r0, [r2, #64]	; 0x40
+    811c:	e1a03001 	mov	r3, r1
+    8120:	eafffff6 	b	8100 <notmain+0xc4>
+
+Disassembly of section .ARM.attributes:
+
+00000000 <.ARM.attributes>:
+   0:	00003c41 	andeq	r3, r0, r1, asr #24
+   4:	61656100 	cmnvs	r5, r0, lsl #2
+   8:	01006962 	tsteq	r0, r2, ror #18
+   c:	00000032 	andeq	r0, r0, r2, lsr r0
+  10:	726f4305 	rsbvc	r4, pc, #335544320	; 0x14000000
+  14:	2d786574 	cfldr64cs	mvdx6, [r8, #-464]!	; 0xfffffe30
+  18:	06003741 	streq	r3, [r0], -r1, asr #14
+  1c:	0841070a 	stmdaeq	r1, {r1, r3, r8, r9, sl}^
+  20:	0a020901 	beq	8242c <notmain+0x7a3f0>
+  24:	12020c05 	andne	r0, r2, #1280	; 0x500
+  28:	15011404 	strne	r1, [r1, #-1028]	; 0xfffffbfc
+  2c:	18031701 	stmdane	r3, {r0, r8, r9, sl, ip}
+  30:	1c021a01 			; <UNDEFINED> instruction: 0x1c021a01
+  34:	2a012201 	bcs	48840 <notmain+0x40804>
+  38:	44022c01 	strmi	r2, [r2], #-3073	; 0xfffff3ff
+  3c:	Address 0x000000000000003c is out of bounds.
+
+
+Disassembly of section .comment:
+
+00000000 <.comment>:
+   0:	3a434347 	bcc	10d0d24 <notmain+0x10c8ce8>
+   4:	72632820 	rsbvc	r2, r3, #32, 16	; 0x200000
+   8:	7473736f 	ldrbtvc	r7, [r3], #-879	; 0xfffffc91
+   c:	2d6c6f6f 	stclcs	15, cr6, [ip, #-444]!	; 0xfffffe44
+  10:	6320474e 			; <UNDEFINED> instruction: 0x6320474e
+  14:	73736f72 	cmnvc	r3, #456	; 0x1c8
+  18:	6c6f6f74 	stclvs	15, cr6, [pc], #-464	; fffffe50 <notmain+0xffff7e14>
+  1c:	2d676e2d 	stclcs	14, cr6, [r7, #-180]!	; 0xffffff4c
+  20:	33322e31 	teqcc	r2, #784	; 0x310
+  24:	352d302e 	strcc	r3, [sp, #-46]!	; 0xffffffd2
+  28:	65672d35 	strbvs	r2, [r7, #-3381]!	; 0xfffff2cb
+  2c:	32643164 	rsbcc	r3, r4, #100, 2
+  30:	20293664 	eorcs	r3, r9, r4, ror #12
+  34:	2e312e37 	mrccs	14, 1, r2, cr1, cr7, {1}
+  38:	Address 0x0000000000000038 is out of bounds.
+
