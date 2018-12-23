@@ -24,6 +24,7 @@
 @@ -- Expose labels to fucntions that the linker can pick up
 @@    ------------------------------------------------------
     .global     GetCBAR
+    .global     GetMode
     .global     GetVBAR
     .global     GetSCTLR
     .global     Undef
@@ -56,6 +57,15 @@ GetVBAR:
 @@    ---------------------------
 GetSCTLR:
     mrc     p15,0,r0,c1,c0,0                @@ This gets the control register
+    mov     pc,lr                           @@ return
+
+
+@@
+@@ -- Get current mode
+@@    ----------------
+GetMode:
+    mrs     r0,cpsr                         @@ This gets the current program status register
+    and     r0,#0x1f                        @@ mask the bits to return
     mov     pc,lr                           @@ return
 
 

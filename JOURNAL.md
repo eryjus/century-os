@@ -5719,3 +5719,277 @@ However, with that said, I am not disabling the interrupts when switching modes,
 
 At this point, I am going to commit these changes to github so that I can ask for help....
 
+---
+
+Well, I have been working with a really old version of the ARM ARM and I only just now realized it.  Shame on me!
+
+I had a great conversation on `freenode#osdev` about this, captured here:
+
+```
+on real rpi hardware.  I believe I have this narrowed down to a cpu state problem and would like to ask if someone can review my work.  My analysis of the situation is here: https://github.com/eryjus/century-os/blob/master/JOURNAL.md -- go to the bottom and look for today's date.  I had a problem with the link locaiton which is documented first for the day and then this
+[13:59] <eryjus> analysis starts.
+[13:59] <eryjus> The source for this test is here: https://github.com/eryjus/century-os/tree/master/modules/rpi-timer
+[14:00] <eryjus> thanks in advance.
+[14:00] <geist> why do you think it's a cpu state problem?
+[14:01] <eryjus> i have 4 tests documented -- and an explitit jump to the first interrupt vector works, but when i force an undefined excpetion the cpu locks
+[14:01] <geist> also depens on what you mean by 'cpu state'
+[14:02] <geist> ah. good.i was going to stay, trigger an undefined opcode
+[14:02] <eryjus> cspr or registers
+[14:02] <geist> then the question is does it make it to your code or is the vbar not correct
+[14:02] <geist> point me at your exception handling code, the table and the assembly
+[14:03] <eryjus> the vbar is set correctly or at least I can read back what i wrote and get the results I expect
+[14:03] <geist> what was the value?
+[14:03] <eryjus> ivt: https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/entry.s#L77
+[14:04] <eryjus> moves it to the correct locaiton: https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/TimerMain.cc#L233
+[14:04] <geist> the nop sled is cute
+[14:04] <geist> what value was put in vbar?
+[14:04] <eryjus> the actual handler code: https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/IRQTarget.s#L30
+[14:05] <eryjus> load of vbar: https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/entry.s#L57
+[14:05] <geist> what was the value put in the vbar?
+[14:05] <geist> the numeric value
+[14:05] <eryjus> the value loaded is 0x100000 and that is what I am getting back when i read it later
+[14:05] <geist> okay
+[14:06] <geist> what is this patching of the IVT thing?
+[14:07] <eryjus> not sure I follow your question..
+[14:07] <geist> https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/TimerMain.cc#L234
+[14:07] <geist> what is that all about
+[14:07] <eryjus> I am relocating it to 0x100000 in my initialization
+[14:08] <geist> is the I and D cache initialized at this point?
+[14:08] <geist> if so, you can have a cache coherency problem
+[14:08] <eryjus> this may help  https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/TimerMain.cc#L225
+[14:08] <geist> I & D caches are not synchronized on ARM. if you write out code and expect it to run you *must* flush the D and I caches
+[14:08] <geist> generally you just point the vbar at the vector table inside your binary, no need to copy it
+[14:09] <eryjus> no code to init any caches..
+[14:09] <geist> only constraint there is making sure it aligned
+[14:09] <geist> in that cas eyou dont know the state of the caches
+[14:09] <geist> so it's possible the I&D cache is enabled, in which case the copyying of the vector table wont work
+[14:10] <geist> there are a few other problems
+[14:10] <geist> assume the cache is okay
+[14:10] <geist> the instruction you're using in the IVT is a ldr reg, =value
+[14:11] <geist> the =value part means it may emit a PC relative load to a hidden .word
+[14:11] <geist> which you're probably not copying
+[14:11] <eryjus> true -- but when i to an explicit jump to the first vector the code works
+[14:12] <geist> explicit jump in the copied version?
+[14:12] <geist> or in the in text version?
+[14:12] <eryjus> when this line is uncommented: https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/TimerMain.cc#L301
+[14:12] <eryjus> https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/entry.s#L73
+[14:12] <eryjus> This works
+[14:12] <geist> *shrug* dunno then
+[14:12] <geist> you have about 5 layersof hacks here, any of which can go wrong
+[14:13] <geist> the ldr = stuff is at best extremely fragile
+[14:13] <geist> i'd recommend something like....
+[14:14] <geist> hmm, i dont have it here. my LK code is using the vector table in place in the .text segment, so it can get away with a simple relative branch
+[14:14] <geist> https://github.com/littlekernel/lk/blob/master/arch/arm/arm/start.S#L28
+[14:14] <geist> but i've absolutley written code to put a ldr pc, <some label just after the table>
+[14:15] <geist> and then after ldrs it has a table of .word
+[14:15] <geist> and then copy all of that
+[14:15] <geist> that way it is completely position independent
+[14:16] <geist> but assuming this all works, what is at IRQTarget?
+[14:16] <geist> I dont see that code
+[14:17] <eryjus> IRQTarget: https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/IRQTarget.s#L30
+[14:18] <eryjus> I forgot I pulled IRQHandler out of the mix to try to get a simple case working.
+[14:18] <geist> can you post the dissassembly of the entire binary?
+[14:18] <eryjus> stand by
+[14:20] <eryjus> https://github.com/eryjus/century-os/blob/master/maps/rpi2b/rpi-timer.map
+[14:21] <geist> https://github.com/eryjus/century-os/blob/master/maps/rpi2b/rpi-timer.map#L521 is the thing I was talking about, btw
+[14:21] <geist> see how the instruction at 874c references the hidden .word at 8754?
+[14:22] <geist> anyway, i'd start off by getting rid of that whole copy stuff, simplify it. align the IVT on a 64 byte or so boundary (i forget the requirements) and just point vbar directly at it
+[14:22] <geist> then you'll have removed a big pile of complexium
+[14:23] <eryjus> I do and if you look at the code here, I have accounted for that by copying an extra .word https://github.com/eryjus/century-os/blob/master/modules/rpi-timer/src/rpi2b/TimerMain.cc#L234
+[14:23] <eryjus> 7 nop -- 1 ldr -- 1 mov -- 1 hidden word
+[14:23] <eryjus> or at least i tried
+[14:23] <eryjus> ok, will give that a try.
+[14:24] <geist> yah, but again that's all just fragile stuff. start by removing the stuff and simplifying
+[14:24] <geist> so that there's less variables in flight. i'm looking up the alignment requirements of the vector table now
+[14:24] <geist> i think it's something like 64 bytes
+[14:26] <eryjus> im searching as well..
+[14:26] <geist> looks like 32 bytes. the bottom 5 bits of the register are ignored
+[14:27] <geist> which makes sense, since that's basically the size of the vector table. the hardware almost assurednly just ORs in the offset when computing an address
+[14:27] <eryjus> geist, where can i find that?
+[14:27] <geist> if you toss in a .balign 32 or something just in front of it
+[14:27] <geist> i just found it in the ARM ARM, in the description of the VBAR
+[14:28] <eryjus> interesting...  my ARMARM does not have a reference to VBAR.
+[14:28] <geist> then if you use the direct vbar you can simplify your vector table with a series of branches
+[14:28] <geist> yes i'm looking in the armv8 one
+[14:28] <geist> but in this case it's backwards compatible
+[14:28] <geist> armv8 defines much easier to understand hard names for all these old control registers, which is where VBAR comes from
+[14:28] <eryjus> i gotta get a better manual -- mine is (c) 2005
+[14:29] <geist> yes. that *wayyyy* predates vbar existing
+[14:29] <eryjus> that could be part of my problem
+[14:29] <geist> 2005 is armv5 era, the thing you're dealing with here is armv7
+[14:29] <geist> which itself is already about 8 years out of date, since armv8 is the current standard
+[14:30] <eryjus> this might explain why I am fighting so hard and getting nowhere....
+[14:30] <eryjus> not sure where I got that dinosaur from....
+[14:30] <geist> go to arms site and find them directly
+[14:31] <geist> if you're ust googling for random crap,you're going to get it
+[14:31] <geist> https://developer.arm.com/products/architecture/cpu-architecture/r-profile/docs/ddi0406/latest/arm-architecture-reference-manual-armv7-a-and-armv7-r-edition seems to be a good starting point for the armv7-a spec
+[14:32] <geist> https://developer.arm.com/products/architecture/cpu-architecture/r-profile/docs/ddi0487/latest/arm-architecture-reference-manual-armv8-for-armv8-a-architecture-profile is the armv8-a
+[14:32] <geist> but it'll be a lot more complicated for what you're doing, so i'd start with the v7-a
+[14:35] <eryjus> i have them both now.  Thank you!!! -- I'm sure things will start looking better from here.
+[14:35] <eryjus> I'll call that an early Christmas present.  thanks again
+[14:37] <geist> yay
+[14:37] <geist> and i'm not trying to bust your chops about this stuff, you just have to make sure all the details are right
+[14:38] <geist> there's a certain amount of hackery you can do when first getting started, but it quickly topples over. if you have too many layeres of hacks to try to get something working then it's hard to see at what level things are broken
+[14:38] <geist> so it makes sense to go and knock out some of the complexity to try to simplify the problem
+[14:39] <geist> i do this all the time when doing initial bringup. hack together some stuff to prototype that it works, then go back and clean it up. but sometimes the hacks get too deep prior to getting something working, and you have to declare bankruptcy and start building a better foundation
+[14:39] <geist> which is of course hard if you dont know how to make it go
+[14:40] <eryjus> geist, i totally agree -- this is a purpose built test to for real hardware to get the timer irq to fire -- where I can go back to qemu and figure out what is emulated and what is not...  none of this was going to survive into a kernel without a real hard look.  I knew the copy of the table was risky at best.
+[14:41] <eryjus> we're saying the same thing -- but thanks for the counsel.
+[14:41] <geist> yah
+[14:42] <eryjus> i might be able to actually navigate now with an accurate map
+[14:46] <geist> yah a rpi2 is a cortex-a7, which is a armv7-a implementation
+```
+
+So, the next thing here is to read, and read some more, and then get the VBAR set to the code location, properly aligned.
+
+---
+
+I set up a test to determine which mode I am in.  I come back with a value of `0x1a` whereas I am expecting to be in `0x13`.  What the hell is mode `0x1a`??  mode `0x1a` is `hyp` mode and I am expecting `svc`.
+
+I am trying to make sure I am in `svc` mode as the first instruction I execute.  However, the ARM ARM states in section B9.1.2:
+
+> Is not an exception return instruction, and is executed in Hyp mode, and attempts to set CPSR.M to a value other than '11010', the value for Hyp mode.
+
+This means that my little instruction `cps #0x13` does absolutely nothing (and I believe it is treated as a `nop`).
+
+I tries to use this little trick to not get into `hyp` mode in the first place: https://www.raspberrypi.org/forums/viewtopic.php?f=72&t=98904&p=864376#p864376.  However, the pi will not boot.
+
+I have the right instruction now and I am trying to boot.  Now nothing happens...  and I'm out of time for the night....
+
+---
+
+Well, I did have some more time tonight.  I was able to force the processor into `svc` mode!!  I used some code from this web site (well the thinking anyway): https://github.com/raspberrypi/linux/blob/rpi-4.1.y/arch/arm/include/asm/assembler.h#L319.  The result in my code is:
+
+```
+_start:
+    mrs     r0,cpsr                     @@ get the current program status register
+    and     r0,#0x1f                    @@ and mask out the mode bits
+    cmp     r0,#0x1a                    @@ are we in hyp mode?
+    beq     hyp                         @@ if we are in hyp mode, go to that section
+    cpsid   iaf,#0x13                   @@ if not switch to svc mode, ensure we have a stack for the kernel; no ints
+    b       cont                        @@ and then jump to set up the stack
+
+@@ -- from here we are in hyp mode so we need to exception return to the svc mode
+hyp:
+    mrs     r0,cpsr                     @@ get the cpsr again
+    and     r0,#~0x1f                   @@ clear the mode bits
+    orr     r0,#0x013                   @@ set the mode for svc
+    orr     r0,#1<<6|1<<7|1<<8          @@ disable interrupts as well
+    msr     spsr_cxsf,r0                @@ and save that in the spsr
+
+    ldr     r0,=cont                    @@ get the address where we continue
+    msr     elr_hyp,r0                  @@ store that in the elr register
+
+    eret                                @@ this is an exception return
+
+@@ -- everyone continues from here
+cont:
+```
+
+My test forced an undefiend exception and the results were:
+
+```
+Serial port initialized!
+Initializing the IVT:
+Interrupt Vector Table is set up
+Ready to enable interrupts!
+This is the system configuration:
+The processor mode is: 0x00000013
+  VBAR: 0x000087a0
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe320f000
+  The code at VBAR[1] is: 0xe320f000
+  The code at VBAR[2] is: 0xe320f000
+  The code at VBAR[3] is: 0xe320f000
+  The code at VBAR[4] is: 0xe320f000
+  The code at VBAR[5] is: 0xe320f000
+  The code at VBAR[6] is: 0xe320f000
+  The code at VBAR[7] is: 0xe59f0004
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x000087a0
+  The Basic Interrupt register is: 0x00000001
+#
+```
+
+This is the expected results.  One more test tonight and I am going to call it a night.  This time to see if I can get the timer interrupt to fire and get the `'#'` character to the screen.
+
+That test worked.  I'm going to end my night on this success.
+
+---
+
+### 2018-Dec-23
+
+This morning I started with by putting all my IRQ code back and compiled a test -- but I forgot to save my changes to `IRQTarget.cc`.  Another test and I'm hopeful.
+
+After this test, the interrupt is not firing (or more to the point I am not getting any output).
+
+After stripping out all the extra stuff from the `IRQTarget()` function, this is working now.  Here is my output:
+
+```
+Ready to enable interrupts!
+This is the system configuration:
+The processor mode is: 0x00000013
+  VBAR: 0x00008780
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe320f000
+  The code at VBAR[1] is: 0xe320f000
+  The code at VBAR[2] is: 0xe320f000
+  The code at VBAR[3] is: 0xe320f000
+  The code at VBAR[4] is: 0xe320f000
+  The code at VBAR[5] is: 0xe320f000
+  The code at VBAR[6] is: 0xe320f000
+  The code at VBAR[7] is: 0xe59f0004
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008780
+  The Basic Interrupt register is: 0x00000001
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+```
+
+What I see now is that I am burying the CPU in IRQs so it cannot process anything more.  This should be an easy fix....  But I am having some trouble with it.  It looks like I am getting into a loop of some kind there the `'!'` character is printed as fast as possible.  I am unable to slow it down.  So I have capped the duration of the test and I then disable interrupts.
+
+---
+
+So it dawns on me that I am not clearing the timer interrupt when it fires.  Therefore, as soon as interrupts are enabled again after handling that interrupt, the interrupt gets re-triggered.  Let's see here, that should be as simple as clearing the timer flag for the Basic Pending register.
+
+No matter what I try, I am not able to clear the interrupt and therefore I am still getting the cpu buried in the first interrupt.  I will have to do some research online.
+
+I found the problem -- There is a timer reset which has an interrupt clear register that needs to be written.  This fixed the problem and now I have a program the works the way I want it.  Except for the timer frequency.
+
+I am close and getting the interrupts to fire on a regular basis.  The `'!'` character denoted a timer interrupt:
+
+```
+Serial port initialized!
+Ready to enable interrupts!
+This is the system configuration:
+The processor mode is: 0x00000013
+  VBAR: 0x00008780
+  SCTLR.V: clear
+  The code at VBAR[0] is: 0xe320f000
+  The code at VBAR[1] is: 0xe320f000
+  The code at VBAR[2] is: 0xe320f000
+  The code at VBAR[3] is: 0xe320f000
+  The code at VBAR[4] is: 0xe320f000
+  The code at VBAR[5] is: 0xe320f000
+  The code at VBAR[6] is: 0xe320f000
+  The code at VBAR[7] is: 0xe59f0004
+  The code at VBAR[8] is: 0xe1a0f000
+  The code at VBAR[9] is: 0x00008780
+  The Basic Interrupt register is: 0x00000001
+Timer is initialized -- interrupts should be happening
+!The timer value is: 0x00a56249
+!The timer value is: 0x013b106e
+!The timer value is: 0x01d0bd08
+!The timer value is: 0x026676d1
+!The timer value is: 0x02fc30af
+!!The timer value is: 0x0391eaf1
+!The timer value is: 0x0427a3fb
+!The timer value is: 0x04bd5196
+!The timer value is: 0x0552ff00
+!The timer value is: 0x05e8bb0f
+```
+
+Now, I want to try to get the interrupts to fire at about 100/second (x86 is set to 250/second, but with this slow cpu it might bury it again).
+
+I now have the timer firing at a resaonable rate.  I might need to tune that a bit later, but at the moement the hardware for `rpi-timer` is working properly.  Now to commit this code and then switch back over to the timer on qemu.
+
+

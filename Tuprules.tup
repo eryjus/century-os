@@ -71,7 +71,7 @@ AFLAGS += -I $(WS)/modules/$(MOD)/inc/
 AFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)/
 AFLAGS += -I $(WS)/inc/
 AFLAGS += -I $(WS)/inc/$(ARCH)/
-#AFLAGS += -c
+AFLAGS += -march=armv7ve
 
 
 ##

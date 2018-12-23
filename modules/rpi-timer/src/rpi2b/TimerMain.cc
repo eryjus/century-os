@@ -28,11 +28,11 @@ extern "C" void Dummy(void);
 extern "C" void DisableInterrupts(void);
 extern "C" void EnableInterrupts(void);
 extern "C" uint32_t GetCBAR(void);
+extern "C" uint32_t GetMode(void);
 extern "C" uint32_t GetVBAR(void);
 extern "C" uint32_t GetSCTLR(void);
 extern "C" void Halt(void);
 extern "C" void IRQTarget(void);
-extern "C" void IvtFunc(void);
 extern "C" uint64_t SysTimerCount(void);
 extern "C" void Undef(void);
 
@@ -64,6 +64,7 @@ extern "C" void Undef(void);
 #define INT_IRQDIS1         (INT_BASE+0x21c)            // IRQ Disable 1
 #define INT_IRQDIS2         (INT_BASE+0x220)            // IRQ Disable 2
 #define INT_IRQDIS0         (INT_BASE+0x224)            // Basic IRQ Disable
+#define INT_TMR_ACK         (INT_BASE+0x40c)            // Writing a non-zero value resets the IRQ
 
 #define AUX_ENABLES         (AUX_BASE+0x004)            // Auxiliary Enables
 #define AUX_MU_IO_REG       (AUX_BASE+0x040)            // Mini UART I/O Data
@@ -127,13 +128,6 @@ void SerialPutHex(uint32_t val)
 void BusyWait(uint32_t microSecs)
 {
     for (uint32_t i = 0; i < microSecs; i ++) Dummy();
-#if 0
-    volatile uint64_t start = SysTimerCount();      // use volatile to prevent the compiler from optimizing away
-    uint64_t target = start + microSecs;
-
-    if (start == 0) while (microSecs) --microSecs;
-    else while (SysTimerCount() < target) {}
-#endif
 }
 
 
@@ -192,59 +186,7 @@ void SerialInit(void)
 extern "C" void IRQHandler(void)
 {
     SerialPutChar('!');
-}
-
-
-//
-// -- Set establish the interrupt vector table, which naturally lives at address 0x00000000
-//    -------------------------------------------------------------------------------------
-void InterruptVectorInit(void)
-{
-#if 0
-    // -- this is the structure of the table
-    static struct ivt_t {
-        uint32_t reset;
-        uint32_t undefined;
-        uint32_t supervisorCall;
-        uint32_t prefetchAbort;
-        uint32_t dataAbort;
-        uint32_t unused;
-        uint32_t irqInterrupt;
-        uint32_t fiqInterrupt;
-        uint32_t resetTarget;
-        uint32_t undefinedTarget;
-        uint32_t supervisorCallTarget;
-        uint32_t perfetchAbortTarget;
-        uint32_t dataAbortTarget;
-        uint32_t unusedTarget;
-        uint32_t irqInterruptTarget;
-        uint32_t fiqInterruptTarget;
-    } __attribute__((packed)) *ivt = (struct ivt_t *)0x00100000;
-#endif
-    extern uint32_t IVT[];
-    uint32_t *jumps = (uint32_t *)GetVBAR();
-
-    SerialPutS("Initializing the IVT:\n");
-
-    // -- all get jumps to the target address
-//    ivt->reset = ivt->undefined = ivt->supervisorCall = ivt->prefetchAbort = ivt->dataAbort = ivt->unused =
-//            ivt->irqInterrupt = ivt->fiqInterrupt = IVEC_JUMP_ASM;
-
-    // this is very sloppy and will break at some point when a compiler gets more creative on how to handle the code
-    for (int i = 0; i < 10; i ++) jumps[i] = IVT[i];     // an extra instruction plus an address located in code
-
-//    SerialPutS(".. jump command done\n");
-
-    // -- but most target addresses are set to just halt
-//    ivt->resetTarget = ivt->undefinedTarget = ivt->supervisorCallTarget = ivt->perfetchAbortTarget =
-//            ivt->dataAbortTarget = ivt->unusedTarget = (uint32_t)Halt;
-
-//    SerialPutS(".. target addresses done\n");
-
-    // -- in this code, we are only interested in IRQ really, but I included FIQs anyway
-//    ivt->irqInterruptTarget = ivt->fiqInterruptTarget = (uint32_t)IRQTarget;
-
-    SerialPutS("Interrupt Vector Table is set up\n");
+    MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
 }
 
 
@@ -257,9 +199,6 @@ extern "C" void TimerMain(void)
 
     // -- quickly initialize the serial port for debugging purposes
     SerialInit();
-
-    // -- now, set up the interrupt vector table
-    InterruptVectorInit();
 
     // -- for good measure, disable the FIQ
     MmioWrite(INT_FIQCONTROL, 0x0);
@@ -275,7 +214,7 @@ extern "C" void TimerMain(void)
     MmioWrite(TMR_BASE + 0x40, 0x00000002);         // select as IRQ for core 0
     MmioWrite(TMR_BASE + 0x60, 0x00000002);         // enable IRQs from the core for this CPU
     MmioWrite(TMR_BASE + 0x70, 0x00000000);         // force disable FIQ for all sources
-    MmioWrite(TMR_BASE + 0x34, 0x1000 | (1<<28) | (1<<29));  // set up the counter for the timer and start it
+    MmioWrite(TMR_BASE + 0x34, (1<<21) | (1<<28) | (1<<29));  // set up the counter for the timer and start it
     MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
     MmioWrite(TMR_BASE + 0x24, 0x00000000);         // local timer goes to core 0 IRQ
 
@@ -284,6 +223,7 @@ extern "C" void TimerMain(void)
 
     SerialPutS("Ready to enable interrupts!\n");
     SerialPutS("This is the system configuration:\n");
+    SerialPutS("The processor mode is: "); SerialPutHex(GetMode()); SerialPutChar('\n');
     SerialPutS("  VBAR: "); SerialPutHex(GetVBAR()); SerialPutChar('\n');
     SerialPutS("  SCTLR.V: "); SerialPutS(GetSCTLR() & (1<<13) ? "set\n" : "clear\n");
     SerialPutS("  The code at VBAR[0] is: "); SerialPutHex(((uint32_t *)GetVBAR())[0]); SerialPutChar('\n');
@@ -296,11 +236,9 @@ extern "C" void TimerMain(void)
     SerialPutS("  The code at VBAR[7] is: "); SerialPutHex(((uint32_t *)GetVBAR())[7]); SerialPutChar('\n');
     SerialPutS("  The code at VBAR[8] is: "); SerialPutHex(((uint32_t *)GetVBAR())[8]); SerialPutChar('\n');
     SerialPutS("  The code at VBAR[9] is: "); SerialPutHex(((uint32_t *)GetVBAR())[9]); SerialPutChar('\n');
-    SerialPutS("  The Basic Interrupt register is : "); SerialPutHex(MmioRead(INT_IRQDIS0)); SerialPutChar('\n');
+    SerialPutS("  The Basic Interrupt register is: "); SerialPutHex(MmioRead(INT_IRQDIS0)); SerialPutChar('\n');
 
-//    IvtFunc();                      // This is an explicit jump to the start of the Interrupt Vectors -- works
-    Undef();                        // This will generate an undefined exception -- does not work
-//    EnableInterrupts();             // This enables interrupts and the timer should start firing -- does not work
+    EnableInterrupts();             // This enables interrupts and the timer should start firing -- does not work
 
     SerialPutS("Timer is initialized -- interrupts should be happening\n");
 
@@ -308,6 +246,8 @@ extern "C" void TimerMain(void)
         for (volatile int j = 0; j < 1000000; j ++) { }
         SerialPutS("The timer value is: "); SerialPutHex(MmioRead(TMR_BASE + 0x1c)); SerialPutChar('\n');
     }
+
+//    DisableInterrupts();            // cap the duration of the test
 
     while(1) {}
 }

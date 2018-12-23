@@ -37,7 +37,28 @@
 @@    This code is lifted from the ARM Cortex A-Series Version 4.0 programmer's Guide (Example 13-5).
 @@    ---------------------------------------------------------------------------------------------------------------
 _start:
-    cps     #0x13                       @@ switch to svc mode, ensure we have a stack for the kernel
+    mrs     r0,cpsr                     @@ get the current program status register
+    and     r0,#0x1f                    @@ and mask out the mode bits
+    cmp     r0,#0x1a                    @@ are we in hyp mode?
+    beq     hyp                         @@ if we are in hyp mode, go to that section
+    cpsid   iaf,#0x13                   @@ if not switch to svc mode, ensure we have a stack for the kernel; no ints
+    b       cont                        @@ and then jump to set up the stack
+
+@@ -- from here we are in hyp mode so we need to exception return to the svc mode
+hyp:
+    mrs     r0,cpsr                     @@ get the cpsr again
+    and     r0,#~0x1f                   @@ clear the mode bits
+    orr     r0,#0x013                   @@ set the mode for svc
+    orr     r0,#1<<6|1<<7|1<<8          @@ disable interrupts as well
+    msr     spsr_cxsf,r0                @@ and save that in the spsr
+
+    ldr     r0,=cont                    @@ get the address where we continue
+    msr     elr_hyp,r0                  @@ store that in the elr register
+
+    eret                                @@ this is an exception return
+
+@@ -- everyone continues from here
+cont:
     mov     sp,#0x8000                  @@ set up a stack
 
     mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
@@ -54,7 +75,7 @@ wait_loop:
 @@ -- This is the code for CPU @@0 to execute
 @@    --------------------------------------
 initialize:
-    mov     r0,#0x100000                @@ The location of the vector base address register (1MB)
+    ldr     r0,=IVT                     @@ The location of the vector base address register (1MB)
     mcr     p15,0,r0,c12,c0,0           @@ Write this location to the Vector Base Address Register
 
     bl      TimerMain                   @@ go to the main C program
@@ -71,9 +92,12 @@ Dummy:
     mov     pc,lr                       @@ quick return
 
 IvtFunc:
-    mov     r0,#0x100000                @@ The location of the vector base address register (1MB)
+    ldr     r0,=IVT                     @@ The location of the vector base address register (1MB)
     mov     pc,r0                       @@ and jump to that location
 
+
+
+.align      5                           @@ align to 2^5 or 32 bytes
 IVT:
     nop                                 @@ reset vector -- skip to the next instruction
     nop                                 @@ undefined vector -- skip to the next instruction
