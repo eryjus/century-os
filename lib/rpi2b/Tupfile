@@ -17,8 +17,8 @@
 ## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
-#AR = armv7-rpi2-linux-gnueabihf-ar
-AR = arm-eabi-ar
+AR = armv7-rpi2-linux-gnueabihf-ar
+#AR = arm-eabi-ar
 
 include_rules
 

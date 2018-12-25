@@ -6169,4 +6169,24 @@ I think I am going to have to come to terms with the fact that qemu just does no
 
 At the same time, I am going to use a tool mrvn has released called `raspbootin`, which will allow a serial connection and load the kernel directly.  This should save a significant number of write cycles on the microSD drive.
 
+---
+
+### 2018-Dec-25
+
+I have spent the better part of 2 days now getting my laptop configured to build the tools I need.  I really need to be able to automate this a bit, since there are several bits that are fragile.  But this is not a task for today.  For this, I created a new project in Redmine: http://eryjus.ddns.net:3000/projects/create-an-system-setup-for-century-os.
+
+I am nearly at the point where I can compile `raspbootin`.  This project was built about 5 years ago and certainly on a compiler version that is older than I am building now.  I am building version 8.2.0 of gcc.  According to this web site, if mrvn was using the latest compiler when this was written, he would have been building with version 4.7.2: https://gcc.gnu.org/releases.html.  I may need a cross-compiler just for this project.  And that is just what needs to happen. 
+
+`ct-ng` only has default options available through version 4.9.4.  I'm either going to have to give this a try or manually build the toolchain.  I think I am going to give 4.9.4 a try.  That did not work either....
+
+So, now I am left with a task to clean up and re-write/re-set the raspboot code to C (not C++).  I do have a few things to sort out today as well:
+* I need to build the `i686-elf-*` toolchain.
+* I need to clean up the 'rpi_in' and 'rpi' versions of the toolchain.
+* Backups are not working and I need a good hard cleanup.
+* I need to rewrite the raspbootin server portion to C.
+
+Not necessarily in that order....
+
+
+
 

@@ -17,10 +17,10 @@
 ## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
-#LD = armv7-rpi2-linux-gnueabihf-ld
-#OC = armv7-rpi2-linux-gnueabihf-objcopy
-LD = arm-eabi-ld
-OC = arm-eabi-objcopy
+LD = armv7-rpi2-linux-gnueabihf-ld
+OC = armv7-rpi2-linux-gnueabihf-objcopy
+#LD = arm-eabi-ld
+#OC = arm-eabi-objcopy
 
 include_rules
 

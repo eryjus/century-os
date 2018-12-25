@@ -18,10 +18,10 @@
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
 MOD = kernel
-#CC = armv7-rpi2-linux-gnueabihf-gcc
-#AS = armv7-rpi2-linux-gnueabihf-as
-CC = arm-eabi-gcc
-AS = arm-eabi-as
+CC = armv7-rpi2-linux-gnueabihf-gcc
+AS = armv7-rpi2-linux-gnueabihf-as
+#CC = arm-eabi-gcc
+#AS = arm-eabi-as
 
 include_rules
 
