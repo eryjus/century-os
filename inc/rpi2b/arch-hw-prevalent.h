@@ -4187,3 +4187,7 @@
 #define UARTTDR_TDR         (0x7ff)                     // Written to FIFO when ITCR1=1
 
 
+
+
+#define TMR_BASE (HW_BASE + 0x01000000)
+

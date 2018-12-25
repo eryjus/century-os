@@ -48,35 +48,35 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-	global	kMemSetW
+    global    kMemSetW
 
 
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
-section .text
-cpu		586
+section     .text
+cpu         586
 
 
 ;;
 ;; -- Clear or set a block of memory to the specified value
 ;;    -----------------------------------------------------
 kMemSetW:
-	push	ebp						                        ;; create a frame
-	mov		ebp,esp					                        ;; ... create a frame
-	push	eax						                        ;; save eax
-	push	ecx						                        ;; save ecx
-	push	edi						                        ;; save edi
+    push    ebp                                                 ;; create a frame
+    mov     ebp,esp                                             ;; ... create a frame
+    push    eax                                                 ;; save eax
+    push    ecx                                                 ;; save ecx
+    push    edi                                                 ;; save edi
 
-	mov		eax,[ebp+8]				                        ;; get the memory location to set
-	mov		edi,eax					                        ;; and put it in edi
-	mov		ecx,[ebp+16]			                        ;; get the number of bytes to set
-	mov		ax,[ebp+12]				                        ;; get the word to set
-	cld								                        ;; make sure we are incrementing
-	rep		stosw					                        ;; store the word
+    mov     eax,[ebp+8]                                         ;; get the memory location to set
+    mov     edi,eax                                             ;; and put it in edi
+    mov     ecx,[ebp+16]                                        ;; get the number of bytes to set
+    mov     ax,[ebp+12]                                         ;; get the word to set
+    cld                                                         ;; make sure we are incrementing
+    rep     stosw                                               ;; store the word
 
-	pop		edi						                        ;; restore edi
-	pop		ecx						                        ;; restore ecx
-	pop		eax						                        ;; restore eax
-	pop		ebp						                        ;; restore previous frame
-	ret
+    pop     edi                                                 ;; restore edi
+    pop     ecx                                                 ;; restore ecx
+    pop     eax                                                 ;; restore eax
+    pop     ebp                                                 ;; restore previous frame
+    ret

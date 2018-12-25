@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  Tupfile -- An alternative to the 'make' build system -- i686 libc objects
+##  Tupfile -- An alternative to the 'make' build system -- rpi2b libc objects
 ##
 ##        Copyright (c)  2017-2018 -- Adam Clark
 ##
@@ -18,7 +18,8 @@
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
 MOD = libc
-CC = armv7-rpi2-linux-gnueabihf-gcc
+#CC = armv7-rpi2-linux-gnueabihf-gcc
+CC = arm-eabi-gcc
 
 include_rules
 

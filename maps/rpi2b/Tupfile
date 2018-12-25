@@ -17,7 +17,8 @@
 ## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
-DUMP = armv7-rpi2-linux-gnueabihf-objdump
+#DUMP = armv7-rpi2-linux-gnueabihf-objdump
+DUMP = arm-eabi-objdump
 
 include_rules
 

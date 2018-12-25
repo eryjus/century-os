@@ -65,6 +65,7 @@ void ProcessInit(void)
     // -- These are legal without a lock because interrupts are still disabled
     procs[PID_IDLE] = &idleProcess;
     ListAddTail(&procIdlePtyList, &idleProcess.stsQueue);
+    kprintf("Idle Process initialized\n");
 
 
     //
@@ -80,5 +81,7 @@ void ProcessInit(void)
     ListAddTail(&procOsPtyList, &butler.stsQueue);
 
     procs[PID_BUTLER] = &butler;
+
     currentPID = PID_BUTLER;
+    kprintf("Butler Process initialized\n");
 }

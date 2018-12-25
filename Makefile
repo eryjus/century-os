@@ -91,7 +91,7 @@ bochs-i686: i686-iso
 
 
 debug-i686: i686-iso
-	qemu-system-i386 -m 3584 -serial stdio -cdrom iso/i686.iso -s -S
+	qemu-system-i386 -m 3584 -serial mon:stdio -cdrom iso/i686.iso -S
 
 
 x86_64-iso: all
@@ -151,9 +151,9 @@ rpi2b-iso: all
 
 
 run-rpi2b: rpi2b-iso
-	qemu-system-arm -m 256 -M raspi2 -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
 
 
 debug-rpi2b: rpi2b-iso
-	qemu-system-arm -m 256 -M raspi2 -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -S
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -S
 

@@ -54,6 +54,8 @@ void IdtBuild(void)
 {
     IdtSetAddr();
 
+    kprintf("Mode is: %x\n", GetMode());
+
     exceptVect->reset = IVEC_JUMP_ASM;
     exceptVect->undefined = IVEC_JUMP_ASM;
     exceptVect->supervisorCall = IVEC_JUMP_ASM;

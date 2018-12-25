@@ -24,6 +24,7 @@
 //    ------------------------------------
 void SerialPutChar(char byte)
 {
+    if (byte == '\n') SerialPutChar('\r');
     while ((MmioRead(UART_BASE + UART_FR) & UARTFR_TXFF) != 0) { }
 
     MmioWrite(UART_BASE + UART_DR, byte);

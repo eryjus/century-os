@@ -45,36 +45,38 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-	global	kMemMove
+    global  kMemMove
 
 
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
-section .text
-cpu		586
+section     .text
+cpu         586
 
 
 ;;
 ;; -- Copy a block of memory to a new location
 ;;    ----------------------------------------
 kMemMove:
-	push	ebp						                        ;; create a frame
-	mov		ebp,esp					                        ;; ... create a frame
-	push	eax						                        ;; save eax
-	push	ecx						                        ;; save ecx
-	push	edi						                        ;; save edi
+    push    ebp                                                 ;; create a frame
+    mov     ebp,esp                                             ;; ... create a frame
+    push    eax                                                 ;; save eax
+    push    ecx                                                 ;; save ecx
+    push    esi                                                 ;; save esi
+    push    edi                                                 ;; save edi
 
-	mov		eax,[ebp+8]				                        ;; get the memory location to copy
-	mov		edi,eax					                        ;; and put it in edi
-	mov		ecx,[ebp+16]			                        ;; get the number of bytes to copy
-	mov		eax,[ebp+12]			                        ;; get the source memory location
-	mov		esi,eax					                        ;; and put it in esi
-	cld								                        ;; make sure we are incrementing
-	rep		movsb					                        ;; copy the bytes
+    mov     eax,[ebp+8]                                         ;; get the memory location to copy
+    mov     edi,eax                                             ;; and put it in edi
+    mov     ecx,[ebp+16]                                        ;; get the number of bytes to copy
+    mov     eax,[ebp+12]                                        ;; get the source memory location
+    mov     esi,eax                                             ;; and put it in esi
+    cld                                                         ;; make sure we are incrementing
+    rep     movsb                                               ;; copy the bytes
 
-	pop		edi						                        ;; restore edi
-	pop		ecx						                        ;; restore ecx
-	pop		eax						                        ;; restore eax
-	pop		ebp						                        ;; restore previous frame
-	ret
+    pop     edi                                                 ;; restore edi
+    pop     esi                                                 ;; restore esi
+    pop     ecx                                                 ;; restore ecx
+    pop     eax                                                 ;; restore eax
+    pop     ebp                                                 ;; restore previous frame
+    ret

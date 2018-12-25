@@ -18,6 +18,7 @@
 #include "types.h"
 #include "cpu.h"
 #include "printf.h"
+#include "hw-kernel.h"
 #include "timer.h"
 
 
@@ -26,6 +27,5 @@
 //    --------------------------
 void TimerEoi(UNUSED(uint32_t irq))
 {
-    kprintf("Issue the proper EOI for rpi2b here\n");
-    Halt();
+    MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
 }

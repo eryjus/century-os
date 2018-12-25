@@ -5992,4 +5992,181 @@ Now, I want to try to get the interrupts to fire at about 100/second (x86 is set
 
 I now have the timer firing at a resaonable rate.  I might need to tune that a bit later, but at the moement the hardware for `rpi-timer` is working properly.  Now to commit this code and then switch back over to the timer on qemu.
 
+---
+
+OK, I have some sorting out to do...  In the middle of all this I broke the rpi2b build and the i686 build.  rpi2b has no valid loader and i686 triple faults on jumping to the kernel.  I believe my problem is going to be in `Tuprules.tup`, but I'm not sure.
+
+OK, so the problem with the rpi2b not running was that the page size when linking was set to be too large.  Changing that resolved that problem.  Now for the reason the i686 triple faults...
+
+---
+
+So, for the i686, I did find a bug in my `kMemMove()` function.  This has not changed in some time and I am wondering how it never surfaced??!!
+
+I still have a problem with a page fault in the kernel which I need to fix....  And this looks like an address for the rpi2b!  What was I thinking???
+
+Once I found that, it was also an easy fix.  So, where do I stand now?
+* i686 is functioning again
+* rpi2b boots and dies with an undefined instruction
+
+So, I will go find that and clean it up as well.  Well, the fault is coming out of `ProcessInit()` or the results of `ProcessInit()`:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Undefined Instruction:
+At address: 0x80031f78
+ R0: 0x00009c0c   R1: 0x800321c0   R2: 0x80032200
+ R3: 0x00000000   R4: 0x80032140   R5: 0x00000001
+ R6: 0x00000000   R7: 0x00000000   R8: 0x00000000
+ R9: 0x0011c000  R10: 0x0002d207  R11: 0x00028668
+R12: 0x80069c0c   SP: 0x800029bc   LR_ret: 0x800029e0
+SPSR_ret: 0x600001d3     type: 0x1b
+```
+
+...  or maybe not....
+
+Something is not right....  I am still getting the undefined instruction and I think I'm running off to nowhere...  With this code:
+
+```C
+    kprintf("Initializing the butler lists\n");
+    ListInit(&butler.stsQueue);
+    butler.lockList.lock = {0};
+    butler.messages.lock = {0};
+    ListInit(&butler.lockList.list);
+    ListInit(&butler.messages.list);
+```
+
+... I get this result:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Attempting to initialize the idle and butler processes
+Idle Process initialized
+Initializing the butler lists
+Undefined Instruction:
+At address: 0x80031f70
+ R0: 0x0000001e   R1: 0x800321c0   R2: 0xf2201000
+ R3: 0x800058e2   R4: 0x80032111   R5: 0x800320c0
+ R6: 0x80049c0c   R7: 0x00000001   R8: 0x00000000
+ R9: 0x0011c000  R10: 0x0002d207  R11: 0x00028668
+R12: 0xff000000   SP: 0x80002a1c   LR_ret: 0x80002a20
+SPSR_ret: 0x600001d3     type: 0x1b
+
+Additional Data Points:
+User LR: 0x00000000  User SP: 0x00000000
+Svc LR: 0x80031f80
+```
+
+Then when I add some additional code to determine which line is creating the problem, such as this:
+
+```C
+    kprintf("Initializing the butler lists\n");
+    ListInit(&butler.stsQueue);
+    kprintf("a");
+    butler.lockList.lock = {0};
+    kprintf("b");
+    butler.messages.lock = {0};
+    kprintf("c");
+    ListInit(&butler.lockList.list);
+    kprintf("d");
+    ListInit(&butler.messages.list);
+```
+
+... I get this result:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Undefined Instruction:
+At address: 0x80031f70
+ R0: 0x00005870   R1: 0xfb009c50   R2: 0x00000325
+ R3: 0x00000002   R4: 0x00002140   R5: 0x00000000
+ R6: 0x00000000   R7: 0x00000000   R8: 0x00000000
+ R9: 0x0011c000  R10: 0x0002d207  R11: 0x00028668
+R12: 0xfb00a140   SP: 0x800040f4   LR_ret: 0x8000291c
+SPSR_ret: 0x600001d3     type: 0x1b
+
+Additional Data Points:
+User LR: 0x00000000  User SP: 0x00000000
+Svc LR: 0x80031f80
+```
+
+... where the line about Initializing the butler lists is missing.  So, it's a qemu log again:
+
+```
+IN:
+0x8000290c:  e3050870  movw     r0, #0x5870
+0x80002910:  e92d41f0  push     {r4, r5, r6, r7, r8, lr}
+0x80002914:  e3024140  movw     r4, #0x2140
+0x80002918:  ed2d8b02  vpush    {d8}
+
+R00=00000000 R01=fb009c50 R02=00000325 R03=00000002
+R04=80032218 R05=00000000 R06=00000000 R07=00000000
+R08=00000000 R09=0011c000 R10=0002d207 R11=00028668
+R12=fb00a140 R13=80031fd8 R14=800040f4 R15=8000290c
+PSR=600001d3 -ZC- A NS svc32
+Taking exception 1 [Undefined Instruction]
+...from EL1 to EL1
+...with ESR 0x7/0x1fe0000a
+```
+
+Notice the `vpush` instruction.
+
+---
+
+I was able to determine that this is a cross-compiler problem.  Not only that but the cross-compiler for qemu needs to be configured differently than the cross-compiler for the real rpi2b hardware.  This means I will have to set up a new architecture for qemu.  This task I am going to add to Redmine to address later and move on to get the timer working properly (http://eryjus.ddns.net:3000/issues/373).
+
+At this point, I am past the timer initialization and I am getting a Data Exception as a result:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Idle Process initialized
+Butler Process initialized
+Setting the scalar value to 0x25800 for frequency 0xfa
+IsrHandler registered
+Timer is initialized
+Data Exception:
+At address: 0x80030f70
+ R0: 0x80033000   R1: 0x00000000   R2: 0x00000001
+ R3: 0x802000cc   R4: 0x80034000   R5: 0xd0000000
+ R6: 0x80043000   R7: 0x80031000   R8: 0x00000000
+ R9: 0x0011b000  R10: 0x0002d207  R11: 0x00028668
+R12: 0x30200000   SP: 0x80000e10   LR_ret: 0x80001e94
+SPSR_ret: 0x80000113     type: 0x17
+
+Additional Data Points:
+User LR: 0x00000000  User SP: 0x00000000
+Svc LR: 0x80030f80
+```
+
+This Data Exception is happening in `MmuUnmapPage()`:
+
+```
+80001e88 <_Z12MmuUnmapPagem>:
+80001e88:	e1a03620 	lsr	r3, r0, #12
+80001e8c:	e1a03103 	lsl	r3, r3, #2
+80001e90:	e2833102 	add	r3, r3, #-2147483648	; 0x80000000
+80001e94:	e5d30000 	ldrb	r0, [r3]
+80001e98:	e2100003 	ands	r0, r0, #3
+80001e9c:	13a02000 	movne	r2, #0
+80001ea0:	15930000 	ldrne	r0, [r3]
+80001ea4:	15832000 	strne	r2, [r3]
+80001ea8:	17f30650 	ubfxne	r0, r0, #12, #20
+80001eac:	e12fff1e 	bx	lr
+```
+
+---
+
+It dawned on me while I was away that the `MmuUnmapPage()` funtion call is from `HeapInit()`, which I am not debugging at the moment.  So, I am going to add a loop and some output to make sure that I am getting a timer emulated from qemu.  But, I am back at my original problem, in qemu the timer will not fire.
+
+Or maybe it is firing and I'm not able to determine the IRQ number.  Nope...  I would see it.
+
+---
+
+I think I am going to have to come to terms with the fact that qemu just does not cut it for an emulator for rpi2b.  I am going to have to work on real hardware.  In order to do that, I am going to have to move my development system to my laptop.  Which means I need to build a number of cross compilers.  I have used `ct-ng` to do this and the config files should be available to migrate over.  I will need to get a commit of those with the code and write some instructions for building each of the cross compilers anyway.
+
+At the same time, I am going to use a tool mrvn has released called `raspbootin`, which will allow a serial connection and load the kernel directly.  This should save a significant number of write cycles on the microSD drive.
+
 

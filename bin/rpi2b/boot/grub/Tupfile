@@ -24,16 +24,9 @@ include_rules
 ##
 ## -- Create the grub.cfg file
 ##    ------------------------
-##:   |>  echo   "multiboot /boot/loader.elf"                          > %o;      \
-##        echo   "module /boot/kernel.elf kernel"                     >> %o;      \
-##        echo   "boot"                                               >> %o;      \
-##    |> grub.cfg
-
-
-
-##
-## -- An alternative boot configuration to launch the timer test binary
-##    -----------------------------------------------------------------
-:   |>  echo   "multiboot /boot/rpi-timer.elf"                       > %o;      \
+:   |>  echo   "multiboot /boot/loader.elf"                          > %o;      \
+        echo   "module /boot/kernel.elf kernel"                     >> %o;      \
         echo   "boot"                                               >> %o;      \
     |> grub.cfg
+
+

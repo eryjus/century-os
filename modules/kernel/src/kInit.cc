@@ -70,6 +70,8 @@ uint16_t serialPort = 0x3f8;
 //    -------------------------------------------------------------------------
 void kInit(void)
 {
+    kprintf(".");
+
     //
     // -- Phase 1: Required by the processor to setup the proper state
     //             Greet the user from the kernel.
@@ -99,7 +101,7 @@ void kInit(void)
     TimerInit(250);
     EnableInterrupts();
     ProcessEnabled = true;
-    while(1) { if (MmioRead(0x40000034) & 0x80000000) kprintf("*"); }
+    while (1) {}
     HeapInit();
 
     // -- let the Pmm know we are putting it in-charge
