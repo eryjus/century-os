@@ -2,7 +2,7 @@
 //
 //  cpu.h -- Standard CPU functions
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -22,6 +22,18 @@
 
 
 #include "types.h"
+
+
+//
+// -- Write to a Memory Mapped I/O Register
+//    -------------------------------------
+inline void MmioWrite(uint32_t reg, uint32_t data) { *(volatile uint32_t *)reg = data; }
+
+
+//
+// -- Read from a Memory Mapped I/O Register
+//    --------------------------------------
+inline uint32_t MmioRead(uint32_t reg) { return *(volatile uint32_t *)reg; }
 
 
 //
@@ -88,18 +100,6 @@ extern "C" size_t kStrLen(const char *s);
 // -- Get the CPU capabilities list for CenturyOS
 //    -------------------------------------------
 void CpuGetCapabilities(void);
-
-
-//
-// -- Write to a Memory Mapped I/O Register
-//    -------------------------------------
-inline void MmioWrite(uint32_t reg, uint32_t data) { *(volatile uint32_t *)reg = data; }
-
-
-//
-// -- Read from a Memory Mapped I/O Register
-//    --------------------------------------
-inline uint32_t MmioRead(uint32_t reg) { return *(volatile uint32_t *)reg; }
 
 
 #endif

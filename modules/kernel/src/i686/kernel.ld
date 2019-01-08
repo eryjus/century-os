@@ -2,7 +2,7 @@
 /*                                                                                                                 */
 /*  kernel.ld -- This is the linker script for locating the sections in the target binary                          */
 /*                                                                                                                 */
-/*        Copyright (c)  2017-2018 -- Adam Clark                                                                   */
+/*        Copyright (c)  2017-2019 -- Adam Clark                                                                   */
 /*                                                                                                                 */
 /* --------------------------------------------------------------------------------------------------------------- */
 /*                                                                                                                 */
@@ -70,9 +70,11 @@ SECTIONS {
      * -- Allocate a stack
      *    ----------------
      */
+    . = ALIGN(4096);
     _stackStart = .;
     .stack : {
         *(.stack)
+        BYTE(1)
     }
     . = ALIGN(4096);
     _stackEnd = .;

@@ -2,7 +2,7 @@
 //
 //  FrameBufferClear.cc -- Clear the frame buffer, setting the contents to the bgcolor
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -19,6 +19,7 @@
 #include "types.h"
 #include "cpu.h"
 #include "hw-disc.h"
+#include "serial-loader.h"
 #include "fb.h"
 
 
@@ -33,6 +34,7 @@ void FrameBufferClear(void)
     size_t cnt = GetFrameBufferHeight() * GetFrameBufferWidth();
     uint16_t *b = (uint16_t *)GetFrameBufferAddr();
 
+    SerialPutS("Clearing starting at "); SerialPutHex((uint32_t)b); SerialPutChar('\n');
     kMemSetW(b, GetBgColor(), cnt);
 
     SetRowPos(0);

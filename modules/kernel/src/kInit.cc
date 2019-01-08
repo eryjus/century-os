@@ -2,7 +2,7 @@
 //
 //  kInit.cc -- Initialize the kernel structures
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -43,6 +43,7 @@
 #include "ipc.h"
 #include "pmm.h"
 #include "tss.h"
+#include "serial-kernel.h"
 #include "hw-kernel.h"
 
 
@@ -70,6 +71,7 @@ uint16_t serialPort = 0x3f8;
 //    -------------------------------------------------------------------------
 void kInit(void)
 {
+    SerialPutChar('#');
     kprintf(".");
 
     //

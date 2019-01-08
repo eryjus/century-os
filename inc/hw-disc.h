@@ -2,7 +2,7 @@
 //
 //  hw-disc.h -- Locally formatted copies of the multiboot information
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -130,7 +130,7 @@ typedef struct HardwareDiscovery_t {
     uint16_t fgColor;
     uint16_t rowPos;
     uint16_t colPos;
-} __attribute__((packed)) HardwareDiscovery_t;
+} /*__attribute__((packed))*/ HardwareDiscovery_t;
 
 
 //

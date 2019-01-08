@@ -2,7 +2,7 @@
 //
 //  PmmInit.cc -- Initialize the Physical Memory Manger's internal OS structure
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -37,7 +37,7 @@
 
 
 #ifndef DEBUG_PMM
-#   define DEBUG_PMM 0
+#   define DEBUG_PMM 1
 #endif
 
 
@@ -134,7 +134,7 @@ void PmmInit(void)
 #endif
 
     // -- Allocate the Frame Buffer
-    if ((ptrsize_t)GetFrameBufferAddr() < GetUpperMemLimit()) {
+    if ((ptrsize_t)GetFrameBufferAddr() < GetUpperMemLimit() && GetFrameBufferAddr()) {
         PmmAllocFrameRange(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), (1024 * 768 * 2) >> 12);
     }
 

@@ -2,7 +2,7 @@
 //
 //  arch-tss.h -- This is a dummy include file since the rpi2b has nothing like a tss
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //

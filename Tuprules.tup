@@ -2,7 +2,7 @@
 ##
 ##  Tuprules.tup -- These are the variables and macros needed to build century-os
 ##
-##        Copyright (c)  2017-2018 -- Adam Clark
+##        Copyright (c)  2017-2019 -- Adam Clark
 ##
 ## -----------------------------------------------------------------------------------------------------------------
 ##
@@ -41,8 +41,8 @@ ifneq ($(ARCH),rpi2b)
 CFLAGS += -mno-red-zone
 CFLAGS += -fpic
 else
-#CFLAGS += -march=armv7ve
 CFLAGS += -mcpu=cortex-a7
+CFLAGS += -marm
 endif
 
 CFLAGS += -I $(WS)/bin/$(ARCH)/usr/include

@@ -2,7 +2,7 @@
 //
 //  SerialPutChar.cc -- Write a single character to the UART Serial Port
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -26,7 +26,6 @@
 void SerialPutChar(char byte)
 {
     if (byte == '\n') SerialPutChar('\r');
-    while ((MmioRead(UART_BASE + UART_FR) & UARTFR_TXFF) != 0) { }
-
-    MmioWrite(UART_BASE + UART_DR, byte);
+    while ((MmioRead(AUX_MU_LSR_REG) & (1<<5)) == 0) { }
+    MmioWrite(AUX_MU_IO_REG, byte);
 }

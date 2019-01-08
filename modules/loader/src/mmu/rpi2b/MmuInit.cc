@@ -2,7 +2,7 @@
 //
 //  MmuInit.cc -- Initialize the Memory Management Unit for rpi2b
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -68,16 +68,18 @@ void MmuInit(void)
     SerialPutChar('\n');
 
     // -- Map the frame buffer
-    SerialPutS("Map FrameBuffer ");
-    SerialPutHex(PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()
-            + (GetFrameBufferPitch() * GetFrameBufferHeight())));
+    SerialPutS("Map FrameBuffer");
+
+    // -- when there is a partial frame, we need to get that adjusted here, before we call PmmLinearToFrame()
+    ptrsize_t fbEnd = (ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight());
+    if (fbEnd & 0xfff) fbEnd += 0x1000;
 
     for (f = PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), addr = FRAME_BUFFER_VADDR;
-            f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
-            f ++, addr += 0x1000) {
+            f < PmmLinearToFrame(fbEnd); f ++, addr += 0x1000) {
         SerialPutChar('.');
         MmuMapToFrame(ttl1, addr, f, true, false);
     }
+    SerialPutHex(f);
     SerialPutChar('\n');
 
     // -- need to identity-map the stack

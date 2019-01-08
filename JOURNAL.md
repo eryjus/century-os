@@ -6175,7 +6175,7 @@ At the same time, I am going to use a tool mrvn has released called `raspbootin`
 
 I have spent the better part of 2 days now getting my laptop configured to build the tools I need.  I really need to be able to automate this a bit, since there are several bits that are fragile.  But this is not a task for today.  For this, I created a new project in Redmine: http://eryjus.ddns.net:3000/projects/create-an-system-setup-for-century-os.
 
-I am nearly at the point where I can compile `raspbootin`.  This project was built about 5 years ago and certainly on a compiler version that is older than I am building now.  I am building version 8.2.0 of gcc.  According to this web site, if mrvn was using the latest compiler when this was written, he would have been building with version 4.7.2: https://gcc.gnu.org/releases.html.  I may need a cross-compiler just for this project.  And that is just what needs to happen. 
+I am nearly at the point where I can compile `raspbootin`.  This project was built about 5 years ago and certainly on a compiler version that is older than I am building now.  I am building version 8.2.0 of gcc.  According to this web site, if mrvn was using the latest compiler when this was written, he would have been building with version 4.7.2: https://gcc.gnu.org/releases.html.  I may need a cross-compiler just for this project.  And that is just what needs to happen.
 
 `ct-ng` only has default options available through version 4.9.4.  I'm either going to have to give this a try or manually build the toolchain.  I think I am going to give 4.9.4 a try.  That did not work either....
 
@@ -6187,6 +6187,442 @@ So, now I am left with a task to clean up and re-write/re-set the raspboot code 
 
 Not necessarily in that order....
 
+---
+
+OK, I have a build completing successfully.  And, I the i686 code is still executing in qemu.  So, now I need to change focus to boot loader for the RPi.  The problem here is that I am expecting my own loader to get the multiboot signature and start execiting at `0x100000`.  It would have loaded modules (such as the kernel and the pmm) that will need to be moved over to the loader as well.  At the same time, I need to be able to present the module info to the bootloader so that it can then present the same to OS loader.
+
+All this means is that I will not be able to just implement `raspbootin` as is.  I will need to derive my own solution using `raspbootin` as my roadmap.  This is technically not part of this OS and will be its own project.  Let me get that estiblished and I will come back here.  This will officially put this work on hold until I get the bootloader done.
+
+---
+
+### 2019-Jan-01
+
+Well, I have been working on the `pi-bootloader` application (https://github.com/eryjus/pi-bootloader) for a few days now and I have hit a snag that needs to be addressed in the loader.  In this loader, I have been using the PL011 UART because that is what was emulated to the screen for qemu.  Since qemu is out and I am struggling to get the PL011 UART programmed properly (and the `pi-bootloader` is using the mini-UART), I need to change the output in the loader to be the mini-UART.  I will need to update the kernel as well.
+
+So, I have the loader updated.  It should be outputting to the mini-UART at this point.  I copied the code from `pi-bootloader` so it should work.  Unfortunately, at this juncture, I have no way to test it independently to confirm.
+
+---
+
+At this point, I have everything sent to the rpi except the additional modules.  This includes the MBI structure.  From here, I will have to make modifications to both Century-OS and pi-bootloader to get this debugged.  Right now, it makes the most sense to track my work there in pi-bootloader, even though it will require changes to Century-OS to add debugging code.  The point here is that there should not be any changed to the overall logic in Century-OS, and if there are I will be documenting them here.
+
+---
+
+What the hell was this???
+
+```C
+//
+// -- A quick MACRO to help determine if a flag is set
+//    ------------------------------------------------
+#define CHECK_FLAG(f) ((mb1Data->flags != 0) && ((1<<f) != 0))
+```
+
+I mean, what the hell was I thinking?  I must have gotten all the flags I every wanted on x86 and therefore never thought twice about the crap in that macro.  I'm cleaning that up for sure.
+
+Now for the next thing.  I am getting something that is not working.  Either the pi stops producing output or the pi repeatedly outputs the same character.  I have put some debugging output in the memory map portion of the hardware discovery and I think I have determined that the location where I am putting the `hwDisc` structure on rpi2b is not real memory (which will also mean that the memory map is wrong).
+
+```C
+//            if (entry->mmapType == 1) AddAvailMem(entry->mmapAddr, entry->mmapLength);
+            SerialPutChar('a');
+            uint64_t newLimit = entry->mmapAddr + entry->mmapLength;
+            SerialPutChar('b');
+            if (newLimit > GetUpperMemLimit()) SetUpperMemLimit(newLimit);
+            SerialPutChar('c');
+            size -= (entry->mmapSize + 4);
+            SerialPutChar('d');
+            entry = (Mb1MmapEntry_t *)(((uint32_t)entry) + entry->mmapSize + 4);
+            SerialPutChar('e');
+```
+
+However, when I comment the line above I was able to get to checkpoint `b`; checkpoint `c` was never reached.  When I uncomment that line, I never see checkpoint `a`.  Since I do not have exceptions set up a this point in the code, I am likely going off into nowhere.
+
+Now, this all works for x86.  I have put the `hwDisc` structure at frame `0x3000` and limited it to 4K in length.  Both the line before checkpoint `a` and before checkpoint `c` are referencing this `hwDisc` structure.  Well, that's wrong.  This structure is built in local memory as `localHwDisc` and then copied to the target location of `0x3000` right before the kernel is booted.  Now, this might mean I have some initiailized space.
+
+Yeah, there is definitely something with `localHwDisc`, as I cannot even read the number of MMap Entries from the local table.  I will have to sort that out tomorrow -- I'm calling it for the night.
+
+---
+
+### 2019-Jan-02
+
+OK, I have had problem accessing data at address `0x0000` and `0x3000` from within the C programs.  I am not sure if I have had the same problems from asm, but I think I want to see what the resulting asm looks like for accessing the `localHwDisc` structure looks like.  At the point I am doing this, I expect that the stucture is in the `.bss` section and that might mean that I am not getting it cleared out properly.  Not completely sure here on this -- I don't know what I don't know yet.
+
+Hmmmm.... I have added an -O2 flag...  I wonder if that is creating the problem...  Interestingly, when I remove that flag, I get the following results:
+
+```
+Sending the Entry point as 10000c
+Waiting for the rpi to boot
+Bootin
+```
+
+The loader never actually launches or it loses the ability to send data to the mini-UART.  THe `-O1` option made no difference versus `-O2`, so that is not it.
+
+---
+
+OK, I do know I have an alignment problem.
+
+```
+  101efc:	8581a01d 	strhi	sl, [r1, #29]
+  101f00:	8581b021 	strhi	fp, [r1, #33]	; 0x21
+```
+
+This might be giving me some trouble.  A quick change without the `__attribute__((packed))` clause on the structure gave me this result (funny how qemu didn't emulate this either!):
+
+```
+'pi-bootloader' (hardware component) is loaded
+   Waiting for kernel and modules...
+Preparing to send century.cfg data
+File 1 size is 135168
+Notifying the RPi that 135168 bytes will be sent
+65536 of 65536 bytes were written
+56097 of 56097 bytes were written...
+1247 of 1247 bytes were writtennt)...
+4 of 4 bytes were writtentes sent)...
+12284 of 12284 bytes were written)...
+Sending kernel (135168 bytes sent)...
+Done
+Notifying the RPi that 144 bytes will be sent in the mbi
+Sending mbi...
+Done
+Sending the Entry point as 10000c
+Waiting for the rpi to boot
+BootinSerial port initialized!
+Found the mbi structure at 0x000fe000
+  The flags are: 0x00000048
+Module information present
+Setting memory map data
+  iterating in mmap - size is: 0x00000018
+    entry address is: 0x000fe078
+    entry type is: 0x00000001
+    entry base is: 0x00000000:0x00000000
+    entry length is: 0x00000000:0x3f000000
+    entry size is: 0x00000014
+  MMap Entry count is: 0x00000000
+abcdeMemory Map is complete
+Done parsing MB1 information
+PANIC: Unable to determine memory map; Century OS cannot initialize
+```
+
+This is better than crashing and locking up, but it is still technically not right since I do have a good memory map.  First I clean up some of my detailed debugging code (oh yeah, and uncomment the one commented line that would cause the memory map to be missing!).
+
+---
+
+Oh holy crap!!!  That actually worked up to the point where I needed to load the kernel.  This looks good for now.
+
+---
+
+### 2019-Jan-03
+
+This morning I have the kernel being recognized and the loader is trying to jump to the kernel.  However, it is not getting very far after that.  I am not completely sure, but I think there is a problem with the paging tables setup.  Once the kernel is mapped, I really should check `MmuDumpTables()` to make sure the address I want is properly set up.
+
+Back on 23-Dec, I was able to get past this point on qemu and get the kernel to take control.  So, there is likely something in the `pi-bootloader` application that is causing me some grief.  I need to dig in a bit to figure out what is going on.
+
+So, some debugging code in `ModuleInit()` and `LoaderMain()` give me this result:
+
+```
+Returning kernel entry point: 0x800043a4
+
+MmuDumpTables: Walking the page tables for address 0x800043a4
+Level  Tabl-Addr     Index        Entry Addr    Next PAddr    fault
+-----  ----------    ----------   ----------    ----------    -----
+TTL1   0x3e000000    0x00000800   0x3e002000    0x3e005000     01
+TTL2   0x3e005000    0x00000004   0x3e005010    0x00000127     10
+Preparing to enable paging
+Paging is enabled
+The instructions at that location are:
+.. 0xf1020013
+.. 0xe59fd008
+.. 0xebffff26
+.. 0xe320f003
+Jumping to the kernel
+```
+
+Comparing that the the kernel map, at `0x800043a4`, I get this:
+
+```
+800043a4 <_start>:
+800043a4:	f1020013 	cps	#19
+800043a8:	e59fd008 	ldr	sp, [pc, #8]	; 800043b8 <Halt+0x8>
+800043ac:	ebffff26 	bl	8000404c <kInit>
+
+800043b0 <Halt>:
+800043b0:	e320f003 	wfi
+800043b4:	eafffffd 	b	800043b0 <Halt>
+800043b8:	80038000 	andhi	r8, r3, r0
+```
+
+So these instructions match.  This is not a paging issue related to mapped pages.  The page is mapped and I can read the instructions at that location.  These instructions match what I am expecting.
+
+So, I guess now I am wondering if there are flags that are not set properly in the paging tables.  I cannot imagine this to be the case because the loader continues to execute without any faults.  Also, there might be a barrier that is set (trying to remember the register) that splits the kernel from the user TLB0 which is different from real hardware and qemu (which would not surprise me at all).
+
+Honestly, I suspect this function.  I remember reading something about domains being deprecated in the future and I should set them on a certain way -- I think it was domains anyway.  At any rate, I am setting up the TTLR0/1 registers the way I want and setting the number of bits to 0, so that is not relevant.  But the domains might be.
+
+```
+@@
+@@ -- Enable the MMU
+@@    --------------
+MmuEnablePaging:
+    mcr     p15,0,r0,c2,c0,0                @@ write the ttl1 table to the TTLR0 register
+    mcr     p15,0,r0,c2,c0,1                @@ write the ttl1 table to the TTLR1 register
+
+    mov     r0,#0                           @@ This is the number of bits to use to determine which table
+    mcr     p15,0,r0,c2,c0,2                @@ write these to the control register
+
+    mov     r0,#0xffffffff                  @@ All domains can access all things by default
+    mcr     p15,0,r0,c3,c0,0                @@ write these to the domain access register
+
+    mrc     p15,0,r0,c1,c0,0                @@ This gets the cp15 register 1 and puts it in r0
+    orr     r0,#1                           @@ set bit 0
+    mcr     p15,0,r0,c1,c0,0                @@ Put the cp15 register 1 back, with the MMU enabled
+
+    mov     pc,lr
+```
+
+---
+
+### 2019-Jan-04
+
+I am not able to find the location where the Domain was supposed to be deprecated.  I must have been mistaken.  In any event all tables are mapped to Domain 0 and that domain allows 'management' level access to the memory.  So this should not be a problem.
+
+So, I need to figure out a way to determine what is wrong.  Right now, I am not sure how I can do this....
+
+Ah hah!!  I think I am onto something...  The following is the line that jumps to the kernel:
+
+```
+100528:	e12fff34 	blx	r4
+```
+
+In reading the `blx` and the `bx` opcodes, the folling is the what the `blx` instruction will do:
+
+> Branch with Link and Exchange (register) calls a subroutine at an address and instruction set specified by a register.
+
+In particular, the `bx` instruction clarifies a bit more:
+
+> Branch with Link and Exchange Instruction Sets (immediate) calls a subroutine at a PC-relative address, and changes instruction set from ARM to Thumb, or from Thumb to ARM.
+
+So, the instruction set is being changes, meaning it is trying to execute invalid opcodes.  I am not sure what is causing this to happen in the C compiler, but I need to figure out how to change this behavior in the loader.
+
+Well, I changed both architectures to be a static jump to an address in a register and now both architectures break.
+
+---
+
+Well I had to download and build bochs on my laptop.  What a mess!  Anyway, I have a crash report:
+
+```
+00193580552i[CPU0  ] CPU is in protected mode (active)
+00193580552i[CPU0  ] CS.mode = 32 bit
+00193580552i[CPU0  ] SS.mode = 32 bit
+00193580552i[CPU0  ] EFER   = 0x00000000
+00193580552i[CPU0  ] | EAX=00000000  EBX=0011e498  ECX=00000000  EDX=000003f8
+00193580552i[CPU0  ] | ESP=00120f88  EBP=00001c00  ESI=001030ae  EDI=001030ad
+00193580552i[CPU0  ] | IOPL=0 ID vip vif ac vm RF nt of df if tf sf zf af pf cf
+00193580552i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00193580552i[CPU0  ] |  CS:0038( 0007| 0|  0) 00000000 ffffffff 1 1
+00193580552i[CPU0  ] |  DS:0040( 0008| 0|  0) 00000000 ffffffff 1 1
+00193580552i[CPU0  ] |  SS:0040( 0008| 0|  0) 00000000 ffffffff 1 1
+00193580552i[CPU0  ] |  ES:0040( 0008| 0|  0) 00000000 ffffffff 1 1
+00193580552i[CPU0  ] |  FS:0040( 0008| 0|  0) 00000000 ffffffff 1 1
+00193580552i[CPU0  ] |  GS:0040( 0008| 0|  0) 00000000 ffffffff 1 1
+00193580552i[CPU0  ] | EIP=0010088e (0010088e)
+00193580552i[CPU0  ] | CR0=0xe0000011 CR2=0x00001c01
+00193580552i[CPU0  ] | CR3=0x00001000 CR4=0x00000000
+(0).[193580552] [0x00000010088e] 0038:000000000010088e (unk. ctxt): movzx ecx, byte ptr ss:[ebp+1] ; 0fb64d01
+```
+
+Checking the `loader.map`, address `0x10088e` is in `MmuDumpTables()`.  I was able to trace that down to reading the wrong stack position.  i686 works now.
+
+For rpi2b, I am still in the same boat here.
+
+---
+
+### 2019-Jan-05
+
+So I have a couple of thoughts here....  I am most likely getting a fault of some sort, so I really should get an exception handler set up in the loader to be able to identify the exception.  Another thought is that I should be able to emulate what I have written so far on qemu and I can work to get that working there before going back to real hardware.  I have actually taken a step backwards with qemu (meaning the timer was the only thing I am finding is not emulated the way I need).
+
+I think I am going to go with the qemu option first -- I have access to more tools with qemu and will get farther faster.
+
+---
+
+OK with a little effort I was finally able to get qemu working so that I could get an exception printed:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Data Exception:
+At address: 0x80038f8c
+ R0: 0x00004208   R1: 0xfb000010   R2: 0x00000000
+ R3: 0xfb000002   R4: 0x00003330   R5: 0x800060bc
+ R6: 0x800060cb   R7: 0x00003000   R8: 0x00000000
+ R9: 0x00122000  R10: 0x000287e7  R11: 0x000254cc
+R12: 0xfb000000   SP: 0x00003332   LR_ret: 0x80000234
+SPSR_ret: 0x600001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0x00000000  User SP: 0x00000000
+Svc LR: 0x80038f9c
+```
+
+So, the instruction that is generating the fault is `0x80000234`.  This is actually trying to draw on the frame buffer.  Ahhh..  but the other thing is that I am getting serial output in qemu from the kernel and not for the loader.  I should not be getting *any* serial output from qemu.  So, I am really getting farther than I thought on real hardware.  So, I think I know what I need to do:
+1. get the frame buffer sorted out in `pi-bootloader`
+1. change the serial output to be to the mini-UART in the kernel
+
+Finally a plan of action!!  Sometimes things just don't make sense until you figure them out.
+
+Now, as a note to self: I still do not appear to be able to build an image for rpi on this laptop.
+
+Cleaning up the serial port output reviels the same exception: a Data Abort trying to update the screen.
+
+Now to clean up the frame buffer info....
+
+---
+
+OK, now I have this cleaned up and I am ablt to boot and get into `ProcessInit()`.  I am at least executing my kernel now, which is good.  I want to be able to check the video output as well....  Unfortunately, no video output.  This will need to be the next thing I tackle -- I need to make sure video works.  First to tackle the loader's video output.
+
+---
+
+I'm doing a lot of looking and not a lot of finding.  I think I am going to look at `rpi-boot` to see if I can get the proper output on the screen.  If so, I will use that as a template to pull the info I need.  Actually, `rpi-boot` is not working either.  No screen output.
+
+I think I am going to have to go to the Raspbian source to figure out how this is initialized.
+
+Hmmm... `lk` uses this calculation to convert ARM addresses to VC addresses:
+
+```
+(uint32_t)((kvaddr & 0x3fffffff)+0xc0000000)
+```
+
+---
+
+Ok, it's time for a purpose-built test to be able to write to the screen.  There are some tutorials from Baking Pi (https://www.cl.cam.ac.uk/projects/raspberrypi/tutorials/os/) that can be used to test.
+
+---
+
+### 2019-Jan-06
+
+OK, I think I have something I can use to move this whole screen thing forward.  I found the following documentation: https://github.com/raspberrypi/firmware/wiki.  This wiki, and in particular this page (https://github.com/raspberrypi/firmware/wiki/Mailbox-framebuffer-interface) states:
+
+> **NOTE: This particular Mailbox call is deprecated, and not guaranteed to work as expected.**
+
+Since I have the latest firmware, I wholely expect that this is broken now and my examples are not yet updated.  Unfortunately, this page just states that the interface is deprecated; it does not grace us with the knowledge that it is deprecated in favors of what other feature.  Genius!
+
+Well, with a little digging, I did manage to come up with the following ARM->VC mailbox which should still work.  It still have the framebuffer interfacing which has not been called out as deprecated (https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface#frame-buffer).  This at least gives me a place to start coding.  Keep in mind, I am working on a purpose-built example to write to the physical screen.
+
+---
+
+I'm still having a hell of a time here.  I looked into lk (https://github.com/littlekernel/lk), and it appears to try to init the framebuffer.  I'm going to try to compile it and test on hardware to see what happens.
+
+---
+
+Well, that is not going to work out like I wanted it to:
+
+```
+Discarded input sections
+
+ .text          0x0000000000000000        0x0 ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.gpio_config
+                0x0000000000000000       0x48 ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.gpio_set
+                0x0000000000000000       0x28 ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.gpio_get
+                0x0000000000000000       0x1c ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.mask_interrupt
+                0x0000000000000000       0xc0 ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.init_framebuffer
+                0x0000000000000000       0xc8 ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.dispflush
+                0x0000000000000000        0x4 ./build-rpi2-test/platform/bcm28xx.mod.o
+ .text.display_get_framebuffer
+                0x0000000000000000       0x3c ./build-rpi2-test/platform/bcm28xx.mod.o
+```
+
+... since the function in question never make the final binary!
+
+---
+
+I'm done with this for the night.  I will need to get into raspbian and do a deep trace through that code.  I don't have that in me tonight.
+
+---
+
+### 2019-Jan-07
+
+So I read something today that the BCM2708 and BCM2835 are the same SoC, except the 2835 has RAM on-chip meaning is a complete SoC.  This is significant since I have been ignoring anything with the BCM2708 moniker as not being what I am looking for.  However, when looking through the Raspbian source today, this came up as the only BCM video supported.  A little Googleage and it seems like they are the same.
+
+The defaults for Raspbian for the framebuffer configuration is to ask for 800 bits wide X 400 bits high X 32 bits deep.  It's not my desired config, but I just want *something*.  I will reset to give that a try.
+
+---
+
+OK, progress!!!  With my purpose-built test, I was able to actually get a real value for the framebuffer size:
+
+```
+Booting...
+Getting the current width/height of the frame buffer
+Sending...
+Receiving...
+.. The width is reported 0x00000720
+.. The height is reported 0x000003d8
+Getting the current depth of the frame buffer
+Sending...
+Receiving...
+.. The depth is reported 0x00000010
+Getting the current pixel order of the frame buffer
+Sending...
+Receiving...
+.. The pixel order is reported 0x00000000
+Getting the current alpha mode of the frame buffer
+Sending...
+Receiving...
+.. The alpha mode is reported 0x00000000
+Getting the current pitch of the frame buffer
+Sending...
+Receiving...
+.. The pitch is reported 0x00000020
+Setting up message to get the virtual FB size
+Sending...
+Receiving...
+.. The frame buffer is reported to be at 0xcf8c3000
+.. The frame buffer is 0x00138800 bytes long
+```
+
+Anyway, I am still not getting anything on the screen.  I believe that this is because I need to adjust the buffer location.  I believe I need to add `0x40000000` to the frame buffer address to get to the real ARM address. Which works out to be `0xcf8c3000 + 0x40000000 = 0x0f8c3000` in my example.
+
+---
+
+Stupid pointer arithmetic!!
+
+I was doing this:
+
+```
+    uint32_t *fb = (uint32_t *)mbBuf[24] + 0x40000000;
+```
+
+The real code is this:
+
+```
+    uint32_t *fb = (uint32_t *)(mbBuf[24] + 0x40000000);
+```
+
+Notice the need for the parenthesis!!  I finally have output on the screen.
+
+First change: can I get the color depth I am looking for?  16 bits....  I think that worked.  The buffer size is half as big:
+
+```
+.. The frame buffer is reported to be at 0xcf95f000
+.. The frame buffer is 0x0009c400 bytes long
+```
+
+Now, my preference is 1024 X 768.  I think I might be pushing my luck there, but I have to try.  Well, I got output.  But I also got some odd results.  The screen appeared to be pinned to the top and clipped on either side.  The geometry works out that there is no partial lines written...  so I cannot be sure.  But the key oddity for me is the buffer location:
+
+```
+.. The frame buffer is reported to be at 0x00000000
+.. The frame buffer is 0x00180000 bytes long
+```
+
+If I add `0x40000000`, I get the location of the timer and BCM2836 extensions....  But I get pixels on the screen....
+
+I think I need to stick with the 800 X 400 screen for now.
+
+Finally, the last change that I had to make which is worth mentioning is that I am putting several tags in the mailbox at once rather than once at a time.  This may have also been a key change since the same settings did not work when I did them individually.  Now to move the changes into the kernel.
+
+OK, with that, I did end up with a problem where clearing the screen from the kernel created a Data Exception before the screen was cleared.  Here's the breakdown of that problem: 800 pixels (bytes) wide by 400 pixels (bytes) high by 2 bytes (16 bits) deep is 800 X 400 X 2 or 640000 bytes or 0x9c400 bytes.  Notice that the ending of the buffer is not frame aligned (like it would be with a 1024 X 768 X 2 display).  I had to change my calculation in `MmuInit()` for the frame buffer to be from `<` to `<=`.  This will create an extra frame mapped for the i686 architecture, so I am going to go fix that.
+
+This now puts me back to a problem with `ProcessInit()`.  I also need to commit my changes since I also tickled the (c) years for the new year.
 
 
 

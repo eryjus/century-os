@@ -2,7 +2,7 @@
 ;;
 ;;  RestoreInterrupts.s -- Restores Interrupts to the state passed in
 ;;
-;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Copyright (c)  2017-2019 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;

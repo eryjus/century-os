@@ -2,7 +2,7 @@
 //
 //  HeapCheckHealth.cc -- Check the health of the heap as we make changes
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //

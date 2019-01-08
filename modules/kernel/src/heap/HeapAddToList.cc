@@ -2,7 +2,7 @@
 //
 //  HeapAddToList.cc -- Add a new Ordered List Entry into the list in the proper place
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -28,7 +28,7 @@
 //    ------------------------------------------------
 void HeapAddToList(OrderedList_t *entry)
 {
-	OrderedList_t *wrk, *sav;
+	OrderedList_t *wrk, *sav = 0;
 	size_t size;
 
 	if (!entry) HeapError("NULL entry in HeapAddToList()", "");

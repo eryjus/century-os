@@ -2,7 +2,7 @@
 //
 //  mb1.c -- This is the parser for the Multiboot 1 information structure
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -153,7 +153,7 @@ MB1 *mb1Data = 0;
 //
 // -- A quick MACRO to help determine if a flag is set
 //    ------------------------------------------------
-#define CHECK_FLAG(f) ((mb1Data->flags != 0) && ((1<<f) != 0))
+#define CHECK_FLAG(f) (mb1Data->flags & (1<<f))
 
 
 //
@@ -163,6 +163,8 @@ void Mb1Parse(void)
 {
     if (!mb1Data) return;
 
+    SerialPutS("Found the mbi structure at "); SerialPutHex((uint32_t)mb1Data); SerialPutChar('\n');
+    SerialPutS("  The flags are: "); SerialPutHex(mb1Data->flags); SerialPutChar('\n');
 
     //
     // -- Check for basic memory information
@@ -186,6 +188,7 @@ void Mb1Parse(void)
     // -- Check for the command line -- we might have parameters to the loader
     //    --------------------------------------------------------------------
     if (CHECK_FLAG(2)) {
+        SerialPutS("Identifying command line information\n");
         SerialPutS((const char *)mb1Data->cmdLine);
         SerialPutS("\n");
     }
@@ -201,9 +204,10 @@ void Mb1Parse(void)
         SerialPutS("Module information present\n");
 
         for (m = (Mb1Mods_t *)mb1Data->modAddr, i = 0; i < mb1Data->modCount; i ++) {
-            SerialPutS("   Found Module: ");
-            SerialPutS(m[i].modIdent);
-            SerialPutS("\n");
+            SerialPutS("   Found Module: "); SerialPutS(m[i].modIdent); SerialPutChar('\n');
+            SerialPutS("    .. Name is at : 0x"); SerialPutHex((uint32_t)m[i].modIdent); SerialPutChar('\n');
+            SerialPutS("    .. Start: "); SerialPutHex(m[i].modStart); SerialPutChar('\n');
+            SerialPutS("    .. End: "); SerialPutHex(m[i].modEnd); SerialPutChar('\n');
             AddModule(m[i].modStart, m[i].modEnd, m[i].modIdent);
         }
     }
@@ -225,12 +229,22 @@ void Mb1Parse(void)
         uint32_t size = mb1Data->mmapLen;
         Mb1MmapEntry_t *entry = (Mb1MmapEntry_t *)mb1Data->mmapAddr;
         while (size) {
+            SerialPutS("  iterating in mmap - size is: "); SerialPutHex(size); SerialPutChar('\n');
+            SerialPutS("    entry address is: "); SerialPutHex((uint32_t)entry); SerialPutChar('\n');
+            SerialPutS("    entry type is: "); SerialPutHex(entry->mmapType); SerialPutChar('\n');
+            SerialPutS("    entry base is: "); SerialPutHex(entry->mmapAddr>>32); SerialPutChar(':'); SerialPutHex(entry->mmapAddr&0xffffffff); SerialPutChar('\n');
+            SerialPutS("    entry length is: "); SerialPutHex(entry->mmapLength>>32); SerialPutChar(':'); SerialPutHex(entry->mmapLength&0xffffffff); SerialPutChar('\n');
+            SerialPutS("    entry size is: "); SerialPutHex(entry->mmapSize); SerialPutChar('\n');
+            SerialPutS("  MMap Entry count is: "); SerialPutHex(GetMMapEntryCount()); SerialPutChar('\n');
+
             if (entry->mmapType == 1) AddAvailMem(entry->mmapAddr, entry->mmapLength);
             uint64_t newLimit = entry->mmapAddr + entry->mmapLength;
             if (newLimit > GetUpperMemLimit()) SetUpperMemLimit(newLimit);
             size -= (entry->mmapSize + 4);
             entry = (Mb1MmapEntry_t *)(((uint32_t)entry) + entry->mmapSize + 4);
         }
+
+        SerialPutS("Memory Map is complete\n");
     }
 
 
@@ -254,6 +268,7 @@ void Mb1Parse(void)
     // -- Check for the boot loader name
     //    ------------------------------
     if (CHECK_FLAG(9)) {
+        SerialPutS("Identifying bootloader\n");
         SerialPutS((const char *)mb1Data->bootLoaderName);
         SerialPutS("\n");
     }
@@ -280,6 +295,7 @@ void Mb1Parse(void)
     //    https://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
     //    ------------------------------------------------------------------
     if (CHECK_FLAG(12)) {
+        SerialPutS("Capturing framebuffer information\n");
         SetFrameBufferAddr((uint16_t *)mb1Data->framebufferAddr);
         SetFrameBufferPitch(mb1Data->framebufferPitch);
         SetFrameBufferWidth(mb1Data->framebufferWidth);
@@ -295,4 +311,6 @@ void Mb1Parse(void)
         SerialPutHex((ptrsize_t)mb1Data->framebufferHeight);
         SerialPutS("\n");
     }
+
+    SerialPutS("Done parsing MB1 information\n");
 }

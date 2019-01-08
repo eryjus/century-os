@@ -2,7 +2,7 @@
 //
 //  PmmNewFrame.cc -- Allocate a new frame from the system and initialize it to zeros
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -22,7 +22,7 @@
 
 
 #ifndef DEBUG_PMM
-#   define DEBUG_PMM 0
+#   define DEBUG_PMM 1
 #endif
 
 

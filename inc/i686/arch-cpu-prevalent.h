@@ -2,7 +2,7 @@
 //
 //  arch-cpu.h -- This file contains the definitions for setting up the Intel 32-bit CPUs
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //

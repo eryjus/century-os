@@ -2,7 +2,7 @@
 //
 //  mb2.c -- This is the parser for the Multiboot 1 information structure
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //

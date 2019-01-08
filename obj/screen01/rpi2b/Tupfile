@@ -1,0 +1,33 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to the 'make' build system -- rpi2b screen test 01
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2019-Jan-05  Initial   0.2.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = rpi2b
+MOD = screen01
+CC = armv7-rpi2-linux-gnueabihf-gcc
+AS = armv7-rpi2-linux-gnueabihf-as
+
+include_rules
+
+SRC = $(WS)/modules/$(MOD)/src
+
+
+##
+## -- These are the implicit build rules for the i686 loader object files
+##    -------------------------------------------------------------------
+: foreach $(SRC)/*.s                                                    |> !as |>
+: foreach $(SRC)/*.cc                                                   |> !cc |>

@@ -2,7 +2,7 @@
 ;;
 ;;  entry.s -- This is the entry point for the x86 32-bit processors
 ;;
-;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Copyright (c)  2017-2019 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;
@@ -23,6 +23,7 @@
 ;; -- Expose some global addresses
 ;;    ----------------------------
     global          _start
+    global          JumpKernel
     global          systemFont
     global          Halt
 
@@ -194,6 +195,11 @@ Halt:
     cli
     hlt
     jmp         Halt
+
+
+JumpKernel:
+    mov         eax,[esp+4]
+    jmp         eax
 
 
 ;;

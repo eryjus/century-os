@@ -2,7 +2,7 @@
 //
 //  SerialInit.cc -- Initialize a serial port for debugging output
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -25,47 +25,50 @@
 //    -------------------------------
 void SerialInit(void)
 {
-    // -- Disable the UART
-    MmioWrite(UART_BASE + UART_CR, 0x00000000);
+    // -- must start by enabling the mini-UART; no register access will work until...
+    MmioWrite(AUX_ENABLES, 1);
+
+    // -- Disable all interrupts
+    MmioWrite(AUX_MU_IER_REG, 0);
+
+    // -- Reset the control register
+    MmioWrite(AUX_MU_CNTL_REG, 0);
+
+    // -- Program the Line Control Register -- 8 bits, please
+    MmioWrite(AUX_MU_LCR_REG, 3);
+
+    // -- Program the Modem Control Register -- reset
+    MmioWrite(AUX_MU_MCR_REG, 0);
+
+    // -- Disable all interrupts -- again
+    MmioWrite(AUX_MU_IER_REG, 0);
+
+    // -- Clear all interrupts
+    MmioWrite(AUX_MU_IIR_REG, 0xc6);
+
+    // -- Set the BAUD to 115200 -- ((250,000,000/115200)/8)-1 = 270
+    MmioWrite(AUX_MU_BAUD_REG, 270);
+
+    // -- Select alternate function 5 to work on GPIO pin 14
+    uint32_t sel = MmioRead(GPIO_FSEL1);
+    sel &= ~(7<<12);
+    sel |= (0b010<<12);
+    sel &= ~(7<<15);
+    sel |= (0b010<<15);
+    MmioWrite(GPIO_FSEL1, sel);
 
     // -- Enable GPIO pins 14/15 only
     MmioWrite(GPIO_GPPUD, 0x00000000);
     BusyWait(150);
-    MmioWrite(GPIO_GPPUDCLK1, GPIOCLK1_14 | GPIOCLK1_15);
+    MmioWrite(GPIO_GPPUDCLK1, (1<<14)|(1<<15));
     BusyWait(150);
     MmioWrite(GPIO_GPPUDCLK1, 0x00000000);              // LEARN: Why does this make sense?
 
-    // -- Clear any pending interrupts
-    MmioWrite(UART_BASE + UART_ICR, UARTMIS_OEIC | UARTMIS_BEIC | UARTMIS_PEIC | UARTMIS_FEIC |
-                                           UARTMIS_RTIC | UARTMIS_TXIC | UARTMIS_RXIC | UARTMIS_CTSMIC);
+    // -- Enable TX/RX
+    MmioWrite(AUX_MU_CNTL_REG, 3);
 
-    // -- Mask all interrupts
-    MmioWrite(UART_BASE + UART_IMSC, UARTIMSC_OEIM | UARTIMSC_BEIM | UARTIMSC_PEIM | UARTIMSC_FEIM |
-                                            UARTIMSC_RTIM | UARTIMSC_TXIM | UARTIMSC_RXIM | UARTIMSC_CTSMIM);
-
-    // -- Enable the FIFO queues
-    MmioWrite(UART_BASE + UART_LCRH, UARTLCRH_FEN);
-
-    // -- Set the parameters for the uart: 38400, 8, N, 1
-    uint32_t iBaud;
-    uint32_t fBaud;
-    uint32_t lcrh = 0;
-
-    // -- Set the data width size
-    lcrh |= SH_UARTLCRHWLEN_8;
-
-    // -- calculate the baud rate integer and fractional divisor parts.  Note this works since it can be calculated
-    //    statically at compile time -- even for fBaud since iBaud is constant.
-    iBaud = 3000000 / (16 * 38400);
-    fBaud = ((((3000000 / (16 * 38400)) - (iBaud * 100)) * 64) + 50) / 100;
-
-    // -- Finally, configure the UART
-    MmioWrite(UART_BASE + UART_IBRD, iBaud);
-    MmioWrite(UART_BASE + UART_FBRD, fBaud);
-    MmioWrite(UART_BASE + UART_LCRH, lcrh);
-
-    // -- Enable the newly configured UART (not transmitting/receiving yet)
-    MmioWrite(UART_BASE + UART_CR, UARTCR_EN | UARTCR_RXE | UARTCR_TXE);
+    // -- clear the input buffer
+    while ((MmioRead(AUX_MU_LSR_REG) & (1<<0)) != 0) MmioRead(AUX_MU_IO_REG);
 
     SerialPutS("Serial port initialized!\n");
 }

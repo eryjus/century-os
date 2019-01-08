@@ -2,7 +2,7 @@
 ##
 ##  Makefile -- This is the core makefile for creating the Century OS for any of the supported architectures
 ##
-##        Copyright (c)  2017-2018 -- Adam Clark; See LICENSE.md
+##        Copyright (c)  2017-2019 -- Adam Clark; See LICENSE.md
 ##
 ##  The basic folder layout here is going to be as follows:
 ##
@@ -77,6 +77,7 @@ all-iso: all i686-iso x86_64-iso rpi2b-iso
 i686-iso: all
 	rm -fR iso/i686.iso
 	rm -fR sysroot/i686/*
+	mkdir -p sysroot/i686 iso/i686
 	cp -fR bin/i686/* sysroot/i686/
 	find sysroot/i686 -type f -name Tupfile -delete
 	grub2-mkrescue -o iso/i686.iso sysroot/i686
@@ -97,6 +98,7 @@ debug-i686: i686-iso
 x86_64-iso: all
 	rm -fR iso/x86_64.iso
 	rm -fR sysroot/x86_64/*
+	mkdir -p sysroot/x86_64 iso/x86_64
 	cp -fR bin/x86_64/* sysroot/x86_64/
 	find sysroot/x86_64 -type f -name Tupfile -delete
 	grub2-mkrescue -o iso/x86_64.iso sysroot/x86_64
@@ -129,12 +131,14 @@ debug-x86_64: x86_64-iso
 rpi2b-iso: all
 	rm -fR iso/rpi2b.img
 	rm -fR sysroot/rpi2b/*
+	mkdir -p sysroot/rpi2b iso/rpi2b
 	cp -fR bin/rpi2b/* sysroot/rpi2b/
 	find sysroot/rpi2b -type f -name Tupfile -delete
 	mkdir -p ./p1
 	(																						\
 		dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1048576;								\
 		parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 1 20 set 1 boot on; 		\
+		sudo chmod /dev/loop0p1 o+rw;														\
 		sudo losetup -v -L -P /dev/loop0 iso/rpi2b.img;										\
 		sudo mkfs.ext2 /dev/loop0p1;														\
 		sudo mount /dev/loop0p1 ./p1;														\

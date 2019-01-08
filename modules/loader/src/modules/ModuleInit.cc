@@ -2,7 +2,7 @@
 //
 //  ModuleInit.cc -- Initialize all the loaded modules provided by Multiboot
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -31,9 +31,9 @@
 //
 // -- Initialize the modules multiboot handed off to us
 //    -------------------------------------------------
-kernEntry_t ModuleInit(void)
+ptrsize_t ModuleInit(void)
 {
-    kernEntry_t entry = 0;
+    ptrsize_t entry = 0;
     ptrsize_t modCr3;
 
     if (!HaveModData()) {
@@ -54,6 +54,7 @@ kernEntry_t ModuleInit(void)
         SerialPutS("\n");
 
         ElfHdrCommon_t* hdr = (ElfHdrCommon_t *)GetAvailModuleStart(i);
+        SerialPutS("The module is loaded at address: "); SerialPutHex((uint32_t)hdr); SerialPutChar('\n');
 
         if (modName[0] == 'k' && modName[1] == 'e' && modName[2] == 'r' && modName[3] == 'n'
                 && modName[4] == 'e' && modName[5] == 'l') {
@@ -70,7 +71,8 @@ kernEntry_t ModuleInit(void)
 
         // -- Check for the ELF signature
         if (!HAS_ELF_MAGIC(hdr)) {
-            SerialPutS("Invalid ELF Signature\n");
+            SerialPutS("Invalid ELF Signature: "); SerialPutHex((uint32_t)*(uint32_t *)hdr); SerialPutChar('\n');
+
             continue;
         }
 
@@ -105,7 +107,7 @@ kernEntry_t ModuleInit(void)
             SerialPutHex(phdr32[j].pOffset);
             SerialPutS("\n");
 
-            if (thisIsKernel) entry = (kernEntry_t)hdr32->eEntry;
+            if (thisIsKernel) entry = hdr32->eEntry;
             if (j == 0) SetModuleHdrSize(i, phdr32->pOffset);
 
             ptrsize_t offset;
@@ -145,8 +147,10 @@ kernEntry_t ModuleInit(void)
     }
 
     SerialPutS("Returning kernel entry point: ");
-    SerialPutHex((ptrsize_t)entry);
+    SerialPutHex(entry);
     SerialPutS("\n");
+
+    MmuDumpTables(entry);
 
     return entry;
 }

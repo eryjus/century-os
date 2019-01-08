@@ -2,7 +2,7 @@
 @@
 @@  loader.s -- This is the entry point for the Raspberry Pi 2B kernel
 @@
-@@        Copyright (c)  2017-2018 -- Adam Clark
+@@        Copyright (c)  2017-2019 -- Adam Clark
 @@        Licensed under "THE BEER-WARE LICENSE"
 @@        See License.md for details.
 @@
@@ -24,6 +24,12 @@
 
 
 @@
+@@ -- This is the stack size
+@@    ----------------------
+.equ            STACK_SIZE,4096
+
+
+@@
 @@ -- This is the code for CPU 0 to execute
 @@    -------------------------------------
 .section    .text
@@ -39,15 +45,14 @@ initialize:
     ldr     sp,=_stackEnd               @@ set up a stack
     bl      kInit
 
-
 Halt:
     wfi
     b       Halt                        @@ go back and loop through more
 
 
-#
-# -- This is where we include the binary data for the system font
-#    ------------------------------------------------------------
+@@
+@@ -- This is where we include the binary data for the system font
+@@    ------------------------------------------------------------
 .section        .rodata
 systemFont:
 .incbin         "system-font.bin"

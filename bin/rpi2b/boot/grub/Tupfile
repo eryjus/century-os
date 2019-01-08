@@ -2,7 +2,7 @@
 ##
 ##  Tupfile -- An alternative to the 'make' build system -- rpi2b boot/grub files
 ##
-##        Copyright (c)  2017-2018 -- Adam Clark
+##        Copyright (c)  2017-2019 -- Adam Clark
 ##
 ##  Note that the 2 options for `grub.cfg` are mutually exclusive.  Only one configuration can be active at build
 ##  time.
@@ -29,4 +29,11 @@ include_rules
         echo   "boot"                                               >> %o;      \
     |> grub.cfg
 
+
+
+##
+## -- Build a config file for testing screen01
+##    ----------------------------------------
+:   |>  echo   "kernel bin/rpi2b/boot/screen01.elf"                 > %o;      \
+    |> screen01.cfg
 

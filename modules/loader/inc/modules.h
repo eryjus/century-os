@@ -2,7 +2,7 @@
 //
 //  modules.h -- The loader functions for handling the modules loaded by Multiboot
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -22,15 +22,9 @@
 
 
 //
-// -- This is the entry point for the kernel
-//    --------------------------------------
-typedef void (*kernEntry_t)(void);
-
-
-//
 // -- Initialize the modules loaded by Multiboot
 //    ------------------------------------------
-kernEntry_t ModuleInit(void);
+ptrsize_t ModuleInit(void);
 
 
 #endif

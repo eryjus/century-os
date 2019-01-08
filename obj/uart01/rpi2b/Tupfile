@@ -2,7 +2,7 @@
 ##
 ##  Tupfile -- An alternative to the 'make' build system -- rpi2b uart01 objects
 ##
-##        Copyright (c)  2017-2018 -- Adam Clark
+##        Copyright (c)  2017-2019 -- Adam Clark
 ##
 ##  This build will start as a direct copy of the sample code
 ##

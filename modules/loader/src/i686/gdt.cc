@@ -2,7 +2,7 @@
 //
 //  gdt.c -- This is the GDT for the i686 architecture; which is x86 common architectures
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //

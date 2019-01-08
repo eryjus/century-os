@@ -2,13 +2,13 @@
 ;;
 ;;  MmuSwitchPageDir.s -- Working function to set paging directory and enable paging
 ;;
-;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Copyright (c)  2017-2019 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;
 ;;  Working function to set paging directory and enable paging.
 ;;
-;;        Copyright (c)  2017-2018 -- Adam Clark
+;;        Copyright (c)  2017-2019 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;

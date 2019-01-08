@@ -2,7 +2,7 @@
 @@
 @@  entry.s -- This is the entry point for the Raspberry Pi 2B
 @@
-@@        Copyright (c)  2017-2018 -- Adam Clark
+@@        Copyright (c)  2017-2019 -- Adam Clark
 @@        Licensed under "THE BEER-WARE LICENSE"
 @@        See License.md for details.
 @@
@@ -27,6 +27,7 @@
 .section        .mboot
 
 .globl          systemFont
+.globl          JumpKernel
 .globl          Halt
 
 
@@ -85,7 +86,6 @@ wait_loop:
 initialize:
     ldr     sp,=stackend                @@ set up a stack
 
-
 @@
 @@ -- Clear the .bss segment
 @@    ----------------------
@@ -119,6 +119,10 @@ call$:
 Halt:
     wfi
     b       Halt                        @@ go back and loop through more
+
+
+JumpKernel:
+    mov     pc,r0                       @@ very simply set the new program counter; no fuss
 
 
 #

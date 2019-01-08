@@ -2,7 +2,7 @@
 //
 //  LoaderMain.cc -- The main routine for the loader module
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -29,6 +29,7 @@
 // -- called from assembly language...
 //    --------------------------------
 extern "C" void LoaderMain(void);
+extern "C" void JumpKernel(ptrsize_t addr) __attribute__((noreturn));
 
 
 //
@@ -44,20 +45,22 @@ void LoaderMain(void)
     FrameBufferInit();
     FrameBufferPutS("Welcome to Century-OS\n");
     MmuInit();
-    kernEntry_t ent = ModuleInit();
+    ptrsize_t ent = ModuleInit();
 
     FrameBufferPutS("Initialization Complete");
 
     SetMmuTopAddr();                                            // also enabled paging
     SetFrameBufferAddr((uint16_t *)FRAME_BUFFER_VADDR);         // re-map the frame buffer now that paging is enabled
 
+    uint32_t *e = (uint32_t *)ent;
+    SerialPutS("The instructions at that location are: \n");
+    SerialPutS(".. "); SerialPutHex(e[0]); SerialPutChar('\n');
+    SerialPutS(".. "); SerialPutHex(e[1]); SerialPutChar('\n');
+    SerialPutS(".. "); SerialPutHex(e[2]); SerialPutChar('\n');
+    SerialPutS(".. "); SerialPutHex(e[3]); SerialPutChar('\n');
+
 
     kMemMove((uint8_t *)HW_DISCOVERY_LOC, localHwDisc, sizeof(HardwareDiscovery_t));
-    SerialPutS("Jumping to the kernel\n");
-    ent();
-
-    // -- We should never get to this place
-    SerialPutS("Uh-Oh!!\n");
-
-    while (1) {}
+    SerialPutS("Jumping to the kernel, located at address "); SerialPutHex((uint32_t)ent); SerialPutChar('\n');
+    JumpKernel(ent);
 }

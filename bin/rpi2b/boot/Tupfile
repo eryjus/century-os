@@ -2,7 +2,7 @@
 ##
 ##  Tupfile -- An alternative to the 'make' build system -- rpi2b boot files
 ##
-##        Copyright (c)  2017-2018 -- Adam Clark
+##        Copyright (c)  2017-2019 -- Adam Clark
 ##
 ## ------------------------------------------------------------------------------------------------------------------
 ##
@@ -59,4 +59,12 @@ SRC = $(WS)/modules/$(MOD)/src
         |> armv7-rpi2-linux-gnueabihf-ld $(LDFLAGS) %f -T $(WS)/modules/rpi-timer/src/$(ARCH)/rpi-timer.ld -o %o; |> rpi-timer.elf
 
 : rpi-timer.elf |> $(OC) %f -O binary %o |> rpi-timer.img
+
+
+
+##
+## -- This is specific to building a hardware test for the screen
+##    -----------------------------------------------------------
+: $(WS)/obj/screen01/$(ARCH)/*.o | $(WS)/modules/screen01/src/screen01.ld                            \
+        |> armv7-rpi2-linux-gnueabihf-ld $(LDFLAGS) %f -T $(WS)/modules/screen01/src/screen01.ld -o %o; |> screen01.elf
 

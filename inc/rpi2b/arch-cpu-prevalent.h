@@ -2,7 +2,7 @@
 //
 //  arch-cpu.h -- This file contains the definitions for setting up the ARM for RPi2b
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -71,4 +71,5 @@ extern "C" regval_t GetTTBR0(void);
 // -- Get the CBAR
 //    ------------
 extern "C" regval_t GetCBAR(void);
+
 

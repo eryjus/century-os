@@ -2,7 +2,7 @@
 //
 //  arch-hw.h -- This file aggregates all the hardware port definitions and bit flags for the rpi2b
 //
-//        Copyright (c)  2017-2018 -- Adam Clark
+//        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -35,6 +35,28 @@
 // -- This is the hardware MMIO base location -- everything is based off this location
 //    --------------------------------------------------------------------------------
 #define HW_BASE             (0x3f000000 + KERNEL_OFFSET)
+
+
+//-------------------------------------------------------------------------------------------------------------------
+// Mailboxes
+//-------------------------------------------------------------------------------------------------------------------
+
+
+//
+// -- The base mailbox address
+//    ------------------------
+#define MB_BASE             (HW_BASE + 0xb880)          // the base address for all mailbox operations
+
+
+//
+// -- Some mailbox address offsets
+//    ----------------------------
+#define MB_READ             (0x00)                      // MB: Receiving mail
+#define MB_POLL             (0x10)                      // MB: Read witout receiving
+#define MB_SENDER           (0x14)                      // MB: Sender information
+#define MB_STATUS           (0x18)                      // MB: Information
+#define MB_CONFIG           (0x1c)                      // MB: Settings
+#define MB_WRITE            (0x20)                      // MB: Send mail
 
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -4042,7 +4064,7 @@
 #define UARTRSRECR_FE       (1<<0)                      // Framing Error
 
 
-#define UART_FR             (0x10)                      // Flag Register
+#define UART_FR             (0x18)                      // Flag Register
 //-------------------------------------------------------------------------------------------------------------------
 #define UARTFR_TXFE         (1<<7)                      // TX FIFO Empty
 #define UARTFR_RXFF         (1<<6)                      // RX FIFO Full
