@@ -33,6 +33,7 @@ SRC = $(WS)/modules/$(MOD)/src
 ##    -------------------------------------------------------------------
 : foreach $(SRC)/$(ARCH)/*.s                                        | $(II) |> !as |>
 : foreach $(SRC)/cpu/*.s            $(SRC)/cpu/$(ARCH)/*.s          | $(II) |> !as |>
+: foreach $(SRC)/timer/*.s          $(SRC)/timer/$(ARCH)/*.s        | $(II) |> !as |>
 
 : foreach $(SRC)/*.cc               $(SRC)/$(ARCH)/*.cc             | $(II) |> !cc |>
 : foreach $(SRC)/cpu/*.cc           $(SRC)/cpu/$(ARCH)/*.cc         | $(II) |> !cc |>

@@ -6624,5 +6624,326 @@ OK, with that, I did end up with a problem where clearing the screen from the ke
 
 This now puts me back to a problem with `ProcessInit()`.  I also need to commit my changes since I also tickled the (c) years for the new year.
 
+---
+
+This is the crash report:
+
+```
+Initializing the list at 0x800391a9
+Data Exception:
+At address: 0x80038f90
+ R0: 0x00000024   R1: 0x80005bac   R2: 0x800058b8
+ R3: 0x00000020   R4: 0x8000589c   R5: 0x800391a9
+ R6: 0x800391a9   R7: 0x80039199   R8: 0x80050c0c
+ R9: 0x00123000  R10: 0x2411fd81  R11: 0x87b02ffe
+R12: 0xfb00c940   SP: 0x80002974   LR_ret: 0x80002974
+SPSR_ret: 0x600001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xfff356bf  User SP: 0xdde7aad3
+Svc LR: 0x80038fa0
+```
+
+In particular, I am looking at the address of the list I am initializing and it is not word-aligned.  This is generating a data exception -- yet another thing in a long line of differences between the qemu emulator that real hardware is not tolerant of.
+
+It turned out that my `Process_t` structure was packed.  I removed that attribute and it works better now -- I am getting the Idle Process structure initialized.  Then an undefined operation.
+
+```
+Undefined Instruction:
+At address: 0x80038f90
+```
+
+The map shows the following:
+
+```
+80002a40:	f2c00010 	vmov.i32	d16, #0	; 0x00000000
+80002a44:	e30930c0 	movw	r3, #37056	; 0x90c0
+```
+
+Which I think means that I am trying to execute the opcode `0xf2c00010` as the disasm does not look valid to me.  When I dump the object file, I see the following:
+
+```
+ 10c:   ebfffffe        bl      0 <_Z7kprintfPKcz>
+ 110:   f2c00010        vmov.i32        d16, #0 ; 0x00000000
+ 114:   e3003000        movw    r3, #0
+```
+
+So, the instruction is there as well.  Well, it turned out to be a floating point code problem, which was fixed by adding the following parameter into the compile flags:
+
+```
+CFLAGS += -marm -mfpu=vfpv3 -mfloat-abi=softfp
+```
+
+Specifically the last 2 flags above.  Since I have 1 flag on one line, I am going to reformat these and then recompile.  Actually, no recompile is necessary -- the reformatting of the lines means that that the file changed on save, but the actual build commands did not.  `tup` evaluated that and realized there was nothing to do.
+
+---
+
+OK, time to take stock in where I am at...  Here is a snip from my `kInit()` function:
+
+```C
+    //
+    // -- Phase 2: Required OS Structure Initialization
+    //    ---------------------------------------------
+    ProcessInit();
+//    for (int i = 0; i < GetModCount(); i ++) {
+//        char *s = GetAvailModuleIdent(i);
+//        if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && s[3] == 0) {
+//            PmmStart(&localHwDisc->mods[i]);
+//            break;
+//        }
+//    }
+    TimerInit(250);
+    EnableInterrupts();
+    ProcessEnabled = true;
+    while (1) {}
+    HeapInit();
+```
+
+I currently have commented out the search for and the initialization of the PMM module (which is not compiling at the moment).  I also have a hard-stop with an infinite loop before I initialize the heap.  I am getting interrupts:
+
+```
+OISR Pending: 0x00000000
+ERROR: Unable to determine IRQ number: 0x00000000
+OISR Pending: 0x00000000
+ERROR: Unable to determine IRQ number: 0x00000000
+```
+
+... which I expect to be related to the timer firing (well, it is enabled).  So, what to work on next?
+
+I think I am going to work on resolving the ISR Pending and addressing getting the timer right.  I will need that before I can initialize the PMM process, and there is no point is moving on the the heap until I have a properly running PMM.  Dealing with the IRQ now will save me trouble later on.
+
+You know, in order to do that, I'm going to have to go back and revisit my timer implementation.  I do not have that in me tonight.
+
+---
+
+### 2019-Jan-08
+
+So, after some thinking on this, I think I have a spurious interrupt.  However, I am not able to determine from where it came.  What I do need to do is figure out how to trap that and then reset the interrupt flags somehow.
+
+OK, after reviewing the `lk` code, I see now that I am looking at the wrong interrupt controller -- I need to look at the one per CPU.  I was not.  But this also brings up the point that I am setting this all up for a single CPU, not multiple CPUs.  Everything so far is coded to be staticly addressing one CPU.  This will obviously need to be updated when I launch the other CPUs.  I am going to capture this as a Redmine so that I do not forget.  If you are playing along at home, the issue is http://eryjus.ddns.net:3000/issues/380.
+
+So, with that, I now need to update my IRQ number determination code.  That done, I'm back to a Data Exception:
+
+```
+Executing interrupt 0xb at 0x80003a38
+.Data Exception:
+At address: 0x80036f50
+ R0: 0x00000000   R1: 0x00000000   R2: 0x800370c0
+ R3: 0xffffffff   R4: 0x80003f44   R5: 0x001030c8
+ R6: 0x00120000   R7: 0x00000000   R8: 0x00000000
+ R9: 0x00123000  R10: 0x440a359f  R11: 0xd7802bfe
+R12: 0x00000001   SP: 0x80003a48   LR_ret: 0x80003aa8
+SPSR_ret: 0xa00001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xefefcdfe  User SP: 0xa7ff6cf9
+Svc LR: 0x80036f60
+```
+
+This exception is in the timer callback function.  Hmmm...
+
+```C
+void TimerCallBack(UNUSED(isrRegs_t *reg))
+{
+    kprintf(".");
+	if (!ProcessEnabled) {
+        timerControl->eoi(0);
+        return;
+    }
+```
+
+I notice I did get the `'.'` on the screen.  It turns out I was not initializing the `timerController` variable for the rpi2b.  Having corrected that, it appears I now have an infinite loop trying to get a spinlock:
+
+```
+Timer is initialized
+ISR Pending: 0x00000800
+Determined IRQ to be 0xb
+Executing interrupt 0xb at 0x80003a38
+.Looking for a new process
+Attempting lock by 0x1 at address 0x80037208
+```
+
+And, in short, this is going to be a serious repeat of the scheduler debugging I had to do with the i686 architecture.  But the good news is I have progressed to the point where I am able to focus on this step.  It was definitely rough getting here.
+
+So, it appears that my problem is going to end up being related to the atomic code to obtain a spinlock, found in `SpinlockAtomicLock.s` for the rpi2b arch -- I have a bad implementation.  No kidding, right?  What a damned mess!
+
+```
+@@
+@@ -- Perform the compare and exchange
+@@    --------------------------------
+SpinlockAtomicLock:
+    push    {r3,fp,lr}                      @@ save the frame pointer and return register, be nice and save r3
+    mov     fp,sp                           @@ and create a new frame
+
+loop:
+    strex   r3,r2,[r0]                      @@ attempt to lock the spinlock
+    cmp     r3,r1                           @@ did we get the lock?
+    bne     loop                            @@ if not, try again
+
+    mov     sp,fp                           @@ restore the stack
+    pop     {r3,fp,lr}                      @@ and the previous frame and return register
+    mov     pc,lr                           @@ return
+```
+
+Again, what the hell was I thinking???
+
+OK, I think I have the code straightened out, but I am still not getting the results I want.  Time to look at a reference solution.
+
+---
+
+I had to use the `lk` spinlocks as a template to help me out on this.  But now I am back to a Data Exception:
+
+```
+Attempting lock by 0x1 at address 0x8003b208
+Data Exception:
+At address: 0x8003af30
+ R0: 0x8003b208   R1: 0x00000000   R2: 0x00000001
+ R3: 0x00000020   R4: 0x8003b200   R5: 0x80072c0c
+ R6: 0x8000515c   R7: 0x8003b0c0   R8: 0x8003b208
+ R9: 0x00123000  R10: 0x8003b208  R11: 0x8003af80
+R12: 0x00000001   SP: 0x80003018   LR_ret: 0x800041c4
+SPSR_ret: 0x600001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xafefcdfe  User SP: 0xa7fb6cf9
+Svc LR: 0x8003af40
+```
+
+... which happens to be in the spinlock code:
+
+```
+800041c4 <loop>:
+800041c4:	e1901f9f 	ldrex	r1, [r0]
+800041c8:	e3510000 	cmp	r1, #0
+```
+
+I picked a different solution and I am still getting a Data Abort with the `ldrex` instruction.  I am looking at the ARMv7ARM and the instruction does not indicate *why* it would generate a data abort, just that it can.
+
+---
+
+### 2019-Jan-09
+
+I thought I would give one more try before I gave up completely.  I made changes to the flags for the MMU.  This ended up being the result:
+
+```C
+    ttl2Entry->frame = frame;
+    ttl2Entry->s = 1;
+    ttl2Entry->apx = 0;
+    ttl2Entry->ap = 0b11;
+    ttl2Entry->tex = (krn?0x001:0b001);
+    ttl2Entry->c = 1;
+    ttl2Entry->b = (krn?1:1);
+    ttl2Entry->nG = 0;
+    ttl2Entry->fault = 0b10;
+```
+
+The changes were to the `c` flag (made it `1`), the `b` flag (made it `1` for both cases from '0' for `!krn`), and the `tex` flag (made it `0b001` for `krn` instead of `0b000`).  This gets me to the point where the kernel stops processing:
+
+```
+    TimerInit(250);
+    EnableInterrupts();
+    ProcessEnabled = true;
+    while (1) {}            // <-- to here
+    HeapInit();
+ ```
+
+However, I cannot be certain 100% as the last thing I see is:
+
+```
+.Looking for a new process
+Attempting lock by 0x1 at address 0x8003b208
+Lock at 0x8003b208 released
+The current process is still the highest priority
+```
+
+I am expecting to see more `'.'` characters.  With a number of debugging `kprintf()` calls, I was able to determine that the timer interrupt is never actually returning properly.
+
+Lots of debugging code later, there is something that is happening when I call function from a table -- the `TimerCallBack()` function.  When I comment out this call, the IRQ works:
+
+```C
+    kprintf("Determined IRQ to be %x\n", intno);
+    if (isrHandlers[intno] != NULL) {
+        isrFunc_t handler = isrHandlers[intno];
+        kprintf("Executing interrupt %x at %p\n", intno, handler);
+//        handler(regs);
+    }
+    kprintf("handler handled\n");
+```
+
+Now, when I comment out the contents of the `TimerCallBack()` function, this works as well.  I wonder if the problem is the `eoi()` function call...??  And that appears to be it -- something is happening in the `eoi()` call...
+
+---
+
+OK, here is the line of code that is creating the problem:
+
+```C
+//
+// -- Issue an EOI for the timer
+//    --------------------------
+void TimerEoi(UNUSED(uint32_t irq))
+{
+    kprintf("eoi start\n");
+//    MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
+    MmioWrite(TMR_BASE + 0x38, (1<<30));  // clear and reload the timer
+    kprintf("eoi exit\n");
+}
+```
+
+The commented line is causing it.  When it is commented out, as above, the timer continues to fire.  The line below it was a test to see if a certain bit created the problem.  This line creates the proble with both `(1<<30)` and `(1<<31)`.  So, now I have to wonder if the reset is needed or not.  I should be able to slow down the timer significantly and check if I get a rapid-fire interrupt or not.
+
+---
+
+### 2019-Jan-16
+
+Well, it's been a week.  I have been away from home and therefore away from my monitor.  Since I have to test my code on real hardware, I was working on `cemu` while I was away and I had time.
+
+Coming back to this problem, I do not think I was able to effect any change in the rate of the interrupts by scaling.  Once the interrupt fired, it was not resetting and when I reset it the pi locks up.
+
+I'm going to try to clear out some of the debugging code that is outputting to the serial port to see if that helps with response time....  This gives me reasonable response time.  So, what I want to do now is to output some character in the `kinit()` loop to see if I can ever get that to output.  If I do not, then I know the CPU is completely consumed in interrupt handling.
+
+Since I never get any of the other characters, I must assume that the CPU is being consumed with interrupts.
+
+---
+
+I may be using the wrong timer interface, or maybe not using the *best* timer interface.  There might be an optional ARM timer on the SoC accessible through the `cp15` registers that Linux appears to use -- so I want to test for its existence....
+
+OK, so it exists and it appears to have a frequency:
+
+```
+IsrHandler registered
+The ARMv7 System Timer Frequency is: 0x124f800
+Timer is initialized
+```
+
+`0x124f800` is 19.2 MHz.  This sounds reasonable for a frequency.  I have some reading to do.
+
+---
+
+Finally!!  My EOI routine looks like this:
+
+```C
+//
+// -- Issue an EOI for the timer
+//    --------------------------
+void TimerEoi(UNUSED(uint32_t irq))
+{
+    uint32_t reload = MmioRead(TMR_BASE + 0x34) & 0x0fffffff;
+    MmioWrite(TMR_BASE + 0x34, reload); // disable the timer
+    MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
+    MmioWrite(TMR_BASE + 0x34, reload | (1<<28) | (1<<29)); // re-enable the timer
+}
+```
+
+and I am getting periodic interrupts:
+
+```
+############################################################################################################################.eoi start
+eoi exit
+############################################################################################################################################################
+```
+
+Now, to clean up this mess I made a week ago!!
+
+
 
 

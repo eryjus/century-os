@@ -26,6 +26,7 @@
 // -- This is the callback function that is triggered with each interrupt
 //    -------------------------------------------------------------------
 extern void TimerCallBack(isrRegs_t *reg);
+extern "C" uint32_t ReadGenericTimerFreq(void);
 
 
 //
@@ -33,7 +34,7 @@ extern void TimerCallBack(isrRegs_t *reg);
 //    ----------------------------------------------
 void TimerInit(uint32_t frequency)
 {
-	IsrRegister(53, TimerCallBack);
+	IsrRegister(11, TimerCallBack);
     kprintf("IsrHandler registered\n");
 
     // -- for good measure, disable the FIQ
@@ -56,6 +57,8 @@ void TimerInit(uint32_t frequency)
 
     // -- Now, enable the ARM Timer interrupt only
     MmioWrite(INT_IRQENB0, 1);
+
+	timerControl = &pitTimer;
 
     kprintf("Timer is initialized\n");
 }

@@ -99,9 +99,9 @@ void MmuMapToFrame(ptrsize_t ttl1, ptrsize_t addr, frame_t frame, bool wrt, bool
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
     ttl2Entry->ap = 0b11;
-    ttl2Entry->tex = (krn?0x000:0b001);
-    ttl2Entry->c = 0;
-    ttl2Entry->b = (krn?1:0);
+    ttl2Entry->tex = (krn?0x001:0b001);
+    ttl2Entry->c = 1;
+    ttl2Entry->b = (krn?1:1);
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
 }

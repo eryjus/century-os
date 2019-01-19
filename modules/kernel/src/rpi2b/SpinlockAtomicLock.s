@@ -38,14 +38,10 @@
 @@ -- Perform the compare and exchange
 @@    --------------------------------
 SpinlockAtomicLock:
-    push    {r3,fp,lr}                      @@ save the frame pointer and return register, be nice and save r3
-    mov     fp,sp                           @@ and create a new frame
-
-loop:
-    strex   r3,r2,[r0]                      @@ attempt to lock the spinlock
-    cmp     r3,r1                           @@ did we get the lock?
-    bne     loop                            @@ if not, try again
-
-    mov     sp,fp                           @@ restore the stack
-    pop     {r3,fp,lr}                      @@ and the previous frame and return register
+    mov     r2,r0                           @@ move the address to r2
+    mov     r1,#1                           @@ we want to know if the lock is locked
+    ldrex   r0,[r2]                         @@ get the status from the lock
+    cmp     r0,#0                           @@ is the lock unlocked?
+    strexeq r0,r1,[r2]                      @@ if unlocked, try to get the lock
+    dmb                                     @@ identify the memory barrier
     mov     pc,lr                           @@ return

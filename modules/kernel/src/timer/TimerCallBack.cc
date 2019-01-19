@@ -62,14 +62,18 @@ TimerFunctions_t *timerControl;
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
     kprintf(".");
-	if (!ProcessEnabled) {
+
+//	if (!ProcessEnabled) {
         timerControl->eoi(0);
         return;
-    }
-
+//    }
+#if 0
 	procs[currentPID]->totalQuantum ++;
 	if (-- procs[currentPID]->quantumLeft <= 0) {
         timerControl->eoi(0);
         ProcessReschedule();
     } else timerControl->eoi(0);
+
+    kprintf("returning - timer callback\n");
+#endif
 }

@@ -43,6 +43,8 @@ CFLAGS += -fpic
 else
 CFLAGS += -mcpu=cortex-a7
 CFLAGS += -marm
+CFLAGS += -mfpu=vfpv3
+CFLAGS += -mfloat-abi=softfp
 endif
 
 CFLAGS += -I $(WS)/bin/$(ARCH)/usr/include

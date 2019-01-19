@@ -128,7 +128,7 @@ typedef struct Process_t {
     ListHead_t lockList;                // This is the list of currently held locks (for the butler to release)
     ListHead_t messages;                // This is the queue of messages for this process
     void *prevPayload;                  // This is the previous payload in case the process did not allocate enough
-} __attribute__((packed)) Process_t;
+} Process_t;
 
 
 //

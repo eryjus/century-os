@@ -103,7 +103,8 @@ void kInit(void)
     TimerInit(250);
     EnableInterrupts();
     ProcessEnabled = true;
-    while (1) {}
+    kprintf("Stopping here!\n");
+    while (1) {  }
     HeapInit();
 
     // -- let the Pmm know we are putting it in-charge

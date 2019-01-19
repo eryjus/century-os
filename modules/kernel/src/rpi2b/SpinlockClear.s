@@ -40,7 +40,10 @@ SpinlockClear:
     mov     fp,sp                           @@ and create a new frame
 
     mov     r1,#0                           @@ Set the value that means unlocked
-    strex   r2,r1,[r0]                      @@ attempt to lock the spinlock
+    dmb                                     @@ Set up memory synchronization
+    str     r1,[r0]                         @@ attempt to lock the spinlock
+    dsb                                     @@ Synchronize the memory
+    sev                                     @@ wake up any sleeping processors
 
     mov     sp,fp                           @@ restore the stack
     pop     {r1,r2,fp,lr}                   @@ and the previous frame and return register

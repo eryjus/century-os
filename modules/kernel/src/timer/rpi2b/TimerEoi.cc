@@ -27,5 +27,9 @@
 //    --------------------------
 void TimerEoi(UNUSED(uint32_t irq))
 {
+    uint32_t reload = MmioRead(TMR_BASE + 0x34) & 0x0fffffff;
+    MmioWrite(TMR_BASE + 0x34, reload); // disable the timer
     MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
+    MmioWrite(TMR_BASE + 0x34, reload | (1<<28) | (1<<29)); // re-enable the timer
 }
+

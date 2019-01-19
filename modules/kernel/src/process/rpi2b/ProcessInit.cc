@@ -32,13 +32,18 @@ void ProcessInit(void)
     extern Process_t idleProcess;
     extern void idleMain(void);
 
+    kprintf("Initializing the idle process structure\n");
+    kprintf("Initializing the list at %p\n", &idleProcess.messages.list);
     ListInit(&idleProcess.messages.list);
+    kprintf("Initializing the list at %p\n", &idleProcess.lockList.list);
     ListInit(&idleProcess.lockList.list);
+    kprintf("Done\n");
 
     idleProcess.ss = 0x00;
 
     regval_t *msp = (regval_t *)(idleStack + 512);
 
+    kprintf("Creating the \"magic stack\" for the idle process\n");
     // -- note there are no parameters; TODO: create a SYSCALL to self-terminate
     *(-- msp) = (ptrsize_t)0xff000000;                          // Force a page fault in the forbidden range
     *(-- msp) = (ptrsize_t)idleMain;                            // our entry point -- `lr` register
