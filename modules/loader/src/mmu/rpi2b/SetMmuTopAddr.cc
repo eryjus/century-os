@@ -29,7 +29,9 @@ void SetMmuTopAddr(void)
         SerialPutS("!!! Found that the MMU is already enabled!!!\n");
     }
 
-    MmuEnablePaging(ttl1);
+    SerialPutS("The top addresses are: "); SerialPutHex(mmuBase); SerialPutS(" and ");
+            SerialPutHex(mmuBase); SerialPutChar('\n');
+    MmuEnablePaging(mmuBase);
 
     SerialPutS("Paging is enabled\n");
 }

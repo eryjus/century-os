@@ -29,6 +29,8 @@
 #include "mmu-loader.h"
 
 
+#define DEBUG_MMU 1
+
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
@@ -43,13 +45,11 @@ extern frame_t allocFrom;
 //
 // -- Create a TTL2 table and properly map it to the TTL1 table
 //    ---------------------------------------------------------
-void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr)
+void MmuMakeTtl2Table(MmuData_t mmu, ptrsize_t addr)
 {
 #if DEBUG_MMU == 1
     SerialPutS("Creating a new TTL2 table for address "); SerialPutHex(addr); SerialPutChar('\n');
 #endif
-
-    extern frame_t ttl1;
 
     frame_t ttl2Frame = allocFrom;         // Adjust to 1K accuracy
     PmmAllocFrame(allocFrom ++);
@@ -74,7 +74,7 @@ void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr)
 #endif
 
     // -- map the "% 4 == 0" TTL2 table
-    Ttl1_t *ttl1Table = (Ttl1_t *)ttl1;
+    Ttl1_t *ttl1Table = (Ttl1_t *)mmu;
     ttl1Table[i].ttl2 = ttl2Loc;
     ttl1Table[i].fault = 0b01;
 #if DEBUG_MMU == 1
@@ -108,7 +108,7 @@ void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr)
 
     // Here we need to get the TTL1 entry for the management address.
     int ttl2Offset = (addr >> 20) & 0xfff;
-    ptrsize_t mgmtTtl2Addr = TTL2_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
+    ptrsize_t mgmtTtl2Addr = TTL2_KRN_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
     int mgmtTtl1Index = mgmtTtl2Addr >> 20;
     Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
 
@@ -122,7 +122,8 @@ void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr)
 
     // If the TTL1 Entry for the management address is faulted; create a new TTL2 table
     if (mgmtTtl1Entry->fault == 0b00) {
-        MmuMakeTtl2Table(ttl1, mgmtTtl2Addr);
+//        MmuMakeTtl2Table(mmu, mgmtTtl2Addr);
+        MmuMapToFrame(mmu, mgmtTtl2Addr, ttl2Frame, true, false);
     }
 
 #if DEBUG_MMU == 1

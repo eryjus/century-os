@@ -74,7 +74,7 @@ SECTIONS {
     _stackStart = .;
     .stack : {
         *(.stack)
-        BYTE(1)
+        BYTE(0)
     }
     . = ALIGN(4096);
     _stackEnd = .;

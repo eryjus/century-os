@@ -19,8 +19,6 @@
 ARCH = rpi2b
 LD = armv7-rpi2-linux-gnueabihf-ld
 OC = armv7-rpi2-linux-gnueabihf-objcopy
-#LD = arm-eabi-ld
-#OC = arm-eabi-objcopy
 
 include_rules
 
@@ -38,8 +36,8 @@ SRC = $(WS)/modules/$(MOD)/src
 : $(WS)/obj/kernel/$(ARCH)/*.o | $(WS)/modules/kernel/src/$(ARCH)/kernel.ld                                     \
         |> $(LD) -T $(WS)/modules/kernel/src/$(ARCH)/kernel.ld $(LDFLAGS) -o %o %f; |> kernel.elf
 
-#: $(WS)/obj/pmm/$(ARCH)/*.o  $(WS)/lib/$(ARCH)/libc.a | $(WS)/modules/pmm/src/pmm.ld                           \
-#        |> $(LD) -T $(WS)/modules/pmm/src/pmm.ld $(LDFLAGS) -o %o %f -lc; |> pmm.elf
+: $(WS)/obj/pmm/$(ARCH)/*.o  $(WS)/lib/$(ARCH)/libc.a | $(WS)/modules/pmm/src/$(ARCH)/pmm.ld                    \
+        |> $(LD) -T $(WS)/modules/pmm/src/$(ARCH)/pmm.ld $(LDFLAGS) -o %o %f -lc; |> pmm.elf
 
 
 

@@ -33,7 +33,7 @@ extern "C" void LoaderMain(void);
 //
 // -- Emulate the CR3 register here so that we can build the tables
 //    -------------------------------------------------------------
-ptrsize_t cr3 = 0x1000;
+MmuData_t mmuBase = 0x1000;
 
 
 //
@@ -42,9 +42,9 @@ ptrsize_t cr3 = 0x1000;
 void MmuInit(void)
 {
     // -- clear out the Page Directory
-    kMemSetB((void *)cr3, 0, 4096);
-    pageEntry_t *recurse = &((pageEntry_t *)cr3)[1023];
-    recurse->frame = PmmLinearToFrame(cr3);
+    kMemSetB((void *)mmuBase, 0, 4096);
+    pageEntry_t *recurse = &((pageEntry_t *)mmuBase)[1023];
+    recurse->frame = PmmLinearToFrame(mmuBase);
     recurse->p = 1;
     recurse->rw = 1;
     recurse->us = 1;
@@ -58,18 +58,18 @@ void MmuInit(void)
 
     // -- Map the EBDA
     SerialPutS("Map the EBDA\n");
-    MmuMapToFrame(cr3, GetEbda(), PmmLinearToFrame(GetEbda()), true, false);
+    MmuMapToFrame(mmuBase, GetEbda(), PmmLinearToFrame(GetEbda()), true, false);
 
     // -- Map the memory from 640KB to 1MB
     SerialPutS("Map Upper Memory");
     for (addr = 640 * 1024; addr < 0x100000; addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr), true, true);
+        MmuMapToFrame(mmuBase, addr, PmmLinearToFrame(addr), true, true);
     }
 
     // -- Map the GDT/IDT to the final location
     SerialPutS("\nMap GDT/IDT\n");
-    MmuMapToFrame(cr3, GDT_ADDRESS, PmmLinearToFrame(0x00000000), true, false);
+    MmuMapToFrame(mmuBase, GDT_ADDRESS, PmmLinearToFrame(0x00000000), true, false);
 
     // -- Identity map the loader
     SerialPutS("Loader Start: ");
@@ -82,7 +82,7 @@ void MmuInit(void)
     SerialPutS("Identity Map the Loader");
     for (addr = (ptrsize_t)&_loaderStart; addr < (ptrsize_t)&_loaderEnd; addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(cr3, addr, PmmLinearToFrame(addr), true, false);
+        MmuMapToFrame(mmuBase, addr, PmmLinearToFrame(addr), true, false);
     }
 
     // -- Finally, map the frame buffer
@@ -91,23 +91,23 @@ void MmuInit(void)
             f < PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr() + (GetFrameBufferPitch() * GetFrameBufferHeight()));
             f ++, addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(cr3, addr, f, true, true);
+        MmuMapToFrame(mmuBase, addr, f, true, true);
     }
 
     // -- need to identity-map frame 0
     SerialPutS("\nMap Frame 0\n");
-    MmuMapToFrame(cr3, 0, 0, true, false);
+    MmuMapToFrame(mmuBase, 0, 0, true, false);
 
     // -- need to identity-map the stack
     SerialPutS("Map Stack\n");
-    MmuMapToFrame(cr3, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096), true, false);
+    MmuMapToFrame(mmuBase, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096), true, false);
 
     // -- identity map the hardware data strucure
     SerialPutS("Map Hardware Discovery Struture\n");
-    MmuMapToFrame(cr3, 0x00003000, 3, true, false);
+    MmuMapToFrame(mmuBase, 0x00003000, 3, true, false);
 
     // -- we need to create a page table for the kernel heap, which will get mapped later
-    pageEntry_t *pdTable = (pageEntry_t *)cr3;
+    pageEntry_t *pdTable = (pageEntry_t *)mmuBase;
     MmuGetTableEntry(pdTable, 0xd0000000, 22, true);
 
     //

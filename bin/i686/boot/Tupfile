@@ -31,12 +31,12 @@ SRC = $(WS)/modules/$(MOD)/src
 ##
 ## -- The rules to make the bootable targets in this folder
 ##    -----------------------------------------------------
-: $(WS)/obj/loader/$(ARCH)/*.o | $(WS)/modules/loader/src/$(ARCH)/loader.ld              \
+: $(WS)/obj/loader/$(ARCH)/*.o | $(WS)/modules/loader/src/$(ARCH)/loader.ld                                 \
         |> $(LD) -T $(WS)/modules/loader/src/$(ARCH)/loader.ld $(LDFLAGS) -o %o %f -lgcc; |> loader.elf
 
-: $(WS)/obj/kernel/i686/*.o | $(WS)/modules/kernel/src/i686/kernel.ld                     \
+: $(WS)/obj/kernel/i686/*.o | $(WS)/modules/kernel/src/i686/kernel.ld                                       \
         |> $(LD) -T $(WS)/modules/kernel/src/$(ARCH)/kernel.ld $(LDFLAGS) -o %o %f -lgcc; |> kernel.elf
 
-: $(WS)/obj/pmm/i686/*.o  $(WS)/lib/i686/libc.a | $(WS)/modules/pmm/src/pmm.ld                                   \
-        |> $(LD) -T $(WS)/modules/pmm/src/pmm.ld $(LDFLAGS) -o %o %f -lgcc -lc; |> pmm.elf
+: $(WS)/obj/pmm/i686/*.o  $(WS)/lib/i686/libc.a | $(WS)/modules/pmm/src/$(ARCH)/pmm.ld                      \
+        |> $(LD) -T $(WS)/modules/pmm/src/$(ARCH)/pmm.ld $(LDFLAGS) -o %o %f -lc -lgcc; |> pmm.elf
 

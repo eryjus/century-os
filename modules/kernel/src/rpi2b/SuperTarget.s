@@ -36,8 +36,9 @@ SuperTarget:
 
     push        {r0-r12}                                    @@ push r0 to r12 onto the stack
 
-    mov         r0,#0x13                                    @@ mode is SVC, or 0x13
-    push        {r0}
+    ldr         r0,[lr,#-4]                                 @@ get the instruction that generated the system call
+    bic         r0,#0xff000000                              @@ remove the top 8 bits of that instruction
+    push        {r0}                                        @@ put this value into the mode field
 
     push        {sp}
     push        {lr}                                        @@ push the sp and lr registers
@@ -46,7 +47,7 @@ SuperTarget:
     stmia       sp,{sp,lr}^                                 @@ taking these one at a time, we will save the registers
 
     mov         r0,sp                                       @@ set the register list for the called function
-    bl          SuperHandler                                @@ Handle the interrupt
+    bl          SyscallHandler                              @@ Handle the interrupt
 
     ldmia       sp,{sp,lr}^                                 @@ restore the user sp and lr
     add         sp,#8                                       @@ update the tack pointer

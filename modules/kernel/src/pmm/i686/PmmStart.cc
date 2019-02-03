@@ -105,6 +105,7 @@ static inline void KernelUnmap(ptrsize_t addr)
     if (!pte->p) return;
 
     kMemSetB(pte, 0, sizeof(pageEntry_t));
+    // TODO: Invalidate page here
 }
 
 
@@ -151,7 +152,7 @@ void PmmStart(Module_t *pmmMod)
     kMemSetB((void *)PROCESS_PAGE_DIR, 0, 4096);
     kMemSetB((void *)PROCESS_PAGE_TABLE, 0, 4096);
 
-    // -- map the page table to the page directory
+    // -- map the page table to the page directory TODO: fix this hard-code crap
     entry = &pd[512];
     entry->frame = pageTblFrame;
     entry->p = 1;

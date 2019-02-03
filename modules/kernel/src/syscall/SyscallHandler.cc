@@ -29,7 +29,7 @@
 //    -------------------------------------------------------------------------
 static void SyscallNullHandler(isrRegs_t *regs)
 {
-    regs->eax = -ENOSYS;
+    SYSCALL_RETURN(regs) = -ENOSYS;
 }
 
 
@@ -46,13 +46,13 @@ static isrFunc_t syscallHandlers[] = {
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
-void SyscallHandler(isrRegs_t *regs)
+extern "C" void SyscallHandler(isrRegs_t *regs)
 {
-    if ((uint32_t)regs->eax >= sizeof(syscallHandlers) / sizeof(isrFunc_t)) {
+    if ((uint32_t)SYSCALL_FUNC_NO(regs) >= sizeof(syscallHandlers) / sizeof(isrFunc_t)) {
         SyscallNullHandler(regs);
         return;
     }
 
-    isrFunc_t handler = syscallHandlers[regs->eax];
+    isrFunc_t handler = syscallHandlers[SYSCALL_FUNC_NO(regs)];
     handler(regs);
 }

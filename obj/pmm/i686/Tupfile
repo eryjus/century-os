@@ -30,5 +30,5 @@ SRC = $(WS)/modules/$(MOD)/src
 ##
 ## -- These are the implicit build rules for the i686 kernel object files
 ##    -------------------------------------------------------------------
-: foreach $(SRC)/*.s    | $(II) |> !nasm |>
+: foreach $(SRC)/*.s   $(SRC)/$(ARCH)/*.s    | $(II) |> !nasm |>
 : foreach $(SRC)/*.cc   | $(II) |> !cc |>

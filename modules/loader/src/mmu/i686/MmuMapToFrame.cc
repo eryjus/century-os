@@ -32,7 +32,7 @@
 //
 // -- Map a virtual address page to a physical frame in the paging tables
 //    -------------------------------------------------------------------
-void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame, bool wrt, bool krn)
+void MmuMapToFrame(MmuData_t cr3, ptrsize_t addr, frame_t frame, bool wrt, bool krn)
 {
     // -- Make sure the frame is really allocated
     if (!PmmIsFrameAlloc(frame)) {

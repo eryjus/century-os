@@ -40,5 +40,5 @@ SRC = $(WS)/modules/$(MOD)/src
 : foreach $(SRC)/pmm/*.cc           $(SRC)/pmm/$(ARCH)/*.cc         | $(II) |> !cc |>
 : foreach $(SRC)/process/*.cc       $(SRC)/process/$(ARCH)/*.cc     | $(II) |> !cc |>
 : foreach $(SRC)/serial/*.cc        $(SRC)/serial/$(ARCH)/*.cc      | $(II) |> !cc |>
-: foreach $(SRC)/syscall/*.cc       $(SRC)/syscall/$(ARCH)/*.cc     | $(II) |> !cc |>
+: foreach $(SRC)/syscall/*.cc                                       | $(II) |> !cc |>
 : foreach $(SRC)/timer/*.cc         $(SRC)/timer/$(ARCH)/*.cc       | $(II) |> !cc |>

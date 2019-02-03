@@ -51,7 +51,7 @@ void TimerInit(uint32_t frequency)
     MmioWrite(TMR_BASE + 0x40, 0x00000002);         // select as IRQ for core 0
     MmioWrite(TMR_BASE + 0x60, 0x00000002);         // enable IRQs from the core for this CPU
     MmioWrite(TMR_BASE + 0x70, 0x00000000);         // force disable FIQ for all sources
-    MmioWrite(TMR_BASE + 0x34, (1<<21) | (1<<28) | (1<<29));  // set up the counter for the timer and start it
+    MmioWrite(TMR_BASE + 0x34, (1<<17) | (1<<28) | (1<<29));  // set up the counter for the timer and start it
     MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
     MmioWrite(TMR_BASE + 0x24, 0x00000000);         // local timer goes to core 0 IRQ
 

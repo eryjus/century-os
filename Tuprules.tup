@@ -30,6 +30,7 @@ II = $(WS)/bin/$(ARCH)/usr/include/*
 ##    -------------------------------------
 CFLAGS += -ffreestanding
 CFLAGS += -nostdlib
+CFLAGS += -fno-builtin
 CFLAGS += -nostartfiles
 CFLAGS += -fno-unwind-tables
 CFLAGS += -fno-exceptions
@@ -83,13 +84,14 @@ AFLAGS += -march=armv7ve
 ## -- Build out the LDFLAGS variable -- for ld (through g++)
 ##    ------------------------------------------------------
 LDFLAGS += -z max-page-size=0x1000
+LDFLAGS += -L $(WS)/lib/$(ARCH)
+
+LDFLAGS += -nostdlib
+LDFLAGS += -g
+LDFLAGS += -O2
 
 ifneq ($(ARCH),rpi2b)
-LDFLAGS += -g
 LDFLAGS += -ffreestanding
-LDFLAGS += -O2
-LDFLAGS += -nostdlib
-LDFLAGS += -L $(WS)/lib/$(ARCH)
 endif
 
 

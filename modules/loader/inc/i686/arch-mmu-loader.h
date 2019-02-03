@@ -24,6 +24,12 @@
 
 
 //
+// -- define the local type needed to manage the mmu data
+//    ---------------------------------------------------
+typedef ptrsize_t MmuData_t;
+
+
+//
 // -- Get a table entry from the table address and the desired virtual address
 //    ------------------------------------------------------------------------
 pageEntry_t *MmuGetTableEntry(pageEntry_t *table, ptrsize_t addr, int shift, bool alloc);
@@ -32,7 +38,7 @@ pageEntry_t *MmuGetTableEntry(pageEntry_t *table, ptrsize_t addr, int shift, boo
 //
 // -- Walk the page tables and get the frame for an address
 //    -----------------------------------------------------
-frame_t MmuGetFrameForAddr(ptrsize_t cr3Phys, ptrsize_t addr);
+frame_t MmuGetFrameForAddr(MmuData_t cr3Phys, ptrsize_t addr);
 
 
 //
@@ -44,16 +50,17 @@ inline pageEntry_t *MmuGetAddrFromEntry(pageEntry_t *e) { return (pageEntry_t *)
 //
 // -- This is the working cr3 variable for i686
 //    -----------------------------------------
-extern ptrsize_t cr3;
+extern MmuData_t mmuBase;
 
 
 //
 // -- This inline function will install the paging structures to the right place
 //    --------------------------------------------------------------------------
-inline void SetMmuTopAddr(void) { MmuSwitchPageDir(cr3); }
+inline void SetMmuTopAddr(void) { MmuSwitchPageDir(mmuBase); }
 
 
 //
 // -- This inline function will get the top level paging address
 //    ----------------------------------------------------------
-inline ptrsize_t GetMmuTopAddr(void) { return cr3; }
+inline MmuData_t GetMmuTopAddr(void) { return mmuBase; }
+

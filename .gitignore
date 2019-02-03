@@ -18,6 +18,7 @@ bin/**/*.cfg
 bin/**/*.elf
 bin/**/*.img
 bin/**/*.h
+bin/**/cfg-file
 
 lib/**/*.a
 *.log

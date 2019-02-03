@@ -14,7 +14,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-Jun-27  Initial   0.1.0   ADCL  Initial version
+//  2018-Jan-23  Initial   0.2.0   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -34,7 +34,7 @@
 ptrsize_t ModuleInit(void)
 {
     ptrsize_t entry = 0;
-    ptrsize_t modCr3;
+    MmuData_t modMmu;
 
     if (!HaveModData()) {
         SerialPutS("Unable to locate Kernel...  Halting!\n");
@@ -46,12 +46,9 @@ ptrsize_t ModuleInit(void)
     for (int i = 0; i < GetModCount(); i ++) {
         bool thisIsKernel = false;
 
-        SerialPutS("Initializing Modules:\n");
         char *modName = GetAvailModuleIdent(i);
-        SerialPutS(modName);
-        SerialPutS("\n   Starting Address: ");
-        SerialPutHex(GetAvailModuleStart(i));
-        SerialPutS("\n");
+        SerialPutS("Initializing Module: "); SerialPutS(modName); SerialPutChar('\n');
+        SerialPutS("   Starting Address: "); SerialPutHex(GetAvailModuleStart(i)); SerialPutChar('\n');
 
         ElfHdrCommon_t* hdr = (ElfHdrCommon_t *)GetAvailModuleStart(i);
         SerialPutS("The module is loaded at address: "); SerialPutHex((uint32_t)hdr); SerialPutChar('\n');
@@ -60,13 +57,13 @@ ptrsize_t ModuleInit(void)
                 && modName[4] == 'e' && modName[5] == 'l') {
             haveKernel = true;
             thisIsKernel = true;
-            modCr3 = GetMmuTopAddr();
+            modMmu = GetMmuTopAddr();
         } else {
-            modCr3 = PmmFrameToLinear(PmmNewFrame());
+            modMmu = PmmFrameToLinear(PmmNewFrame(4));
 
             // -- clear the Page Directory
-            kMemSetB((void *)modCr3, 0, 4096);
-            SetModuleCr3(i, modCr3);
+            kMemSetB((void *)modMmu, 0, 4096 * 4);
+            SetModuleCr3(i, modMmu);
         }
 
         // -- Check for the ELF signature
@@ -115,7 +112,7 @@ ptrsize_t ModuleInit(void)
                 frame_t f;
 
                 if (offset > phdr32[j].pFileSz) {
-                    f = PmmNewFrame();
+                    f = PmmNewFrame(1);
 
                     // -- This is bss space, initialize it to 0
                     kMemSetB((void *)PmmFrameToLinear(f), 0, 4096);
@@ -129,7 +126,7 @@ ptrsize_t ModuleInit(void)
                 SerialPutHex(f);
                 SerialPutS("\n");
 
-                MmuMapToFrame(modCr3, phdr32[j].pVAddr + offset, f,
+                MmuMapToFrame(modMmu, phdr32[j].pVAddr + offset, f,
                         (phdr32[i].pFlags&PF_W?true:false), (thisIsKernel?true:false));
             }
         }

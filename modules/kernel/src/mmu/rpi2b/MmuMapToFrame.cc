@@ -29,8 +29,8 @@
 //
 // -- These are the the tables we use to manage the paging tables
 //    -----------------------------------------------------------
-static Ttl1_t *ttl1Table = (Ttl1_t *)TTL1_VADDR;
-static Ttl2_t *ttl2Table = (Ttl2_t *)TTL2_VADDR;
+static Ttl1_t *ttl1Table = (Ttl1_t *)TTL1_KRN_VADDR;
+static Ttl2_t *ttl2Table = (Ttl2_t *)TTL2_KRN_VADDR;
 
 
 //
@@ -79,7 +79,7 @@ void MmuMapToFrame(ptrsize_t addr, frame_t frame, int flags)
 
         // -- here we need to determine the management address for this new table and map that as well
         int ttl2Offset = (addr >> 20) & 0xfff;
-        ptrsize_t mgmtTtl2Addr = TTL2_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
+        ptrsize_t mgmtTtl2Addr = ((addr&0x80000000)?TTL2_KRN_VADDR:TTL2_KRN_VADDR) + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
         int mgmtTtl1Index = mgmtTtl2Addr >> 20;
         Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
 

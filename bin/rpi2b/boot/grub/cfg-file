@@ -1,2 +1,3 @@
-kernel boot/loader.elf
-module boot/kernel.elf
+kernel bin/rpi2b/boot/loader.elf
+module bin/rpi2b/boot/kernel.elf
+module bin/rpi2b/boot/pmm.elf

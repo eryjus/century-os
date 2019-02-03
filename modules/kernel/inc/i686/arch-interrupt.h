@@ -77,3 +77,12 @@ void IsrInt1f(isrRegs_t *regs);
 extern "C" void IsrHandler(isrRegs_t regs);
 
 
+//
+// -- These are some macros to assist in the system calls handling
+//    ------------------------------------------------------------
+#define SYSCALL_FUNC_NO(regs)           ((regs)->eax)
+#define SYSCALL_RETURN(regs)            ((regs)->eax)
+#define SYSCALL_RCVMSG_PARM1(regs)      ((regs)->edi)
+#define SYSCALL_SNDMSG_PARM1(regs)      ((regs)->edx)
+#define SYSCALL_SNDMSG_PARM2(regs)      ((regs)->edi)
+

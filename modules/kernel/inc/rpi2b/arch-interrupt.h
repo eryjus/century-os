@@ -86,4 +86,14 @@ void IdtBuild(void);
 extern "C" void IsrHandler(isrRegs_t *regs);
 
 
+//
+// -- These are some macros to assist in the system calls handling
+//    ------------------------------------------------------------
+#define SYSCALL_FUNC_NO(regs)           ((regs)->type)
+#define SYSCALL_RETURN(regs)            ((regs)->r0)
+#define SYSCALL_RCVMSG_PARM1(regs)      ((regs)->r0)
+#define SYSCALL_SNDMSG_PARM1(regs)      ((regs)->r0)
+#define SYSCALL_SNDMSG_PARM2(regs)      ((regs)->r1)
+
+
 

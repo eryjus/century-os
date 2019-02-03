@@ -47,7 +47,7 @@ void IsrDumpState(isrRegs_t *regs);
 //
 // -- The system call handler
 //    -----------------------
-void SyscallHandler(isrRegs_t *regs);
+extern "C" void SyscallHandler(isrRegs_t *regs);
 
 
 #endif

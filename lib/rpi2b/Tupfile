@@ -18,7 +18,6 @@
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
 AR = armv7-rpi2-linux-gnueabihf-ar
-#AR = arm-eabi-ar
 
 include_rules
 

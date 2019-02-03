@@ -1,6 +1,6 @@
 #####################################################################################################################
 ##
-##  Tupfile -- An alternative to the 'make' build system -- rpi2b loader objects
+##  Tupfile -- An alternative to the 'make' build system -- i686 pmm objects
 ##
 ##        Copyright (c)  2017-2019 -- Adam Clark
 ##
@@ -8,7 +8,7 @@
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-##  2018-Nov-11  Initial   0.2.0   ADCL  Initial version
+##  2018-Nov-02  Initial   0.1.0   ADCL  Initial version
 ##
 #####################################################################################################################
 
@@ -17,27 +17,19 @@
 ## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
 ##    ------------------------------------------------------------------------------
 ARCH = rpi2b
-MOD = loader
+MOD = pmm
 CC = armv7-rpi2-linux-gnueabihf-gcc
 AS = armv7-rpi2-linux-gnueabihf-as
-#CC = arm-eabi-gcc
-#AS = arm-eabi-as
 
 include_rules
 
+CFLAGS += -I $(WS)/modules/libc/inc
+CFLAGS += -I $(WS)/modules/kernel/inc
 SRC = $(WS)/modules/$(MOD)/src
 
 
 ##
-## -- These are the implicit build rules for the i686 loader object files
+## -- These are the implicit build rules for the i686 kernel object files
 ##    -------------------------------------------------------------------
-: foreach $(SRC)/$(ARCH)/*.s                                            |> !as |>
-: foreach $(SRC)/mmu/*.s            $(SRC)/mmu/$(ARCH)/*.s              |> !as |>
-
-: foreach $(SRC)/*.cc               $(SRC)/$(ARCH)/*.cc                 |> !cc |>
-: foreach $(SRC)/frame-buffer/*.cc  $(SRC)/frame-buffer/$(ARCH)/*.cc    |> !cc |>
-: foreach $(SRC)/hardware/*.cc      |> !cc |>
-: foreach $(SRC)/mmu/*.cc           $(SRC)/mmu/$(ARCH)/*.cc             |> !cc |>
-: foreach $(SRC)/modules/*.cc       $(SRC)/modules/$(ARCH)/*.cc         |> !cc |>
-: foreach $(SRC)/pmm/*.cc           |> !cc |>
-: foreach $(SRC)/serial/*.cc        $(SRC)/serial/$(ARCH)/*.cc          |> !cc |>
+: foreach $(SRC)/*.s   $(SRC)/$(ARCH)/*.s   | $(II) |> !as |>
+: foreach $(SRC)/*.cc   | $(II) |> !cc |>

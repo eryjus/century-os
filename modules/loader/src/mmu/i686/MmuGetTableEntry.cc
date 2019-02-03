@@ -34,7 +34,7 @@ pageEntry_t *MmuGetTableEntry(pageEntry_t *table, ptrsize_t addr, int shift, boo
 
     if (rv->p == 0 && shift != 12 && alloc) {       // we will allocate a new frame if appropriate
         SerialPutS("   Making a new table\n");
-        uint32_t frame = PmmNewFrame();
+        uint32_t frame = PmmNewFrame(1);
         kMemSetB((void *)(frame << 12), 0, 4096);
         rv->frame = frame;
         rv->rw = 1;

@@ -30,10 +30,11 @@ include_rules
     |> grub.cfg
 
 
-
 ##
-## -- Build a config file for testing screen01
-##    ----------------------------------------
-:   |>  echo   "kernel bin/rpi2b/boot/screen01.elf"                 > %o;      \
-    |> screen01.cfg
+## -- create the cfg-file for pi-bootloader
+##    -------------------------------------
+:   |>  echo   "kernel bin/rpi2b/boot/loader.elf"                    > %o;      \
+        echo   "module bin/rpi2b/boot/kernel.elf"                   >> %o;      \
+        echo   "module bin/rpi2b/boot/pmm.elf"                      >> %o;      \
+    |> cfg-file
 

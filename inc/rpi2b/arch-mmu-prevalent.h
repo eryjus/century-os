@@ -70,8 +70,8 @@ const ptrsize_t FRAME_BUFFER_VADDR = 0xfb000000;
 //
 // -- This is the location of the TTL1/TTL2 Tables
 //    --------------------------------------------
-const ptrsize_t TTL1_VADDR = 0x80400000;
-const ptrsize_t TTL2_VADDR = 0x80000000;
+const ptrsize_t TTL1_KRN_VADDR = 0xff404000;
+const ptrsize_t TTL2_KRN_VADDR = 0xffc00000;
 
 
 //

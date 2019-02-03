@@ -93,13 +93,15 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
-//    for (int i = 0; i < GetModCount(); i ++) {
-//        char *s = GetAvailModuleIdent(i);
-//        if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && s[3] == 0) {
-//            PmmStart(&localHwDisc->mods[i]);
-//            break;
-//        }
-//    }
+
+    for (int i = 0; i < GetModCount(); i ++) {
+        char *s = GetAvailModuleIdent(i);
+        if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && (s[3] == 0 || s[3] == '.')) {
+            PmmStart(&localHwDisc->mods[i]);
+            break;
+        }
+    }
+
     TimerInit(250);
     EnableInterrupts();
     ProcessEnabled = true;

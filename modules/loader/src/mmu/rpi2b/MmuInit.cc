@@ -27,7 +27,7 @@ extern uint8_t _loaderEnd[];
 extern "C" void LoaderMain(void);
 
 frame_t allocFrom;
-ptrsize_t ttl1;
+MmuData_t mmuBase = {0};
 
 
 void MmuInit(void)
@@ -35,22 +35,25 @@ void MmuInit(void)
     ptrsize_t addr;
     frame_t f;
 
-    SerialPutS("Set up the TTL1 management table\n");
+    SerialPutS("\nSet up the TTL1 management table\n");
     allocFrom = PmmLinearToFrame(GetUpperMemLimit()) - 0x1000;
+    SerialPutS(".. Frame location: "); SerialPutHex(allocFrom); SerialPutChar('\n');
 
     // -- get 4 frames from the PMM for the ttl1 table; 4 frames = 16K
-    ttl1 = PmmFrameToLinear(allocFrom);
+    mmuBase = PmmFrameToLinear(allocFrom);
     PmmAllocFrameRange(allocFrom, 4);
     allocFrom += 4;
+    SerialPutS(".. ttbr0 & ttbr1 are both: "); SerialPutHex(mmuBase); SerialPutChar('\n');
 
     // -- set up the ttl1 and clear it
-    kMemSetB((void *)ttl1, 0, 1024 * 16);
+    kMemSetB((void *)mmuBase, 0, 4096 * 4);
 
-    // -- Map the TTL1 table to location TTL1_VADDR
-    MmuMapToFrame(ttl1, TTL1_VADDR, PmmLinearToFrame(ttl1), true, false);
-    MmuMapToFrame(ttl1, TTL1_VADDR + 0x1000, PmmLinearToFrame(ttl1) + 1, true, false);
-    MmuMapToFrame(ttl1, TTL1_VADDR + 0x2000, PmmLinearToFrame(ttl1) + 2, true, false);
-    MmuMapToFrame(ttl1, TTL1_VADDR + 0x3000, PmmLinearToFrame(ttl1) + 3, true, false);
+    SerialPutS(".. Mapping the TTL1 table: "); SerialPutHex(mmuBase); SerialPutChar('\n');
+    // -- Map the TTL1 table to location TTL1_KRN_VADDR
+    MmuMapToFrame(mmuBase, TTL1_KRN_VADDR, PmmLinearToFrame(mmuBase), true, false);
+    MmuMapToFrame(mmuBase, TTL1_KRN_VADDR + 0x1000, PmmLinearToFrame(mmuBase) + 1, true, false);
+    MmuMapToFrame(mmuBase, TTL1_KRN_VADDR + 0x2000, PmmLinearToFrame(mmuBase) + 2, true, false);
+    MmuMapToFrame(mmuBase, TTL1_KRN_VADDR + 0x3000, PmmLinearToFrame(mmuBase) + 3, true, false);
 
     // -- Identity map the loader
     SerialPutS("Loader Start: ");
@@ -63,7 +66,7 @@ void MmuInit(void)
     SerialPutS("Identity Map the Loader");
     for (addr = (ptrsize_t)&_loaderStart; addr < (ptrsize_t)&_loaderEnd; addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, PmmLinearToFrame(addr), true, false);
+        MmuMapToFrame(mmuBase, addr, PmmLinearToFrame(addr), true, false);
     }
     SerialPutChar('\n');
 
@@ -77,45 +80,45 @@ void MmuInit(void)
     for (f = PmmLinearToFrame((ptrsize_t)GetFrameBufferAddr()), addr = FRAME_BUFFER_VADDR;
             f < PmmLinearToFrame(fbEnd); f ++, addr += 0x1000) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, f, true, false);
+        MmuMapToFrame(mmuBase, addr, f, true, false);
     }
     SerialPutHex(f);
     SerialPutChar('\n');
 
     // -- need to identity-map the stack
     SerialPutS("Map Stack\n");
-    MmuMapToFrame(ttl1, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096), true, false);
+    MmuMapToFrame(mmuBase, 0x200000 - 4096, PmmLinearToFrame(0x200000 - 4096), true, false);
 
     // -- identity map the hardware data strucure
     SerialPutS("Map Hardware Discovery Struture\n");
-    MmuMapToFrame(ttl1, 0x00003000, 3, true, false);
-
-    // -- Map the interrupt vector table
-    SerialPutS("Map Interrupt Vector Table to some new frame for future use\n");
-    MmuMapToFrame(ttl1, EXCEPT_VECTOR_TABLE, PmmNewFrame(), true, false);
+    MmuMapToFrame(mmuBase, 0x00003000, 3, true, false);
 
     // -- identity map the MMIO addresses 0x3f000000 to 0x40000100
     SerialPutS("Identity map MMIO");
     for (addr = 0x3f000000; addr < 0x40000100; addr += 4096) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, PmmLinearToFrame(addr), true, true);
+        MmuMapToFrame(mmuBase, addr, PmmLinearToFrame(addr), true, true);
     }
 
     // -- also map the MMIO addresses into upper memory
     SerialPutS("\nMap  MMIO to kernel space");
     for (addr = 0xf2000000, f = PmmLinearToFrame(0x3f000000); addr < 0xf3000100; addr += 4096, f ++) {
         SerialPutChar('.');
-        MmuMapToFrame(ttl1, addr, f, true, true);
+        MmuMapToFrame(mmuBase, addr, f, true, true);
     }
+
+    // -- Map the interrupt vector table
+    SerialPutS("Map Interrupt Vector Table to some new frame for future use\n");
+    MmuMapToFrame(mmuBase, EXCEPT_VECTOR_TABLE, PmmNewFrame(1), true, false);
 
     //
     // -- Dump some addresses from the cr3 tables to check validity
     //    ---------------------------------------------------------
     SerialPutS("\nChecking our work\n");
-    MmuDumpTables(TTL1_VADDR); // The TTL1 location
-    MmuDumpTables(TTL1_VADDR + 0x1000);
-    MmuDumpTables(TTL1_VADDR + 0x2000);
-    MmuDumpTables(TTL1_VADDR + 0x3000);
+    MmuDumpTables(TTL1_KRN_VADDR); // The TTL1 location
+    MmuDumpTables(TTL1_KRN_VADDR + 0x1000);
+    MmuDumpTables(TTL1_KRN_VADDR + 0x2000);
+    MmuDumpTables(TTL1_KRN_VADDR + 0x3000);
     MmuDumpTables((ptrsize_t)&_loaderStart); // The loader location
     MmuDumpTables(0x28172948);  // An address that should not be mapped
     MmuDumpTables(FRAME_BUFFER_VADDR);  // The start of the frame buffer
@@ -124,4 +127,7 @@ void MmuInit(void)
     MmuDumpTables(0x80000000);
     MmuDumpTables((ptrsize_t)MmuEnablePaging);
     MmuDumpTables((ptrsize_t)EXCEPT_VECTOR_TABLE);
+    MmuDumpTables((ptrsize_t)0xffffd0c0);
+    MmuDumpTables((ptrsize_t)0xff430000);
+    MmuDumpTables((ptrsize_t)0xffffd0c0);
 }

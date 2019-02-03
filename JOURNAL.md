@@ -6944,6 +6944,895 @@ eoi exit
 
 Now, to clean up this mess I made a week ago!!
 
+---
+
+I have that code committed.  Now, what is next?
+
+Get the PMM module operational, of course!  ... which is going to need a non-privileged mode and system calls.  This means a whole new set of compile problems, crash problems, and and just general problem with supid problems.  This should be fun.  However, the thing I have going for me is that this really should be architecture independent.  We'll see how this prediction turns out...!!
+
+I'm going to start with libc as that will be completely architecture dependent -- and there are only 2 functions so far.  It will also be needed to link the `pmm.elf`.
+
+---
+
+I managed to get `libc` and `pmm.elf` to both compile tonight.  Tomorrow, I will need to work on the rpi2b kernel syscall components -- which needs to include a determination of what the system call function number really is and the contents of the parameters.  Overall, though, I am happy with the progress today, especially considering I haven't touched this code in a week.
+
+---
+
+### 2019-Jan-19
+
+Actually, I double checked today and the `pmm.elf` was never set up to link.  So I am taking that on first thing.  I find that the `memset()` function is not available to me in `libgcc.a` like it is in i686....  I have the `-lgcc` parameter passed to the linker and the path set for the library and it is still complaining.  So, it looks like I will be providing my own.
+
+---
+
+Extract from http://gcc.gnu.org/onlinedocs/gcc/Standards.html:
+
+> Most of the compiler support routines used by GCC are present in libgcc, but there are a few exceptions.  GCC requires the freestanding environment provide memcpy, memmove, memset and memcmp. Finally, if __builtin_trap is used, and the target does not
+implement the trap pattern, then GCC will emit a call to abort.
+
+OK, so I need to provide my own in my `libc`.  This is easy enough and since only `memset()` is being referenced at the moment, I will start with that.  Which addresses the concern.  Now, on to the system calls....
+
+In my system call code, I will need to determine the function number for the call and hang onto that for the jump table.  This is found in the instruction that issued the system call (or `svc` opcode), so I am going to have to read code from the handler to determine this.  I *should* be OK to do this because the original mmu tables for the running process issuing the system call are not changed and I really need the kernel to have access to the user space.
+
+The first thing to deal with is the supervisor handler jump target, which was a cookie-cutter copy from the other handlers.  This is a concern because it tries to put the system into supervisor mode, which it already is!  ARM has some sample code (albeit superceeded) which should help me (http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0203j/Cacdfeci.html).  The challenge is going to be whether or not I change the format of the `isrRegs_t` structure with this change!
+
+---
+
+OK, I have everything compiling again....  I was able to leverage the interrupt type field for the system call function number.  This leaves the `isrRegs_t` structure intact.  On top of that, I was able to create some defines by architecture to handle the system call in a single source set so I do not have to rebuild them for each architecture.
+
+---
+
+Trying to send the `pmm.elf` to the rpi, I am having trouble with the modules and addresses.  In particular, I am getting an invalid ELF signature.
+
+So, here is what I have:
+
+```
+Module information present
+   Found Module: kernel.elf
+    .. Name is at : 0x0x000fffbc
+    .. Start: 0x00123000
+    .. End: 0x00165ff8
+   Found Module: pmm.elf
+    .. Name is at : 0x0x000fff9a
+    .. Start: 0x00165ff8
+    .. End: 0x0018d860
+```
+
+Looking at this, the ending address is not correct.  This is from the MB information structure that is passed from `pbl-server`.  I will need to go there to debug this issue.  It ended up being a quick fix.
+
+This now puts me at the point where I need to imnplement the `PmmStart()` function for rpi2b.  This function will start the pmm module in user space.  This is going to take some time to build since I not only need to get processes working but I need to get into a non-privileged mode.
+
+The first thing is to move the pmm to the proper link location (in user space).  When I do this, the loader crashes.  I am not sure why.
+
+---
+
+### 2019-Jan-20
+
+I need to figure out how to link the `pmm.elf` to the proper location and get it to load properly.  Since it is copied over as an uninterpreted binary file, the `pbl-server` should not have anything to do with this.  I also believe I am having trouble in the loader, which it should not be.  However, with the split paging tables, this may have something to do with it and I may have to re-architect how and when I parse the user-space paging tables.
+
+---
+
+Reviewing the output, I observe that I have memory map conflicts.  What bothers me about this is that the pmm should have its own map table -- so it looks like I am updating the main kernel mmu structures which would make sense since the first 1MB is identity mapped.  At the same time, I should have a separate user-space buffer for this code.  I'm going back to my pevious statement that I need to re-architect how I am setting up the user-space paging tables.  It's a complete mess and totally wrong.
+
+First, I need to update the linker script to set aside the right amount of space for the user-space TLB1 table.  This needs to be 8K + 16 bytes.  This structure appears just past the stack, so I might be able to steal from the stack space to get this done.
+
+OK, I have been doing *this* wrong:
+
+```
+    .stack : {
+        BYTE(4080)
+    }
+```
+
+They `BYTE` indicates that I need to store a byte and the value is parenthesis is the value to store -- not the number of bytes to store!  Well, all my linker scripts are wrong and I need to clean those up.  I'm going to take care of this before I return to `pmm.ld`.
+
+After cleaning this up, the following is the resulting script section:
+
+```
+    .stack : {
+        LONG(0)
+    }
+    . += 4076;
+    _stackTop = .;
+
+    _pageTableStart = .;
+    .ptable : {
+        LONG(0)
+        LONG(0)
+        LONG(0)
+        LONG(0)             /* this is the TTL1 table */
+    }
+    . += 8192;              /* reserve space for the TTL2 tables */
+    . = ALIGN(4096);
+```
+
+`readelf -a` confirms I have the data correct:
+
+```
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .stack            PROGBITS        00001000 001000 000004 00  WA  0   0  1
+  [ 2] .ptable           PROGBITS        00001ff0 001ff0 000010 00  WA  0   0  1
+  [ 3] .text             PROGBITS        00004000 002000 000298 00  AX  0   0  4
+  [ 4] .stab             PROGBITS        00005000 003000 0029c5 00   A  0   0  4
+  [ 5] .data             PROGBITS        00008000 006000 020004 00  WA  0   0  4
+  [ 6] .ARM.attributes   ARM_ATTRIBUTES  00000000 026004 000035 00      0   0  1
+  [ 7] .symtab           SYMTAB          00000000 02603c 0004d0 10      8  56  4
+```
+
+But the program load headers are more complicated than I am prepared to handle:
+
+```
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00001000 0x00001000 0x01000 0x01000 RW  0x1000
+  LOAD           0x002000 0x00004000 0x00004000 0x039c5 0x039c5 R E 0x1000
+  LOAD           0x006000 0x00008000 0x00008000 0x20004 0x20004 RW  0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+```
+
+So, getting a little more pedantic, I get:
+
+```
+    .stack : {
+        LONG(0)
+    }
+    . += 4076;
+    _stackTop = .;
+
+    _pageTableStart = .;
+    .ptable : {
+        LONG(0)
+        LONG(0)
+        LONG(0)
+        LONG(0)             /* this is the TTL1 table pointers */
+        LONG(0)             /* this is the first of the TTL1 tables */
+    }
+    . = ALIGN(4096);
+    .ptable2 : {
+        LONG(0)             /* this is the second TTL2 tables */
+    }
+    . = ALIGN(4096);
+```
+
+Which results in:
+
+```
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .stack            PROGBITS        00001000 001000 000004 00  WA  0   0  1
+  [ 2] .ptable           PROGBITS        00001ff0 001ff0 000014 00  WA  0   0  1
+  [ 3] .ptable2          PROGBITS        00003000 003000 000004 00  WA  0   0  1
+  [ 4] .text             PROGBITS        00004000 004000 000298 00  AX  0   0  4
+  [ 5] .stab             PROGBITS        00005000 005000 0029c5 00   A  0   0  4
+  [ 6] .data             PROGBITS        00008000 008000 020004 00  WA  0   0  4
+  [ 7] .ARM.attributes   ARM_ATTRIBUTES  00000000 028004 000035 00      0   0  1
+  [ 8] .symtab           SYMTAB          00000000 02803c 0004e0 10      9  57  4
+  [ 9] .strtab           STRTAB          00000000 02851c 00017e 00      0   0  1
+  [10] .shstrtab         STRTAB          00000000 02869a 000055 00      0   0  1
+```
+
+And the program headers:
+
+```
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00001000 0x00001000 0x27004 0x27004 RWE 0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+```
+
+Which are the proper headers for my architecture.  This is cleaned up.
+
+So the next thing is going to be to update the `ModuleInit()` to handle the extra paging tables.  This currently not architecture dependent, so I will need to consider how to make these changes.
+
+---
+
+### 2019-Jan-22
+
+Well, I couldn't bring myself to work on this yesterday -- I was too depressed over the problems to solve.  They are quite a few. I need to start with `ModuleInit()` and focus in particular on the 2 sets of paging tables.  This may require a redo of the loader by architecture.
+
+---
+
+As a digression..., I really have spent a lot of time thinking about how https://github.com/littlekernel/lk is organized.  I really like the structure where the architecture (or `arch`) is separated into one set of folders and the chipset or SoC (or `platform`) is another set of folders.  There are lots of additional things that can be broken out, but that basic structure appeals to me -- more than what I have today for sure.  With this, any given system (or `target`) can be nothing more than the proper combination of `arch` and `platform` -- maybe with optional components enabled or disabled at compile time or even runtime.  So, I have prepared version 0.3.0 in Redmine to support this effort, which is next after rpi2b (see: http://eryjus.ddns.net:3000/versions/7).  At the same time, I may need to eliminate the specific `loader` and `kernel` modules and just take care of everything in one place.
+
+---
+
+OK, that's enough about what is coming down the road.  Time to focus.
+
+The problem at hand here is that rpi2b has 2 top-level ttl1 tables -- one for kernel space and one for user space -- and my `MmuMapToFrame()` function only takes one parameter.  Ultimately, I will need to either figure out a way to determine the correct one to update before calling `MmuMapToFrame()` or I will need to create an architecture-specific structure to hold the MMU top level address(s) for each architecture.  I really think the latter is the best solution to take on at this point since it better aligns with what I would like to do later in `v0.3.0`.  Don't get me wrong: I am not starting yet.  I am specifically focused on getting rpi2b working, but I do not want to knowingly write a bunch of code that will be tossed in a few months.
+
+So, continuing to walk this backward, I need to define what the MMU-critical data is for any given process (including the kernel).  Well, for the i686 arch, this will be the `cr3` value.  For the rpi2b, it is going to be the `ttbr0` and `ttbr1` values.  In the case of rpi2b, the `ttbr1` value is used for the kernel stuff.
+
+Another element to consider for the rpi2b is the virtual addresses of the frames that hold the `ttl1` structure.  There are 4 frames for the `ttbr1` register (since it is also the `ttbr0` structure for the kernel) and another 2 frames for the `ttbr0` register.  One key thing to keep in mind is that for the kernel these addresses will be the same.
+
+My goal with this `v0.2.0` effort is that I do not want to have to severely change the i686 running kernel (I will save that for `v0.3.0`), but just do what I need to do to get the rpi2b target working.
+
+So, starting with rpi2b (since that is my problem at the moment), what does this structure need to look like?
+
+```C
+typedef struct {
+    ptrsize_t ttbr0;        // this will be the user-space mappings (8K in length)
+    ptrsize_t ttbr1;        // kernel-space (global, in case it is not clear; 16K and may == ttbr0)
+} MmuData_t;
+```
+
+These will need to be the physical addresses of the structures, not the virtual ones.  Now for i686, the following should suffice:
+
+```C
+typedef ptrsize_t MmuData_t;
+```
+
+These changes should only need to occur in the `mmu` section of code for the loader.  There will be some fall-out in `ModuleInit()` but I believe everything should be isolated to that additional source.  I do not yet believe I have a problem with `kernel`, but that doesn't mean anything -- I have not even looked at it.
+
+---
+
+### 2019-Jan-23
+
+Today I need to get into the nuts and bolts of this change.  First and foremost, I want to get the i686 target changed and fully working again before I take on the rpi2b changes.
+
+---
+
+I was able to modify the i686 code and still get it to run properly.  So, success there....
+
+Now, to change the rpi2b type back to the structure (which I matched the i686 `typedef` to get everything to compile) and the necessary debugging.
+
+---
+
+### 2019-Jan-25
+
+OK, I was able to get both architectures to compile fully again.  I was able to run the i686 architecture and nothing broke in my efforts.  So this is a good thing so far.
+
+rpi2b on the other hand, I expect that I have taken a **huge** step backwards.  And it is as I feared.  I really need to start over from the beginning of the loader to start putting the running components back together.  I am back at the loader's `PmmInit()` function.
+
+I take it back -- it's `MmuInit()` that needs work, which makes more sense.
+
+I have gotten caught up to the point where I am trying to enable paging again.  This is causing a crash and is likely an unmapped page.  I disabled the update to the bit to enable paging and I am able to get past that point.
+
+I am on to something!!  I took `pmm.elf` out of the `cfg-file` and re-enabled the paging bit, and I am getting past where I was -- in fact, the kernel is trying to schedule again.  This is good.
+
+So, something is going on with the mapping of the `pmm.elf` is my suspicion.  Before I take that on, I am going to try to split the tables and make sure I am mapping the correct one in `MmuMapToFrame()`.  Now, with the bit set to 1, I am still getting the scheduler trying to reschedule.  So, now to clean up the `MmuMapToFrame()` function....
+
+All caught back up.  I can now focus on getting `pmm.elf` to load and get its `ttbr0` populated properly.
+
+---
+
+In `ModuleInit()`, the ttbr0 needs 2 frames, not 1.  And, they must be consecutive frames.  And, they need to be 64K aligned.
+
+```C
+            modMmu.ttbr0 = PmmFrameToLinear(PmmNewFrame());
+            modMmu.ttbr1 = GetMmuTopAddr().ttbr1;
+```
+
+... I guess I have a but of clean-up to do with this as well.
+
+---
+
+### 2019-Jan-26
+
+OK, I'm a damned idiot!!!  I finally figured out the reason the system would lock when I was trying to start the PMM!!!
+
+```C
+void PmmStart(Module_t *pmmMod)
+{
+    kprintf("Start the PMM process here in rpi2b\n");
+//    Halt();
+}
+```
+
+I commented the offending line and (shocker of all shockers!!) it worked.
+
+OK, so now back to last night's discovery...  I need to make sure that I allocate 2 consecutive frames for the ttl1 table.
+
+I am going to have to do another MMU virtual address mapping -- but I do not have it in me tonight.  I'm not sure why, but I am just not overly motivated today.
+
+Actually, I have decided that it would be good to keep this documented in a wiki.  My first instinct is to put this in Redmine and have it available through eryjus.ddns.net...  However, I also have a wiki available in github.  Since I am maintaining my bugs and TODOs in Redmine, I am going to use that for the wiki as well.  I may move that at a later date.
+
+---
+
+### 2019-Jan-27
+
+Today I am going to get into the VMM maps for all the different processes -- well for the kernel and the PMM in particular.  I am going to start with the i686 memory map and then I will change to the rpi2b memory map.  The key takeaway (I expect) is going to be that they are very different and will need to be aligned.  I certainly am having trouble keeping track of anything which is generating problems for me in getting the rpi2b pmm operational.
+
+---
+
+As I was writing the rpi2b High-Level Virtual Memory Map wiki, I have a thought cross my mind: What if I did not use the dual memory maps for rpi2b and stuck with just a single map?  It would certainly simplify things and would allow me to keep the memory map more consistent.  I posed the question on `freenode#osdev`:
+
+```
+[08:34] <eryjus> for arm, there are 2 sets of paging tables -- one for user processes and one for common kernel pages -- with the intent to improve performance.  in practice does anyone actually use this feature in your own kernels or do you find it too fussy to mess with?
+[08:52] <bcos> eryjus: Sounds like a good feature to me (how else would you separate user-space from kernel-space?)
+[09:13] <eryjus> bcos: same as you would with x86 -- copy the middle layer tables into the top level for the shared kernel in each user process.  it's an optional feature but creates another layer of complexity I'm wondering if it is worth the effort.
+[09:14] <bcos> 80x86 has a "global" flag so that the CPU doesn't throw away all the TLB entries for kernel when you change virtual address space
+[09:14] <bcos> (in page table entries)
+[09:16] <bcos> I'm guessing (on ARM) there's no "global" flag; so the extra set of paging tables does the same thing (prevents TLB entries being thrown away for no reason), and might also give you more virtual address space to work with
+[09:20] <eryjus> there is a not-global flag which is (somewhat) equivalent. IIRC, it looks at that with the buffered and cached flags to make the same determination.
+[09:21] <bcos> Hrm. Does the extra/2nd set of page tables give you more virtual address space?
+[09:22] <froggey> a whole extra bit
+[09:22] <eryjus> no -- same address space.
+[09:23] <bcos> Same address space that's twice as large (e.g. highest bit of virtual address selects which set of page tables)?
+[09:23] <froggey> that's what I thought, but maybe not?
+[09:24] <eryjus> there is a register which indivates how many (MS) bits to compare to 0, and if they are all 0 then the "user" page tables are used else the "kernel" page tables are used.
+[09:24] <bcos> I thought ARM had variable page sizes - might depend on which page size you use
+[09:24] <eryjus> *indicates
+[09:24] <eryjus> AFAIK, that's unrelated to these tables -- or rather independent of them
+[09:26] <bcos> "optional feature" means some CPus don't support it?
+[09:26] <bcos> (or just means that OS doesn't have to use it?)
+[09:28] <eryjus> the OS does not have to use it -- which is my question.  Does anyone actually take advantage of this in their kernel or do they find it too fussy to take advantage of?
+[09:31] <bcos> I'm thinking that (if there no other benefits) separate page tables would still make kernel code cleaner and more efficient (easier to update kernel space without having to update every "user+kernel" address spaces)
+[09:31] <bcos> ..so I'm figure out why a kernel wouldn't use it (other than "developers were lazy" or ...)
+[09:37] <eryjus> "TTBCR can be programmed so that all translations use TTBR0 in a manner compatible with architecture versions before ARMv6."
+[09:37] <Brnocrist> separate for user and kernel space, you mean?
+[09:37] <eryjus> bcos: ^
+[09:38] <bcos> The other thing to consider is whether it helps for melt-down
+[09:38] <eryjus> from ARM-ARMv7-A Example B3-1 for the record...
+[09:38] <bcos> Not sure if you care about compatiblity with architecture versions before ARMv6
+[09:38] <bcos> (half probably don't have MMUs so... ;-)
+[09:39] <eryjus> true -- not really concerned about that (yet anyway)
+[09:39] <eryjus> bcos: please define melt-down...
+[09:40] <eryjus> nvm -- found it
+[09:41] <bcos> For Intel; attacker reads kernel data then does something that depends on the value read (e.g. uses value in a table lookup to cause a difference in what is/isn't cached); then the CPU checks if the original access was allowed and triggers an exception after the difference has been caused
+[09:41] <bcos> For ARM, not sure (I thought ARM wasn't effected but apparently some ARMs are)
+[09:44] <Brnocrist> no MMU no page tables side channel problems!
+[09:44] <Brnocrist> :)
+[09:45] <bcos> No MMU probably means no way to prevent user-space from doing whatever it likes to kernel = no security at all
+[09:46] <bcos> (which is fine for a CPU embedded in a toaster or something, where the software is in ROM and you can't install third-party software, but..)
+[09:49] <eryjus> bcos, going back to whether it helps with meltdown, neither the cortex-A7 nor the cortex-A53 are susceptible (according to wikipedia anyway) and these are the 2 I am targeting for now....
+[09:51] <bcos> What's the difference between cortex-A53 and cortex-A73 (from perspective of OS)?
+[09:52] <Brnocrist> bcos: yeah, I was j/k
+[09:53] <eryjus> IDK..  still learning ARM
+[09:54] <bcos> Looks like they added a few new features/instructions (half-point floaty point, atomics, virtualisation extensions); but I'd be tempted to suspect that the majority of code written for cortex-A53 would run "as is" on cortex-A75
+[09:55] <bcos> *half-precision
+[09:56] <bcos> ^ what I'm thinking is that I'd be tempted to target "any ARMv8" eventually; and (because cortex-A75 is vulnerable to meltdown) that means trying to figure out how to mitigate efficiently
+[09:58] * eryjus nods
+[10:00] <eryjus> a53 is in-order whereas the a73 is out-of-order (which in the limited time I have looked at this seems to be the key distinction for the vulnerability)
+```
+
+There are a couple of takeaways from this conversation:
+* The RPi is not vulnerable to either meltdown or Spectre, but that does not mean I should not consider it.
+* The Cortex-A7 does not require that I use the both `TTBRx` registers (which I knew before but was reinforced today).
+
+I think I am going to revert back to a single `TTBRx` register for ARM at this point.  It will be a good enhancement to add at a later point, but since my goal at this point is a leteral move from i686 to rpi2b, I will stay with the single register (call me lazy...).  However, the first order of business today is to get the Virtual Memory Map properly documented.
+
+Geist also chimed in on `freenode#osdev`, and it was his/her input I was looking for:
+
+```
+[13:00] <geist> bcos: microarchitecturally they're quite different
+[13:00] <geist> as eryjus points out, a53 is in order, dual issue, whereas a73 is a proper OOO superscalar processor
+[13:00] <geist> as far as cpu features, a53 implements v8.0 and a73 is I believe v8.1
+[13:01] <geist> as in they're both v8, but there are a set of optional features that are commonly rolled up into the .1, .2 .3 spec
+[13:01] <geist> actually, now that i think about it, a72 and a73 are i think v8.0 as wel
+[13:01] <geist> since you are intended to be able to pair an a72 or a73 with a a53
+[13:01] <geist> a55 pairs nicely with an a75, which both implement v8.1
+[13:02] <geist> basically a53 and a73 are more orless identical from a software point of view, though micrroarchitecturally they're quite different, and the a72 or a73 will perform roughly 2 or 2.5x
+[13:03] <geist> eryjus: to go back, yes absolutelly everyone uses the split page table thing
+[13:03] <geist> i think it's required for 64bit if you want to use the 'high' addresses
+[13:05] <geist> re: the larger address space with the split in 64bit, you get 2 more bits than x86-64 specifically
+[13:05] <geist> ie, each side is a full 48 bits
+[13:06] <geist> 0000.xxxx.xxxx.xxxx and ffff.xxxx.xxxx.xxxx
+```
+
+However, for the time being, I am going to stick with a single page table.  v0.3.0 is geared to better separting the architectures and platforms and I may add in the extra page table with that split.  I think I will use that version (or the next one after that) to better align my kernel to the way it should be on ARM.
+
+---
+
+Back to debugging..., I have figured out that the i686 has the following line in `MmuInit()`:
+
+```
+    MmuMapToFrame(mmuBase, GDT_ADDRESS, PmmLinearToFrame(0x00000000), true, false);
+```
+
+... where `GDT_ADDRESS` is:
+
+```
+const ptrsize_t GDT_ADDRESS = 0xff401000;
+```
+
+Well, this mapping forces a Page Table to be created at `0xffffd000`.  This way, when I get to the `PmmInit()` function, the Page Table exists in the Page Directory and I do not need to create a new Page Table.
+
+Now, contrasting this with rpi2b, there is nothing in the `MmuInit()` function which would trigger the creation of the ttl2 tables at `0xffffd000`.
+
+I have added a step to create these ttl2 tables:
+
+```
+    // -- we also need to "goose" the system into creating this ttl2 table since we will need it later.
+    MmuMakeTtl2Table(mmuBase.ttbr1, 0xff400000);
+```
+
+So, without the line above, the boot sequence looks like this:
+
+```
+Jumping to the kernel, located at address 0x800049d4
+#.Mode is: 0x13
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Initializing the idle process structure
+Initializing the list at 0x8003d1ac
+Initializing the list at 0x8003d19c
+Done
+Creating the "magic stack" for the idle process
+Idle Process initialized
+Butler Process initialized
+PmmStart(): installing module for pmm.elf, located at 0x00167000
+PmmStart(): calculated pageTtl2Frame to be 0x00000169; tos to be 0x00000168
+PmmStart(): Setting up the tables to be managed
+PmmStart(): Mapping addr 0xff430000 to frame 0x000001c8
+Data Exception:
+At address: 0x8003cf98
+ R0: 0x00000038   R1: 0x80005c70   R2: 0xffffd0ff
+ R3: 0x00000020   R4: 0x00000169   R5: 0x000001c8
+ R6: 0x00120000   R7: 0x00103084   R8: 0x00000000
+ R9: 0x00123000  R10: 0x2411fd89  R11: 0x87b027fe
+R12: 0x8003d078   SP: 0x80001db0   LR_ret: 0x80001db4
+SPSR_ret: 0x600001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xdffb56bf  User SP: 0xdde7aad3
+Svc LR: 0x8003cfa8
+```
+
+With that line in place, I get the following:
+
+```
+Jumping to the kernel, located at address 0x800049d4
+#.Mode is: 0x13
+```
+
+So, I am most likely getting some sort of fault when the kernel gets control.  The most likely culprit is the follwing:
+
+```C
+//
+// -- This is the location of the exception vector table
+//    --------------------------------------------------
+const ptrsize_t EXCEPT_VECTOR_TABLE = 0xff401000;
+```
+
+This page should be mapped in the Page Tables and I probably overwrote the TTL1 entry.  And I believe that to be the case.
+
+So, back to the drawing board here.
+
+---
+
+With several additional tests, I am rather convinced my problem is not with `MmuInit()` missing something but instead with the `MmuMapToFrame()` not mapping the management tables properly.
+
+---
+
+### 2019-Jan-28
+
+The goal today is to get the `MmuInit()` function working properly, which means making sure `MmuMapToFrame()` is working right.  In particular, the point is to make sure that the management tables are updated properly when I create a new Ttl2 table.  This is going to require that I halt the booting process ahead of launching the kernel.
+
+---
+
+OK, once again, what the hell was I thinking???
+
+```C
+//
+// -- This is the location of the TTL1/TTL2 Tables
+//    --------------------------------------------
+const ptrsize_t TTL1_VADDR = 0x80400000;
+const ptrsize_t TTL2_VADDR = 0x80000000;
+```
+
+This puts the paging tables overwriting the kernel!  From [The High-Level Memory Map](http://eryjus.ddns.net:3000/projects/century-os/wiki/High-Level_Virtual_Memory_Map), I want to have these structures in the `0xff400000` address area.
+
+---
+
+After updating the wiki and the code, I am now getting the following results for the TTL1 table mapping:
+
+```
+Set up the TTL1 management table
+   location: 0x0003e000
+   ttbr0 & ttbr1 are both: 0x3e000000
+Mapping address 0xff404000 to frame 0x0003e000
+  Ttl1 index is: 0x3e000000[0x00000ff4]
+  Ttl2 location is: 0x3e004000[0x00000004]
+Mapping address 0xff405000 to frame 0x0003e001
+  Ttl1 index is: 0x3e000000[0x00000ff4]
+  Ttl2 location is: 0x3e004000[0x00000005]
+Mapping address 0xff406000 to frame 0x0003e002
+  Ttl1 index is: 0x3e000000[0x00000ff4]
+  Ttl2 location is: 0x3e004000[0x00000006]
+Mapping address 0xff407000 to frame 0x0003e003
+  Ttl1 index is: 0x3e000000[0x00000ff4]
+  Ttl2 location is: 0x3e004000[0x00000007]
+```
+
+After some debugging code and some additional analysis, I think this is working properly.  Here is the result:
+
+```
+Initializing Module: pmm.elf
+   Starting Address: 0x00168000
+The module is loaded at address: 0x00168000
+   FileSize = 0x00026004; MemSize = 0x00026004; FileOffset = 0x00001000
+      Attempting to map page 0x00001000 to frame 0x00000169
+Mapping address 0x00001000 to frame 0x00000169
+.. Ttl1 index is: 0x001c9000[0x00000000]
+Creating a new TTL2 table for address 0x00001000
+.. The new ttl2 frame is 0x0003e013
+.. The base ttl2 1K location is 0x000f804c
+.. The ttl1 index is 0x00000000
+.. So the address of the ttl1 Entry is: 0xff404000
+.. Set the TTL1 table index 0x00000000 to 1K location 0x000f804c
+.. Set the TTL1 table index 0x00000001 to 1K location 0x000f804d
+.. Set the TTL1 table index 0x00000002 to 1K location 0x000f804e
+.. Set the TTL1 table index 0x00000003 to 1K location 0x000f804f
+.. The management address for this Ttl2 table is 0xffc00004
+.... The base location is 0xffc00000
+.... The table offset is  0x00000000
+.... The entry offset is  0x00000004
+.. The TTL1 management index for this address is 0x00000ffc
+<< Completed the table creation for 0x00001000
+  Ttl2 location is: 0x3e013000[0x00000001]
+      Attempting to map page 0x00002000 to frame 0x0000016a
+Mapping address 0x00002000 to frame 0x0000016a
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000002]
+      Attempting to map page 0x00003000 to frame 0x0000016b
+Mapping address 0x00003000 to frame 0x0000016b
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000003]
+      Attempting to map page 0x00004000 to frame 0x0000016c
+Mapping address 0x00004000 to frame 0x0000016c
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000004]
+      Attempting to map page 0x00005000 to frame 0x0000016d
+Mapping address 0x00005000 to frame 0x0000016d
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000005]
+      Attempting to map page 0x00006000 to frame 0x0000016e
+Mapping address 0x00006000 to frame 0x0000016e
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000006]
+      Attempting to map page 0x00007000 to frame 0x0000016f
+Mapping address 0x00007000 to frame 0x0000016f
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000007]
+      Attempting to map page 0x00008000 to frame 0x00000170
+Mapping address 0x00008000 to frame 0x00000170
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000008]
+      Attempting to map page 0x00009000 to frame 0x00000171
+Mapping address 0x00009000 to frame 0x00000171
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000009]
+      Attempting to map page 0x0000a000 to frame 0x00000172
+Mapping address 0x0000a000 to frame 0x00000172
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000000a]
+      Attempting to map page 0x0000b000 to frame 0x00000173
+Mapping address 0x0000b000 to frame 0x00000173
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000000b]
+      Attempting to map page 0x0000c000 to frame 0x00000174
+Mapping address 0x0000c000 to frame 0x00000174
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000000c]
+      Attempting to map page 0x0000d000 to frame 0x00000175
+Mapping address 0x0000d000 to frame 0x00000175
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000000d]
+      Attempting to map page 0x0000e000 to frame 0x00000176
+Mapping address 0x0000e000 to frame 0x00000176
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000000e]
+      Attempting to map page 0x0000f000 to frame 0x00000177
+Mapping address 0x0000f000 to frame 0x00000177
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000000f]
+      Attempting to map page 0x00010000 to frame 0x00000178
+Mapping address 0x00010000 to frame 0x00000178
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000010]
+      Attempting to map page 0x00011000 to frame 0x00000179
+Mapping address 0x00011000 to frame 0x00000179
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000011]
+      Attempting to map page 0x00012000 to frame 0x0000017a
+Mapping address 0x00012000 to frame 0x0000017a
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000012]
+      Attempting to map page 0x00013000 to frame 0x0000017b
+Mapping address 0x00013000 to frame 0x0000017b
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000013]
+      Attempting to map page 0x00014000 to frame 0x0000017c
+Mapping address 0x00014000 to frame 0x0000017c
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000014]
+      Attempting to map page 0x00015000 to frame 0x0000017d
+Mapping address 0x00015000 to frame 0x0000017d
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000015]
+      Attempting to map page 0x00016000 to frame 0x0000017e
+Mapping address 0x00016000 to frame 0x0000017e
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000016]
+      Attempting to map page 0x00017000 to frame 0x0000017f
+Mapping address 0x00017000 to frame 0x0000017f
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000017]
+      Attempting to map page 0x00018000 to frame 0x00000180
+Mapping address 0x00018000 to frame 0x00000180
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000018]
+      Attempting to map page 0x00019000 to frame 0x00000181
+Mapping address 0x00019000 to frame 0x00000181
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000019]
+      Attempting to map page 0x0001a000 to frame 0x00000182
+Mapping address 0x0001a000 to frame 0x00000182
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000001a]
+      Attempting to map page 0x0001b000 to frame 0x00000183
+Mapping address 0x0001b000 to frame 0x00000183
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000001b]
+      Attempting to map page 0x0001c000 to frame 0x00000184
+Mapping address 0x0001c000 to frame 0x00000184
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000001c]
+      Attempting to map page 0x0001d000 to frame 0x00000185
+Mapping address 0x0001d000 to frame 0x00000185
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000001d]
+      Attempting to map page 0x0001e000 to frame 0x00000186
+Mapping address 0x0001e000 to frame 0x00000186
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000001e]
+      Attempting to map page 0x0001f000 to frame 0x00000187
+Mapping address 0x0001f000 to frame 0x00000187
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x0000001f]
+      Attempting to map page 0x00020000 to frame 0x00000188
+Mapping address 0x00020000 to frame 0x00000188
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000020]
+      Attempting to map page 0x00021000 to frame 0x00000189
+Mapping address 0x00021000 to frame 0x00000189
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000021]
+      Attempting to map page 0x00022000 to frame 0x0000018a
+Mapping address 0x00022000 to frame 0x0000018a
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000022]
+      Attempting to map page 0x00023000 to frame 0x0000018b
+Mapping address 0x00023000 to frame 0x0000018b
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000023]
+      Attempting to map page 0x00024000 to frame 0x0000018c
+Mapping address 0x00024000 to frame 0x0000018c
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000024]
+      Attempting to map page 0x00025000 to frame 0x0000018d
+Mapping address 0x00025000 to frame 0x0000018d
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000025]
+      Attempting to map page 0x00026000 to frame 0x0000018e
+Mapping address 0x00026000 to frame 0x0000018e
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000026]
+      Attempting to map page 0x00027000 to frame 0x0000018f
+Mapping address 0x00027000 to frame 0x0000018f
+.. Ttl1 index is: 0x001c9000[0x00000000]
+  Ttl2 location is: 0x3e013000[0x00000027]
+   FileSize = 0x00000000; MemSize = 0x00000000; FileOffset = 0x00000000
+```
+
+Looking at the first mapping for `pmm.elf`, I notice a few things:
+
+1. This was hard-coded but probably should not be... `.. So the address of the ttl1 Entry is: 0xff404000`
+1. This check does not take the split tables into account... `.... The base location is 0xffc00000`
+1. This calculation does nto look right either... `.. The TTL1 management index for this address is 0x00000ffc`
+
+I will have to dig into this further tomorrow.
+
+---
+
+### 2019-Jan-29
+
+I think I need some ASCII art....
+
+There are 2 sets of paging tables to maintain -- the user-space tables and the kernel-space tables.
+
+
+```
+User TTL1:
++--------+--------+
+|        |        |     * 8K in length (2 frames)
+|        |        |     * stored in TTBR0
+|        |        |     * virtual address in kernel space (for security reasons)
++--------+--------+
+
+
+Kernel TTL1:
++--------+--------+--------+--------+
+|        |        |        |        |     * 16K in length (4 frames)
+|        |        |        |        |     * stored in TTBR1
+|        |        |        |        |     * virtual address TTL1_VADDR
++--------+--------+--------+--------+
+```
+
+Now, it would seem that the User TTL1 can overlay into the Kernel TTL1, taking up the first 2 frames of the TTL1_VADDR.  However, when I look at a context change, it will require a lot of expensive fussiness when updating this information.  Not a good choice.
+
+On the other hand, if I place this into user space, I may have a security problem where a rogue process can start replacing a page with frames to try to read all the memory in the system.
+
+---
+
+### 2019-Jan-30
+
+As I continue to think about this some more, I am not sure I have much of a choice here....  I will need to define some space in the user paging tables to make the user space so that they are properly handled in a task swap.  The driving problem is simply the need to re-map so much during a task swap (or on demand to service a request) that it is not feasible to keep this information in shared kernel space.
+
+---
+
+### 2019-Feb-01
+
+Well, I think I have my backups sorted out.  The disk I write my daily snapshots to crashed....  But that has been resolved and tomorrow (which is Saturday), I will be able to focus on OS development.
+
+---
+
+### 2019-Feb-02
+
+So, going back to my MMU problem, I think I am going to need to allocate the top 4MB of User Space (`0x7c000000` to `0x7fffffff`) for managing the user paging tables.  The key difference here will be that the top 2MB will be lost -- and I'm not quite sure what I can put in its place (perhaps stacks or some other small elements).
+
+So, with an update to the Virtual Memory Map wiki (http://eryjus.ddns.net:3000/projects/century-os/wiki/High-Level_Virtual_Memory_Map), I am ready to start to make this happen in code.
+
+The first change is going to have to be `MmuMapToFrame()` which is going to need both tables and to make a decision which one will get the mapping.  This function appears to have the all the necessary information as the signature is correct:
+
+```C
+void MmuMapToFrame(MmuData_t mmu, ptrsize_t addr, frame_t frame, bool wrt, bool krn);
+```
+
+And, in fact I have even tried to get the mapping into the correct table:
+
+```C
+    ptrsize_t table = ((addr & 0x80000000) ? mmu.ttbr1 : mmu.ttbr0);
+```
+
+But, alas, I'm not convinced this is working properly (or maybe it is the call to `MmuMakeTtl2Table()` that is the problem).  And in fact `MmuMakeTtl2Table()` has the these types of calculations:
+
+```C
+    mgmtTtl2Addr = TTL2_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
+```
+
+So, the place to start is there -- and in particular cleaning up the `#define`s and conditionals.
+
+---
+
+This has, of course, made a complete mess of `MmuInit()`.  In fact, I am dealing with a recursive call now.
+
+---
+
+I'm really having a hell of a time with this....  It's frustrating and it's taking away all my motivation to continue.  I need to figure out something before I hit that point where I want to start gutting everything.  At the moment, I am really thinking that I want to start re-architecting for v0.3.0.
+
+I am going to take a look at the objective of v0.2.0:
+
+> The objective of this version is to add support for the Raspberry Pi Model 2b. I am particularly focused on making sure that the architecture abstractions are solid. There is no driving need to add new functionality -- unless the rpi2b drives the need for a parallel move.
+
+... and then compare that to the objective I have documented for v0.3.0:
+
+> This version will better align the architecture abstractions by separating out the arch and platform components into separate groups.
+>
+> So far the arch components I have written to are:
+>
+>    * x86
+>    * arm
+>
+> And the platform components are:
+>
+>    * PC
+>    * BCM2835/6
+>
+> However, as I prepare to get into x86_64- and armv8-related architectures, this work will be important to complete to make the new architectures easier to add in.
+
+Interestingly enough, I think I can justify some arhictecture reorganizaions with this version -- meaning I can start with creating `arch` and `platform` folders and reorganize my build system to accomodate.  But do I want to take this on now and completely stall out v0.2.0?
+
+On the other hand, I should be able to eliminate the user paging table and get there rather quickly, if I ignore @geist's comment (at least for now anyway):
+
+> [13:03] <geist> eryjus: to go back, yes absolutelly everyone uses the split page table thing
+
+I was nearly at that point about a week ago, and then something changed and I felt I should continue to pursue the split page tables (in no small part based on his comment).  However, I think at this point the best path forward is to get this version done.
+
+I really need to think on this decision a bit....  I'm calling it for the night to ponder the possibilities.  At the moment, I am leaning toward killing the split paging table for now....
+
+So, what would that look like?
+
+##### Version 0.2.0
+* add rpi2b support wihtout making any big architecture/feature changes
+* keep a single paging table for rpi2b, modeling after i686
+
+##### Version 0.3.0
+* separate `arch` and `platform` into separate folders
+* possibly eliminate the loader and go with a kernel
+
+But this will leave a few things unaccounted for:
+1. eliminate the loader
+1. split the page tables for rpi2b properly
+1. prepare for UEFI boot
+
+It will also makes me wonder if I am approaching this properly....  For example, should I work on writing the same results independently before integratng them into existing common code?  That would allow me to develop for the architecture without being encumbered by the existing code and then the integration effort would be where I spend all my time.
+
+Lots to think about here.  Tomorrow will have some decisions.  And some real progress no matter my decision.
+
+---
+
+### 2019-Feb-03
+
+OK, I have some decisions:
+* I am going to back out the split paging table thing
+* For the moment, I am *not* going to develop a kernel independently and then add it in
+* I am *not* going to kill the loader in this version (but will likely do that in v0.3.0)
+* I *will* go back and update the split paging tables in some version after v0.3.0, but *before* I get into 64-bit architectures
+
+So, with this, I start making the paging tables the way I need them for the moment -- which will look very close to the i686 functions.
+
+---
+
+Well, it was relatively quick to clean up the compiles (without looking at logic).
+
+---
+
+Well, I'm back to this:
+
+```C
+    // -- Map the area needed to work on the PmmStart() module
+    SerialPutS("Create a TTL2 table for the temporary work space needed for PMMInit()\n");
+    MmuMakeTtl2Table(mmuBase, 0xff430000);
+```
+
+When this call to `MmuMakeTtl2Table()` is commented out, the kernel gets control but the system crashes in `PmmStart()`; when this is enabled, the kernel gets control but goes nowhere.
+
+If I remember correctly, the Interrupt Vector Table is located in those same pages, so there should be no need to re-map.  Verifying (since I did not get my memory map complete...).
+
+* The interrupt exception table is located at `0xff401000`.  This is TTL1 table entry `0xff4` and TTL2 entry `0x01`.
+* The Process Initialization tables are located at `0xff430000`.  This is TTL1 table entry `0xff4` and TTL2 entry `0x30`.
+
+So, there is no need to create a new TTL2 table, it already exists for the Interrupt Vector Table.  The problem must be in the `PmmStart()` function.
+
+---
+
+I think I am getting my own brain there...  This is my exception:
+
+```
+PmmStart(): Mapping addr 0xff430000 to frame 0x000001c9
+  The address of the TTL2 Entry is at: 0xffffd0c0
+Data Exception:
+At address: 0x8003cf98
+ R0: 0x00000032   R1: 0x80005c9c   R2: 0xffffd0ff
+ R3: 0x00000020   R4: 0x0000016a   R5: 0x000001c9
+ R6: 0x00121000   R7: 0x00103084   R8: 0x00000000
+ R9: 0x00124000  R10: 0x2615fd81  R11: 0x87b06ffe
+R12: 0x8003d078   SP: 0x80001dd4   LR_ret: 0x80001dd8
+SPSR_ret: 0x600001d3     type: 0x17
+```
+
+I am trying to add a mapping into the TTL2 table entry at address `0xffffd0c0`.  However, the loader's `MmuInit()` is leaving that mapping in the following state:
+
+```
+MmuDumpTables: Walking the page tables for address 0xffffd0c0
+Level  Tabl-Addr     Index        Entry Addr    Next PAddr    fault
+-----  ----------    ----------   ----------    ----------    -----
+TTL1   0x3e000000    0x00000fff   0x3e003ffc    0x3e005c00     01
+TTL2   0x3e005c00    0x000000fd   0x3e005ff4    0x00000000     00
+```
+
+Meaning it is not mapping the management table properly for the TTL2 table I want to update.  Now, I believe that this is related to the folloing in `MmuMakeTtl2Table()`:
+
+```C
+    // If the TTL1 Entry for the management address is faulted; create a new TTL2 table
+    if (mgmtTtl1Entry->fault == 0b00) {
+        MmuMakeTtl2Table(mmu, mgmtTtl2Addr);
+    }
+```
+
+In this case, I am only creating a new Ttl2 table, not actually mapping the address.
+
+---
+
+OK, I finally got to the bottom of the `PmmStart()` function and have it now geared for the rpi2b.   The kernel is trying to perform a task swap.  But right now, `ProcessSwitch()` is nothing more than an empty shell, so nothing happens.  I need to get into that next.
+
+In the meantime, it I am very ready for a commit.
+
+
+
 
 
 

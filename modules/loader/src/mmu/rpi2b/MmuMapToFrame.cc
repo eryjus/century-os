@@ -44,30 +44,30 @@
 #include "mmu-loader.h"
 
 
-#ifndef DEBUG
+#ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
 
 
-void MmuMapToFrame(ptrsize_t ttl1, ptrsize_t addr, frame_t frame, bool wrt, bool krn)
+void MmuMapToFrame(MmuData_t mmu, ptrsize_t addr, frame_t frame, bool wrt, bool krn)
 {
 #if DEBUG_MMU == 1
     SerialPutS("Mapping address "); SerialPutHex(addr); SerialPutS(" to frame "); SerialPutHex(frame);
-            SerialPutChar('\n');
+            SerialPutS(" using physical table "); SerialPutHex(mmu); SerialPutChar('\n');
 #endif
 
     // first, go find the ttl1 entry
-    Ttl1_t *ttl1Table = (Ttl1_t *)ttl1;
+    Ttl1_t *ttl1Table = (Ttl1_t *)mmu;
     int ttl1Index = ((addr >> 20) & 0x0fff);
     Ttl1_t *ttl1Entry = &ttl1Table[ttl1Index];
 
 #if DEBUG_MMU == 1
-    SerialPutS("  Ttl1 index is: "); SerialPutHex((uint32_t)ttl1Table); SerialPutChar('[');
+    SerialPutS(".. Ttl1 index is: "); SerialPutHex((uint32_t)ttl1Table); SerialPutChar('[');
             SerialPutHex(ttl1Index); SerialPutS("]\n");
 #endif
 
     // now, do we have a ttl2 table for this address?
-    if (ttl1Entry->fault == 0b00) MmuMakeTtl2Table(ttl1, addr);
+    if (ttl1Entry->fault == 0b00) MmuMakeTtl2Table(mmu, addr);
 
     // get the ttl2 entry
     Ttl2_t *ttl2Table = (Ttl2_t *)((ttl1Entry->ttl2) << 10);

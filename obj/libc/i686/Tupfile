@@ -22,7 +22,7 @@ CC = $(ARCH)-elf-gcc
 
 include_rules
 
-SRC = $(WS)/modules/$(MOD)/src
+SRC = $(WS)/modules/$(MOD)/src/$(ARCH)
 
 
 ##

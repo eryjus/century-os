@@ -37,7 +37,7 @@
 
 
 #ifndef DEBUG_PMM
-#   define DEBUG_PMM 1
+#   define DEBUG_PMM 0
 #endif
 
 
@@ -156,8 +156,8 @@ void PmmInit(void)
 
 
 #if DEBUG_PMM == 1
-            SerialPutS("Finally, marking the stack, hardware communication area, kernel heap, and this "
-                    "bitmap frames as used.\n");
+    SerialPutS("Finally, marking the stack, hardware communication area, kernel heap, and this "
+                "bitmap frames as used.\n");
 #endif
     // -- we have a 4K stack that is upper-bound at 2MB
     PmmAllocFrame(PmmLinearToFrame(0x200000 - 4096));

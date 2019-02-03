@@ -25,7 +25,7 @@
 //    ---------------------------------------------
 frame_t MmuUnmapPage(ptrsize_t addr)
 {
-    static Ttl2_t *ttl2Tables = (Ttl2_t *)TTL2_VADDR;
+    Ttl2_t *ttl2Tables = (Ttl2_t *)(TTL2_KRN_VADDR);
     Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
 
     if (ttl2Entry->fault == 0b00) return 0;

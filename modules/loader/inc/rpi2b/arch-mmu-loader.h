@@ -26,9 +26,15 @@
 
 
 //
+// -- define the local structure needed to manage the MMU structure needs
+//    -------------------------------------------------------------------
+typedef ptrsize_t MmuData_t;
+
+
+//
 // -- This is the working TTL for the rpi2b
 //    -------------------------------------
-extern ptrsize_t ttl1;
+extern MmuData_t mmuBase;
 
 
 //
@@ -40,13 +46,13 @@ void SetMmuTopAddr(void);
 //
 // -- This inline function will get the top level paging address
 //    ----------------------------------------------------------
-inline ptrsize_t GetMmuTopAddr(void) { return ttl1; }
+inline MmuData_t GetMmuTopAddr(void) { return mmuBase; }
 
 
 //
 // -- Create a new Ttl2 table
 //    -----------------------
-void MmuMakeTtl2Table(ptrsize_t ttl1, ptrsize_t addr);
+void MmuMakeTtl2Table(MmuData_t mmu, ptrsize_t addr);
 
 
 //
@@ -58,4 +64,24 @@ extern "C" bool MmuIsEnabled(void);
 //
 // -- Set the TTLB0, TTLB1, and # control bits and enable paging
 //    ----------------------------------------------------------
-extern "C" void MmuEnablePaging(ptrsize_t ttl1);
+extern "C" void MmuEnablePaging(ptrsize_t ttbr0);
+
+
+//
+// -- Get TTL1 Index from virtual Address
+//    -----------------------------------
+inline int MmuGetTtl1FromAddr(ptrsize_t addr) { return ((addr >> 20) & 0x0fff); }
+
+
+//
+// -- Get TTL2 Index from virtual Address -- this is into the management table only
+//    -----------------------------------------------------------------------------
+inline int MmuGetTtl2MgmtIdx(ptrsize_t addr) { return ((addr >> 12) & 0x000fffff); }
+
+
+//
+// -- Get TTL2 Index into frame for Address -- this is into the 4K frame only
+//    -----------------------------------------------------------------------
+inline int MmuGetTtl2FrameIdx(ptrsize_t addr) { return (MmuGetTtl2MgmtIdx(addr) & 3); }
+
+

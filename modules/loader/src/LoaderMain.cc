@@ -47,7 +47,8 @@ void LoaderMain(void)
     MmuInit();
     ptrsize_t ent = ModuleInit();
 
-    FrameBufferPutS("Initialization Complete");
+    SerialPutS("Initialization Complete\n");
+    FrameBufferPutS("Initialization Complete\n");
 
     SetMmuTopAddr();                                            // also enabled paging
     SetFrameBufferAddr((uint16_t *)FRAME_BUFFER_VADDR);         // re-map the frame buffer now that paging is enabled

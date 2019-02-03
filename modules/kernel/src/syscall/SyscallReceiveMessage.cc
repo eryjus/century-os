@@ -1,12 +1,12 @@
 //===================================================================================================================
 //
-//  SyscallSendMessage.cc -- SYSCALL for POSIX `msgsnd()`
+//  SyscallReceiveMessage.cc -- SYSCALL for POSIX `msgrcv()`
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  SYSCALL to send a message
+//  SYSCALL to receive a message
 //
 // ------------------------------------------------------------------------------------------------------------------
 //
@@ -19,28 +19,22 @@
 
 #include "process.h"
 #include "ipc.h"
+#include "interrupt.h"
 
 #include <errno.h>
 
 
 //
-// -- SYSCALL to send a message
+// -- SYSCALL to receive a message
 //    ----------------------------
-void SyscallSendMessage(isrRegs_t *regs)
+void SyscallReceiveMessage(isrRegs_t *regs)
 {
-    PID_t pid = regs->edx;
-    Message_t *msg = (Message_t *)regs->edi;
-    Process_t *proc = ProcessGetStruct(pid);
+    Message_t *msg = (Message_t *)SYSCALL_RCVMSG_PARM1(regs);
 
     if (msg == NULL) {
-        regs->eax = -EINVAL;
+        SYSCALL_RETURN(regs) = -EINVAL;
         return;
     }
 
-    if (proc == NULL) {
-        regs->eax = -EINVAL;
-        return;
-    }
-
-    regs->eax = MessageSend(regs->edx, (Message_t *)regs->edi);
+    SYSCALL_RETURN(regs) = MessageReceive(msg);
 }

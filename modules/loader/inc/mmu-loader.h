@@ -24,18 +24,19 @@
 
 #include "types.h"
 #include "arch-mmu-prevalent.h"
+#include "arch-mmu-loader.h"
 
 
 //
 // -- With the page table structures given, map a virtual address to a physical frame
 //    -------------------------------------------------------------------------------
-void MmuMapToFrame(ptrsize_t cr3, ptrsize_t addr, frame_t frame, bool wrt, bool krn);
+void MmuMapToFrame(MmuData_t mmu, ptrsize_t addr, frame_t frame, bool wrt, bool krn);
 
 
 //
 // -- Unmap a page from the page table
 //    --------------------------------
-void MmuUnmapPage(ptrsize_t cr3, ptrsize_t addr);
+void MmuUnmapPage(MmuData_t mmu, ptrsize_t addr);
 
 
 //
@@ -48,9 +49,6 @@ void MmuInit(void);
 // -- Dump the paging tables
 //    ----------------------
 void MmuDumpTables(ptrsize_t addr);
-
-
-#include "arch-mmu-loader.h"
 
 
 #endif

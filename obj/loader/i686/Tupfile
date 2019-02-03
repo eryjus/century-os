@@ -36,6 +36,6 @@ SRC = $(WS)/modules/$(MOD)/src
 : foreach $(SRC)/frame-buffer/*.cc  $(SRC)/frame-buffer/$(ARCH)/*.cc    |> !cc |>
 : foreach $(SRC)/hardware/*.cc      |> !cc |>
 : foreach $(SRC)/mmu/*.cc           $(SRC)/mmu/$(ARCH)/*.cc             |> !cc |>
-: foreach $(SRC)/modules/*.cc       |> !cc |>
+: foreach $(SRC)/modules/*.cc       $(SRC)/modules/$(ARCH)/*.cc         |> !cc |>
 : foreach $(SRC)/pmm/*.cc           |> !cc |>
 : foreach $(SRC)/serial/*.cc        $(SRC)/serial/$(ARCH)/*.cc          |> !cc |>

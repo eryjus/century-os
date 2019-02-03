@@ -25,7 +25,7 @@
 //    -----------------------
 pageEntry_t *MmuMakeNewTable(pageEntry_t *e)
 {
-    frame_t frame = PmmNewFrame();
+    frame_t frame = PmmNewFrame(1);
     kMemSetB((void *)PmmFrameToLinear(frame), 0, 4096);
     e->frame = frame;
     return e;

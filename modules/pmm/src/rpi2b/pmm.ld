@@ -17,12 +17,10 @@
 /*                                                                                                                 */
 /*     Date      Tracker  Version  Pgmr  Description                                                               */
 /*  -----------  -------  -------  ----  ------------------------------------------------------------------------  */
-/*  2018-Nov-02  Initial   0.1.0   ADCL  Initial version                                                           */
+/*  2019-Jan-19  Initial   0.2.0   ADCL  Initial version                                                           */
 /*                                                                                                                 */
 /*******************************************************************************************************************/
 
-OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
-OUTPUT_ARCH(i386)
 ENTRY(PmmMain)
 
 SECTIONS {
@@ -31,7 +29,7 @@ SECTIONS {
      *    ------------------------------------------------
      */
 
-    . = 0x80000000;
+    . = 0x00001000;
 
     _stackStart = .;
     /*
@@ -39,14 +37,14 @@ SECTIONS {
      *    ------------------------------------------------------------------------------------
      */
     .stack : {
-        BYTE(1)
+        LONG(0)
     }
     . = ALIGN(4096);
     _stackTop = .;
 
     _pageTableStart = .;
     .ptable : {
-        BYTE(1)
+        LONG(0)             /* this is the first of the TTL1 tables */
     }
     . = ALIGN(4096);
 

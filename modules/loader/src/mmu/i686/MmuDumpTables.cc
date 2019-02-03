@@ -26,7 +26,7 @@
 //    ------------------------------------------
 void MmuDumpTables(ptrsize_t addr)
 {
-    extern ptrsize_t cr3;
+    extern ptrsize_t mmuBase;
 
     SerialPutS("\nMmuDumpTables: Walking the page tables for address ");
     SerialPutHex(addr);
@@ -35,10 +35,10 @@ void MmuDumpTables(ptrsize_t addr)
     SerialPutS("-----  ----------    ----------   ----------    --   --   -\n");
 
     uint32_t i = (addr >> 22) & 0x3ff;
-    pageEntry_t *w = &((pageEntry_t *)cr3)[i];
+    pageEntry_t *w = &((pageEntry_t *)mmuBase)[i];
 
     SerialPutS("PD     ");
-    SerialPutHex((uint32_t)cr3);
+    SerialPutHex((uint32_t)mmuBase);
     SerialPutS("    ");
     SerialPutHex(i);
     SerialPutS("   ");

@@ -58,11 +58,11 @@ frame_t MmuUnmapPage(ptrsize_t addr);
 // -- Some specific memory locations
 //    ------------------------------
 #define PROCESS_PAGE_DIR    0xff430000
-#define PROCESS_PAGE_TABLE  0xff431000
+#define PROCESS_PAGE_TABLE  0xff434000
 
 // -- these are dedicated to the function `MmuGetFrameForAddr()`, but documented here.
-#define MMU_FRAME_ADDR_PD   0xff432000
-#define MMU_FRAME_ADDR_PT   0xff433000
+#define MMU_FRAME_ADDR_PD   0xff436000
+#define MMU_FRAME_ADDR_PT   0xff43a000
 
 #define PROCESS_STACK_BUILD 0xff441000
 

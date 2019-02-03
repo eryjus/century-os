@@ -154,8 +154,9 @@ rpi2b-iso: all
 	) || false
 
 
-run-rpi2b: rpi2b-iso
-	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
+run-rpi2b: all
+#	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
+	pbl-server /dev/ttyUSB0 bin/rpi2b/boot/grub/cfg-file
 
 
 debug-rpi2b: rpi2b-iso
