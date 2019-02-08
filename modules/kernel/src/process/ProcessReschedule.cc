@@ -79,6 +79,7 @@ void ProcessReschedule(void)
         currentProc->quantumLeft = currentProc->priority;
     } else {
         kprintf("%s: Executing process switch: %x\n", q, tgt->pid);
+        tgt->quantumLeft = tgt->priority;
         currentPID = tgt->pid;
         ProcessSwitch(currentProc, tgt);
     }

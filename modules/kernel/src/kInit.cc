@@ -105,14 +105,13 @@ void kInit(void)
     TimerInit(250);
     EnableInterrupts();
     ProcessEnabled = true;
-    kprintf("Stopping here!\n");
-    while (1) {  }
     HeapInit();
 
     // -- let the Pmm know we are putting it in-charge
     Message_t pmm;
     kMemSetB(&pmm, 0, sizeof(Message_t));
 
+    kprintf("Preparing to send message to PMM\n");
     pmm.msg = PMM_INIT;
     pmm.dataPayload = (void *)GetPmmBitmap();
     pmm.payloadSize = GetPmmFrameCount() << 12;            // convert this to bytes

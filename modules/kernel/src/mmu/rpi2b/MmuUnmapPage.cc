@@ -25,6 +25,8 @@
 //    ---------------------------------------------
 frame_t MmuUnmapPage(ptrsize_t addr)
 {
+    kprintf("Unmapping address %p\n", addr);
+
     Ttl2_t *ttl2Tables = (Ttl2_t *)(TTL2_KRN_VADDR);
     Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
 
@@ -32,5 +34,6 @@ frame_t MmuUnmapPage(ptrsize_t addr)
 
     frame_t rv = ttl2Entry->frame;
     *(uint32_t *)ttl2Entry = 0;
+    kprintf(".. Unmap complete\n");
     return rv;
 }

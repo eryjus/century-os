@@ -42,6 +42,11 @@ int MessageSend(PID_t pid, Message_t *m)
         return -EUNDEF;
     }
 
+    kprintf("Message to be send to pid %x:\n", pid);
+    kprintf("  Message proper at address %p\n", msg);
+    kprintf("  Message payload at address %p\n", payload);
+    kprintf("  Requested payload at %p\n", m->dataPayload);
+
     ListInit(&msg->list);
     msg->msg = m->msg;
     msg->parm1 = m->parm1;
@@ -56,6 +61,8 @@ int MessageSend(PID_t pid, Message_t *m)
         ListAddTail(&proc->messages, &msg->list);
         SpinlockUnlock(&proc->lock);
     }
+
+    kprintf("Message Sent; readying the process\n");
 
     if (proc->status == PROC_MSGW) ProcessReady(pid);
 

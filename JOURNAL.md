@@ -7831,8 +7831,105 @@ OK, I finally got to the bottom of the `PmmStart()` function and have it now gea
 
 In the meantime, it I am very ready for a commit.
 
+---
 
+Well, I'm getting a crash on the call to `ProcessSwitch()`.  I know it is because I am not pushing/popping the `cpsr` and I will have to fix that tomorrow.  For tonight, I am pretty much cooked for the evening.
 
+---
 
+### 2019-Feb-04
 
+Well, I started to clean up `ProcessSwitch()`.  It is much closer to what I am looking for.  However, the kernel is falling off to la-la land.
+
+I am going to add some debugging code to `ProcessSwitch()` so I can track how far I get.
+
+---
+
+Here are the results:
+
+```
+OS: Executing process switch: 0x2
+0
+0x001cc000
+2
+3
+0x80001504
+4
+▒Prefetch Abort:
+At address: 0x8003ff60
+ R0: 0x0000000d   R1: 0x37363534   R2: 0xf2215000
+ R3: 0x00000020   R4: 0xdde7ead3   R5: 0x001030cc
+ R6: 0x00121000   R7: 0x00103084   R8: 0x00000000
+ R9: 0x00124000  R10: 0x2611e181  R11: 0x87b0277c
+R12: 0x80040114   SP: 0x80004860   LR_ret: 0xdffb56be
+SPSR_ret: 0x200001f3     type: 0x17
+```
+
+What is interesting is the address between checkpoints 3 and 4.  This address is the entry point of the `pmm.elf`.  This does not look right to me at all -- considering everything above `0x80000000` is kernel space and my `pmm.elf` is loaded at virtual address `0x00001000`.  Well, that is a waste!!!  I never changes the stack.  So the above means nothing.
+
+---
+
+Well, after all my debugging, all I can determine is that the stack is not mapped properly in the new paging tables.  When I update the paging tables, update the stack, and then try to do someting that requires a stack, the CPU faults which tries to push more stuff on the stack, which faults, which...  recursive.
+
+So, the next thing to do is to take a hard look at `PmmStart()` to make sure the paging tables are mapped properly.
+
+---
+
+### 2019-Feb-05
+
+I started by making a `MmuDumpTables()` function for `PmmStart()`.  It has revealed some issues with the management of the paging tables.
+
+*But, more importantly, I now understand why "absolutely everyone uses the split paging tables thing."*  To be able to map the kernel pages into every running process is impossible to do properly -- especially when the kernel pages change.  However, I am not going to change now.  It will be wrong until I get to it properly.  I checked my notes and I still have the split paging table thing unaccounted for.  So, do I take care of that before I organize the arhcitectures and platforms or after.  I'm leaning on after (maybe an interim version like v0.3.1).  I will put that decision off for now, logging it in Redmine: http://eryjus.ddns.net:3000/issues/384.
+
+---
+
+### 2019-Feb-06
+
+I have a few things to sort out today:
+
+1. Interrupts appear to still be firing when they should not be.  I need to get to the root of that.
+1. I have scheduling disabled, but it is still trying to schedule.  I need to get to the root of that.
+1. I (STILL!!) have a problem with the paging tables, which is pissing me off.
+
+Let me start at the top of the list.  That was a quick fix; I had the flags in the incorrect position (actually enabling the thumb instruction set!).
+
+The second is a misunderstanding by me.  The lock that was attempted was for the heap, not for scheduling.
+
+So, I thought I would get away from paging for a while and I cannot!!  `/me grumbles!`
+
+---
+
+### 2019-Feb-07
+
+Well, I started today by copying and updating the loader's `MmuMapToFrame()` function to the kernel.  With that update, I was able to get really far.  The heap is being initialized and I have actually been able to send the initial message to the PMM process (now, whether the PMM process is actually getting is another story!).  I am reaching the end of the initialization and the final output is being written (well, and interrupted and then an exception).  But I am close!
+
+What is happening is that `r5` is being updated somehow and after the interrupt I am getting some garbage back in the string to be printed -- causing the fault.
+
+If I do not enable interrupts, then the kernel gets to the end cleanly.  If I enable interrupts but do not enable process swaps, I have the same problems.
+
+So, my issue must be in the interrupt handler code -- corrupting some register.
+
+---
+
+OK, I figured out a problem with `SwitchTask()`....  It's likely not related, but at any rate it goes something like this:
+* I push `r0`-`r12` on the stack (well, see the next comment)
+* I push the `cpsr` on the stack (which also contains the privelege level)
+* I save off the paging tables and esp into the process structure
+* I then restore the paging tables from the process structure
+* I also restore the stack from the process structure
+* Then (and this is where the problem is), I pop the `cpsr`, which off the stack if the mode changes will change the stack pointer I just restored.
+
+In short, the cpsr will need to be stored in the `Process_t` structure.
+
+In the meantime, I also realized that I am only pushing `r0` and `r12` on the stack when I am supposed to be pushing `r0` through `r12` on the stack.  Gotta lot at all the handlers since I used the copy-and-paste coding method.
+
+---
+
+OK, even after these changes, I still have a problem.  I thought I would.  I disabled adding the next process into the queue to execute and I get to the end of the execution (well buried in interrupts, so I need to slow that down a bit).  The problem is indeed in the process management.
+
+---
+
+OMG!!!  It is finally working!
+
+I started this back on 11-Nov and it's been a royal pain.  Needless to say, I need to commit this code.
 

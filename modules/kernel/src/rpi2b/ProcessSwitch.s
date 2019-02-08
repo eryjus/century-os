@@ -76,4 +76,29 @@
 @@ -- Execute a process switch
 @@    ------------------------
 ProcessSwitch:
+    push    {r0-r12}                        @@ save all the registers
+    push    {lr}
+
+    mrs     r2,cpsr                         @@ Get the Current Program Status Register
+    str     r2,[r0,#PROC_SS]                @@ and store it in the structure
+
+    @@ -- r0 has the current Process_t; r1 has the target Process_t
+    mrc     p15,0,r2,c2,c0,0                @@ read the ttl1 table to the TTLR0 register
+    str     r2,[r0,#PROC_CR3]               @@ save the paging tables
+    str     sp,[r0,#PROC_ESP]               @@ save the stack
+
+    @@ -- from here we are dealing with the target process
+    ldr     r2,[r1,#PROC_CR3]               @@ get the paging table
+    mcr     p15,0,r2,c2,c0,0                @@ write the ttl1 table to the TTLR0 register
+
+    ldr     sp,[r1,#PROC_ESP]               @@ get the stack
+
+    pop     {lr}
+
+    ldr     r2,[r1,#PROC_SS]                @@ get the cspr from the structure
+    msr     cpsr,r2                         @@ And put it in place
+
+    pop     {r0-r12}                        @@ pop all the registers
+
 	mov		pc,lr
+

@@ -111,6 +111,17 @@ void MmuInit(void)
     SerialPutS("Map Interrupt Vector Table to some new frame for future use\n");
     MmuMapToFrame(mmuBase, EXCEPT_VECTOR_TABLE, PmmNewFrame(1), true, false);
 
+    // -- Map the memory from 4KB to 32KB
+    SerialPutS("Map Upper Memory");
+    for (addr = 4 * 1024; addr < 0x8000; addr += 0x1000) {
+        SerialPutChar('.');
+        MmuMapToFrame(mmuBase, addr, PmmLinearToFrame(addr), true, true);
+    }
+
+    // -- we need to create a page table for the kernel heap, which will get mapped later
+    MmuMakeTtl2Table(mmuBase, 0xd0000000);
+
+
     //
     // -- Dump some addresses from the cr3 tables to check validity
     //    ---------------------------------------------------------
@@ -130,4 +141,5 @@ void MmuInit(void)
     MmuDumpTables((ptrsize_t)0xffffd0c0);
     MmuDumpTables((ptrsize_t)0xff430000);
     MmuDumpTables((ptrsize_t)0xffffd0c0);
+    MmuDumpTables(0x80044000);
 }

@@ -59,10 +59,14 @@ ptrsize_t ModuleInit(void)
             thisIsKernel = true;
             modMmu = GetMmuTopAddr();
         } else {
+            // -- THIS IS WRONG WRONG WRONG!!!!  DO NOT COPY IT!!!
+            modMmu = GetMmuTopAddr();
+#if 0
             modMmu = PmmFrameToLinear(PmmNewFrame(4));
 
             // -- clear the Page Directory
             kMemSetB((void *)modMmu, 0, 4096 * 4);
+#endif
             SetModuleCr3(i, modMmu);
         }
 
@@ -92,6 +96,7 @@ ptrsize_t ModuleInit(void)
         Elf32EHdr_t *hdr32 = (Elf32EHdr_t *)hdr;
         Elf32PHdr_t *phdr32 = (Elf32PHdr_t *)((char *)hdr + hdr32->ePhOff);
 
+        SerialPutS("Module entry point: "); SerialPutHex(hdr32->eEntry); SerialPutChar('\n');
         SetModuleEntry(i, hdr32->eEntry);
 
         for (int j = 0; j < hdr32->ePhNum; j ++) {
@@ -148,6 +153,8 @@ ptrsize_t ModuleInit(void)
     SerialPutS("\n");
 
     MmuDumpTables(entry);
+    MmuDumpTables(0x80044000);
+    MmuDumpTables(0xffe00110);
 
     return entry;
 }

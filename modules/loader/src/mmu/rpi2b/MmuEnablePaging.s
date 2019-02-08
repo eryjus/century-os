@@ -28,7 +28,7 @@ MmuEnablePaging:
     mcr     p15,0,r0,c2,c0,0                @@ write the ttl1 table to the TTLR0 register
     mcr     p15,0,r0,c2,c0,1                @@ write the ttl1 table to the TTLR1 register
 
-    mov     r0,#1                           @@ This is the number of bits to use to determine which table
+    mov     r0,#0                           @@ This is the number of bits to use to determine which table
     mcr     p15,0,r0,c2,c0,2                @@ write these to the control register
 
     mov     r0,#0xffffffff                  @@ All domains can access all things by default

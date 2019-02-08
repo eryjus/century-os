@@ -29,8 +29,6 @@
 #include "mmu-loader.h"
 
 
-#define DEBUG_MMU 1
-
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
@@ -54,12 +52,6 @@ void MmuMakeTtl2Table(MmuData_t mmu, ptrsize_t addr)
     frame_t ttl2Frame = allocFrom;         // Adjust to 1K accuracy
     PmmAllocFrame(allocFrom ++);
     kMemSetB((void *)PmmFrameToLinear(ttl2Frame), 0, 4096);
-
-//    int ii;
-//    uint8_t *x;
-//    for (x = (uint8_t *)PmmFrameToLinear(ttl2Frame), ii = 0; ii < 4096; ii ++) {
-//        x[ii] = 0;
-//    }
 
 #if DEBUG_MMU == 1
     SerialPutS("  The new frame is "); SerialPutHex(ttl2Frame); SerialPutChar('\n');
@@ -109,8 +101,8 @@ void MmuMakeTtl2Table(MmuData_t mmu, ptrsize_t addr)
     // Here we need to get the TTL1 entry for the management address.
     int ttl2Offset = (addr >> 20) & 0xfff;
     ptrsize_t mgmtTtl2Addr = TTL2_KRN_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
-    int mgmtTtl1Index = mgmtTtl2Addr >> 20;
-    Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
+//    int mgmtTtl1Index = mgmtTtl2Addr >> 20;
+//    Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
 
 #if DEBUG_MMU == 1
     SerialPutS("  The management address for this Ttl2 table is "); SerialPutHex(mgmtTtl2Addr); SerialPutChar('\n');
@@ -120,11 +112,13 @@ void MmuMakeTtl2Table(MmuData_t mmu, ptrsize_t addr)
     SerialPutS("  The TTL1 management index for this address is "); SerialPutHex(mgmtTtl1Index); SerialPutChar('\n');
 #endif
 
+    // -- Map the management address anyway -- will throw errors!!! but can be ignored
     // If the TTL1 Entry for the management address is faulted; create a new TTL2 table
-    if (mgmtTtl1Entry->fault == 0b00) {
+//    if (mgmtTtl1Entry->fault == 0b00) {
 //        MmuMakeTtl2Table(mmu, mgmtTtl2Addr);
+    SerialPutS("This next call to map address "); SerialPutHex(mgmtTtl2Addr); SerialPutS(" may throw an error\n");
         MmuMapToFrame(mmu, mgmtTtl2Addr, ttl2Frame, true, false);
-    }
+//    }
 
 #if DEBUG_MMU == 1
     SerialPutS("< Completed the table creation for "); SerialPutHex(addr); SerialPutChar('\n');
