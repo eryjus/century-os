@@ -8,8 +8,11 @@ sysroot
 iso
 *.old
 org.kde.konsole.desktop
+Tuprules.inc
+bin/rpi2b/boot/grub/cfg-file*
 
 p1
+targets
 
 obj/**/*.o
 maps/**/*.map

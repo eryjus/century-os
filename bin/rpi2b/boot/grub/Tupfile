@@ -38,3 +38,12 @@ include_rules
         echo   "module bin/rpi2b/boot/pmm.elf"                      >> %o;      \
     |> cfg-file
 
+##
+## -- create the cfg-file2 for pi-bootloader
+##    -------------------------------------
+:   |>  echo   "kernel bin/rpi2b/boot/loader.elf"                    > %o;      \
+        echo   "module targets/rpi2b/bin/boot/kernel.elf"           >> %o;      \
+        echo   "module bin/rpi2b/boot/pmm.elf"                      >> %o;      \
+    |> cfg-file2
+
+

@@ -54,22 +54,21 @@
 ##
 ## -----------------------------------------------------------------------------------------------------------------
 ##
-##     Date     Tracker  Version  Pgmr  Description
-##  ----------  -------  -------  ----  ---------------------------------------------------------------------------
-##  2017-03-26  Initial   0.0.0   ADCL  Initial version
-##  2017-05-10            0.0.0   ADCL  Gut this file in favor of `tup` and some short scripts
-##  2018-05-23  Initial   0.1.0   ADCL  Pull this file from `century` into `century-os`
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2017-Mar-26  Initial   0.0.0   ADCL  Initial version
+##  2017-May-10            0.0.0   ADCL  Gut this file in favor of `tup` and some short scripts
+##  2018-May-23  Initial   0.1.0   ADCL  Pull this file from `century` into `century-os`
+##  2019-Feb-08            0.3.0   ADCL  Redo the source tree structure
 ##
 #####################################################################################################################
 
 .PHONY: all all-iso i686-iso run-i686 debug-i686 x86_64-iso run-x86_64 debug-x86_64 rpi2b-iso run-rpi2b debug-rpi2b
-.PHONY: init
 .SILENT:
 
 
-all:
+all: init rpi2b x86-pc
 	tup
-
 
 all-iso: all i686-iso x86_64-iso rpi2b-iso
 
@@ -161,4 +160,86 @@ run-rpi2b: all
 
 debug-rpi2b: rpi2b-iso
 	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -S
+
+
+
+##===================================================================================================================
+## == These rules are the new rules to align with the v0.3.0 source tree changes
+##===================================================================================================================
+
+
+##
+## -- This rule will make sure that up is initialized and that we have created all the proper variants
+##    ------------------------------------------------------------------------------------------------
+.PHONY: init
+init: Tuprules.inc
+	if [ ! -f .tup/db ]; then `tup init`; fi;
+
+
+##
+## -- Tup needs the project directory
+##    -------------------------------
+Tuprules.inc: Makefile
+	echo WS = `pwd` > Tuprules.inc
+
+
+##
+## == These rules make the rpi2b architecture
+##    =======================================
+
+
+##
+## -- Copy the rules to build the .o files from the build rules repository
+##    --------------------------------------------------------------------
+targets/rpi2b/obj/kernel/Tupfile: build-rules/rpi2b-obj-kernel-Tupfile
+	mkdir -p $(dir $@)
+	cp $< $@
+
+
+##
+## -- Copy the rules to build the .elf files from the build rules repository
+##    ----------------------------------------------------------------------
+targets/rpi2b/bin/boot/Tupfile: build-rules/rpi2b-bin-boot-Tupfile
+	mkdir -p $(dir $@)
+	cp $< $@
+
+
+##
+## -- These are all the steps to build the rpi2b target
+##    -------------------------------------------------
+.PHONY: rpi2b
+rpi2b: targets/rpi2b/obj/kernel/Tupfile targets/rpi2b/bin/boot/Tupfile
+	mkdir -p targets/rpi2b/bin/*
+	tup targets/rpi2b/bin/*
+
+
+
+##
+## == These rules make the x86-pc architecture
+##    =========================================
+
+
+##
+## -- Copy the rules to build the .o files from the build rules repository
+##    --------------------------------------------------------------------
+targets/x86-pc/obj/kernel/Tupfile: build-rules/x86-pc-obj-kernel-Tupfile
+	mkdir -p $(dir $@)
+	cp $< $@
+
+
+##
+## -- Copy the rules to build the .elf files from the build rules repository
+##    ----------------------------------------------------------------------
+targets/x86-pc/bin/boot/Tupfile: build-rules/x86-pc-bin-boot-Tupfile
+	mkdir -p $(dir $@)
+	cp $< $@
+
+
+##
+## -- These are all the steps to build the x86-pc target
+##    ---------------------------------------------------
+.PHONY: x86-pc
+x86-pc: targets/x86-pc/obj/kernel/Tupfile targets/x86-pc/bin/boot/Tupfile
+	mkdir -p targets/x86-pc/bin/*
+	tup targets/x86-pc/bin/*
 

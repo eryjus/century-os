@@ -1,0 +1,83 @@
+#####################################################################################################################
+##
+##  Tuprules.tup -- An alternative to 'make` build system -- build the object files for the kernel
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2019-Feb-08  Initial   0.3.0   ADCL  Initial version -- copied from obj/kernel/rpi2b/Tupfile
+##
+#####################################################################################################################
+
+
+##
+## -- For now, in order to keep the builds separated define a variable to help us
+##    ---------------------------------------------------------------------------
+NEWBUILD = Y
+
+
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = arm
+PLAT = bcm2836
+CC = armv7-rpi2-linux-gnueabihf-gcc
+AS = armv7-rpi2-linux-gnueabihf-as
+
+
+##
+## -- include the build rules
+##    -----------------------
+include_rules
+
+
+##
+## -- Add some options to the build
+##    -----------------------------
+CFLAGS += -mcpu=cortex-a7
+CFLAGS += -marm
+CFLAGS += -mfpu=vfpv3
+CFLAGS += -mfloat-abi=softfp
+
+CFLAGS += -I $(WS)/arch/$(ARCH)/inc
+CFLAGS += -I $(WS)/kernel/inc
+
+CFLAGS += -DNEWBUILD
+
+
+##
+## -- These are the implicit build rules for the common kernel code
+##    -------------------------------------------------------------
+: foreach   $(WS)/kernel/src/*.cc                                         | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/frame-buffer/*.cc                            | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/heap/*.cc                                    | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/interrupts/*.cc                              | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/ipc/*.cc                                     | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/pmm/*.cc                                     | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/process/*.cc                                 | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/serial/*.cc                                  | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/syscall/*.cc                                 | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/timer/*.cc                                   | $(II) |> !cc |>
+
+
+##
+## -- These are the implicit build rules for the architecture code
+##    ------------------------------------------------------------
+: foreach   $(WS)/arch/$(ARCH)/*.cc                                       | $(II) |> !cc |>
+: foreach   $(WS)/arch/$(ARCH)/*.s                                        | $(II) |> !as |>
+
+
+##
+## -- These are the implicit build rules for the platform code
+##    --------------------------------------------------------
+: foreach   $(WS)/platform/$(PLAT)/*.cc                                   | $(II) |> !cc |>
+: foreach   $(WS)/platform/$(PLAT)/*.s                                    | $(II) |> !as |>
+
+: foreach   $(WS)/platform/$(PLAT)/serial/*.cc                            | $(II) |> !cc |>
+
+: foreach   $(WS)/platform/$(PLAT)/timer/*.cc                             | $(II) |> !cc |>
+: foreach   $(WS)/platform/$(PLAT)/timer/*.s                              | $(II) |> !as |>
+

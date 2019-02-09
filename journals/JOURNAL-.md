@@ -37,3 +37,10 @@ I wanted to incorporate all the thinking I had done with Century64 (the assembly
 ### 2019-Fev-07
 
 The journal file was getting to be a bit unwieldy.  `vscode` was not able to keep up with my (slow) typing and would peg the CPU trying to spell check this file.  As a result, today I split my journals into several 'chapters', by version.  The original Prologue is above and will remain intact.  In fact, I was careful to split the journals properly and not lose any of my commentary.
+
+---
+
+* [Original Century Journal](JOURNAL-century.md)
+* [Version 0.1.0 Journal](JOURNAL-v0.1.0.md)
+* [Version 0.2.0 Journal](JOURNAL-v0.2.0.md)
+* [Version 0.3.0 Journal](JOURNAL-v0.3.0.md)

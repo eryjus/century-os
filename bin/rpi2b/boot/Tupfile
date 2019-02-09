@@ -33,8 +33,7 @@ SRC = $(WS)/modules/$(MOD)/src
 : $(WS)/obj/loader/$(ARCH)/*.o | $(WS)/modules/loader/src/$(ARCH)/loader.ld                                     \
         |> $(LD) -T $(WS)/modules/loader/src/$(ARCH)/loader.ld $(LDFLAGS) -o %o %f; |> loader.elf
 
-: $(WS)/obj/kernel/$(ARCH)/*.o | $(WS)/modules/kernel/src/$(ARCH)/kernel.ld                                     \
-        |> $(LD) -T $(WS)/modules/kernel/src/$(ARCH)/kernel.ld $(LDFLAGS) -o %o %f; |> kernel.elf
+: $(WS)/targets/rpi2b/bin/boot/kernel.elf |> cp %f %o |> kernel.elf
 
 : $(WS)/obj/pmm/$(ARCH)/*.o  $(WS)/lib/$(ARCH)/libc.a | $(WS)/modules/pmm/src/$(ARCH)/pmm.ld                    \
         |> $(LD) -T $(WS)/modules/pmm/src/$(ARCH)/pmm.ld $(LDFLAGS) -o %o %f -lc; |> pmm.elf

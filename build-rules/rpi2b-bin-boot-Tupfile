@@ -1,0 +1,47 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to the 'make' build system -- rpi2b boot files
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2019-Feb-08  Initial   0.3.0   ADCL  Initial version -- copied from bin/rpi2b/boot/Tupfile
+##
+#####################################################################################################################
+
+
+##
+## -- For now, in order to keep the builds separated define a variable to help us
+##    ---------------------------------------------------------------------------
+NEWBUILD = Y
+
+
+##
+## -- Pre-set some variables for the Tuprules.tup file and include the generic rules
+##    ------------------------------------------------------------------------------
+ARCH = arm
+PLAT = bcm2836
+LD = armv7-rpi2-linux-gnueabihf-ld
+OC = armv7-rpi2-linux-gnueabihf-objcopy
+
+
+##
+## -- include the build rules
+##    -----------------------
+include_rules
+
+
+##
+## -- Add some macros to the build
+##    ----------------------------
+OBJ = $(WS)/targets/rpi2b/obj/kernel
+LS = $(WS)/kernel/ld/rpi2b.ld
+
+
+##
+## -- The rules to make the bootable targets in this folder
+##    -----------------------------------------------------
+: $(OBJ)/*.o | $(LS) |> $(LD) -T $(LS) $(LDFLAGS) -o %o %f; |> kernel.elf

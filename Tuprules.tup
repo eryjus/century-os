@@ -13,16 +13,17 @@
 #####################################################################################################################
 
 
-##
-## -- This is the workspace home.  Change this to match your own absolute path to the root of the project
-##    ---------------------------------------------------------------------------------------------------
-WS = /home/adam/workspace/century-os
+include Tuprules.inc
 
 
 ##
 ## -- Here is where the we might find some include files that will be read -- for build sequence
 ##    ------------------------------------------------------------------------------------------
+ifeq ($(NEWBUILD),Y)
+II =
+else
 II = $(WS)/bin/$(ARCH)/usr/include/*
+endif
 
 
 ##
@@ -38,6 +39,7 @@ CFLAGS += -O2
 CFLAGS += -g
 CFLAGS += -Werror
 
+ifneq ($(NEWBUILD),Y)
 ifneq ($(ARCH),rpi2b)
 CFLAGS += -mno-red-zone
 CFLAGS += -fpic
@@ -53,6 +55,8 @@ CFLAGS += -I $(WS)/modules/$(MOD)/inc
 CFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)
 CFLAGS += -I $(WS)/inc
 CFLAGS += -I $(WS)/inc/$(ARCH)
+endif
+
 CFLAGS += -Wall
 CFLAGS += -c
 
@@ -90,8 +94,10 @@ LDFLAGS += -nostdlib
 LDFLAGS += -g
 LDFLAGS += -O2
 
+ifneq ($(NEWBUILD),Y)
 ifneq ($(ARCH),rpi2b)
 LDFLAGS += -ffreestanding
+endif
 endif
 
 
