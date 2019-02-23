@@ -34,6 +34,28 @@
 
 
 //
+// -- This will set up for a __cfunc -- a custom #define to stop name mangling
+//    ------------------------------------------------------------------------
+#define __CFUNC         extern "C"
+
+
+//
+// -- This macro is intended to generic enough to convert a virtual address to a physical one.  However,
+//    keep in mind that this works on one address only.  Therefore if a function calls another function,
+//    this macro will fix the first one, but not the deeper call.
+//    --------------------------------------------------------------------------------------------------
+#define PHYS_OF(f)  ((archsize_t)(f) - kern_loc + phys_loc + ((archsize_t)&_loaderEnd - (archsize_t)&_loaderStart))
+
+
+//
+// -- these defined are to help with the placement of functions and data elements into the correct sections
+//    -----------------------------------------------------------------------------------------------------
+#define __ldrtext       __attribute__((section(".ldrtext")))
+#define __ldrdata       __attribute__((section(".ldrdata")))
+#define __ldrbss        __attribute__((section(".ldrbss")))
+
+
+//
 // -- Define UNUSED, based on which parser we are using
 //    -------------------------------------------------
 #ifdef UNUSED

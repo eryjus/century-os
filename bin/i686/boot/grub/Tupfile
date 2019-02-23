@@ -23,15 +23,11 @@ include_rules
 : |> 	echo "set timeout=3"                   						>  %o;       \
     	echo "set default=0"                  						>> %o;       \
 	    echo "menuentry \"Century (Multiboot)\" {" 	      			>> %o;       \
-	    echo "  multiboot /boot/loader.elf"                    		>> %o;       \
-	    echo "  module /boot/kernel.elf kernel"            			>> %o;       \
-		echo "  module /boot/pmm.elf pmm"                           >> %o;		 \
+	    echo "  multiboot /boot/kernel.elf"                    		>> %o;       \
 	    echo "  boot"   					  						>> %o;       \
 	    echo "}"							  						>> %o;       \
 	    echo "menuentry \"Century (Multiboot2)\" {"   	  			>> %o;       \
-	    echo "  multiboot2 /boot/loader.elf"                   		>> %o;       \
-	    echo "  module2 /boot/kernel.elf kernel"           			>> %o;       \
-	    echo "  module2 /boot/pmm.elf pmm" 	             			>> %o;       \
+	    echo "  multiboot2 /boot/kernel.elf"                   		>> %o;       \
 	    echo "  boot"						  						>> %o;       \
 	    echo "}"					    							>> %o;       \
     |> grub.cfg

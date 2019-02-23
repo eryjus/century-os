@@ -11,20 +11,60 @@
 /*  2017-Apr-14  Initial   0.0.0   ADCL  Initial version                                                           */
 /*  2018-May-25  Initial   0.1.0   ADCL  Copy this file from the loader of century                                 */
 /*  2018-Oct-28  Initial   0.1.0   ADCL  Set the PMM into its own sections                                         */
+/*  2019-Feb-09  Initial   0.3.0   ADCL  Reformat this for an all-in-one loader/kernel                             */
 /*                                                                                                                 */
 /*******************************************************************************************************************/
 
 OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
 OUTPUT_ARCH(i386)
-ENTRY(_start)
+ENTRY(entry)
+
+PHYS = 0x00100000;                      /* We will need this value for the loader */
+KERN = 0x80000000;                      /* We will need this value for the loader */
 
 SECTIONS {
+    . = PHYS;                           /* Multiboot will place the kernel here */
+
+    /*
+     * -- each of the following input sections need to be decorated with the "ax" flags in order to be placed
+     *    at the top of the file the way we want.  This will "break" the rules for data and bss, but we should
+     *    be able to deal with it since we are not letting anything map this file for us -- just load it.
+     *    ----------------------------------------------------------------------------------------------------
+     */
+    _loaderStart = .;
+    .loader : {       /* This is where the loader will be located -- things to be reclaimed: */
+        *(.mboot)                       /* -- multiboot header comes first */
+        *(.ldrtext)                     /* -- loader text (code) */
+        *(.ldrrodata)                   /* -- loader rodata (like strings) */
+        *(.ldrdata)                     /* -- loader data (things that will not get passed to the kernel */
+
+        phys_loc = .;                   /* -- provide variable `phys_loc` with the value of PHYS */
+        LONG(PHYS);
+
+        kern_loc = .;                   /* -- provide variable `kern_loc` wiht the value of KERN */
+        LONG(KERN);
+
+        *(.ldrbss)                      /* -- loader bss (again, things that will not get passed to the kernel */
+        . = ALIGN(4096);
+
+        _localHwDisc = .;               /* -- this will be the location of the hardware discovery structire */
+        BYTE(0);                        /* -- be sure something is allocated */
+    }
+    . = ALIGN(4096);
+    _loaderEnd = .;
+    PHYS_OFFSET = .;
+
+
+
+
+
+
     /*
      * -- Set the location where the binary will be loaded
      *    ------------------------------------------------
      */
 
-    . = 0xc0000000;                 /* This is the location in upper memory we will load the kernel */
+    . = KERN;                   /* this is the place where the binary will be loaded -- emulate grub */
     _kernelStart = .;
     _textStart = .;
 
@@ -33,7 +73,7 @@ SECTIONS {
      *    is where we will gain control.
      *    -----------------------------------------------------------------------------------------------
      */
-    .text : {
+    .text : AT(ADDR(.text) - KERN + PHYS_OFFSET) {
         *(.init)
         *(.text .text.* .stub .gnu.linkonce.t.*)
     }

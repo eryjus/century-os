@@ -27,6 +27,18 @@
 #endif
 
 
+//
+// -- Send a message to the mailbox
+//    -----------------------------
+bool MailboxSend(uint32_t message, uint32_t mailbox);
+
+
+//
+// -- Receive a message from the mailbox
+//    ----------------------------------
+uint32_t MailboxReceive(uint32_t mailbox);
+
+
 #ifndef KERNEL_OFFSET
 #   define KERNEL_OFFSET 0
 #endif
@@ -4213,4 +4225,18 @@
 
 
 #define TMR_BASE (HW_BASE + 0x01000000)
+
+
+//
+// -- Busy-wait for the mailbox system to be ready to send
+//    ----------------------------------------------------
+inline void MailboxWaitReadyToSend(void) { while (MmioRead(MB_BASE + MB_STATUS) & (1 << 31)) { } }
+
+
+//
+// -- Busy-wait for the mailbox system to be ready to receive data
+//    ------------------------------------------------------------
+inline void MailboxWaitReadyToReceive(void) { while (MmioRead(MB_BASE + MB_STATUS) & (1 << 30)) { } }
+
+
 

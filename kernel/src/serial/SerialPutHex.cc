@@ -6,6 +6,9 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Note that this function has been deliberately rewritten not to use strings due to the issues with linking
+//  strings at the loader sections.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
@@ -24,12 +27,14 @@
 //
 // -- Print a hex number to the serial port
 //    -------------------------------------
-void SerialPutHex(uint32_t val)
+void __ldrtext SerialPutHex(uint32_t val)
 {
-    char hex[] = "0123456789abcdef";
-
-    SerialPutS("0x");
+    SerialPutChar('0');
+    SerialPutChar('x');
     for (int i = 28; i >= 0; i -= 4) {
-        SerialPutChar(hex[(val >> i) & 0x0f]);
+        char c = ((val >> i) & 0x0f);
+
+        if (c > 9) SerialPutChar(c - 10 + 'a');
+        else SerialPutChar(c + '0');
     }
 }

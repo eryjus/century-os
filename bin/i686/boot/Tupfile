@@ -31,9 +31,6 @@ SRC = $(WS)/modules/$(MOD)/src
 ##
 ## -- The rules to make the bootable targets in this folder
 ##    -----------------------------------------------------
-: $(WS)/obj/loader/$(ARCH)/*.o | $(WS)/modules/loader/src/$(ARCH)/loader.ld                                 \
-        |> $(LD) -T $(WS)/modules/loader/src/$(ARCH)/loader.ld $(LDFLAGS) -o %o %f -lgcc; |> loader.elf
-
 : $(WS)/targets/x86-pc/bin/boot/kernel.elf |> cp %f %o |> kernel.elf
 
 : $(WS)/obj/pmm/i686/*.o  $(WS)/lib/i686/libc.a | $(WS)/modules/pmm/src/$(ARCH)/pmm.ld                      \

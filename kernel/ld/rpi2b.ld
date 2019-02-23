@@ -13,15 +13,52 @@
 /*                                                                                                                 */
 /*******************************************************************************************************************/
 
-ENTRY(_start)
+ENTRY(entry)
+
+PHYS = 0x00100000;                      /* We will need this value for the loader */
+KERN = 0x80000000;                      /* We will need this value for the loader */
 
 SECTIONS {
+    . = PHYS;                           /* Multiboot will place the kernel here */
+
+    /*
+     * -- each of the following input sections need to be decorated with the "ax" flags in order to be placed
+     *    at the top of the file the way we want.  This will "break" the rules for data and bss, but we should
+     *    be able to deal with it since we are not letting anything map this file for us -- just load it.
+     *    ----------------------------------------------------------------------------------------------------
+     */
+    _loaderStart = .;
+    .loader : {                         /* This is where the loader will be located -- things to be reclaimed: */
+        *(.mboot)                       /* -- multiboot header comes first */
+        *(.ldrtext)                     /* -- loader text (code) */
+        *(.ldrrodata)                   /* -- loader rodata (like strings -- I hope anyway) */
+        *(.ldrdata)                     /* -- loader data (things that will not get passed to the kernel */
+
+        phys_loc = .;                   /* -- provide variable `phys_loc` with the value of PHYS */
+        LONG(PHYS);
+
+        kern_loc = .;                   /* -- provide variable `kern_loc` wiht the value of KERN */
+        LONG(KERN);
+
+        *(.ldrbss)                      /* -- loader bss (again, things that will not get passed to the kernel */
+        . = ALIGN(4096);
+
+        _localHwDisc = .;               /* -- this will be the location of the hardware discovery structire */
+        BYTE(0);                        /* -- be sure something is allocated */
+    }
+    . = ALIGN(4096);
+    _loaderEnd = .;
+    PHYS_OFFSET = .;                    /* -- this is used to get the physical addresses correct for the elf loader */
+
+
+
+
     /*
      * -- Set the location where the binary will be loaded
      *    ------------------------------------------------
      */
 
-    . = 0x80000000;
+    . = KERN;
     _kernelStart = .;
     _textStart = .;
 
@@ -30,8 +67,7 @@ SECTIONS {
      *    is where we will gain control.
      *    -----------------------------------------------------------------------------------------------
      */
-    .text : AT(ADDR(.text)) {
-        *(.mboot)
+    .text : AT(ADDR(.text) - KERN + PHYS_OFFSET) {
         *(.init)
         *(.text .text.* .stub .gnu.linkonce.t.*)
     }
@@ -43,7 +79,7 @@ SECTIONS {
      * -- We drop in the read only data here
      *    ----------------------------------
      */
-    .rodata : AT(ADDR(.rodata)) {
+    .rodata : {
         *(.rodata .rodata.* .gnu.linkonce.r.*)
     }
     . = ALIGN(4096);
@@ -54,7 +90,7 @@ SECTIONS {
      *    ----------------------------------------------
      */
     _stabStart = .;
-	.stab : AT(ADDR(.stab)) {
+	.stab : {
 		*(.stab);
 		*(.stabstr);
         *(.debug*);
@@ -82,7 +118,7 @@ SECTIONS {
      * -- We drop in the read/write data here
      *    -----------------------------------
      */
-    .data : AT(ADDR(.data)) {
+    .data : {
         *(.data*)
     }
     . = ALIGN(4096);
@@ -93,7 +129,7 @@ SECTIONS {
      * -- We drop in the 0-init read/write data here
      *    ------------------------------------------
      */
-    .bss : AT(ADDR(.bss)) {
+    .bss : {
         *(.bss)
     }
     . = ALIGN(4096);

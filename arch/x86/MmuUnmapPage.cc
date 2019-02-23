@@ -32,15 +32,9 @@
 //    ---------------------------------------------
 frame_t MmuUnmapPage(archsize_t addr)
 {
-    pageEntry_t *pde = MmuGetPDEntry(addr);
-    if (!pde->p) return 0;
+    frame_t rv = PT_ENTRY(addr)->frame;
+    *(uint32_t *)PT_ENTRY(addr) = 0;
+    InvalidatePage(addr);
 
-    pageEntry_t *pte = MmuGetPTEntry(addr);
-    if (!pte->p) return 0;
-
-    frame_t rv = pte->frame;
-    if (rv == 0) return 0;
-
-    kMemSetB(pte, 0, sizeof(pageEntry_t));
     return rv;
 }

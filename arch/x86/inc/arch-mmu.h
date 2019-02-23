@@ -31,7 +31,7 @@ const archsize_t RECURSIVE_PD_VADDR = 0xfffff000;
 //
 // -- This is a 32-bit page entry for both the page directory and the page tables
 //    ---------------------------------------------------------------------------
-typedef struct pageEntry_t {
+typedef struct PageEntry_t {
     unsigned int p : 1;                 // Is the page present?
     unsigned int rw : 1;                // set to 1 to allow writes
     unsigned int us : 1;                // 0=Supervisor; 1=user
@@ -44,7 +44,7 @@ typedef struct pageEntry_t {
     unsigned int k : 1;                 // Is this a kernel page?
     unsigned int avl : 2;               // Available for software use
     unsigned int frame : 20;            // This is the 4K aligned page frame address (or table address)
-} __attribute__((packed)) pageEntry_t;
+} __attribute__((packed)) PageEntry_t;
 
 
 //
@@ -52,11 +52,14 @@ typedef struct pageEntry_t {
 //    ---------------------------------------------------------------------
 inline int MmuGetPDIndexFromAddr(archsize_t addr) { return (addr >> 22) & 0x3ff; }
 inline int MmuGetPTIndexFromAddr(archsize_t addr) { return (addr >> 12) & 0x3ff; }
-inline pageEntry_t *MmuGetPDAddress(void) { return (pageEntry_t *)RECURSIVE_PD_VADDR; }
-inline pageEntry_t *MmuGetPTAddress(archsize_t addr) {
-    return (pageEntry_t *)(RECURSIVE_VADDR + (MmuGetPDIndexFromAddr(addr) * 0x1000));
+inline PageEntry_t *MmuGetPDAddress(void) { return (PageEntry_t *)RECURSIVE_PD_VADDR; }
+inline PageEntry_t *MmuGetPTAddress(archsize_t addr) {
+    return (PageEntry_t *)(RECURSIVE_VADDR + (MmuGetPDIndexFromAddr(addr) * 0x1000));
 }
-inline pageEntry_t *MmuGetPDEntry(archsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
-inline pageEntry_t *MmuGetPTEntry(archsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }
+inline PageEntry_t *MmuGetPDEntry(archsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
+inline PageEntry_t *MmuGetPTEntry(archsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }
+
+
+extern "C" void InvalidatePage(archsize_t addr);
 
 

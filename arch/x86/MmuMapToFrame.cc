@@ -32,9 +32,6 @@
 //    ---------------------
 void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 {
-    // -- page-align the address
-    addr &= 0xfffff000;
-
     // -- refuse to map frame 0 for security reasons
     if (!frame) {
         kprintf("Explicit request to map frame 0 refused.\n");
@@ -47,19 +44,17 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         return;
     }
 
-    // -- Check the page directory entry to make sure there is a page table
-    pageEntry_t *pde = MmuGetPDEntry(addr);
+    PageEntry_t *pde = PD_ENTRY(addr);
+
     if (!pde->p) {
-        kprintf("We need to allocate a page table!\n");
-        pde->frame = PmmAllocFrame();
-        pde->k = (flags | PG_KRN);
-        pde->rw = (flags | PG_WRT);
-        pde->p = 1;
+        pde->frame = PmmNewFrame(1);
+        pde->rw = 1;
         pde->us = 1;
+        pde->p = 1;
     }
 
-    // -- Check the page table to make sure the page is not mapped
-    pageEntry_t *pte = MmuGetPTEntry(addr);
+    PageEntry_t *pte = PT_ENTRY(addr);
+
     if (pte->p) {
         kprintf("Request to overwrite frame for page %p refused; use MmuUnmapPage() first\n", addr);
         return;
@@ -67,9 +62,8 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     // -- finally we can map the page to the frame as requested
     pte->frame = frame;
-    pte->k = (flags | PG_KRN);
-    pte->rw = (flags | PG_WRT);
-    pte->p = 1;
+    pte->rw = 1;
     pte->us = 1;
+    pte->p = 1;
 }
 

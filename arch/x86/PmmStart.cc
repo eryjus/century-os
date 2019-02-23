@@ -81,7 +81,7 @@ Process_t pmmProcess = {
 static inline void KernelMap(archsize_t addr, frame_t frame)
 {
     kprintf("PmmStart(): Mapping addr %p to frame %p\n", addr, frame);
-    pageEntry_t *pte = &((pageEntry_t *)0xffffd000)[(addr >> 12) & 0x3ff];
+    PageEntry_t *pte = &((PageEntry_t *)0xffffd000)[(addr >> 12) & 0x3ff];
 
     if (pte->p) {
         kprintf("     !! Already mapped to frame %p\n", pte->frame);
@@ -101,11 +101,11 @@ static inline void KernelMap(archsize_t addr, frame_t frame)
 //    ---------------------------------------------------------------------------------------------------------
 static inline void KernelUnmap(archsize_t addr)
 {
-    pageEntry_t *pte = &((pageEntry_t *)0xffffd000)[(addr >> 12) & 0x3ff];
+    PageEntry_t *pte = &((PageEntry_t *)0xffffd000)[(addr >> 12) & 0x3ff];
 
     if (!pte->p) return;
 
-    kMemSetB(pte, 0, sizeof(pageEntry_t));
+    kMemSetB(pte, 0, sizeof(PageEntry_t));
     // TODO: Invalidate page here
 }
 
@@ -140,8 +140,8 @@ void PmmStart(Module_t *pmmMod)
 
     kprintf("PmmStart(): calculated pageTblFrame to be %p; tos to be %p\n", pageTblFrame, stack);
 
-    pageEntry_t *pd = (pageEntry_t *)PROCESS_PAGE_DIR;
-    pageEntry_t *entry;
+    PageEntry_t *pd = (PageEntry_t *)PROCESS_PAGE_DIR;
+    PageEntry_t *entry;
 
     // -- Now, temporarily map the Page Directory into the kernel page table
     kprintf("PmmStart(): Setting up the tables to be managed\n");
@@ -173,14 +173,14 @@ void PmmStart(Module_t *pmmMod)
     //    ----------------------------------------------------------------------------------------------------------
     kprintf("PmmStart(): Copying the kernel Page Tables\n");
     for (i = 768; i <= 1021; i ++) {
-        pd[i] = ((pageEntry_t *)RECURSIVE_PD_VADDR)[i];
+        pd[i] = ((PageEntry_t *)RECURSIVE_PD_VADDR)[i];
     }
 
     // -- we also need to map the PMM into the new address space
     //    ------------------------------------------------------
     kprintf("PmmStart(): Mapping the pmm itself\n");
     for (v = 0x80000000, p = pmmMod->modStart + pmmMod->modHdrSize; p <= pmmMod->modEnd; v += 4096, p += 4096) {
-        pageEntry_t *e = &((pageEntry_t *)PROCESS_PAGE_TABLE)[(v >> 12) & 0x3ff];
+        PageEntry_t *e = &((PageEntry_t *)PROCESS_PAGE_TABLE)[(v >> 12) & 0x3ff];
         e->frame = p >> 12;
         e->p = 1;
         e->rw = 1;

@@ -54,8 +54,10 @@ CFLAGS += -DNEWBUILD
 : foreach   $(WS)/kernel/src/*.cc                                         | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/frame-buffer/*.cc                            | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/heap/*.cc                                    | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/hardware/*.cc                                | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/interrupts/*.cc                              | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/ipc/*.cc                                     | $(II) |> !cc |>
+: foreach   $(WS)/kernel/src/loader/*.cc                                  | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/pmm/*.cc                                     | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/process/*.cc                                 | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/serial/*.cc                                  | $(II) |> !cc |>
@@ -75,6 +77,8 @@ CFLAGS += -DNEWBUILD
 ##    --------------------------------------------------------
 : foreach   $(WS)/platform/$(PLAT)/*.cc                                   | $(II) |> !cc |>
 : foreach   $(WS)/platform/$(PLAT)/*.s                                    | $(II) |> !as |>
+
+: foreach   $(WS)/platform/$(PLAT)/framebuffer/*.cc                       | $(II) |> !cc |>
 
 : foreach   $(WS)/platform/$(PLAT)/serial/*.cc                            | $(II) |> !cc |>
 

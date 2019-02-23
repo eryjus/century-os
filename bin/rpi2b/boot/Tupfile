@@ -30,38 +30,9 @@ SRC = $(WS)/modules/$(MOD)/src
 ##
 ## -- The rules to make the bootable targets in this folder
 ##    -----------------------------------------------------
-: $(WS)/obj/loader/$(ARCH)/*.o | $(WS)/modules/loader/src/$(ARCH)/loader.ld                                     \
-        |> $(LD) -T $(WS)/modules/loader/src/$(ARCH)/loader.ld $(LDFLAGS) -o %o %f; |> loader.elf
-
 : $(WS)/targets/rpi2b/bin/boot/kernel.elf |> cp %f %o |> kernel.elf
 
 : $(WS)/obj/pmm/$(ARCH)/*.o  $(WS)/lib/$(ARCH)/libc.a | $(WS)/modules/pmm/src/$(ARCH)/pmm.ld                    \
         |> $(LD) -T $(WS)/modules/pmm/src/$(ARCH)/pmm.ld $(LDFLAGS) -o %o %f -lc; |> pmm.elf
 
-
-
-##
-## -- These rules are specific to uart01
-##    ----------------------------------
-: /home/adam/workspace/century-os/obj/uart01/$(ARCH)/*.o | /home/adam/workspace/century-os/modules/uart01/src/$(ARCH)/memmap                                        \
-        |> armv7-rpi2-linux-gnueabihf-ld /home/adam/workspace/century-os/obj/uart01/$(ARCH)/vectors.o /home/adam/workspace/century-os/obj/uart01/$(ARCH)/uart01.o -T /home/adam/workspace/century-os/modules/uart01/src/$(ARCH)/memmap -o %o |> uart01.elf
-
-: uart01.elf |> $(OC) %f -O binary %o |> uart01.img
-
-
-##
-## -- This is specific to building a hardware test for the timer
-##    ----------------------------------------------------------
-: $(WS)/obj/rpi-timer/$(ARCH)/*.o | $(WS)/modules/rpi-timer/src/$(ARCH)/rpi-timer.ld                            \
-        |> armv7-rpi2-linux-gnueabihf-ld $(LDFLAGS) %f -T $(WS)/modules/rpi-timer/src/$(ARCH)/rpi-timer.ld -o %o; |> rpi-timer.elf
-
-: rpi-timer.elf |> $(OC) %f -O binary %o |> rpi-timer.img
-
-
-
-##
-## -- This is specific to building a hardware test for the screen
-##    -----------------------------------------------------------
-: $(WS)/obj/screen01/$(ARCH)/*.o | $(WS)/modules/screen01/src/screen01.ld                            \
-        |> armv7-rpi2-linux-gnueabihf-ld $(LDFLAGS) %f -T $(WS)/modules/screen01/src/screen01.ld -o %o; |> screen01.elf
 

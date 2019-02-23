@@ -38,7 +38,7 @@
 //
 // -- This is a 32-bit page entry for both the page directory and the page tables
 //    ---------------------------------------------------------------------------
-typedef struct pageEntry_t {
+typedef struct PageEntry_t {
     unsigned int p : 1;                 // Is the page present?
     unsigned int rw : 1;                // set to 1 to allow writes
     unsigned int us : 1;                // 0=Supervisor; 1=user
@@ -51,13 +51,13 @@ typedef struct pageEntry_t {
     unsigned int k : 1;                 // Is this a kernel page?
     unsigned int avl : 2;               // Available for software use
     unsigned int frame : 20;            // This is the 4K aligned page frame address (or table address)
-} __attribute__((packed)) pageEntry_t;
+} __attribute__((packed)) PageEntry_t;
 
 
 //
 // -- Make a new table by allocating a new frame and initializing it to 0
 //    -------------------------------------------------------------------
-pageEntry_t *MmuMakeNewTable(pageEntry_t *e);
+PageEntry_t *MmuMakeNewTable(PageEntry_t *e);
 
 
 //

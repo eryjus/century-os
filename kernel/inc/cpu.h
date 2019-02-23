@@ -110,10 +110,6 @@ void CpuGetCapabilities(void);
 #   error "HW_DISCOVERY_LOC must be #defined and was not"
 #endif
 
-#ifndef FRAME_BUFFER_ADDRESS
-#   error "FRAME_BUFFER_ADDRESS must be #defined and was not"
-#endif
-
 #ifndef PROCESS_PAGE_DIR
 #   error "PROCESS_PAGE_DIR must be #defined and was not"
 #endif
@@ -136,14 +132,6 @@ void CpuGetCapabilities(void);
 
 #ifndef FRAME_BUFFER_VADDR
 #   error "FRAME_BUFFER_VADDR must be #defined and was not"
-#endif
-
-#ifndef TTL1_KRN_VADDR
-#   error "TTL1_KRN_VADDR must be #defined and was not"
-#endif
-
-#ifndef TTL2_KRN_VADDR
-#   error "TTL2_KRN_VADDR must be #defined and was not"
 #endif
 
 #ifndef EXCEPT_VECTOR_TABLE

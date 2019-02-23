@@ -23,7 +23,7 @@
 //
 // -- This is the offset to add to the MMIO addresses to get them into kernel address space
 //    -------------------------------------------------------------------------------------
-#define KERNEL_OFFSET       (0xf2000000 - 0x3f000000)
+//#define KERNEL_OFFSET       (0xf2000000 - 0x3f000000)
 
 
 #include "arch-hw.h"

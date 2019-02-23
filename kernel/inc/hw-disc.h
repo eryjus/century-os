@@ -131,7 +131,7 @@ typedef struct HardwareDiscovery_t {
     uint16_t fgColor;
     uint16_t rowPos;
     uint16_t colPos;
-} /*__attribute__((packed))*/ HardwareDiscovery_t;
+} HardwareDiscovery_t;
 
 
 //

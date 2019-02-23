@@ -21,6 +21,12 @@
 
 
 //
+// -- For debugging to the serial port, this is the hardware port number
+//    ------------------------------------------------------------------
+devaddr_t serialPort = 0x3f8;
+
+
+//
 // -- Output a single character to the serial port
 //    --------------------------------------------
 void SerialPutChar(const char ch)

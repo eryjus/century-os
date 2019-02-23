@@ -57,14 +57,21 @@
 // -- This is the location of the frame buffer
 //    ----------------------------------------
 #define FRAME_BUFFER_VADDR  0xfb000000
-#define FRAME_BUFFER_ADDRESS  0xfb000000
 
 
 //
-// -- This is the location of the TTL1/TTL2 Tables
-//    --------------------------------------------
-#define TTL1_KRN_VADDR      0xff404000
-#define TTL2_KRN_VADDR      0xffc00000
+// -- This is the location of the Page Directory and Page Tables
+//    ----------------------------------------------------------
+#define PAGE_DIR_VADDR      0xfffff000
+#define PAGE_TBL_VADDR      0xffc00000
+
+
+//
+// -- These macros help assist with the management of the MMU mappings -- separating the address components
+//    into the indexes of the separate tables
+//    -----------------------------------------------------------------------------------------------------
+#define PD_ENTRY(a)         (&((PageEntry_t *)PAGE_DIR_VADDR)[(a) >> 22])
+#define PT_ENTRY(a)         (&((PageEntry_t *)PAGE_TBL_VADDR)[(a) >> 12])
 
 
 //
@@ -77,6 +84,19 @@
 // -- This is the size of the short TSS stack
 //    ---------------------------------------
 #define TSS_STACK_SIZE  512
+
+
+//
+// -- this is the size of a frame for this architecture
+//    -------------------------------------------------
+#define FRAME_SIZE          4096
+
+
+//
+// -- this is the location of the kernel stack
+//    ----------------------------------------
+#define STACK_LOCATION          0xff800000
+#define STACK_SIZE              0x1000
 
 
 //
@@ -155,8 +175,8 @@ typedef struct tss_t {
 //    ---------------------------------------------------------------------------------------
 typedef struct Frame0_t {
     Descriptor_t gdt[16];               // The GDT, for 128 bytes       (8*16)      128
-    byte_t unused1[384];                // Room to grow                 (384)       384
     tss_t tss;                          // The TSS                      (104)       104
+    byte_t unused1[384];                // Room to grow                 (384)       384
     byte_t unused2[920];                // Room for the ioBitmap        (920)       920
     byte_t unused3[512];                // Simply more room to grow     (512)       512
     Descriptor_t idt[256];              // The IDT                      (8*256)    2048
@@ -223,20 +243,21 @@ extern "C" inline void EnterSystemMode(void) {}
 //
 // -- Get a byte from an I/O Port
 //    ---------------------------
-extern "C" uint8_t inb(uint16_t port);
+inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    asm volatile ( "inb %1, %0" : "=a"(ret) : "Nd"(port) );
+    return ret;
+}
 
 
 //
 // -- Output a byte to an I/O Port
 //    ----------------------------
-extern "C" void outb(uint16_t port, uint8_t byte);
-
+inline void outb(uint16_t port, uint8_t val) { asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) ); }
 
 //
 // -- Get the CR3 value
 //    -----------------
 extern "C" archsize_t GetCr3(void);
 
-
-inline archsize_t GetCBAR(void) { return 0xffffffff; }
 

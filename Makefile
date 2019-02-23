@@ -76,14 +76,14 @@ all-iso: all i686-iso x86_64-iso rpi2b-iso
 i686-iso: all
 	rm -fR iso/i686.iso
 	rm -fR sysroot/i686/*
-	mkdir -p sysroot/i686 iso/i686
+	mkdir -p sysroot/i686 iso
 	cp -fR bin/i686/* sysroot/i686/
 	find sysroot/i686 -type f -name Tupfile -delete
 	grub2-mkrescue -o iso/i686.iso sysroot/i686
 
 
 run-i686: i686-iso
-	qemu-system-i386 -m 3584 -serial stdio -cdrom iso/i686.iso
+	qemu-system-i386 -m 3072 -serial stdio -cdrom iso/i686.iso
 
 
 bochs-i686: i686-iso
@@ -97,7 +97,7 @@ debug-i686: i686-iso
 x86_64-iso: all
 	rm -fR iso/x86_64.iso
 	rm -fR sysroot/x86_64/*
-	mkdir -p sysroot/x86_64 iso/x86_64
+	mkdir -p sysroot/x86_64 iso
 	cp -fR bin/x86_64/* sysroot/x86_64/
 	find sysroot/x86_64 -type f -name Tupfile -delete
 	grub2-mkrescue -o iso/x86_64.iso sysroot/x86_64
@@ -128,38 +128,28 @@ debug-x86_64: x86_64-iso
 #    recipe.
 #    ------------------------------------------------------------------------------------------------
 rpi2b-iso: all
-	rm -fR iso/rpi2b.img
+	rm -fR iso/rpi2b.*
 	rm -fR sysroot/rpi2b/*
-	mkdir -p sysroot/rpi2b iso/rpi2b
+	mkdir -p sysroot/rpi2b iso
 	cp -fR bin/rpi2b/* sysroot/rpi2b/
 	find sysroot/rpi2b -type f -name Tupfile -delete
-	mkdir -p ./p1
-	(																						\
-		dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1048576;								\
-		parted --script iso/rpi2b.img mklabel msdos mkpart p ext2 1 20 set 1 boot on; 		\
-		sudo chmod /dev/loop0p1 o+rw;														\
-		sudo losetup -v -L -P /dev/loop0 iso/rpi2b.img;										\
-		sudo mkfs.ext2 /dev/loop0p1;														\
-		sudo mount /dev/loop0p1 ./p1;														\
-		sudo cp -R sysroot/rpi2b/* p1/;														\
-		sudo umount ./p1;																	\
-		sudo losetup -v -d /dev/loop0;														\
-		rm -fR ./p1																			\
-	) || (																					\
-		echo "Something went wrong in the build!"  											\
-		sudo umount ./p1;																	\
-		sudo losetup -v -d /dev/loop0;														\
-		rm -fR ./p1																			\
-	) || false
+	dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1048576
+	echo 'type=83' | sfdisk iso/rpi2b.img
+	dd if=/dev/zero of=iso/rpi2b.p1 count=38912 bs=512
+	mkfs.ext2 iso/rpi2b.p1 -d sysroot/rpi2b/
+	dd if=iso/rpi2b.p1 of=iso/rpi2b.img seek=2048 count=38912
+	rm -f iso/rpi2b.p1
 
 
 run-rpi2b: all
-#	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
-	pbl-server /dev/ttyUSB0 bin/rpi2b/boot/grub/cfg-file
+	pbl-server /dev/ttyUSB0 bin/rpi2b/boot/grub/cfg-file2
 
 
 debug-rpi2b: rpi2b-iso
 	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -S
+
+qemu-rpi2b: rpi2b-iso
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
 
 
 

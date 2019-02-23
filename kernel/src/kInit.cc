@@ -48,22 +48,10 @@
 
 
 //
-// -- This is the common hardware discovery structure passed in from the loader
-//    -------------------------------------------------------------------------
-HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)0x00003000;
-
-
-//
 // -- A couple of local prototypes
 //    ----------------------------
 extern "C" void kInit(void);
 void PmmStart(Module_t *);
-
-
-//
-// -- For debugging to the serial port, this is the hardware port number
-//    ------------------------------------------------------------------
-devaddr_t serialPort = 0x3f8;
 
 
 //

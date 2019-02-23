@@ -1015,7 +1015,7 @@ Now, I also need to be able to identify the kernel pages and map them into user 
 I did cannibalize one of the available PageTableEntry bits to identify the kernel maps:
 
 ```C
-typedef struct pageEntry_t {
+typedef struct PageEntry_t {
     unsigned int p : 1;                 // Is the page present?
     unsigned int rw : 1;                // set to 1 to allow writes
     unsigned int us : 1;                // 0=Supervisor; 1=user
@@ -1028,13 +1028,13 @@ typedef struct pageEntry_t {
     unsigned int k : 1;                 // Is this a kernel page?
     unsigned int avl : 2;               // Available for software use
     unsigned int frame : 20;            // This is the 4K aligned page frame address (or table address)
-} __attribute__((packed)) pageEntry_t;
+} __attribute__((packed)) PageEntry_t;
 ```
 
-This new bit field is `pageEntry_t.k`.  A couple of key points with this decision:
+This new bit field is `PageEntry_t.k`.  A couple of key points with this decision:
 1. When I get to swapping pages to disk, the kernel pages are not going to be eligible for swapping for all kinds of reasons -- but mostly because I do not want to risk swapping the page the is responsible for loading the pages from disk.  Undesirable results will occur....
 1. These pages are effectively shared across multiple process and multiple Page Directories and if I swap one, I need to update all those -- oh, I don't even want to think about it.
-1. Finally, when I do happen to swap a page to disk, I will be able to set the `pageEntry_t.p` bit to 0.  Nothing else on that structure will need to be maintained (`pageEntry_p.k` is guaranteed to be 0), so I will be able to use bits 1:31 to hold the location of that page in the swap file system.  Bit 0 must remain 0 in this case.
+1. Finally, when I do happen to swap a page to disk, I will be able to set the `PageEntry_t.p` bit to 0.  Nothing else on that structure will need to be maintained (`pageEntry_p.k` is guaranteed to be 0), so I will be able to use bits 1:31 to hold the location of that page in the swap file system.  Bit 0 must remain 0 in this case.
 
 So, at this point, I need to switch back to the kernel and take care of the new `ProcessCreate()` requirements -- get the starting address from the module list and also properly augment the Paging structures.  But before I go there, I think I need ot revisit the VMM memory maps.  I last worked on this on 2018-Jun-30.
 
@@ -1088,8 +1088,8 @@ I finally got to the point where I am able to compile all the modules and when `
 /home/adam/workspace/century-os/modules/kernel/src/mmu/MmuGetFrameForAddr.cc:32: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
 /home/adam/workspace/century-os/modules/kernel/src/mmu/MmuGetFrameForAddr.cc:42: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
 /home/adam/workspace/century-os/obj/kernel/i686/MmuUnmapPage.o: In function `MmuUnmapPage(unsigned long, unsigned long)':
-/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuUnmapPage.cc:14: undefined reference to `MmuGetTableEntry(pageEntry_t*, unsigned long, int, bool)'
-/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuUnmapPage.cc:19: undefined reference to `MmuGetTableEntry(pageEntry_t*, unsigned long, int, bool)'
+/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuUnmapPage.cc:14: undefined reference to `MmuGetTableEntry(PageEntry_t*, unsigned long, int, bool)'
+/home/adam/workspace/century-os/modules/kernel/src/mmu/MmuUnmapPage.cc:19: undefined reference to `MmuGetTableEntry(PageEntry_t*, unsigned long, int, bool)'
 /home/adam/workspace/century-os/obj/kernel/i686/PmmStart.o: In function `PmmStart(Module_t*)':
 /home/adam/workspace/century-os/modules/kernel/src/pmm/PmmStart.cc:73: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'
 /home/adam/workspace/century-os/modules/kernel/src/pmm/PmmStart.cc:85: undefined reference to `MmuMapToFrame(unsigned long, unsigned long, unsigned long, bool, bool)'

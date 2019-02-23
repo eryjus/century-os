@@ -24,128 +24,102 @@
 #include "cpu.h"
 #include "printf.h"
 #include "pmm.h"
+#include "spinlock.h"
+#include "loader.h"
 #include "mmu.h"
 
 
-//
-// -- These are the the tables we use to manage the paging tables
-//    -----------------------------------------------------------
-//static Ttl1_t *ttl1Table = (Ttl1_t *)TTL1_KRN_VADDR;
-//static Ttl2_t *ttl2Table = (Ttl2_t *)TTL2_KRN_VADDR;
+#ifndef DEBUG_MMU
+#   define DEBUG_MMU 0
+#endif
 
+
+Spinlock_t frameClearLock = {0};
 
 //
 // -- Helper function to create and map a new table
-//    ---------------------------------------------
+//
+//    TODO: This is currently only works for kernel space; it will need to be updated for user space
+//    ----------------------------------------------------------------------------------------------
 static frame_t MmuMakeTtl2Table(archsize_t addr)
 {
-    archsize_t mmu = TTL1_KRN_VADDR;
-
-    kprintf("Creating a new TTL2 table for address %p\n", addr);
-
-    frame_t ttl2Frame = PmmAllocFrame();            // This cannot be called until the heap is initialized!!
-
-    kprintf("  The new frame is %p\n", ttl2Frame);
-
-    archsize_t ttl2Loc = ttl2Frame << 2;
-    int i = (addr >> 20) & 0xffc;   // align this to the "% 4 == 0" TTL1 entry
-
-    kprintf("  The base ttl2 1K location is %p\n", ttl2Loc);
-    kprintf("  The ttl1 index is %x\n", i);
-
-    // -- map the "% 4 == 0" TTL2 table
-    Ttl1_t *ttl1Table = (Ttl1_t *)mmu;
-    ttl1Table[i].ttl2 = ttl2Loc;
-    ttl1Table[i].fault = 0b01;
-
-    kprintf("  Set the TTL1 table index %x to 1K location %p\n", i, ttl2Loc);
-
-    // -- map the "% 4 == 1" TTL2 table
-    ttl1Table[i + 1].ttl2 = ttl2Loc + 1;
-    ttl1Table[i + 1].fault = 0b01;
-
-    kprintf("  Set the TTL1 table index %x to 1K location %p\n", i + 1, ttl2Loc + 1);
-
-    // -- map the "% 4 == 2" TTL2 table
-    ttl1Table[i + 2].ttl2 = ttl2Loc + 2;
-    ttl1Table[i + 2].fault = 0b01;
-
-    kprintf("  Set the TTL1 table index %x to 1K location %p\n", i + 2, ttl2Loc + 2);
-
-    // -- map the "% 4 == 3" TTL2 table
-    ttl1Table[i + 3].ttl2 = ttl2Loc + 3;
-    ttl1Table[i + 3].fault = 0b01;
-
-    kprintf("  Set the TTL1 table index %x to 1K location %p\n", i + 3, ttl2Loc + 3);
-
-    // Here we need to get the TTL1 entry for the management address.
-    int ttl2Offset = (addr >> 20) & 0xfff;
-    archsize_t mgmtTtl2Addr = TTL2_KRN_VADDR + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
-    int mgmtTtl1Index = mgmtTtl2Addr >> 20;
-//    Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
-
-    kprintf("  The management address for this Ttl2 table is %p\n", mgmtTtl2Addr);
-    kprintf("    The base location is 0xffc00000\n");
-    kprintf("    The table offset is  %p\n", ttl2Offset * 1024);
-    kprintf("    The entry offset is  %p\n", ((addr >> 12) & 0xff) * 4);
-    kprintf("  The TTL1 management index for this address is %p\n", mgmtTtl1Index);
-
-    // -- Map the management address anyway -- will throw errors!!! but can be ignored
-    // If the TTL1 Entry for the management address is faulted; create a new TTL2 table
-    kprintf("This next call to map address %p may throw an error\n", mgmtTtl2Addr);
-
-    MmuMapToFrame(mgmtTtl2Addr, ttl2Frame, 0);
-
-    kprintf("< Completed the table creation for %p\n", addr);
-
-    return ttl2Frame;
-
-#if 0
+    //
+    // -- We have been asked to create a new TTL2 table.  We got here, so we know we need a frame.
+    //    Go get it.
+    //    ----------------------------------------------------------------------------------------
+    frame_t frame = PmmNewFrame(1);
+#if DEBUG_MMU == 1
+    kprintf("The frame just allocated is at %p\n", frame);
 #endif
-}
 
 
-//
-// -- Map a page to a frame
-//    ---------------------
-void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
-{
-    archsize_t mmu = TTL1_KRN_VADDR;
+    //
+    // -- The next order of business is to map this frame to clear it.  We carefully chose this
+    //    location to be in the same TTL2 table as the management addresses for the TTL1 table.  However.
+    //    it is a critical section and needs to be synchronized.  Therefore, obtain a lock before
+    //    attempting to use that address.
+    //    -----------------------------------------------------------------------------------------------
+    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
+#if DEBUG_MMU == 1
+    kprintf("Attempting to update data for TTL2 entry at %p\n", ttl2Entry);
+#endif
+    SPIN_BLOCK(frameClearLock) {
+#if DEBUG_MMU == 1
+        kprintf("Lock obtained\n");
+#endif
+        ttl2Entry->frame = frame;
+        ttl2Entry->s = 1;
+        ttl2Entry->apx = 0;
+        ttl2Entry->ap = 0b11;
+        ttl2Entry->tex = 0b001;
+        ttl2Entry->c = 1;
+        ttl2Entry->b = 1;
+        ttl2Entry->nG = 0;
+        ttl2Entry->fault = 0b10;
 
-    kprintf("Mapping address %p to frame %p using physical table %p\n", addr, frame, mmu);
 
-    // first, go find the ttl1 entry
-    Ttl1_t *ttl1Table = (Ttl1_t *)mmu;
-    int ttl1Index = ((addr >> 20) & 0x0fff);
-    Ttl1_t *ttl1Entry = &ttl1Table[ttl1Index];
+#if DEBUG_MMU == 1
+        kprintf("Entry mapped\n");
 
-    kprintf(".. Ttl1 index is: %p [%x]\n", ttl1Table, ttl1Index);
+        kprintf("Pre-clear checks to see what is wrong:\n");
+        kprintf(".. The TTL1 Entry is at address %p\n", KRN_TTL1_ENTRY(MMU_CLEAR_FRAME));
+        kprintf(".. The entry does%s have a ttl2 table at frame %p\n",
+                (KRN_TTL1_ENTRY(MMU_CLEAR_FRAME))->fault==0b00?" not":"",
+                (KRN_TTL1_ENTRY(MMU_CLEAR_FRAME))->ttl2 >> 2);
+        kprintf(".. The Management TTL2 entry is at %p\n", KRN_TTL2_MGMT(MMU_CLEAR_FRAME));
+        kprintf(".. The entry does%s have a page table at frame %p\n",
+                (KRN_TTL2_MGMT(MMU_CLEAR_FRAME))->fault==0b00?" not":"",
+                (KRN_TTL2_MGMT(MMU_CLEAR_FRAME))->frame);
+        kprintf(".. The TTL2 entry itself is at %p\n", KRN_TTL2_ENTRY(MMU_CLEAR_FRAME));
+        kprintf(".. The entry does%s have a page table at frame %p\n",
+                (KRN_TTL2_ENTRY(MMU_CLEAR_FRAME))->fault==0b00?" not":"",
+                (KRN_TTL2_ENTRY(MMU_CLEAR_FRAME))->frame);
 
-    // now, do we have a ttl2 table for this address?
-    if (ttl1Entry->fault == 0b00) MmuMakeTtl2Table(addr);
+        kprintf("Performing a table walk for address %p\n", MMU_CLEAR_FRAME);
+        kprintf(".. TTL1 table is at %p\n", mmuLvl1Table);
+        kprintf(".. The index for this table is %x\n", MMU_CLEAR_FRAME >> 20);
+        Ttl1_t *t1e = (Ttl1_t *)&mmuLvl1Table[MMU_CLEAR_FRAME >> 20];
+        kprintf(".. The TTL1 Entry is at address %p\n", t1e);
+        Ttl2_t *t2t = (Ttl2_t *)(t1e->ttl2 << 10);
+        kprintf(".. The TTL2 table is located at phys address %p\n", t2t);
+        kprintf(".. The TTl2 index is %x\n", (MMU_CLEAR_FRAME >> 12) & 0xff);
+        Ttl2_t *t2e = (Ttl2_t *)&t2t[(MMU_CLEAR_FRAME >> 12) & 0xff];
+        kprintf(".. The TTL2 Entry is located at physical address %p\n", t2e);
+        kprintf(".. The actual frame for this address is %p\n", t2e->frame << 12);
+#endif
 
-    // get the ttl2 entry
-    Ttl2_t *ttl2Table = (Ttl2_t *)TTL2_KRN_VADDR;
-    int ttl2Index = ((addr >> 12) & 0xfffff);
-    Ttl2_t *ttl2Entry = &ttl2Table[ttl2Index];
 
-    kprintf("  Ttl2 location is: %p [%x]\n", ttl2Table, ttl2Index);
-
-    // if the page is already mapped, report an error
-    if (ttl2Entry->fault != 0b00) {
-        kprintf("Attempting to map already mapped address %p (mapped to: %p)\n", addr, ttl2Entry->frame);
-        kprintf("   The TTL1 Address is: %p\n", ttl1Table);
-        kprintf("   The Ttl1 Index is: %x\n", ttl1Index);
-        kprintf("   The TTL2 Address is: %p\n", ttl2Table);
-        kprintf("   The Ttl2 Index is: %x\n", ttl2Index);
-        kprintf("   Frame is: %p\n", ttl2Entry->frame);
-        kprintf("   Fault is: %x\n", ttl2Entry->fault);
-        kprintf("   The address of the ttl2 entry is: %p\n", ttl2Entry);
-        kprintf("   The overall contents are: %x\n", ttl2Entry);
-
-        return;
+        kMemSetB((void *)MMU_CLEAR_FRAME, 0, FRAME_SIZE);
+        MmuUnmapPage(MMU_CLEAR_FRAME);
+        SpinlockUnlock(&frameClearLock);
     }
 
+
+    //
+    // -- The next order of business is to map this into the Management table.  This needs to be done for
+    //    every new table, so there is nothing to check -- we know we need to do this.
+    //    -----------------------------------------------------------------------------------------------
+    ttl2Entry = KRN_TTL2_MGMT(addr);
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
@@ -156,55 +130,73 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
 
-#if 0
-    kprintf("Attemping to map address %p to frame %p\n", addr, frame);
-    // -- page-align the address
-    addr &= 0xfffff000;
 
-    // -- We will not map address 0x00000000
-    if (addr == 0) {
+    //
+    // -- Note that we will not actually map this into the TTL1 table.  The calling function holds that
+    //    responsibility.  Therefore, the only thing left to do is to return the frame we have allocated
+    //    and prepared to be a TTL2 table.
+    //    ----------------------------------------------------------------------------------------------
+#if DEBUG_MMU == 1
+    kprintf("TTL2 table prepared\n");
+#endif
+    return frame;
+}
+
+
+//
+// -- Map a page to a frame
+//    ---------------------
+void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
+{
+    // -- refuse to map frame 0 for security reasons
+    if (!frame) {
+        kprintf("Explicit request to map frame 0 refused.\n");
+        return;
+    }
+
+    // -- refuse to map the NULL address for security reasons
+    if (!addr) {
         kprintf("Explicit request to map virtual address 0 refused.\n");
         return;
     }
 
-    Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];
-    kprintf(".. The TTL1 Address to manage is %p\n", ttl1Entry);
 
-    // -- do we need a new TTL2 table?
-    if (ttl1Entry->ttl2 == 0) {
-        MmuMakeTtl2Table(addr);
+#if DEBUG_MMU == 1
+    kprintf("Mapping address %p to frame %p\n", addr, frame);
+#endif
 
-        // -- here we need to determine the management address for this new table and map that as well
-        int ttl2Offset = (addr >> 20) & 0xfff;
-        archsize_t mgmtTtl2Addr = ((addr&0x80000000)?TTL2_KRN_VADDR:TTL2_KRN_VADDR) + (ttl2Offset * 1024) + (((addr >> 12) & 0xff) * 4);
-        int mgmtTtl1Index = mgmtTtl2Addr >> 20;
-        Ttl1_t *mgmtTtl1Entry = &ttl1Table[mgmtTtl1Index];
 
-        if (mgmtTtl1Entry->fault == 0b00) {
-            MmuMapToFrame(mgmtTtl2Addr, MmuMakeTtl2Table(mgmtTtl2Addr), flags);
+    //
+    // -- The first order of business is to check if we have a TTL2 table for this address.  We will know this
+    //    by checking the TTL1 Entry and checking the fault field.
+    //    ----------------------------------------------------------------------------------------------------
+    if (KRN_TTL1_ENTRY(addr)->fault == 0b00) {
+        frame_t ttl2 = MmuMakeTtl2Table(addr);
+        Ttl1_t *ttl1Entry = KRN_TTL1_ENTRY4(addr);
+
+        for (int i = 0; i < 4; i ++) {
+            ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
+            ttl1Entry[i].fault = 0b01;
         }
     }
 
-    // -- get the proper TTL2 entry
-    kprintf(".. Finally we are able to map the frame\n");
-    Ttl2_t *ttl2Entry = &ttl2Table[addr >> 12];
 
-    if (ttl2Entry->fault != 0b00) {
-        kprintf("Attempting to map already mapped address %p\n", addr);
-        return;
-    }
+    //
+    // -- At this point, we know we have a ttl2 table and the management entries are all set up properly.  It
+    //    is just a matter of mapping the address.
+    //    ---------------------------------------------------------------------------------------------------
+    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(addr);
+
+    if (ttl2Entry->fault != 0b00) return;
 
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
     ttl2Entry->ap = 0b11;
     ttl2Entry->tex = 0b001;
-    ttl2Entry->c = 0;
-    ttl2Entry->b = 0;
+    ttl2Entry->c = 1;
+    ttl2Entry->b = 1;
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
-
-    kprintf("`MmuMapToFrame()` complete\n");
-#endif
 }
 

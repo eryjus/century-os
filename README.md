@@ -49,18 +49,7 @@ The only key function I am giving up is the ability to build an architecture or 
 
 You can find `tup` at: http://gittup.org/gittup/.
 
-I also have a few `sudo` commands built into the `Makefile`.  If you do not want to be prompted for a password with each build, you can edit your `sudoers` file as appropriate for your distro, in the following manner:
-
-```
-user ALL=(root) NOPASSWD:/usr/sbin/losetup
-user ALL=(root) NOPASSWD:/usr/sbin/mkfs.ext2
-user ALL=(root) NOPASSWD:/usr/sbin/mkfs.fat
-user ALL=(root) NOPASSWD:/usr/bin/mount
-user ALL=(root) NOPASSWD:/usr/bin/umount
-user ALL=(root) NOPASSWD:/usr/bin/cp
-```
-
-This is a personal decision based on your own security needs.  For more information, see `man sudoers`.
+I have updated my Makefile to use all user-level commands to build the boot image.  You no longer need to maintain a list of sudo permissions.
 
 
 ***Issue Tracking***

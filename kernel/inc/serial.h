@@ -29,7 +29,7 @@
 //
 // -- This is the serial port we will use for debugging info
 //    ------------------------------------------------------
-extern devaddr_t serialPort;
+extern __ldrdata devaddr_t serialPort;
 
 
 //

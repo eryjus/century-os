@@ -35,7 +35,6 @@
 // -- These are some addresses we need for this CPU architecture
 //    ----------------------------------------------------------
 #define HW_DISCOVERY_LOC            0x00003000
-#define FRAME_BUFFER_ADDRESS        0xfb000000
 
 
 //
@@ -61,7 +60,18 @@
 // -- This is the location of the TTL1/TTL2 Tables
 //    --------------------------------------------
 #define TTL1_KRN_VADDR      0xff404000
+#define MGMT_KRN_TTL2       0xfffff000
 #define TTL2_KRN_VADDR      0xffc00000
+
+
+//
+// -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
+//    into the various tables
+//    -----------------------------------------------------------------------------------------------------
+#define KRN_TTL1_ENTRY(a)       (&((Ttl1_t *)TTL1_KRN_VADDR)[(a) >> 20])
+#define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_KRN_VADDR)[((a) >> 20) & 0xffc])
+#define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_KRN_TTL2)[(a) >> 22])
+#define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_KRN_VADDR)[(a) >> 12])
 
 
 //
@@ -74,6 +84,19 @@
 // -- This is the size of the short exception stacks
 //    ----------------------------------------------
 #define EXCEPTION_STACK_SIZE  512
+
+
+//
+// -- this is the size of a frame for this architecture
+//    -------------------------------------------------
+#define FRAME_SIZE              4096
+
+
+//
+// -- this is the location of the kernel stack
+//    ----------------------------------------
+#define STACK_LOCATION          0xff800000
+#define STACK_SIZE              0x1000
 
 
 //
@@ -110,6 +133,18 @@ extern "C" archsize_t GetTTBR0(void);
 // -- Get the CBAR
 //    ------------
 extern "C" archsize_t GetCBAR(void);
+
+
+//
+// -- Get the Data Fault Address Register (DFAR)
+//    ------------------------------------------
+extern "C" archsize_t GetDFAR(void);
+
+
+//
+// -- Get the Data Fault Status Register (DFSR)
+//    ------------------------------------------
+extern "C" archsize_t GetDFSR(void);
 
 
 #define CpuTssInit()

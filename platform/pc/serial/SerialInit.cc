@@ -18,18 +18,19 @@
 
 //#include "bda.h"
 #include "cpu.h"
+#include "serial.h"
 
 
 //
 // -- This is the serial port for debugging
 //    -------------------------------------
-extern uint16_t serialPort;
+extern devaddr_t serialPort;
 
 
 //
 // -- Initialize the serial port for debugging output
 //    -----------------------------------------------
-void SerialInit(void)
+void __ldrtext SerialInit(void)
 {
 //    serialPort = BdaGetCom1();
 

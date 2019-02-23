@@ -1,0 +1,32 @@
+//===================================================================================================================
+//
+//  HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//
+//        Copyright (c)  2017-2019 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+// ------------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2017-Jun-09  Initial   0.1.0   ADCL  Initial version
+//
+//===================================================================================================================
+
+
+#include "types.h"
+#include "loader.h"
+#include "hw-disc.h"
+
+
+//
+// -- Perform the hardware discovery
+//    ------------------------------
+void __ldrtext HwDiscovery(void)
+{
+    lMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
+    Mb1Parse();
+    Mb2Parse();
+//    ArchDiscovery();
+}

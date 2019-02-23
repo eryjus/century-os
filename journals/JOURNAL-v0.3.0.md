@@ -109,5 +109,693 @@ Everything still looks clean, so I am going to commit these changes.
 
 ---
 
+Good news!!  I have decided to make my Redmine work visible read-only.  Well, some of it.  It is available at http://eryjus.ddns.net:3000.  If you are reading this, feel free to have a look (if you are not there already).
+
+So, now what?  Well, I'm torn....  I really want to start combining the loader, kernel, and pmm into a single binary to reduce initialization.  That's the exciting work for me.  However, there are a number of clean-up tasks that need to be taken care of as well.  I hate to go there, but I think I really need to take those on first.  I just *hate* the bitch work.
+
+So here are the Redmines I will work on this afternoon:
+* #385 -- FRAME_BUFFER_ADDRESS and FRAME_BUFFER_VADDR are both defined
+* #374 -- Separate the cpu-specific code from the platform or chip set-specific code (which I completed earlier today)
+* #394 -- rpi2b supervisor call does nothing at the moment
+* #396 -- x86 has a GetCBAR() function, which should not be needed if the platforms are properly separated
+* #399 -- x86 arch is using 586 code -- is this correct?
+
+---
+
+OK, I think I want to turn my attention to the loader and how to eliminate it.  The key here is going to be to move the loader code into the kernel but without making a mess of the kernel.  To be successful here, I will need to get paging enabled quickly.  For x86, this will mean getting a 4MB page up and running quickly for initialization.  I will also need a GDT and an IDT ready to go.
+
+For arm, this will be 4 X 1MB sections (see ARM ARM B3.5) to map the same 4MB of memory.  I will also need an interrupt Vector Table set (VBAR).
+
+These large format pages will allow me to perform the early initialization quickly -- spanning all the code and data for setup.
+
+I am going to start with those early steps now.
+
+---
+
+### 2019-Feb-10
+
+I started setting up some `#define`s to help with location management of the loader.  Eventually, I will duplicate this with the pmm as well. I should be able to direct the loader functions into the `.ldrtext` and `.ldrdata` sections with ease.  The `.ldrbss` should also be able to be used, but *this data will not be zeroed out*, meaning I will have to initialize every element myself.
+
+Side note -- while researching how string constants are going to be declared, I found the following article, which I found interesting: https://eklitzke.org/declaring-c-string-constants-the-right-way.  In short, I will need to declare a string constant as:
+
+```C
+    char str[] _ldrdata = "This is a string\n";
+    kprintf(str);
+```
+
+This will force the string into the loader-specific data section.  It will also have the added benefit of generating faster code, since only the data is stored, not the data with an extra pointer to the data.
+
+---
+
+I have the arm code for the entry point written (I am not able to test it yet).  The entry takes care of the following tasks:
+1. if the CPU is in hyp mode, thunk it down to svc mode
+1. stall all other CPUs than cpu0
+1. clear the kernel bss (not the loader or the pmm -- they're on their own)
+1. allocate a ttl1 (initialized later)
+1. allocate an interrupt vector table and initialize it -- set the VBAR
+1. initialize the ttl1 table for 1MB pages, set the TTBR0 and enable paging
+
+Note that at this point, no MMIO addresses have been mapped.  So serial output is not available.
+
+I'm debating whether to map the MMIO addresses.  The problem is that the linker will put the addresses in the of the kernel code in higher locations (so, `kprintf()` would have an address somewhere about `0x80000000`), which cannot be called from the kernel.  It's entirely possible I can produce a suite of function labels that are calculated at runtime....  Something along the lines of the following:
+
+```C
+typedef int (*kprintf_t)(const char *fmt, ...);
+kprintf_t lprintf _ldrdata = (kprintf_t)((archsize_t)kprintf - 0x80000000 + 0x100000);
+
+// ...
+
+lprintf("Test\n");
+```
+
+---
+
+OK, I want the MMIO addresses.  I am going to identity map those.  This would put the map at `ttl1[0x3f0]` or offset `0xfc0`.  In reality I read the CBAR and built this mapping dynamically.
+
+At the same time it has dawned on me that I have some architecture-specific terminology for architecture-agnostic structures.  I really need to fix this, so I will create a `loadervars.cc` file with these values.
+
+---
+
+Now, `SerialInit()` is referenced from both the kernel and from the loader.  `SerialInit()` calls `BusyWait()`, which I will not have any control over.  So, I need to pull that out that call to `BusyWait()` and build an alternative wait -- it only needs to wait for 150 cpu cycles.  It allowed me to remove `BusyWait()` from the new kernel.
+
+---
+
+Here is where I am at as I near the end of my day:
+* I am getting a simple lock-up when trying to boot on real hardware.  Likely an exception of some sort where the handlers are not in the right address space.
+* I've been very careful to not call anything that is out of the loader section (except the exception handlers).
+* I have inserted a `b` to bypass all the initialization and jump right to the `LoaderMain()` function, but that has had no effect on the situation.
+* I have added `SerialInit()` and `SerialPutChar()` into the loader code properly, and that has not helped the situation.
+* I have debugged the creation of the `rpi2b.img` file so that it does not use privileged commands.  This was just a means to an end -- and a win for my build system.
+* I have set up to debug in qemu, but `rpi-boot` is parsing the Section Headers (and trying to load the sections into virtual memory that does not exist), rather than using the program header.  I have opened an [issue with jncronin](https://github.com/jncronin/rpi-boot/issues/24), but I may have to sort this out on my own.
+
+With all this, I am currently debugging in the dark.
+
+Oh, damn!!  I keep forgetting..  I cannot run this on qemu because the mini-UART is not emulated -- I will never get any output anyway!
+
+---
+
+### 2019-Feb-11
+
+One of my last thoughts at the end of the day yesterday was whether I inadvertently changes compile options when I moved things around.
+
+---
+
+After some tests and debugging, I believe the problem might be one of 2 things.  Either:
+1. I am outputting code for something different than I am running on
+1. There is something wrong with my `SerialPutChar()` code, even though it was copied
+
+Really at this point not much else makes any sense to me.
+
+So, on `pi-bootloader` the machine code that loads the stack (the first thing in my code at the moment) is:
+
+```
+    8038:       e3a0d902        mov     sp, #32768      ; 0x8000
+```
+
+And the code that loads the stack in my new all-on-one binary is:
+
+```
+  104924:       e3a0d902        mov     sp, #32768      ; 0x8000
+```
+
+The locations are different, but the bitcode is the same.
+
+As for `SerialPutChar()`, the `pi-bootloader` code is:
+
+```C
+void SerialPutChar(char c)
+{
+    if (c == '\n') SerialPutChar('\r');
+    while ((GET32(AUX_MU_LSR_REG) & (1<<5)) == 0) { }
+    PUT32(AUX_MU_IO_REG, c);
+}
+```
+
+... and the code in my new all-in-one is:
+
+```C
+void _ldrtext SerialPutChar(char byte)
+{
+    if (byte == '\n') SerialPutChar('\r');
+    while ((MmioRead(AUX_MU_LSR_REG) & (1<<5)) == 0) { }
+    MmioWrite(AUX_MU_IO_REG, byte);
+}
+```
+
+Effectively, this is the same code.  `GET32` and `PUT32` are implemented as `#define`s while the MMIO functions are inline.
+
+The resulting code is:
+
+```
+    8180:       e350000a        cmp     r0, #10
+    8184:       e92d4010        push    {r4, lr}
+    8188:       e1a04000        mov     r4, r0
+    818c:       0a000006        beq     81ac <SerialPutChar+0x2c>
+    8190:       e3a02a05        mov     r2, #20480      ; 0x5000
+    8194:       e3432f21        movt    r2, #16161      ; 0x3f21
+    8198:       e5923054        ldr     r3, [r2, #84]   ; 0x54
+    819c:       e3130020        tst     r3, #32
+    81a0:       0afffffc        beq     8198 <SerialPutChar+0x18>
+    81a4:       e5824040        str     r4, [r2, #64]   ; 0x40
+    81a8:       e8bd8010        pop     {r4, pc}
+    81ac:       e3a0000d        mov     r0, #13
+    81b0:       ebfffff2        bl      8180 <SerialPutChar>
+    81b4:       eafffff5        b       8190 <SerialPutChar+0x10>
+```
+
+and in the all-in-one:
+
+```
+  104538:       e350000a        cmp     r0, #10
+  10453c:       e92d4010        push    {r4, lr}
+  104540:       e1a04000        mov     r4, r0
+  104544:       0a000006        beq     104564 <_Z13SerialPutCharc+0x2c>
+  104548:       e3a02a05        mov     r2, #20480      ; 0x5000
+  10454c:       e34f2221        movt    r2, #61985      ; 0xf221
+  104550:       e5923054        ldr     r3, [r2, #84]   ; 0x54
+  104554:       e3130020        tst     r3, #32
+  104558:       0afffffc        beq     104550 <_Z13SerialPutCharc+0x18>
+  10455c:       e5824040        str     r4, [r2, #64]   ; 0x40
+  104560:       e8bd8010        pop     {r4, pc}
+  104564:       e3a0000d        mov     r0, #13
+  104568:       ebfffff2        bl      104538 <_Z13SerialPutCharc>
+  10456c:       eafffff5        b       104548 <_Z13SerialPutCharc+0x10>
+```
+
+While I honestly thought I would have to justify some slight variations the code is exceptionally close.  The only variation is in the location of the MMIO register.  In the all-in-one, the register is at 0xf221500 (which is wrong!!).  Now, why is that??
+
+Well, I had it defined in `kernel/inc/hw.h`.  Commenting it out give me the results I am looking for.  Now to undo all my debugging code!
+
+Well, this of course still has problems.  However, I now know that the kernel will load.  I know I have some simple debugging to do, which should be as simple as putting in some jumps at various places to make sure the code will load.  I'm betting it related to the MMU.
+
+Enough for the night.
+
+---
+
+### 2019-Feb-12
+
+As the first test, I disabled the write to the register to enable the mmu:
+
+```
+@    mcr     p15,0,r0,c1,c0,0            @@ Put the cp15 register 1 back, with the MMU enabled
+```
+
+The code works with the above line disabled.  So, I have malformed paging tables.  Looks like I will need to do some reading to get this working properly....
+
+---
+
+As an interesting test, I enabled the MMU and then disabled it again.  I was able to get my output.  This means a couple of things:
+1. the MMU is working as the next instructions executed
+1. the real problem appears to be with the MMIO output and may be in the way I am mapping this page (TEX, B, and C fields)
+
+Well, maybe I'm trying to be too cute with the CBAR and should just map it manually.  Still a dead end.
+
+So, now I need to disable the paging code and get into `LoaderMain()` so I can dump some data from the paging table.  WAIT!!!  Before I do that, am I trashing the register that hold the proper value for the TTBR0?  No, I wasn't, but I did not have the domains set properly which I corrected to no effect.
+
+---
+
+I finally worked through my location issues (with strings -- what a damned mess!) and was able to produce some output from `LoaderMain()`.  I had to put my strings in the assembly source for now and link them in from there.
+
+Anyway, here is my initial output:
+
+```
+Booting...
+In the loader
+The ttb1 is located at: 0x00c50879
+```
+
+Now this address can't be right.  I am expecting `0x003fc000`.  I have to be clobbering this register somehow.  And after fixing the clobber (which would have no effect on the problem), I am still getting something odd:
+
+```
+Booting...
+In the loader
+The ttb1 is located at: 0x00100448
+```
+
+This is the address of the variable that holds the address of the table.  Not the table itself.  Fixing that, I new realize that I am using an address for a frame number with this output:
+
+```
+Booting...
+In the loader
+The ttb1 is located at: 0xffffc000
+```
+
+After finally getting the correct address, I thought I would give it a try.  It did not work.  So, now I need to output more debugging info.  Say the contents of entry 0.
+
+---
+
+OK, I was able to run this through qemu and capture an execution trace.  The problem is that I have not mapped enough of the MMIO address space.  I need 16 pages mapped.
+
+And that worked.
+
+I was able to get my loader to call a function in local memory, but I had to change this line:
+
+```C
+#define PHYS_OF(f)  ((archsize_t)(f) - kern_loc + phys_loc + 0x1000)
+```
+
+In particular, I had to add `+ 0x1000` and I am not totally sure I understand why.  Ahhhh..  It is in the size of the loader section.  Currently it is 1 ELF page.  As that grows, I will have a problem having to change this constant value.
+
+---
+
+### 2019-Feb-13
+
+I have been able to sort out all my paging and physical address issues.  They were numerous.  And, unfortunately, I did not keep track of them all since I was bouncing around so much.
+
+I have switched gears to create an architecture-specific `EarlyInit()` function.  The objective of this function is to eliminate the need to worry about memory mapping, which means to complete the MMU setup for the kernel at minimum.
+
+---
+
+Well, I'm fighting with my nemesis the MMU again.  Currently, I am trying to make sure I have a good ttl2 address, which is my current problem.
+
+Well, I worked out the issues with the mapping, but I am still not able to use `kprintf()` yet.  That will be my task tomorrow.
+
+---
+
+### 2019-Feb-14
+
+OK, it looks like I still have a mapping concern.  And it turns out that I was not mapping the addresses to the proper frames -- bad calculations!
+
+---
+
+I have gotten down to the `PmmInit()` function.  This one is going to be a near complete rewrite.  This is because so much of the initialization has been completed already and I will have access to the results once initialization is complete from the pmm task.
+
+---
+
+Holy crap!!  I had not idea it was so late!  I'm off to bed.  But I managed to get the `PmmInit()` function updated, but it does not make it to the end.
+
+---
+
+### 2019-Feb-15
+
+Well, I think I am using some addresses of addresses in place of just addresses.  Trying to prove that and figure out how to get my head around this.  I used to be better at this crap....  Too much work these days.  Yup!
+
+```
+Marking the first 1MB and kernel binary frames as used,up to 0x8007f
+```
+
+Nope!  It was a virtual address, not an address of an address.
+
+So, now the problem is when to initialize the FrameBuffer.  I wanted to do that early to be able to greet the user, but that was when the MMU was being prepared for the kernel and already had things mapped for the frame buffer.  So, I have pulled the `FrameBufferClear()` function call from the `FrameBufferInit()` and will have to do that after I get the pages mapped.
+
+Interestingly enough, the next up is the `MmuInit()` function.  Let talk about what is left to be accomplished for the complete MMU initialization (ignoring the loader cleanup for the moment):
+
+* The management mappings need to be completed to the proper locations (both the ttl1 and ttl2 tables)
+* The frame buffer needs to get mapped
+* The MMIO addresses need to be mapped to the kernel locations
+* The initial Heap locations need to be identified and mapped
+* Map the exception vector table (VBAR)
+* Stack (and we need to relocate that!)
+
+So, let's start with simple and important: the TTL1 table address should be mapped to `0xff404000`.
+
+---
+
+Well I have a good part of `MmuInit()` written.  I am now in a position where I need to still allocate frames for the PMM but I do not have my formal PMM task up and running yet.  On one hand, I can continue to allocate from `NextEarlyFrame()` but collision is risky with the modules I will load.  On the other hand, I can write an intermediate frame allocator which would also live in the `__ldrtext` section and that would be duplicated code.  The final option is to map the pmm section into the address space and call it like I have been bouncing between the loader and kernel.  This last option would guarantee code reuse -- something I was not concerned about earlier with `MmuInit()`.
+
+In this case, I would love to be able to reuse the code somehow.  This differs from the other case where it was all 100% loader and initialization -- stuff that will be executed once.  In this case the code will become a permanent fixture of the kernel and a running process.  I think I have my answer.
+
+---
+
+### 2019-Feb-16
+
+OK, so I am going to fold the PMM allocator into the kernel binary, but keep it in its own section.  This is because the pmm will end up being its own process.  But the challenge is where to put it in virtual space (and as a result where to put it in physical memory).
+
+No matter what I do, I will not be able to get the pmm to align to the user memory map (which I want to start at `0x100000`) since the loader is already there.  I could make a dedicated virtual memory map for the pmm, starting at `0x40000000` for example.  This will make the PMM a special case.
+
+Or, I can keep using the `NextEarlyFrame()` for now.  I think this is going to be the best answer -- at least for now.  However, I should be able to reset the allocation location so that I am not encroaching on the kernel binary itself.
+
+---
+
+OK, after rewriting the `MmuMapToFrame()` and `MmuMakeTtl2Table()` functions, I am now getting a Data Exception when I try to update the TTL1 table through its management address.  This should not happen!
+
+```
+MMU: Mapping the frame buffer at 0x0f95f000 for 0x9d bytes
+Mapping address 0xfb000000 to frame 0x0000f95f
+Checking if the TTL1 entry has a TTL2 table at address 0xff407ec0
+Data Exception:
+At address: 0x00007f68
+ R0: 0x00000042   R1: 0x800061cc   R2: 0x80005a5a
+ R3: 0x00000020   R4: 0xff407ec0   R5: 0x0000f95f
+ R6: 0xfb000000   R7: 0x00000001   R8: 0x00000000
+ R9: 0x00000001  R10: 0x00000001  R11: 0x00000003
+R12: 0xfffff000   SP: 0x80001dbc   LR_ret: 0x80001dbc
+SPSR_ret: 0x600001d3     type: 0x17
+```
+
+This was supposed to have been taken care of in `MmuInit()` earlier in the function.
+
+---
+
+Once again, I am having a hell of a time getting my head around this..  The problem is the amount of recursive lookups that are needed to make this all work.  I gotta draw this out!!
+
+---
+
+I think I finally got this figured out.  I am going to duplicate the paging tables documentation I have added to `MmuInit.c`:
+
+```C
+//  So, I also want to make sure I have the structure documented here.  I am going to do my best to draw with ASCII
+//  art.
+//
+//  The TTL1 table is located at over 4 pages from 0xff404000 to 0xff407000 inclusive.  There are 2 blocks of
+//  TTL1 entries we will be concerned with here: 0xff4-0xff7 and 0xffc-0xfff.  The first group is needed to map
+//  the TTL1 table for management -- keep in mind here we will only map 4 pages.  The second group is needed to
+//  map the TTL2 table for management.  This will be 4MB of mappings and will be an entire frame of TTL2 tables
+//  (which is really 4 tables by the way).
+//
+//  +-------//-------++-------//-------++-------//-------++---------------------//---------------------------+
+//  |                ||                ||                ||                              |.|F|F|F|F|.|F|F|F|F|
+//  |   0xff404000   ||   0xff405000   ||   0xff406000   ||       0xff407000             |.|F|F|F|F|.|F|F|F|F|
+//  |                ||                ||                ||                              |.|4|5|6|7|.|C|D|E|F|
+//  +-------//-------++-------//-------++-------//-------++---------------------//---------------------------+
+//
+//  So, the TTL1 management table will look like this:
+//
+//  0xff400000:
+//   ff4___________________ ff5___ ff6___ ff7___
+//  +-------------------//-+--//--+--//--+--//--+      * Entry 04 will point to the frame for 0xff404000
+//  |-|-|-|-|0|0|0|0|.|    |      |      |      |      * Entry 05 will point to the frame for 0xff405000
+//  |-|-|-|-|4|5|6|7|.|    |      |      |      |      * Entry 06 will point to the frame for 0xff406000
+//  +-------------------//-+--//--+--//--+--//--+      * Entry 07 will point to the frame for 0xff407000
+//
+//  This then leaves the TTL2 management addresses.  This is a 4MB block that needs to be managed.  This area can
+//  be managed with a single frame or 4 TTL2 tables inserted into the TTL1 table at indices 0xffc, ffd, ffe, fff.
+//  So, this is the last group above.  This will look like the following:
+//
+//  0xffc00000:
+//   ffc___ ffd___ ffe___ fff
+//  +--//--+--//--+--//--+--//------------------------+      * Entry fc will not point to anything on init
+//  |      |      |      |                    |F|F|F|F|      * Entry fd will not point to anything on init
+//  |      |      |      |                    |C|D|E|F|      * Entry fe will not point to anything on init
+//  +--//--+--//--+--//--+--//------------------------+      * Entry ff will be recursively pointed to this frame
+//
+//  Now, this is not to say that not other entries will be initialized.  Quite the contrary.  I am just saying that
+//  the other entries are not needed for managing the paging tables.
+```
+
+I think I have figured out what my problems are.  That final recursive mapping in TTL2 is what I have been missing -- and what has been scrambling my mind.  I kept feeling like I was going to be recursively mapping frames forever, which once I reached that top frame I had not yet had that mapped and things would degrade from there.
+
+This also tells me what I need to allocate to get the MMU tables initialized.  To manage the MMU tables, I only need to allocate 2 additional frames for TTL2 tables and make sure the final entry in the TTL2 table is recursively mapped.
+
+At least I finally have a picture and a target.  I will work on implementing it tomorrow.
+
+---
+
+### 2019-Feb-17
+
+I started today by cleaning up my `MmuInit()` function.  It certainly had some problems.  Now, since I have finally figured out that the TTL2 tables for managing the ttl2 tables needs a recursive mapping, I think it best to consider the types of structure entries I need to be able to manage to map a frame into virtual address space.  So, for any given address `addr`, I need to be able to find:
+1. The TTL1 Entry for that address: `TTL1_KRN_VADDR[addr >> 20]`.  This is used when we need to add a TTL2 table.  This space is already mapped and ready to be used.
+1. The TTL2 Management Table TTL2 Entry for that address: `0xfffff000[addr >> 22]` (taking into account the "`0x3ff`" comments from `MmuInit()`).  This address is used to map the new TTL2 table into the management space.  This table is already mapped and ready to be used.
+1. The TTL2 Entry for that address: `TTL2_KRN_VADDR[addr >> 12]`.  This is used to actually perform the mapping for the MMU.  Once the above steps are complete (meaning the entries are checked/mapped), every thing is in place to perform this function.
+
+With these 3 bits of information, I should be able to create a proper function to manage this information.  The key missing piece here is the "TTL2 Management Table TTL2 Entry" which I have been missing all this time.  And no recursion!
+
+Now, I do need to name that constant and create some macros to help with this mess.
+
+---
+
+I am debugging the new code I have written.  I think it is right but I am still getting Data Faults.  I added debugging code and everything is set up the way I expect it to be:
+
+```
+Pre-clear checks to see what is wrong:
+.. The TTL1 Entry is at address 0xff407fd0
+.. The entry does have a ttl2 table at frame 0x00000fc4
+.. The Management TTL2 entry is at 0xfffffff4
+.. The entry does have a page table at frame 0x00003f10
+.. The TTL2 entry itself is at 0xffffd000
+.. The entry does have a page table at frame 0x00000400
+Data Exception:
+```
+
+After reading some more about what is available to me with a Data Fault, I added some code to pull several bits of information, which now gives me the following:
+
+```
+Pre-clear checks to see what is wrong:
+.. The TTL1 Entry is at address 0xff407fd0
+.. The entry does have a ttl2 table at frame 0x00003f10
+.. The Management TTL2 entry is at 0xfffffff4
+.. The entry does have a page table at frame 0x00003f10
+.. The TTL2 entry itself is at 0xffffd000
+.. The entry does have a page table at frame 0x00000400
+Data Exception:
+.. Data Fault Address: 0xff400000
+.. Data Fault Status Register: 0x00000807
+.. Fault status 0x7: Translation fault (Second level)
+.. Fault occurred because of a write
+At address: 0x00007f50
+ R0: 0xff400000   R1: 0x00000000   R2: 0x00001000
+ R3: 0x00000020   R4: 0xfb000000   R5: 0x00000000
+ R6: 0x80063400   R7: 0x00000fb0   R8: 0x0000f95f
+ R9: 0x800063d0  R10: 0x80005ee0  R11: 0xffffd0ff
+R12: 0x003f2000   SP: 0x80001ed4   LR_ret: 0x80004b3c
+SPSR_ret: 0x200001d3     type: 0x17
+```
+
+This should not happen as I was supposed to have mapped that address right before I attempted the write.  Everything I look at tells me that the frame is mapped into virtual address space.
+
+OK, where have I gone wrong???
+
+```
+Performing a table walk for address 0xff400000
+.. TTL1 table is at 0x003fc000
+.. The index for this table is 0xff4
+.. The TTL1 Entry is at address 0x003fffd0
+.. The TTL2 table is located at phys address 0x003f1000
+.. The TTl2 index is 0x0
+.. The TTL2 Entry is located at physical address 0x003f1000
+.. The actual frame for this address is 0x00000000
+```
+
+The page is not mapped to frame `0x400` like I would expect.
+
+OK, this line has the shit going the wrong direction in my debugging code:
+
+```
+.. The entry does have a ttl2 table at frame 0x00003f10
+```
+
+However, the line that prints:
+
+```
+The entry does have a page table at frame 0x00003f10
+```
+
+... is not being manipulated by the debugging code at all.  This means I have a shifting problem when that entry is being created.
+
+Having sorted that, I now have this working properly.  I was so close, but was confused between ttl2 and frames and the shifting requirements between them.
+
+---
+
+The final thing was going to be to pre-allocate space for the Heap.  Since `MmuMapToFrame()` is working properly now, there is no need to do this.  I believe `MmuInit()` is complete.
+
+So, with that, I have been able to get well into the `kInit()` function before it crashes.  I think the next thing to do is to catch up the x86 kernel while the loader is still fresh in my mind.
+
+I am going to start with the loader script, which does not even close to match the rpi2b loader script in particular with the addressing.  I know when I make this change, things will break.
+
+Once that is complete, I need to get into the `entry.s` entry point.  Things I need to accomplish in this file before handing off control to `LoaderMain()` are:
+* Save off the Multiboot structure info
+* Establish a stack
+* Clear the BSS
+* Allocate room for the Page Directory from the early pmm
+* Get an interrupt table/GDT table from the early pmm -- set them both up!
+* Execute both `lgdt` and `lidt` and perform the proper jump
+* Map a 4MB section of memory in the Page Directory
+* Enable paging
+* Finally, jump to `LoaderMain()`
+
+These function should put the CPU into its native state before handing control to the Loader to complete the discovery and initialization.
+
+---
+
+### 2019-Feb-18
+
+I spent a good part of the evening writing the `entry.s` file for x86.  The last thing is to clean up the `grub.cnf` file so that this kernel boots.  I had actually managed to shock myself for a moment because it appeared to have executed for quite a while before triple faulting -- then I realized what I did wrong.
+
+Now, having run this in Bochs, I get the exact results I expected: triple fault really early:
+
+```
+00159146725e[CPU0  ] check_cs(0x0008): conforming code seg descriptor dpl > cpl, dpl=3, cpl=0
+00159146725d[CPU0  ] exception(0x0d): error_code=0008
+00159146725d[CPU0  ] interrupt(): vector = 0d, TYPE = 3, EXT = 1
+00159146725e[CPU0  ] interrupt(): gate descriptor is not valid sys seg (vector=0x0d)
+00159146725d[CPU0  ] exception(0x0d): error_code=006b
+00159146725d[CPU0  ] exception(0x08): error_code=0000
+00159146725d[CPU0  ] interrupt(): vector = 08, TYPE = 3, EXT = 1
+00159146725e[CPU0  ] interrupt(): gate descriptor is not valid sys seg (vector=0x08)
+00159146725d[CPU0  ] exception(0x0d): error_code=0043
+00159146725i[CPU0  ] CPU is in protected mode (active)
+00159146725i[CPU0  ] CS.mode = 32 bit
+00159146725i[CPU0  ] SS.mode = 32 bit
+00159146725i[CPU0  ] EFER   = 0x00000000
+00159146725i[CPU0  ] | EAX=001010bc  EBX=00ee0000  ECX=00000000  EDX=000003fd
+00159146725i[CPU0  ] | ESP=00001000  EBP=00000000  ESI=001010b4  EDI=00000bfd
+00159146725i[CPU0  ] | IOPL=0 ID vip vif ac vm RF nt of df if tf sf zf af pf cf
+00159146725i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00159146725i[CPU0  ] |  CS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00159146725i[CPU0  ] |  DS:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00159146725i[CPU0  ] |  SS:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00159146725i[CPU0  ] |  ES:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00159146725i[CPU0  ] |  FS:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00159146725i[CPU0  ] |  GS:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00159146725i[CPU0  ] | EIP=00100805 (00100805)
+00159146725i[CPU0  ] | CR0=0x60000011 CR2=0x00000000
+00159146725i[CPU0  ] | CR3=0x003fe000 CR4=0x00000010
+(0).[159146725] [0x000000100805] 0010:0000000000100805 (unk. ctxt): jmpf 0x0008:0010080c      ; ea0c0810000800
+00159146725p[CPU0  ] >>PANIC<< exception(): 3rd (13) exception with no resolution
+```
+
+The segments are still from grub.  However, it looks like I am jumping to some user section.  This means I have my GDT written poorly and I need to clean that up.
+
+So, from the old `loader.elf`, I found the following:
+
+```
+ 11e020 00000000 00000000 ffff0000 009acf00  ................
+ 11e030 ffff0000 0092cf00 ffff0000 00facf00  ................
+ 11e040 ffff0000 00f2cf00 00000000 00000000  ................
+ 11e050 00000000 00000000 ffff0000 009acf00  ................
+ 11e060 ffff0000 0092cf00 ffff0012 40e90fff  ............@...
+ 11e070 00000000 00000000 00000000 00000000  ................
+ 11e080 00000000 00000000 00000000 00000000  ................
+ 11e090 00000000 00000000 00000000 00000000  ................
+```
+
+Comparing entry 1 (not null) from above (`ffff0000 009acf00`) to the same entry from `entry.s` (`0x0000ffff,0x00a9f300`), I got this all messed up!
+
+---
+
+### 2019-Feb-19
+
+Interestingly enough, in x86 I am getting a call to an upper memory location before I am ready for it:
+
+```
+0100100 <LoaderMain>:
+  100100:       56                      push   %esi
+  100101:       53                      push   %ebx
+  100102:       e8 8a ff ef 7f          call   80000091 <__x86.get_pc_thunk.bx>
+  100107:       81 c3 05 96 f5 7f       add    $0x7ff59605,%ebx
+  10010d:       50                      push   %eax
+```
+
+This `__x86.get_pc_thunk.bx` function is causing me issues because it is in upper memory which is not mapped yet.  I have no clue how to deal with this...  Yet!
+
+Adding the option `-fno-pic` to the compiler and to the linker options worked.  I no longer have the thunker in the function calls.
+
+---
+
+I was able to (for ARM) able to update the Serial code to use the correct addresses.  Now I need to do the same for x86.  In order to do this, I am going to have to suck up some inline assembly and turn the `outb` and `inb` calls into macros.
+
+Now, I have gotten to the part where I need to develop the `MmuEarlyInit()` function.  This function (like the ARM counterpart) will need to complete the initialization of the MMU so that we can access the kernel code properly.  The goals for this function are:
+* Clear out the rest of the Page Directory
+* Recursively map the Page Directory
+* Properly map the kernel to upper memory (creating additional Page Tables as needed) -- ARM was a 2-pass at this; not sure how to handle this here yet
+
+Again the overall objective is to ensure that we can run kernel code and access kernel data cleanly.
+
+---
+
+### 2019-Feb-20
+
+I am still having trouble with crashes and triple faults.  I think the thing I am worried about the most at the moment is that I am not getting any serial output.  I really need that for debugging purposes.  So, getting that output will be my focus until I have that working.
+
+---
+
+OK, I have the most basic serial output working -- I moved the `Serial*()` functions into the `__ldrtext` section as needed.  However, I do have some output to help me along:
+
+```C
+    SerialPutHex((uint32_t)SerialPutS); SerialPutChar('\n');
+    SerialPutHex(kern_loc); SerialPutChar('\n');
+    SerialPutHex(phys_loc); SerialPutChar('\n');
+    SerialPutHex((uint32_t)&_loaderEnd); SerialPutChar('\n');
+    SerialPutHex((uint32_t)&_loaderStart); SerialPutChar('\n');
+
+    SerialPutHex((uint32_t)&_loaderEnd - (uint32_t)&_loaderStart); SerialPutChar('\n');
+
+    SerialPutHex((uint32_t)PHYS_OF(SerialPutS)); SerialPutChar('\n');
+    SerialPutHex(*(uint32_t *)PHYS_OF(SerialPutS)); SerialPutChar('\n');
+```
+
+Which gives the results:
+
+```
+0x800050b0
+0x80000000
+0x00100000
+0x00103000
+0x00100000
+0x00003000
+0x001080b0
+0xfffffec4
+```
+
+I have looked through all the different addresses and this value (`0xfffffec4`) is not located at any "`0b0`" address.  This means that I am likely overwriting this value at some point.
+
+So, even with paging not enabled, I am still getting the same results.  I am not getting anything showing up when I watch that location.
+
+---
+
+OK, I finally found my code.  It is loaded at `0x80000000`.  I think I need to update my linker script.  The following confirms it:
+
+```
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x02001 0x02001 RWE 0x1000
+  LOAD           0x004000 0x80000000 0x80000000 0x079ec 0x079ec R E 0x1000
+  LOAD           0x00c000 0x80008000 0x80008000 0x5aa64 0x91c88 RW  0x1000
+```
+
+The PhysAddr is not correct.  And having corrected the linker script, I am now getting a decent result:
+
+```
+!
+0x800050b0
+0x80000000
+0x00100000
+0x00103000
+0x00100000
+0x00003000
+0x001080b0
+0x08ec8353
+Clearing the remainder of the Page Directory
+Recursively mapping the Page Directory
+Preparing to create page tables as needed for the kernel
+Mapping the actual pages for the kernel
+```
+
+So, the next step is to undo all the changes I made (one at a time of course) to put things back to what they are supposed to be.
+
+This will be tomorrow.
+
+---
+
+### 2019-Feb-21
+
+Today I am going to start out by backing out all the debugging changes I made yesterday...  Pedantically.
+
+---
+
+With that done, I can now take on debugging `MmuEarlyInit()`.
+
+---
+
+This turned out to be that I was taking an address and treating it like a frame; I had to shift the address to the right by 12 bits.
+
+So, now it looks like I am not properly clearing the `.bss` section:
+
+```
+MMap Entry count is: 0x7461646f
+```
+
+---
+
+### 2019-Feb-22
+
+So far is a short time I have gotten all of the x86 code to the point where I need to complete the MMU initialization.  This function should be quite easy to complete since the `MmuEarlyInit()` function was able to set up the recursive mapping.  Therefore, there is nothing more to do; we should be able to map and unmap with ease.
+
+OK, the `LoaderInit()` function is completing.  But...  nothing is being written to the frame buffer.  Therefore, I get no output to the screen.  Nothing crashes...  just no output.
+
+Actually, it was working right, the emulator was resetting too quickly.  I am now finally getting a GPF in the kernels code.  I want to clean up a few things and then commit this code.
+
+
+
 
 

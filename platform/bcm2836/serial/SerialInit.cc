@@ -12,6 +12,7 @@
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Nov-13  Initial   0.2.0   ADCL  Initial version -- leveraged out of century's `uart-dev.c`
 //  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Feb-10  Initial   0.3.0   ADCL  Remove the call to BusyWait() and replace with a simple loop
 //
 //===================================================================================================================
 
@@ -24,8 +25,10 @@
 //
 // -- Initialize the UART Serial Port
 //    -------------------------------
-void SerialInit(void)
+void __ldrtext SerialInit(void)
 {
+    volatile int i;
+
     // -- must start by enabling the mini-UART; no register access will work until...
     MmioWrite(AUX_ENABLES, 1);
 
@@ -60,9 +63,9 @@ void SerialInit(void)
 
     // -- Enable GPIO pins 14/15 only
     MmioWrite(GPIO_GPPUD, 0x00000000);
-    BusyWait(150);
+    for (i = 0; i < 150; i ++) {}
     MmioWrite(GPIO_GPPUDCLK1, (1<<14)|(1<<15));
-    BusyWait(150);
+    for (i = 0; i < 150; i ++) {}
     MmioWrite(GPIO_GPPUDCLK1, 0x00000000);              // LEARN: Why does this make sense?
 
     // -- Enable TX/RX

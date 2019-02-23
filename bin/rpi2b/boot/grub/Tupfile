@@ -24,8 +24,7 @@ include_rules
 ##
 ## -- Create the grub.cfg file
 ##    ------------------------
-:   |>  echo   "multiboot /boot/loader.elf"                          > %o;      \
-        echo   "module /boot/kernel.elf kernel"                     >> %o;      \
+:   |>  echo   "multiboot /boot/kernel.elf"                          > %o;      \
         echo   "boot"                                               >> %o;      \
     |> grub.cfg
 
@@ -41,9 +40,7 @@ include_rules
 ##
 ## -- create the cfg-file2 for pi-bootloader
 ##    -------------------------------------
-:   |>  echo   "kernel bin/rpi2b/boot/loader.elf"                    > %o;      \
-        echo   "module targets/rpi2b/bin/boot/kernel.elf"           >> %o;      \
-        echo   "module bin/rpi2b/boot/pmm.elf"                      >> %o;      \
+:   |>  echo   "kernel targets/rpi2b/bin/boot/kernel.elf"            > %o;      \
     |> cfg-file2
 
 

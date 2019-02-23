@@ -26,15 +26,18 @@
 //    ---------------------------------------------
 frame_t MmuUnmapPage(archsize_t addr)
 {
-    kprintf("Unmapping address %p\n", addr);
-
+    Ttl1_t *ttl1Table = (Ttl1_t *)(TTL1_KRN_VADDR);
+    Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];
     Ttl2_t *ttl2Tables = (Ttl2_t *)(TTL2_KRN_VADDR);
     Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
 
+    if (ttl1Entry->fault == 0b00) return 0;
     if (ttl2Entry->fault == 0b00) return 0;
 
     frame_t rv = ttl2Entry->frame;
     *(uint32_t *)ttl2Entry = 0;
-    kprintf(".. Unmap complete\n");
+
+    InvalidatePage(addr & 0xfffff000);
+
     return rv;
 }

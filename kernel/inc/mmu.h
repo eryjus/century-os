@@ -42,6 +42,10 @@ enum {
 };
 
 
+#define MMU_CLEAR_FRAME 0xff400000
+#define MMU_FRAMEBUFFER 0xfb000000
+
+
 //
 // -- With the page table structures given, map a virtual address to a physical frame
 //    -------------------------------------------------------------------------------
@@ -52,6 +56,18 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags);
 // -- Unmap a page from the page table
 //    --------------------------------
 frame_t MmuUnmapPage(archsize_t addr);
+
+
+//
+// -- Complete the initialization of the MMU
+//    --------------------------------------
+void MmuInit(void);
+
+
+//
+// -- Invalidate a page in the TLB
+//    ----------------------------
+extern "C" void InvalidatePage(archsize_t addr);
 
 
 #endif
