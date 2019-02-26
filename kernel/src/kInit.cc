@@ -44,7 +44,6 @@
 #include "ipc.h"
 #include "pmm.h"
 #include "serial.h"
-#include "hw.h"
 
 
 //
@@ -59,15 +58,10 @@ void PmmStart(Module_t *);
 //    -------------------------------------------------------------------------
 void kInit(void)
 {
-    SerialPutChar('#');
-    kprintf(".");
-
     //
     // -- Phase 1: Required by the processor to setup the proper state
     //             Greet the user from the kernel.
     //    ------------------------------------------------------------
-    IdtBuild();
-    CpuTssInit();
     kprintf("Welcome to CenturyOS -- a hobby operating system\n");
     kprintf("    (initializing...)\n");
 
@@ -90,9 +84,10 @@ void kInit(void)
         }
     }
 
-    TimerInit(250);
+    TimerInit(&timerControl, 250);
     EnableInterrupts();
     ProcessEnabled = true;
+#if 0
     HeapInit();
 
     // -- let the Pmm know we are putting it in-charge
@@ -104,7 +99,7 @@ void kInit(void)
     pmm.dataPayload = (void *)GetPmmBitmap();
     pmm.payloadSize = GetPmmFrameCount() << 12;            // convert this to bytes
     MessageSend(PID_PMM, &pmm);
-
+#endif
 
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
@@ -149,7 +144,6 @@ void kInit(void)
 //    BREAKPOINT;
 
 
-    EnterSystemMode();
     kprintf("Reached the end of initialization\n");
 
     //

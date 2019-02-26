@@ -21,7 +21,9 @@
 
 
 #include "types.h"
+#include "hardware.h"
 #include "printf.h"
+#include "timer.h"
 #include "interrupt.h"
 
 
@@ -41,7 +43,7 @@ void IsrHandler(isrRegs_t *regs)
     uint32_t pending = 0;
 
     // -- Here we need to determine the intno for the ISR
-    pending = MmioRead(TMR_BASE + 0x60);
+    pending = PicGetIrq(&picControl);
 
     for (i = 11; i >= 0; i --) {
         if (pending & (1<<i)) {
@@ -50,7 +52,7 @@ void IsrHandler(isrRegs_t *regs)
         }
     }
 
-    kprintf("Unable to determine interrupt number: %p\n", pending);
+    kprintf("PANIC: Unable to determine interrupt number: %p\n", pending);
     Halt();
     return;
 

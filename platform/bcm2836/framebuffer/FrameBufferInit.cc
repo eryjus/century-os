@@ -19,11 +19,12 @@
 //===================================================================================================================
 
 
+#include "loader.h"
 #include "types.h"
 #include "hw-disc.h"
-#include "hw.h"
 #include "printf.h"
 #include "fb.h"
+#include "hardware.h"
 
 
 //
@@ -73,8 +74,8 @@ void __ldrtext FrameBufferInit(void)
     mbBuf[30] = 0;          // last tag
     mbBuf[31] = 0;          // clear one more anyway
 
-    MailboxSend((uint32_t)mbBuf, 8);
-    MailboxReceive(8);
+    MailboxSend(&loaderMailbox, 8, (archsize_t)mbBuf);
+    MailboxReceive(&loaderMailbox, 8);
 
 
     fb = (uint16_t *)(mbBuf[24] + 0x40000000);

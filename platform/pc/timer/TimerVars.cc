@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  hw-kernel.h -- This is the include file for any hardware-specific lcoations
+//  TimerVars.cc -- These are the variables for the x86 Timer
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,23 +10,24 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Nov-13  Initial   0.2.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#ifndef __HW_H__
-#define __HW_H__
+#include "loader.h"
+#include "pic.h"
+#include "timer.h"
 
 
 //
-// -- This is the offset to add to the MMIO addresses to get them into kernel address space
-//    -------------------------------------------------------------------------------------
-//#define KERNEL_OFFSET       (0xf2000000 - 0x3f000000)
+// -- This is the device description that is used to output data to the serial port during loader initialization
+//    ----------------------------------------------------------------------------------------------------------
+__krndata TimerDevice_t timerControl = {
+    .base = TIMER,
+    .pic = &picControl,
+    .TimerCallBack = TimerCallBack,
+    .TimerInit = _TimerInit,
+    .TimerEoi = _TimerEoi,
+};
 
-
-#include "arch-hw.h"
-
-
-#endif

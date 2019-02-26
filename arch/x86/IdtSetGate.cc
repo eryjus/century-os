@@ -19,6 +19,7 @@
 
 
 #include "types.h"
+#include "printf.h"
 #include "cpu.h"
 
 
@@ -31,9 +32,11 @@ extern IdtEntry *idtEntries;
 //
 // -- Construct a single IDT gate
 //    ---------------------------
-void IdtSetGate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
+void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
 {
     if (num > 255) return;
+
+    kprintf("..  installing IDT for %x at %x:%p\n", num, sel, base);
 
 	idtEntries[num].baseLow = (uint16_t)(base & 0xffff);
 	idtEntries[num].baseHigh = (uint16_t)((base >> 16) & 0xffff);

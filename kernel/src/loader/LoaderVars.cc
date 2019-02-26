@@ -49,12 +49,6 @@ size_t mmuLvl1Count __ldrdata = 0;
 
 
 //
-// -- This is for a call to write to the serial port
-//    ----------------------------------------------
-SerialPutChar_t LoaderSerialPutChar __ldrdata;
-
-
-//
 // -- This is for a call to set a block of memory
 //    -------------------------------------------
 kMemSetB_t lMemSetB __ldrdata;

@@ -35,6 +35,17 @@ SECTIONS {
     .loader : {       /* This is where the loader will be located -- things to be reclaimed: */
         *(.mboot)                       /* -- multiboot header comes first */
         *(.ldrtext)                     /* -- loader text (code) */
+        *(.text.startup)                /* -- this is additional initialization code */
+        . = ALIGN(8);                   /* -- the next table needs to align to 8 bytes */
+
+        init_start = .;                 /* -- here we have an array of functions that need to be called */
+        *(.ctors)
+        *(.ctors.*)
+        *(.init_array)
+        *(SORT_BY_INIT_PRIORITY(.init_array.*))
+        init_end = .;
+
+        . = ALIGN(8);                   /* -- re-align to 8 bytes */
         *(.ldrrodata)                   /* -- loader rodata (like strings) */
         *(.ldrdata)                     /* -- loader data (things that will not get passed to the kernel */
 

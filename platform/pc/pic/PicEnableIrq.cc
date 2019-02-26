@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  TimerVars.cc -- The globals for the PIT
+//  PicEnableIrq.cc -- Enable the PIC to pass along an IRQ
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,20 +10,32 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-28  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "timer.h"
+#include "cpu.h"
+#include "hardware.h"
+#include "pic.h"
 
 
 //
-// -- This is the control structure for determining exactly which functions are called for the PIT timer
-//    --------------------------------------------------------------------------------------------------
-TimerFunctions_t pitTimer = {
-    TimerInit,
-    TimerEoi,
-};
+// -- Enable the PIC to pass along an IRQ (some call it unmasking)
+//    ------------------------------------------------------------
+void _PicEnableIrq(PicDevice_t *dev, int irq)
+{
+    if (!dev) return;
+    if (irq < 0 || irq > 15) return;
 
+    uint16_t port;
+
+    if (irq < 8) {
+        port = dev->base1 + PIC_MASTER_DATA;
+    } else {
+        port = dev->base2 + PIC_SLAVE_DATA;
+        irq -= 8;
+    }
+
+    outb(port, inb(port) & ~(1 << irq));
+}

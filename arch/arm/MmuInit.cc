@@ -83,8 +83,8 @@
 //===================================================================================================================
 
 
-#include "types.h"
 #include "loader.h"
+#include "types.h"
 #include "pmm.h"
 #include "cpu.h"
 #include "mmu.h"
@@ -256,7 +256,7 @@ void __ldrtext MmuInit(void)
     //    space at `0xf8000000` to `0xf903ffff`.  This should be trivial, almost.
     //    --------------------------------------------------------------------------------------------------------
     archsize_t mmioPhys = 0x3f000;                      // address converted to frame
-    archsize_t mmioVirt = 0xf8000000;
+    archsize_t mmioVirt = MMIO_VADDR;
     int count = (0x40040000 - 0x3f000000) >> 12;
 
     kprintf("MMU: Mapping the mmio addresses to %p for %x frames\n", mmioVirt, count + 1);

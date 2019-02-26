@@ -23,12 +23,12 @@
 //===================================================================================================================
 
 
+#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "serial.h"
 #include "mmu.h"
 #include "printf.h"
-#include "loader.h"
 
 #define DEBUG_MMU 1
 #ifndef DEBUG_MMU

@@ -52,12 +52,6 @@
 
 
 //
-// -- This is the current timer controls functions required to issue the proper EOI
-//    -----------------------------------------------------------------------------
-TimerFunctions_t *timerControl;
-
-
-//
 // -- Handle a timer IRQ
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
@@ -65,13 +59,13 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     kprintf(".");
 
 	if (!ProcessEnabled) {
-        timerControl->eoi(0);
+        timerControl.TimerEoi(&timerControl);
         return;
     }
 
 	procs[currentPID]->totalQuantum ++;
 	if (-- procs[currentPID]->quantumLeft <= 0) {
-        timerControl->eoi(0);
+        timerControl.TimerEoi(&timerControl);
         ProcessReschedule();
-    } else timerControl->eoi(0);
+    } else timerControl.TimerEoi(&timerControl);
 }

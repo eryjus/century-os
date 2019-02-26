@@ -27,18 +27,6 @@
 
 
 //
-// -- Write to a Memory Mapped I/O Register
-//    -------------------------------------
-inline void MmioWrite(archsize_t reg, archsize_t data) { *(volatile archsize_t *)reg = data; }
-
-
-//
-// -- Read from a Memory Mapped I/O Register
-//    --------------------------------------
-inline archsize_t MmioRead(archsize_t reg) { return *(volatile archsize_t *)reg; }
-
-
-//
 // -- Halt the CPU
 //    ------------
 extern "C" void Halt(void) __attribute__((noreturn));

@@ -65,6 +65,13 @@
 
 
 //
+// -- The address of the MMIO addresses
+//    ---------------------------------
+#define MMIO_VADDR          0xf8000000
+#define MMIO_LOADER_LOC     0x3f000000
+
+
+//
 // -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
 //    into the various tables
 //    -----------------------------------------------------------------------------------------------------

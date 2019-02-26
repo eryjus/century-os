@@ -22,9 +22,10 @@
 //===================================================================================================================
 
 
-#include "types.h"
 #include "loader.h"
+#include "types.h"
 #include "pmm.h"
+#include "interrupt.h"
 #include "mmu.h"
 
 
@@ -58,7 +59,7 @@ void __ldrtext MmuInit(void)
     //
     // -- Next up is the VBAR -- which needs to be mapped.  This one is rather trivial.
     //    -----------------------------------------------------------------------------
-    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr, 0);
+    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr >> 12, 0);
 
 
     //
@@ -70,6 +71,13 @@ void __ldrtext MmuInit(void)
         MmuMapToFrame(stackLoc, PmmNewFrame(1), 0);
     }
 
+
+    //
+    // -- Take care of some additional archicecture-specific initialization dependent on the MMU Setup being
+    //    complete.
+    //    --------------------------------------------------------------------------------------------------
+    IdtBuild();
+    CpuTssInit();
 
     kprintf("MMU: The MMU is initialized\n");
 }

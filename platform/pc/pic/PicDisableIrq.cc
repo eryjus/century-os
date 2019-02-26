@@ -1,40 +1,41 @@
 //===================================================================================================================
 //
-//  SerialPutHex.cc -- Output a Hex Number to the Serial Port
+//  PicDisableIrq.cc -- Disable the PIC from passing along an IRQ
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Note that this function has been deliberately rewritten not to use strings due to the issues with linking
-//  strings at the loader sections.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-Jun-07  Initial   0.0.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
-#include "serial.h"
 #include "cpu.h"
+#include "hardware.h"
+#include "pic.h"
 
 
 //
-// -- Print a hex number to the serial port
-//    -------------------------------------
-void __ldrtext SerialPutHex(uint32_t val)
+// -- Disable the PIC from passing along an IRQ (some call it masking)
+//    ----------------------------------------------------------------
+void _PicDisableIrq(PicDevice_t *dev, int irq)
 {
-    SerialPutChar('0');
-    SerialPutChar('x');
-    for (int i = 28; i >= 0; i -= 4) {
-        char c = ((val >> i) & 0x0f);
+    if (!dev) return;
+    if (irq < 0 || irq > 15) return;
 
-        if (c > 9) SerialPutChar(c - 10 + 'a');
-        else SerialPutChar(c + '0');
+    uint16_t port;
+
+    if (irq < 8) {
+        port = dev->base1 + PIC_MASTER_DATA;
+    } else {
+        port = dev->base2 + PIC_SLAVE_DATA;
+        irq -= 8;
     }
+
+    outb(port, inb(port) | (1 << irq));
 }

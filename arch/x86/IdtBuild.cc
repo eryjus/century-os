@@ -18,8 +18,10 @@
 //===================================================================================================================
 
 
+#include "loader.h"
 #include "mmu.h"
 #include "cpu.h"
+#include "printf.h"
 #include "interrupt.h"
 
 
@@ -90,8 +92,9 @@ IdtEntry *idtEntries = (IdtEntry *)IDT_ADDRESS;
 //
 // -- Build the parts of the IDT we are going to use so far
 //    -----------------------------------------------------
-void IdtBuild(void)
+void __ldrtext IdtBuild(void)
 {
+    kprintf("Initializing the IDT properly\n");
 	kMemSetB((uint8_t *)idtEntries, 0, sizeof(IdtEntry) * 256);
 
 	IdtSetGate( 0, (uint32_t)isr0 , 0x08, 0x8e);

@@ -67,6 +67,7 @@ static frame_t MmuMakeTtl2Table(archsize_t addr)
 #if DEBUG_MMU == 1
         kprintf("Lock obtained\n");
 #endif
+        InvalidatePage(MMU_CLEAR_FRAME);
         ttl2Entry->frame = frame;
         ttl2Entry->s = 1;
         ttl2Entry->apx = 0;
@@ -76,6 +77,7 @@ static frame_t MmuMakeTtl2Table(archsize_t addr)
         ttl2Entry->b = 1;
         ttl2Entry->nG = 0;
         ttl2Entry->fault = 0b10;
+        InvalidatePage(MMU_CLEAR_FRAME);
 
 
 #if DEBUG_MMU == 1
@@ -94,11 +96,10 @@ static frame_t MmuMakeTtl2Table(archsize_t addr)
         kprintf(".. The entry does%s have a page table at frame %p\n",
                 (KRN_TTL2_ENTRY(MMU_CLEAR_FRAME))->fault==0b00?" not":"",
                 (KRN_TTL2_ENTRY(MMU_CLEAR_FRAME))->frame);
-
         kprintf("Performing a table walk for address %p\n", MMU_CLEAR_FRAME);
         kprintf(".. TTL1 table is at %p\n", mmuLvl1Table);
         kprintf(".. The index for this table is %x\n", MMU_CLEAR_FRAME >> 20);
-        Ttl1_t *t1e = (Ttl1_t *)&mmuLvl1Table[MMU_CLEAR_FRAME >> 20];
+        Ttl1_t *t1e = &((Ttl1_t *)mmuLvl1Table)[MMU_CLEAR_FRAME >> 20];
         kprintf(".. The TTL1 Entry is at address %p\n", t1e);
         Ttl2_t *t2t = (Ttl2_t *)(t1e->ttl2 << 10);
         kprintf(".. The TTL2 table is located at phys address %p\n", t2t);
@@ -119,6 +120,7 @@ static frame_t MmuMakeTtl2Table(archsize_t addr)
     // -- The next order of business is to map this into the Management table.  This needs to be done for
     //    every new table, so there is nothing to check -- we know we need to do this.
     //    -----------------------------------------------------------------------------------------------
+    InvalidatePage(addr & 0xfffff000);
     ttl2Entry = KRN_TTL2_MGMT(addr);
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
@@ -129,6 +131,7 @@ static frame_t MmuMakeTtl2Table(archsize_t addr)
     ttl2Entry->b = 1;
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
+    InvalidatePage(addr & 0xfffff000);
 
 
     //
@@ -189,6 +192,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     if (ttl2Entry->fault != 0b00) return;
 
+    InvalidatePage(addr & 0xfffff000);
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
@@ -198,5 +202,6 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     ttl2Entry->b = 1;
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
+    InvalidatePage(addr & 0xfffff000);
 }
 

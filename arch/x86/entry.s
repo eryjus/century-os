@@ -161,7 +161,7 @@ gdtStart:
     dd          0x00000000,0x00000000                   ;; reserved for user data segment
     dd          0x00000000,0x00000000                   ;; reserved for loader code segment
     dd          0x00000000,0x00000000                   ;; reserved for loader data segment
-    dd          0x8010ffff,0xff0fe940                   ;; this is the 32-bit tss
+    dd          0x1080ffff,0xff0fe940                   ;; this is the 32-bit tss
     dd          0x00000000,0x00000000                   ;; reserved rest of 64-bit tss
     dd          0x00000000,0x00000000                   ;; Future use
     dd          0x00000000,0x00000000                   ;; Future use
@@ -329,17 +329,18 @@ loop:
 ;;    -------------------------------------------------------------------------------------------
     mov     eax,0x7ff                   ;; 0x800 bytes - 1
     mov     [ldtSize],ax                ;; load that into the size
-    mov     eax,0xff401800              ;; this is the location of the idt
+    mov     eax,[intTableAddr]          ;; this is the location of the idt
+    add     eax,0x800
     mov     [ldtLoc],eax                ;; load that into the struture
     mov     eax,ldtSize                 ;; get the address of the structure
     lidt    [eax]                       ;; load the idt
 
     mov     eax,0x7f                    ;; 0x80 bytes - 1
     mov     [ldtSize],ax                ;; load that into the size
-    mov     eax,[intTableAddr]          ;; this is the location of the idt
+    mov     eax,[intTableAddr]          ;; this is the location of the gdt
     mov     [ldtLoc],eax                ;; load that into the struture
     mov     eax,ldtSize                 ;; get the address of the structure
-    lgdt    [eax]                       ;; load the idt
+    lgdt    [eax]                       ;; load the gdt
 
     jmp     0x08:newGdt                 ;; jump to make the new GDT take effect
 

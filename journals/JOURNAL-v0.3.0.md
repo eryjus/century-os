@@ -795,7 +795,148 @@ OK, the `LoaderInit()` function is completing.  But...  nothing is being written
 
 Actually, it was working right, the emulator was resetting too quickly.  I am now finally getting a GPF in the kernels code.  I want to clean up a few things and then commit this code.
 
+---
 
+OK, so what is next?  Well, it's really too early to take on the PMM yet.  I need to get the kernel executing properly.  I should not need the PMM to complete the initialization (which I previously needed for the heap initialization).  Once again, I am going back the rpi2b target to start my work.
 
+I am now at a point where I need to be able to use the `arch-hw.h` file between both address spaces.  This means I will need to address the hardware base location dynamically.  I am not exactly sure how I am going to handle this, but because I cannot use a variable to store this data because of the mapping location.  I need to be able figure out an architecture agnostic way to handle this at compile time.
 
+This change alone is breaking the majority of this code for rpi2b.  I need to think on this tonight....
 
+---
+
+### 2019-Feb-23
+
+I think the best answer if going to be to completely change the `hw-arch.h` file to only have relative offsets from some defined base.  No matter what I do, I am going to need to take care of that.  This will eliminate the `HW_BASE` macro and everything I have done so far (and in the future) will need to know the base address it is working with.
+
+That still leaves me with the last statement I made last night -- this is going to break everything and I will need to work through everything one at a time.  Now, in theory, everything that touches one of these addresses should be in the platform section already.  Mailboxes were not, so I moved them....
+
+The best approach here I think is going to be to change `MmioRead()` and `MmioWrite()` to have an additional parameter for the base hardware address.  This will break the compile for everything that is relevant and force changes and thinking for everything (i.e.: nothing will be missed).
+
+---
+
+God, what a damned mess...  I cannot just remove `HW_BASE` because that breaks the hardware abstraction.  I think I am going to need to actually set up each device as an offset from it individual base address.  Since it is the most critical for debugging, let's start with the serial port.  Since we have to initialize the serial port with `MmioWrite()`, this needs to be addressed ahead of the serial port.
+
+---
+
+So, I decided to remove `hw.h` and `hw-arch.h` from the project (saved a copy of course).  I really need to be able to get a little more granular with this management to maintain hardware abstraction.  I'm going to have to replace it with something, but I need a different name (`hardware.h`) to make sure I don't miss anything.
+
+So, as a result this will drive a number of changes with both architectures to be able to get the loader even to work up to calling the kernel code in higher memory again.
+
+---
+
+All-in-all, I have a good part of the serial functions implemented.  These mostly look like a device structure with operations -- object-oriented without being C++ classes.  The only thing missing at this point for rpi2b to be complete (for the serial device) is to figure out what I am going to do with the GPIO -- abstract it as a device or incorporate it as part of each device that needs to reference it.  I believe I will probably abstract it -- but then how to incorporate it...??
+
+As I call it a night, I am nowhere close to an object that can compile at all.
+
+---
+
+### 2019-Feb-24
+
+OK, this GPIO thing....   I think the bet thing to do on this is going to be to add in a platform-specific attribute into the structure where it may be NULL.  I would prefer to use some sort of inheritance for better/stronger typing, but I am not getting into the C++ realm.
+
+---
+
+OK, I think I have all the platform-specific device info set up and ready to be used.  At this point, the next steps here is to correct every place I have used the serial port to debug stuff.  The challenge here is going to be all the compile-time debugging `#if DEBUG_xxx == 1` statements which need to also be corrected.
+
+Since there are so many changes, I will keep track of several of the more interesting ones here:
+* `SerialPutS.cc` and `SerialPutHex.cc` can be eliminated
+* as a result, `kernel/src/serial` can be removed
+* `kprintf()` can only be called once everything is set properly; can assume kernelSerial
+
+... and I have gotten to the point where I need to abstract a timer device as well now.  Ahhh... but should I also abstract the PIC?  This is bundled into the Timer Initialization at the moment....
+
+---
+
+While I am on the topic of the PIC, I asked about the definition of mask and unmask on `freenode#osdev` and the following was the related conversation:
+
+```
+[12:47] <eryjus> common terminology question -- when an irq is "masked", what is that intended to mean?  enabled or disabled?  I think I have been backwards all my life.
+[12:47] <geist> disabled
+[12:47] <geist> masked off, as in, covered
+[12:47] <geist> like you put tape over the irq hole
+[12:48] <eryjus> hmmm..  then i have been right..  thank you
+[12:48] <geist> yah then you unmask it and it's available again
+[12:49] <geist> i think i have heard from time to time someone trying to use it i the other way
+[12:49] <eryjus> me too..
+[12:49] <geist> mostly in that sometimes you get irq enable/disable bits that have the 'other' polarity
+[12:50] <geist> and then folks will call the whole operation of having a register to enable/disable the irqs 'masking'
+[12:50] <geist> which is a way to read it, but it doesn't imply polarity in that case
+[12:50] <geist> but when polarity is desired, then mask == disable, unmask == enable
+[12:50] <geist> independent of what the bits may or may not be
+[12:51] <jmp9> mask = disable, unmask = enable
+... snip ...
+[13:01] <doug16k> yeah about that mask thing. I have an irq_set_mask function that takes a parameter named "unmask" because I wanted true to mean allow the interrupt. thinking along those lines has probably led to a bit of confusion
+[13:02] <doug16k> should it take false to "un" mask it? maybe. that's the problem with the term
+[13:02] <doug16k> eryjus, ^
+[13:04] <eryjus> doug16k -- i've had to read that about 3 times to see if I can absorb it...  very confusing.
+[13:04] * eryjus decides to use "enable" and "disable" in his own code]
+```
+
+---
+
+It finally compiled!!!
+
+---
+
+OK, I have some problems with addressing.  A few of these I was not expecting.  For example:
+
+```C
+//
+// -- This is the device description that is used to output data to the serial port during loader initialization
+//    ----------------------------------------------------------------------------------------------------------
+__ldrdata SerialDevice_t loaderSerial = {
+    .base = COM1,
+    .SerialOpen = _SerialOpen,                   // -- already in the __ldrtext section
+    .SerialHasRoom = (bool (*)(SerialDevice_t *))PHYS_OF(_SerialHasRoom),    // -- in the kernel address space
+    .SerialPutChar = (void (*)(SerialDevice_t *, uint8_t))PHYS_OF(_SerialPutChar), // -- in the kernel address space
+};
+```
+
+The `PHYS_OF` macro looks like this:
+
+```C
+//
+// -- This macro is intended to generic enough to convert a virtual address to a physical one.  However,
+//    keep in mind that this works on one address only.  Therefore if a function calls another function,
+//    this macro will fix the first one, but not the deeper call.
+//    --------------------------------------------------------------------------------------------------
+#define PHYS_OF(f)  ((archsize_t)(f) - kern_loc + phys_loc + ((archsize_t)&_loaderEnd - (archsize_t)&_loaderStart))
+```
+
+I know that this calculation works at runtime.  However, at compile time, I think the result is 0 (or I am discarding some section that would perform this initialization -- or maybe not calling the function to do this).
+
+---
+
+OK, I have x86 working.  Rpi2b is working as well except the output is getting stomped on.  There is a problem with waiting for the buffer to accept data or the baud rate is wrong.  Something did not carry over properly.
+
+---
+
+The pi is not outputting serial any more.  I thought it was about not being able to determine if there was room for data, but none of my changes are working.  I need to call it a night and come back tomorrow.
+
+---
+
+### 2019-Feb-25
+
+I have gone back to basics today -- halting the loader right out of the chute and outputting some debugging info.  The serial port output routines are working properly.  At least early.  I am even able to get through the `SerialOpen()` function, which is here I assumed I had a problem.
+
+It looks like somewhere in `MmuEarlyInit()` something is not right (or I am unable to use `kprintf()` right after anymore).  And that is the actual problem: I am trying to use `kprintf()` before I have the kernel mmio address space mapped.
+
+So, I have 3 ways I can handle this:
+1. Map the kernel mmio address space in `MmuEarlyInit()`
+1. Change all my code to continue to use the `LoaderSerial*()` functions
+1. Change `kprintf()` to be flexible in the serial device it uses
+
+Each is a valid option.  It is also import to note that x86-pc does not have this problem since the I/O port remains the same for both the kernel and the loader code -- the only thing that changes is the location of the function calls which will work.
+
+---
+
+I went with the last option.  I am now through the loader and ready to jump into upper memory kernel code.  I will have a new wave of bugs and crashes to address at this point.
+
+---
+
+Both architectures have issues with IRQ interrupts from the timer.  For the x86, I appear to be having an issue with EOI; for rpi2b I am having a problem determining the interrupt IRQ number.  I will start with the rpi2b first.
+
+---
+
+OK, I was able to get the rpi firing the timer IRQ again.  Now, on to x86.

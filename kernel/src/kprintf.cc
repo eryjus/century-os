@@ -24,6 +24,22 @@
 
 
 //
+// -- This is the serial port we will write to; this will be updated later by the loader to reference the
+//    kernel version of the serial port in mapped address space.
+//    ---------------------------------------------------------------------------------------------------
+SerialDevice_t *toPort = &loaderSerial;
+
+
+//
+// -- This is a function that will update this port -- simple to call
+//    ---------------------------------------------------------------
+extern "C" void UpdateKprintfPort(void)
+{
+    toPort = &kernelSerial;
+}
+
+
+//
 // -- Several flags
 //    -------------
 enum {
@@ -59,7 +75,7 @@ int kprintf(const char *fmt, ...)
 	for ( ; *fmt; fmt ++) {
 		// -- for any character not a '%', just print the character
 		if (*fmt != '%') {
-			SerialPutChar(*fmt);
+			SerialPutChar(toPort, *fmt);
 			printed ++;
 			continue;
 		}
@@ -84,14 +100,14 @@ int kprintf(const char *fmt, ...)
 			// fall through
 
 		case '%':
-			SerialPutChar('%');
+			SerialPutChar(toPort, '%');
 			printed ++;
 			continue;
 
 		case 's': {
 			char *s = va_arg(args, char *);
 			if (!s) s = (char *)"<NULL>";
-			while (*s) SerialPutChar(*s ++);
+			while (*s) SerialPutChar(toPort, *s ++);
 			printed ++;
 			continue;
 		}
@@ -103,11 +119,11 @@ int kprintf(const char *fmt, ...)
 
 		case 'p':
 			val = va_arg(args, archsize_t);
-			SerialPutS("0x");
+			SerialPutS(toPort, "0x");
 			printed += 2;
 
 			for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
-				SerialPutChar(dig[(val >> j) & 0x0f]);
+				SerialPutChar(toPort, dig[(val >> j) & 0x0f]);
 				printed ++;
 			}
 
@@ -120,7 +136,7 @@ int kprintf(const char *fmt, ...)
 
 		case 'x':
 			val = va_arg(args, archsize_t);
-			SerialPutS("0x");
+			SerialPutS(toPort, "0x");
 			printed += 2;
 
 			bool allZero = true;
@@ -129,13 +145,13 @@ int kprintf(const char *fmt, ...)
 				int ch = (val >> j) & 0x0f;
 				if (ch != 0) allZero = false;
 				if (!allZero || flags & ZEROPAD) {
-					SerialPutChar(dig[ch]);
+					SerialPutChar(toPort, dig[ch]);
 					printed ++;
 				}
 			}
 
 			if (allZero && !(flags & ZEROPAD)) {
-				SerialPutChar('0');
+				SerialPutChar(toPort, '0');
 				printed ++;
 			}
 

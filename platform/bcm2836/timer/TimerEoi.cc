@@ -17,20 +17,23 @@
 
 
 #include "types.h"
-#include "cpu.h"
+#include "hardware.h"
 #include "printf.h"
-#include "hw.h"
 #include "timer.h"
 
 
 //
 // -- Issue an EOI for the timer
 //    --------------------------
-void TimerEoi(UNUSED(uint32_t irq))
+void _TimerEoi(TimerDevice_t *dev)
 {
-    uint32_t reload = MmioRead(TMR_BASE + 0x34) & 0x0fffffff;
-    MmioWrite(TMR_BASE + 0x34, reload); // disable the timer
-    MmioWrite(TMR_BASE + 0x38, (1<<30) | (1<<31));  // clear and reload the timer
-    MmioWrite(TMR_BASE + 0x34, reload | (1<<28) | (1<<29)); // re-enable the timer
+    if (!dev) return;
+
+    archsize_t base = dev->base;
+
+    uint32_t reload = MmioRead(base + TIMER_LOCAL_CONTROL) & 0x0fffffff;
+    MmioWrite(base + TIMER_LOCAL_CONTROL, reload); // disable the timer
+    MmioWrite(base + TIMER_WRITE_FLAGS, (1<<30) | (1<<31));  // clear and reload the timer
+    MmioWrite(base + TIMER_LOCAL_CONTROL, reload | (1<<28) | (1<<29)); // re-enable the timer
 }
 

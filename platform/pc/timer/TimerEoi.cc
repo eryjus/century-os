@@ -17,16 +17,15 @@
 
 
 #include "types.h"
-#include "cpu.h"
-#include "printf.h"
 #include "timer.h"
 
 
 //
 // -- Issue an EOI for the timer
 //    --------------------------
-void TimerEoi(UNUSED(uint32_t irq))
+void _TimerEoi(TimerDevice_t *dev)
 {
-    outb(0x20, 0x20);
+    if (!dev) return;
+    PicEoi(dev->pic, 0x00);
 }
 

@@ -1,37 +1,30 @@
 //===================================================================================================================
 //
-//  MailboxSend.cc -- SEnd a message to a mailbox
+//  PicGetIrq.cc -- Get the current IRQ from the PIC
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Please note that this function will perform the adjustment between ARM/VC address space.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Jan-05  Initial   0.2.0   ADCL  Initial version
+//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
-#include "cpu.h"
-#include "hw.h"
+#include "printf.h"
+#include "timer.h"
+#include "pic.h"
 
 
-//
-// -- Send a message to the mailbox
-//    -----------------------------
-bool MailboxSend(uint32_t message, uint32_t mailbox)
+archsize_t _PicGetIrq(PicDevice_t *dev)
 {
-    if ((message & 0x0f) != 0 || (mailbox & 0xfffffff0) != 0) return false;
+    if (!dev) return -1;
 
-    MailboxWaitReadyToSend();
-    message -= 0x40000000;
-    MmioWrite(MB_BASE + MB_WRITE, message | mailbox);
+    int core = 0;
 
-    return true;
+    return MmioRead(dev->base2 + TIMER_IRQ_SOURCE + (core * 4));
 }

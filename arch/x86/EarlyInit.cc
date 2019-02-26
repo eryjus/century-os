@@ -15,9 +15,9 @@
 //===================================================================================================================
 
 
+#include "loader.h"
 #include "types.h"
 #include "serial.h"
-#include "loader.h"
 
 
 //
@@ -26,7 +26,7 @@
 //    ------------------------------------------------------------------------------------------------------
 void __ldrtext EarlyInit(void)
 {
-    SerialInit();                   // initialize the serial port so we can output debug data
+    SerialOpen(&loaderSerial);       // initialize the serial port so we can output debug data
 
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
 }

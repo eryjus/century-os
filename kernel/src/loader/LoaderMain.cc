@@ -17,19 +17,20 @@
 //===================================================================================================================
 
 
+#include "loader.h"
 #include "hw-disc.h"
 #include "pmm.h"
 #include "serial.h"
 #include "mmu.h"
 #include "cpu.h"
 #include "fb.h"
-#include "loader.h"
 
 
 //
 // -- called from assembly language...
 //    --------------------------------
 __CFUNC void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
+extern "C" void UpdateKprintfPort(void);
 
 
 //
@@ -39,20 +40,21 @@ __CFUNC void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t a
 {
     extern void kInit(void);
 
+
     LoaderFunctionInit();               // go and initialize all the function locations
     EarlyInit();
-
     HwDiscovery();
-
     FrameBufferInit();
     PmmInit();
     MmuInit();
+    UpdateKprintfPort();
+
 
     // -- Theoretically, after this point, there should be very little architecture-dependent code
     FrameBufferClear();
     FrameBufferPutS("Welcome to Century-OS\n");
 
-    SerialPutS("Initialization Complete\n");
+    kprintf("Initialization Complete\n");
     FrameBufferPutS("Initialization Complete\n");
 
     kprintf("Jumping to the kernel, located at address %p\n", kInit);

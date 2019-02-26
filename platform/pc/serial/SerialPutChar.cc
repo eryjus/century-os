@@ -1,4 +1,4 @@
- //===================================================================================================================
+//===================================================================================================================
 //
 //  SerialPutChar.cc -- Output a single character to the serial port
 //
@@ -16,23 +16,19 @@
 //===================================================================================================================
 
 
-#include "cpu.h"
+#include "hardware.h"
 #include "serial.h"
-
-
-//
-// -- For debugging to the serial port, this is the hardware port number
-//    ------------------------------------------------------------------
-devaddr_t serialPort = 0x3f8;
 
 
 //
 // -- Output a single character to the serial port
 //    --------------------------------------------
-void SerialPutChar(const char ch)
+void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
 {
-    if (ch == '\n') SerialPutChar('\r');
-    while ((inb(serialPort + 5) & 0x20) == 0) {}
+    if (!dev) return;
+    if (ch == '\n') dev->SerialPutChar(dev, '\r');
 
-    outb(serialPort, ch);
+    while (!dev->SerialHasRoom(dev)) {}
+
+    outb(dev->base + SERIAL_DATA, ch);
 }

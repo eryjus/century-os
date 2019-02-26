@@ -24,6 +24,7 @@
 
 
 #include "types.h"
+#include "hardware.h"
 #include "cpu.h"
 #include "interrupt.h"
 #include "timer.h"
@@ -38,37 +39,24 @@ extern void TimerCallBack(isrRegs_t *reg);
 //
 // -- Set the timer to fire at the desires frequency
 //    ----------------------------------------------
-void TimerInit(uint32_t frequency)
+void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
 {
-	archsize_t flags = DisableInterrupts();
+    if (!dev) return;
 
-    // -- Remap the irq table, even though we may not be using it.
-	outb(0x21, 0xff);			// Disable all IRQs
-	outb(0xA1, 0xff);			// Disable all IRQs
-	outb(0x20, 0x11);
-	outb(0xA0, 0x11);
-	outb(0x21, 0x20);
-	outb(0xA1, 0x28);
-	outb(0x21, 0x04);
-	outb(0xA1, 0x02);
-	outb(0x21, 0x01);
-	outb(0xA1, 0x01);
+    PicInit(dev->pic);
+
+    uint16_t port = dev->base;
 
 	uint32_t divisor = 1193180 / frequency;
 	uint8_t l = (uint8_t)(divisor & 0xff);
 	uint8_t h = (uint8_t)((divisor >> 8) & 0xff);
 
-	IsrRegister(32, TimerCallBack);
+	IsrRegister(32, dev->TimerCallBack);
 
-	outb(0x43, 0x36);
-	outb(0x40, l);
-	outb(0x40, h);
+	outb(port + TIMER_COMMAND, 0x36);
+	outb(port + TIMER_CHAN_0, l);
+	outb(port + TIMER_CHAN_0, h);
 
-	timerControl = &pitTimer;
-
-	outb(0x21, 0x0);			// Enable all IRQs
-	outb(0xA1, 0x0);			// Enable all IRQs
-
-	RestoreInterrupts(flags);
+    PicEnableIrq(dev->pic, 0x01);
 }
 

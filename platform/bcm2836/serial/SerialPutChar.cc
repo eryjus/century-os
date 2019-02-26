@@ -16,17 +16,20 @@
 //===================================================================================================================
 
 
-#include "cpu.h"
-#include "hw.h"
+#include "hardware.h"
 #include "serial.h"
 
 
 //
 // -- Write a single character to the UART
 //    ------------------------------------
-void SerialPutChar(char byte)
+void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
 {
-    if (byte == '\n') SerialPutChar('\r');
-    while ((MmioRead(AUX_MU_LSR_REG) & (1<<5)) == 0) { }
-    MmioWrite(AUX_MU_IO_REG, byte);
+    if (!dev) return;
+    if (ch == '\n') dev->SerialPutChar(dev, '\r');
+
+//    while (!dev->SerialHasRoom(dev)) { }
+    while ((MmioRead(dev->base + AUX_MU_LSR_REG) & (1<<5)) == 0) { }
+
+    MmioWrite(dev->base + AUX_MU_IO_REG, ch);
 }

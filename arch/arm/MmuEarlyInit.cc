@@ -23,13 +23,12 @@
 //===================================================================================================================
 
 
+#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "serial.h"
 #include "mmu.h"
 #include "printf.h"
-#include "loader.h"
-
 
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
@@ -165,6 +164,7 @@ __CFUNC void __ldrtext MmuEarlyInit(void)
     //    kernel address space, but we are still running in loader code at ~1MB.
     //    ----------------------------------------------------------------------------------------------------------
 #if DEBUG_MMU == 1
+    LoaderSerialPutS("kprintf() should work:\n");
     kprintf("At this point, the kernel is fully mapped!!!\n");
 #endif
 }

@@ -103,6 +103,7 @@
 // -- These are critical CPU structure locations
 //    ------------------------------------------
 const archsize_t GDT_ADDRESS = 0xff401000;
+const archsize_t TSS_ADDRESS = 0xff401080;
 const archsize_t IDT_ADDRESS = 0xff401800;
 
 
@@ -239,21 +240,6 @@ inline void HaltCpu(void) { __asm("hlt"); }
 //    ----------------------------------------------------------------
 extern "C" inline void EnterSystemMode(void) {}
 
-
-//
-// -- Get a byte from an I/O Port
-//    ---------------------------
-inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ( "inb %1, %0" : "=a"(ret) : "Nd"(port) );
-    return ret;
-}
-
-
-//
-// -- Output a byte to an I/O Port
-//    ----------------------------
-inline void outb(uint16_t port, uint8_t val) { asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) ); }
 
 //
 // -- Get the CR3 value

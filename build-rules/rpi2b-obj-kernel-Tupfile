@@ -42,8 +42,10 @@ CFLAGS += -marm
 CFLAGS += -mfpu=vfpv3
 CFLAGS += -mfloat-abi=softfp
 
-CFLAGS += -I $(WS)/arch/$(ARCH)/inc
 CFLAGS += -I $(WS)/kernel/inc
+CFLAGS += -I $(WS)/arch/$(ARCH)/inc
+CFLAGS += -I $(WS)/platform/inc
+CFLAGS += -I $(WS)/platform/$(PLAT)/inc
 
 CFLAGS += -DNEWBUILD
 
@@ -60,7 +62,6 @@ CFLAGS += -DNEWBUILD
 : foreach   $(WS)/kernel/src/loader/*.cc                                  | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/pmm/*.cc                                     | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/process/*.cc                                 | $(II) |> !cc |>
-: foreach   $(WS)/kernel/src/serial/*.cc                                  | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/syscall/*.cc                                 | $(II) |> !cc |>
 : foreach   $(WS)/kernel/src/timer/*.cc                                   | $(II) |> !cc |>
 
@@ -80,8 +81,13 @@ CFLAGS += -DNEWBUILD
 
 : foreach   $(WS)/platform/$(PLAT)/framebuffer/*.cc                       | $(II) |> !cc |>
 
+: foreach   $(WS)/platform/$(PLAT)/gpio/*.cc                              | $(II) |> !cc |>
+
+: foreach   $(WS)/platform/$(PLAT)/mailbox/*.cc                           | $(II) |> !cc |>
+
+: foreach   $(WS)/platform/$(PLAT)/pic/*.cc                               | $(II) |> !cc |>
+
 : foreach   $(WS)/platform/$(PLAT)/serial/*.cc                            | $(II) |> !cc |>
 
 : foreach   $(WS)/platform/$(PLAT)/timer/*.cc                             | $(II) |> !cc |>
-: foreach   $(WS)/platform/$(PLAT)/timer/*.s                              | $(II) |> !as |>
 

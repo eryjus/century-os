@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  SerialInit.cc -- Initialize a serial port for debugging output
+//  SerialOpen.cc -- Initialize a serial port for debugging output
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -17,60 +17,52 @@
 //===================================================================================================================
 
 
-#include "cpu.h"
-#include "hw.h"
+#include "hardware.h"
 #include "serial.h"
 
 
 //
 // -- Initialize the UART Serial Port
 //    -------------------------------
-void __ldrtext SerialInit(void)
+void __ldrtext _SerialOpen(SerialDevice_t *dev)
 {
-    volatile int i;
+    if (!dev) return;
+
+    SerialBase_t base = dev->base;
 
     // -- must start by enabling the mini-UART; no register access will work until...
-    MmioWrite(AUX_ENABLES, 1);
+    MmioWrite(base + AUX_ENABLES, 1);
 
     // -- Disable all interrupts
-    MmioWrite(AUX_MU_IER_REG, 0);
+    MmioWrite(base + AUX_MU_IER_REG, 0);
 
     // -- Reset the control register
-    MmioWrite(AUX_MU_CNTL_REG, 0);
+    MmioWrite(base + AUX_MU_CNTL_REG, 0);
 
     // -- Program the Line Control Register -- 8 bits, please
-    MmioWrite(AUX_MU_LCR_REG, 3);
+    MmioWrite(base + AUX_MU_LCR_REG, 3);
 
     // -- Program the Modem Control Register -- reset
-    MmioWrite(AUX_MU_MCR_REG, 0);
+    MmioWrite(base + AUX_MU_MCR_REG, 0);
 
     // -- Disable all interrupts -- again
-    MmioWrite(AUX_MU_IER_REG, 0);
+    MmioWrite(base + AUX_MU_IER_REG, 0);
 
     // -- Clear all interrupts
-    MmioWrite(AUX_MU_IIR_REG, 0xc6);
+    MmioWrite(base + AUX_MU_IIR_REG, 0xc6);
 
     // -- Set the BAUD to 115200 -- ((250,000,000/115200)/8)-1 = 270
-    MmioWrite(AUX_MU_BAUD_REG, 270);
+    MmioWrite(base + AUX_MU_BAUD_REG, 270);
 
-    // -- Select alternate function 5 to work on GPIO pin 14
-    archsize_t sel = MmioRead(GPIO_FSEL1);
-    sel &= ~(7<<12);
-    sel |= (0b010<<12);
-    sel &= ~(7<<15);
-    sel |= (0b010<<15);
-    MmioWrite(GPIO_FSEL1, sel);
-
-    // -- Enable GPIO pins 14/15 only
-    MmioWrite(GPIO_GPPUD, 0x00000000);
-    for (i = 0; i < 150; i ++) {}
-    MmioWrite(GPIO_GPPUDCLK1, (1<<14)|(1<<15));
-    for (i = 0; i < 150; i ++) {}
-    MmioWrite(GPIO_GPPUDCLK1, 0x00000000);              // LEARN: Why does this make sense?
+    GpioDevice_t *gpio = (GpioDevice_t *)dev->platformData;
+    GpioSelectAlt(gpio, GPIO14, ALT5);
+    GpioSelectAlt(gpio, GPIO15, ALT5);
+    GpioEnablePin(gpio, GPIO14);
+    GpioEnablePin(gpio, GPIO15);
 
     // -- Enable TX/RX
-    MmioWrite(AUX_MU_CNTL_REG, 3);
+    MmioWrite(base + AUX_MU_CNTL_REG, 3);
 
     // -- clear the input buffer
-    while ((MmioRead(AUX_MU_LSR_REG) & (1<<0)) != 0) MmioRead(AUX_MU_IO_REG);
+    while ((MmioRead(base + AUX_MU_LSR_REG) & (1<<0)) != 0) MmioRead(base + AUX_MU_IO_REG);
 }

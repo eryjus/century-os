@@ -19,6 +19,9 @@
 #define __LOADER_H__
 
 
+#include "cpu.h"
+
+
 //
 // -- these 2 variable are provided by the linker
 //    -------------------------------------------
@@ -33,13 +36,6 @@ extern frame_t intTableAddr;
 
 
 //
-// -- This is a call to SerialPutChar
-//    -------------------------------
-typedef void (*SerialPutChar_t)(char byte);
-extern SerialPutChar_t LoaderSerialPutChar;
-
-
-//
 // -- This is a call to kMemSetB
 //    --------------------------
 typedef void (*kMemSetB_t)(void *buf, uint8_t wrd, size_t cnt);
@@ -47,29 +43,19 @@ extern kMemSetB_t lMemSetB;
 
 
 //
-// -- Put a String to the Serial Port
-//    -------------------------------
-#define LoaderSerialPutS(x)                     \
-    do {                                        \
-        char *s = (char *)PHYS_OF(x);           \
-        while (*s) LoaderSerialPutChar(*s ++);  \
-    } while (0)
+// -- This macro is intended to generic enough to convert a virtual address to a physical one.  However,
+//    keep in mind that this works on one address only.  Therefore if a function calls another function,
+//    this macro will fix the first one, but not the deeper call.
+//    --------------------------------------------------------------------------------------------------
+#define PHYS_OF(f)  ((archsize_t)(f) - kern_loc + phys_loc + ((archsize_t)&_loaderEnd - (archsize_t)&_loaderStart))
 
 
 //
-// -- Put a hex value to the serial port
-//    ----------------------------------
-#define LoaderSerialPutHex(val)                             \
-    do {                                                    \
-        LoaderSerialPutChar('0');                           \
-        LoaderSerialPutChar('x');                           \
-        for (int i = 28; i >= 0; i -= 4) {                  \
-            char c = (((val) >> i) & 0x0f);                 \
-                                                            \
-            if (c > 9) LoaderSerialPutChar(c - 10 + 'a');   \
-            else LoaderSerialPutChar(c + '0');              \
-        }                                                   \
-    } while (0)
+// -- This is a special-case macro to print a string to the serial port during early initialization
+//    ---------------------------------------------------------------------------------------------
+#define LoaderSerialPutS(x)     SerialPutS(&loaderSerial, (char *)PHYS_OF(x))
+#define LoaderSerialPutHex(x)   SerialPutHex(&loaderSerial, x)
+#define LoaderSerialPutChar(c)  SerialPutChar(&loaderSerial, c)
 
 
 //

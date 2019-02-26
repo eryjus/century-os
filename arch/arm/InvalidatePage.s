@@ -32,5 +32,6 @@
 @@    ------------------------------
 InvalidatePage:
     mcr     p15,0,r0,c8,c7,3                @@ Perform an tlbimvaa invalidate
+    dsb                                     @@ Synchronize the memory operations
     isb                                     @@ Flush the fetch cache
     mov     pc,lr                           @@ return
