@@ -60,5 +60,8 @@ process:
     if (isrHandlers[intno] != NULL) {
         isrFunc_t handler = isrHandlers[intno];
         handler(regs);
+    } else {
+        kprintf("PANIC: Unhandled interrupt: %x\n", intno);
+        Halt();
     }
 }

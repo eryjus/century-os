@@ -26,10 +26,7 @@
 //    ------------------------------------------------------------------------------------------------------
 void __ldrtext EarlyInit(void)
 {
-    LoaderSerialPutS(".... Opening the serial port again\n");
     SerialOpen(&loaderSerial);                   // initialize the serial port so we can output debug data
-
-    LoaderSerialPutS(".... At this point, the serial port has been re-opened and we should still be able to write\n");
 
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
 }

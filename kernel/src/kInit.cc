@@ -84,7 +84,7 @@ void kInit(void)
         }
     }
 
-    TimerInit(&timerControl, 250);
+    TimerInit(&timerControl, 1000);
     EnableInterrupts();
     ProcessEnabled = true;
 #if 0

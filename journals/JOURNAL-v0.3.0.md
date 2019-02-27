@@ -940,3 +940,38 @@ Both architectures have issues with IRQ interrupts from the timer.  For the x86,
 ---
 
 OK, I was able to get the rpi firing the timer IRQ again.  Now, on to x86.
+
+---
+
+I got that working and I committed the code.  The next step is to get the heap working again.  This is where I left off before, so this is all new territory from here.
+
+---
+
+### 2019-Feb-26
+
+Well, it looks like I am getting some serious interrupt flooding on rpi2b.  The problem I think I am having is that I am not resetting the interrupt flag and as soon as I re-enable interrupts I am getting creamed.
+
+---
+
+I am all but completely convinced that my implementation of the BCM2836 timer is totally fubar.  To research this, I have printed sections B8 and D5 of the ARM ARM and I need to read through these notes to figure out which way is up.  I think the short story here is I got lucky and did not really get the timer programmed properly.
+
+One of the things I want to take a look at is the CNTFRQ register.  This register will hold the timer frequency -- which means I can get the timer programmed to provide an interrupt at the same frequency as I do with x86 and make the architectures operate much closer to each other.  Or perhaps I can set it.
+
+I think I am going to need some test code to figure out how to handle this (I did this before, and I now do it again).
+
+---
+
+### 2019-Feb-27
+
+I did some reading and I'm pretty sure I have this whole timer thing over-complicated.  There really should be only 3 special registers to update to get this working.  Let's see how this goes...
+
+OK, I am not able to update the clock frequency, so I need to control this by the reload value I place in the timer.  This will be something to add to the device structure.
+
+---
+
+After some additional testing and a few changes, I do have the timer working in a more simplistic manner and probably far more robustly.  Since I am in a plane, I am going to commit this code but will not be able to push it yet.
+
+
+
+
+

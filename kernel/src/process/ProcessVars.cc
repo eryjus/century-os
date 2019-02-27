@@ -67,7 +67,7 @@ Process_t idleProcess = {
     0,                      // total quantum
     PROC_RUN,               // process status
     PTY_IDLE,               // the priority
-    0,                      // quantum left
+    PTY_IDLE,               // quantum left
     false,                  // not held
     {0},                    // the spinlock for this process
     {0},                    // the status queue
@@ -91,7 +91,7 @@ Process_t butler = {
     0,                      // total quantum
     PROC_RUN,               // process status
     PTY_OS,                 // the priority
-    0,                      // quantum left
+    PTY_OS,                 // quantum left
     false,                  // not held
     {0},                    // the spinlock for this process
     {0},                    // the status queue

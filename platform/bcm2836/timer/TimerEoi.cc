@@ -28,12 +28,6 @@
 void _TimerEoi(TimerDevice_t *dev)
 {
     if (!dev) return;
-
-    archsize_t base = dev->base;
-
-    uint32_t reload = MmioRead(base + TIMER_LOCAL_CONTROL) & 0x0fffffff;
-    MmioWrite(base + TIMER_LOCAL_CONTROL, reload); // disable the timer
-    MmioWrite(base + TIMER_WRITE_FLAGS, (1<<30) | (1<<31));  // clear and reload the timer
-    MmioWrite(base + TIMER_LOCAL_CONTROL, reload | (1<<28) | (1<<29)); // re-enable the timer
+    WRITE_CNTP_TVAL(dev->reloadValue);
 }
 

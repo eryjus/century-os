@@ -125,6 +125,25 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- a macro to read a 32-bit control register
+//    -----------------------------------------
+#define MRC(cp15Spec) ({                                \
+    uint32_t _val;                                      \
+    __asm__ volatile("mrc " cp15Spec : "=r" (_val));   \
+    _val;                                               \
+})
+
+
+//
+// -- a macro to write a 32-bit control register
+//    ------------------------------------------
+#define MCR(cp15Spec,val) ({                            \
+    __asm__ volatile("mcr " cp15Spec :: "r" (val));     \
+    __asm__ volatile("isb");                            \
+})
+
+
+//
 // -- A dummy function to enter system mode, since this is for the ARM
 //    ----------------------------------------------------------------
 extern "C" void EnterSystemMode(void);
