@@ -44,6 +44,7 @@ enum {
 
 #define MMU_CLEAR_FRAME 0xff400000
 #define MMU_FRAMEBUFFER 0xfb000000
+#define MMU_HEAP_START 0x90000000
 
 
 //

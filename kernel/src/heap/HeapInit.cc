@@ -36,27 +36,22 @@
 #include "types.h"
 #include "serial.h"
 #include "printf.h"
+#include "pmm.h"
 #include "mmu.h"
 #include "heap.h"
 
 
 //
 // -- This is how much of the heap we will allocate at compile time.  This will really be frames that will be moved
-//    during initialization
+//    during initialization.  This is 64K.
 //    -------------------------------------------------------------------------------------------------------------
-#define INITIAL_HEAP		(4096*16)
-
-
-//
-// -- We will fake an allocation in the bss that will be remapped into the heap space
-//    -------------------------------------------------------------------------------
-char __attribute__((aligned(4096))) heapMemoryBlock[INITIAL_HEAP];
+#define INITIAL_HEAP        (4096*16)
 
 
 //
 // -- some local and global variables
 //    -------------------------------
-archsize_t heapStart = 0xd0000000;				// this is the start in virtual address space
+archsize_t heapStart = MMU_HEAP_START;              // this is the start in virtual address space
 OrderedList_t fixedList[ORDERED_LIST_STATIC];
 bool fixedListUsed = 0;
 static KHeap_t _heap;
@@ -69,54 +64,51 @@ KHeap_t *kHeap = &_heap;
 void HeapInit(void)
 {
     kprintf("Start heap initialization\n");
-	// -- The first order of business here is to move the frames from `heapMemoryBlock` to 0xd0000000
-	archsize_t vAddr = (archsize_t)heapMemoryBlock;
-	archsize_t vLimit = vAddr + INITIAL_HEAP;
-	archsize_t nAddr = heapStart;		// This is the new location
+    archsize_t vAddr = heapStart;
+    archsize_t vLimit = vAddr + INITIAL_HEAP;
 
-	for ( ; vAddr < vLimit; nAddr += 0x1000, vAddr += 0x1000) {
-		frame_t frame = MmuUnmapPage(vAddr);
-		MmuMapToFrame(nAddr, frame, PG_KRN | PG_WRT);
-	}
+    for ( ; vAddr < vLimit; vAddr += 0x1000) {
+        MmuMapToFrame(vAddr, PmmNewFrame(1), PG_KRN | PG_WRT);
+    }
 
-	// -- Set up the heap structure and list of open blocks
-	KHeapFooter_t *tmpFtr;
+    // -- Set up the heap structure and list of open blocks
+    KHeapFooter_t *tmpFtr;
 
     kprintf(".. initializing the fixed list to 0x00\n");
-	kMemSetB(fixedList, 0, sizeof(fixedList));
+    kMemSetB(fixedList, 0, sizeof(fixedList));
 
-	// -- Build the first free block which is all allocated
+    // -- Build the first free block which is all allocated
     kprintf(".. initializing the fixedList[0]\n");
-	fixedList[0].block = (KHeapHeader_t *)heapStart;
-	fixedList[0].next = 0;
-	fixedList[0].prev = 0;
-	fixedList[0].size = INITIAL_HEAP;
+    fixedList[0].block = (KHeapHeader_t *)heapStart;
+    fixedList[0].next = 0;
+    fixedList[0].prev = 0;
+    fixedList[0].size = INITIAL_HEAP;
 
     kprintf(".. setting heap limits\n");
-	_heap.strAddr = (byte_t *)heapStart;
-	_heap.endAddr = ((byte_t *)_heap.strAddr) + fixedList[0].size;
-	_heap.maxAddr = (byte_t *)FRAME_BUFFER_VADDR;
+    _heap.strAddr = (byte_t *)heapStart;
+    _heap.endAddr = ((byte_t *)_heap.strAddr) + fixedList[0].size;
+    _heap.maxAddr = (byte_t *)FRAME_BUFFER_VADDR;
 
-	_heap.heapMemory = _heap.heap512 = _heap.heap1K =
-			_heap.heap4K = _heap.heap16K = &fixedList[0];
+    _heap.heapMemory = _heap.heap512 = _heap.heap1K =
+            _heap.heap4K = _heap.heap16K = &fixedList[0];
 
     kprintf(".. setting the first block header\n");
-	fixedList[0].block->_magicUnion.magicHole = HEAP_MAGIC;
-	fixedList[0].block->_magicUnion.isHole = 1;
-	fixedList[0].block->size = fixedList[0].size;
-	fixedList[0].block->entry = &fixedList[0];
+    fixedList[0].block->_magicUnion.magicHole = HEAP_MAGIC;
+    fixedList[0].block->_magicUnion.isHole = 1;
+    fixedList[0].block->size = fixedList[0].size;
+    fixedList[0].block->entry = &fixedList[0];
 
     kprintf(".. setting the first block footer\n");
-	tmpFtr = (KHeapFooter_t *)(((char *)fixedList[0].block) +
-			fixedList[0].size - sizeof(KHeapFooter_t));
-	tmpFtr->_magicUnion.magicHole = fixedList[0].block->_magicUnion.magicHole;
-	tmpFtr->hdr = fixedList[0].block;
+    tmpFtr = (KHeapFooter_t *)(((char *)fixedList[0].block) +
+            fixedList[0].size - sizeof(KHeapFooter_t));
+    tmpFtr->_magicUnion.magicHole = fixedList[0].block->_magicUnion.magicHole;
+    tmpFtr->hdr = fixedList[0].block;
 
-	fixedListUsed = 1;
-	kHeap = &_heap;
+    fixedListUsed = 1;
+    kHeap = &_heap;
 
-	kprintf("Heap Created\n");
-	kprintf("  Heap Start Location: %p\n", kHeap->strAddr);
-	kprintf("  Current Heap Size..: %p\n", fixedList[0].size);
-	kprintf("  Heap End Location..: %p\n", kHeap->endAddr);
+    kprintf("Heap Created\n");
+    kprintf("  Heap Start Location: %p\n", kHeap->strAddr);
+    kprintf("  Current Heap Size..: %p\n", fixedList[0].size);
+    kprintf("  Heap End Location..: %p\n", kHeap->endAddr);
 }

@@ -971,7 +971,22 @@ OK, I am not able to update the clock frequency, so I need to control this by th
 
 After some additional testing and a few changes, I do have the timer working in a more simplistic manner and probably far more robustly.  Since I am in a plane, I am going to commit this code but will not be able to push it yet.
 
+---
 
+Now on to the Heap for real.
 
+The heap is not located where it needs to be given the new virtual memory layout.  I do not recall where it was intended to go and I do not have access to Redmine at the moment to look it up.  However, I should be able to make some minor changes to get this working again:
+* Remove the early heap allocation from the linker script; this whole unmap and remap business goes away.
+* Change the code that maps the heap to pull memory from the pmm since it is available now from the early kernel.
+* Increase the size of the initial heap, but don't go too crazy...  It still pulls from physical memory to have those pages mapped.
 
+That was a relatively clean change.  Now I just need to change the location.  Now, if this is really working like I want, I really can't get any farther without getting the pmm up and running.  I have 2 ways I can go with this:
+1. I can fold the pmm into the kernel binary and map the bitmap pages in `PmmStart()` to a memory address in the pmm process.
+1. I can keep the pmm as its own process and map the bitmap pages in `PmmStart()` to a memory address in the pmm process.
+
+I think I want to do the latter.
+
+---
+
+Going back to the heap address, I have updated the wiki to use addresses starting at `0x90000000` for the heap.
 

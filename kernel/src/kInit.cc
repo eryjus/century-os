@@ -87,8 +87,8 @@ void kInit(void)
     TimerInit(&timerControl, 1000);
     EnableInterrupts();
     ProcessEnabled = true;
-#if 0
     HeapInit();
+#if 0
 
     // -- let the Pmm know we are putting it in-charge
     Message_t pmm;

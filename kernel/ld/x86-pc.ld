@@ -117,18 +117,6 @@ SECTIONS {
     . = ALIGN(4096);
 	_stabEnd = .;
 
-    /*
-     * -- Allocate a stack
-     *    ----------------
-     */
-    . = ALIGN(4096);
-    _stackStart = .;
-    .stack : {
-        *(.stack)
-        BYTE(0)
-    }
-    . = ALIGN(4096);
-    _stackEnd = .;
 
     _dataStart = .;
     /*
