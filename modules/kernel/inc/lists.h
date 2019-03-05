@@ -29,6 +29,7 @@
 //  2016-Sep-12  Initial   0.0.0   ADCL  Initial version
 //  2018-May-24  Initial   0.1.0   ADCL  Copy this file from century to century-os
 //  2018-Nov-09            0.1.0   ADCL  Reformat the list structures to have a list head, creating a separate type.
+//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
 //
 //===================================================================================================================
 

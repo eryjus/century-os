@@ -11,6 +11,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Oct-14  Initial   0.1.0   ADCL  Initial version
+//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
 //
 //===================================================================================================================
 
@@ -39,7 +40,7 @@
 // -- This is the spinlock structure which notes who holds the lock
 //    -------------------------------------------------------------
 typedef struct Spinlock_t {
-    int32_t locked;
+    archsize_t locked;
     PID_t lockHolder;
 } Spinlock_t;
 
@@ -47,7 +48,7 @@ typedef struct Spinlock_t {
 //
 // -- This is an atomic function to lock a spinlock
 //    ---------------------------------------------
-extern "C" int32_t SpinlockAtomicLock(Spinlock_t *lock, int32_t expected, int32_t newVal);
+extern "C" archsize_t SpinlockAtomicLock(Spinlock_t *lock, archsize_t expected, archsize_t newVal);
 
 
 //

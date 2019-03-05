@@ -7,34 +7,53 @@
 ##  The basic folder layout here is going to be as follows:
 ##
 ##  +- century-os
-##    +- bin            // intermediate targets for executable files
-##    | +- rpi2b        // this is code that is specific to the Raspberry Pi 2B
-##    | +- x86          // this is code specific to the intel x86 32-bit processor
+##    +- arch           // this will include all the architecture-specific code
+##    |  +- arm         // for the arm cpus
+##    |  |  +- inc      // include files for the architecture
+##    |  +- x86         // for the x86 cpus
+##    |     +- inc      // include files for the architecture
 ##	  +- inc            // include files common to all architectures -- for inclusion into modules
-##    +- lib            // intermediate targets for library files
-##    | +- rpi2b        // this is code that is specific to the Raspberry Pi 2B
-##    | +- x86          // this is code specific to the intel x86 32-bit processor
+##    +- kernel         // this is the kernel code
+##    | +- inc          // include files internal to the kernel
+##    | +- ld           // linker scripts for the kernel
+##    | +- src          // source files internal to the kernel
 ##    +- modules        // source files common to all architectures
-##    | +- kernel       // this is the kernel code
-##    | | +- inc        // include files internal to the kernel
-##    | | +- src        // source files internal to the kernel
-##    | |   +- rpi2b    // this is low-level code that is specific to the Raspberry Pi 2B
-##    | |   +- x86      // this is low-level code specific to the intel x86 32-bit processor
 ##    | +- libc         // this is the kernel interface runtime libraries
 ##    | | +- inc        // include files internal to libc
+##    | | +- ld         // linker scripts
 ##    | | +- src        // source files internal to libc
 ##    | +- module1      // this is executable module #1
 ##    | | +- inc        // internal includes
+##    | | +- ld         // linker scripts
 ##    | | +- src        // internal source
 ##    | +- module2      // this is executable module #2
 ##    |   +- inc        // internal includes
+##    |   +- ld         // linker scripts
 ##    |   +- src        // internal source
-##    +- obj			// intermediate targets for object files
+##    +- platform       // platform source
+##    | +- bcm2836      // the Broadcom bcm2836 SoC
+##    | +- inc          // common include files
+##    | +- pc           // pc chipset
+##    +- sysroot        // this is the root files system for each architecture
 ##    | +- rpi2b        // this is code that is specific to the Raspberry Pi 2B
 ##    | +- x86          // this is code specific to the intel x86 32-bit processor
-##    +- sysroot        // this is the root files system for each architecture
-##      +- rpi2b        // this is code that is specific to the Raspberry Pi 2B
-##      +- x86          // this is code specific to the intel x86 32-bit processor
+##    +- targets        // this is where the build targets are dropped
+##      +- rpi2b        // the architecture + platform called rpi2b
+##      | +- bin        // this will be the bin folder of sysroot
+##      | | +- boot
+##      | | +- lib
+##      | +- obj        // this is the object folder for each module
+##      |   +- kernel   // kernel objects
+##      |   +- module1  // module1 objects
+##      |   +- module2  // module2 objects
+##      +- x86-pc       // the architecture + platform
+##        +- bin        // this will be the bin folder of sysroot
+##        | +- boot
+##        | +- lib
+##        +- obj        // this is the object folder for each module
+##          +- kernel   // kernel objects
+##          +- module1  // module1 objects
+##          +- module2  // module2 objects
 ##
 ##  So, I have had a rather large shift in direction with my build system.  I have started to use `tup` to
 ##  execute the core of my build, and then use make to do more scripting things.  The reason for the shift
@@ -52,6 +71,17 @@
 ##  The only key function I am giving up is the ability to build an architecture or a module independently.
 ##  For the moment, I think I can live with that by creating stub functions when needed.
 ##
+##  For the general `make` commands, we will basically operate on targets.  These targets are the combination
+##  of an architecture and a platform.  The following are the supported targets so far (with their respective)
+##  architectures and platforms:
+##  * rpi2b -- arm + bcm2836
+##  * x86-pc -- x86 + pc
+##
+##  A simple `make` (with no explitit targets) will compile everything.  However, you can narrow this down
+##  by specifying a target (`make x86-pc` or `make rpi2b`) which will also make a bootable image for the target.
+##  Finally, there are verbs that can be used with each target as well, such as `make run-rpi2b` and
+##  `make debug-x86-pc`.  These commands, however, have less strict meanings depending on the target.
+##
 ## -----------------------------------------------------------------------------------------------------------------
 ##
 ##     Date      Tracker  Version  Pgmr  Description
@@ -63,114 +93,34 @@
 ##
 #####################################################################################################################
 
-.PHONY: all all-iso i686-iso run-i686 debug-i686 x86_64-iso run-x86_64 debug-x86_64 rpi2b-iso run-rpi2b debug-rpi2b
+
 .SILENT:
 
 
-all: init rpi2b x86-pc
+##
+## -- This is the default rule, to compile everything
+##    -----------------------------------------------
+.PHONY: all
+all: init
 	tup
-
-all-iso: all i686-iso x86_64-iso rpi2b-iso
-
-
-i686-iso: all
-	rm -fR iso/i686.iso
-	rm -fR sysroot/i686/*
-	mkdir -p sysroot/i686 iso
-	cp -fR bin/i686/* sysroot/i686/
-	find sysroot/i686 -type f -name Tupfile -delete
-	grub2-mkrescue -o iso/i686.iso sysroot/i686
-
-
-run-i686: i686-iso
-	qemu-system-i386 -m 3072 -serial stdio -cdrom iso/i686.iso
-
-
-bochs-i686: i686-iso
-	bochs -f .bochsrc -q
-
-
-debug-i686: i686-iso
-	qemu-system-i386 -m 3584 -serial mon:stdio -cdrom iso/i686.iso -S
-
-
-x86_64-iso: all
-	rm -fR iso/x86_64.iso
-	rm -fR sysroot/x86_64/*
-	mkdir -p sysroot/x86_64 iso
-	cp -fR bin/x86_64/* sysroot/x86_64/
-	find sysroot/x86_64 -type f -name Tupfile -delete
-	grub2-mkrescue -o iso/x86_64.iso sysroot/x86_64
-
-
-run-x86_64: x86_64-iso
-	qemu-system-x86_64 -m 8192 -serial stdio -cdrom iso/x86_64.iso
-
-
-debug-x86_64: x86_64-iso
-	qemu-system-x86_64 -m 8192 -serial stdio -cdrom iso/x86_64.iso -s -S
-
-
-#
-# -- This rule and the following recipe is used to build a disk image that can be booted:
-#    * create a disk image, size = 20MB
-#    * make the partition table, partition it, and set it to bootable
-#    * map the partitions from the image file
-#    * write an ext2 file system to the first partition
-#    * create a temporary mount point
-#    * Mount the filesystem via loopback
-#    * copy the files to the disk
-#    * unmount the device
-#    * unmap the image
-#
-#    In the event of an error along the way, the image is umounted and the partitions unmapped.
-#    Finally, if the error cleanup is completely suffessful, then false is called to fail the
-#    recipe.
-#    ------------------------------------------------------------------------------------------------
-rpi2b-iso: all
-	rm -fR iso/rpi2b.*
-	rm -fR sysroot/rpi2b/*
-	mkdir -p sysroot/rpi2b iso
-	cp -fR bin/rpi2b/* sysroot/rpi2b/
-	find sysroot/rpi2b -type f -name Tupfile -delete
-	dd if=/dev/zero of=iso/rpi2b.img count=20 bs=1048576
-	echo 'type=83' | sfdisk iso/rpi2b.img
-	dd if=/dev/zero of=iso/rpi2b.p1 count=38912 bs=512
-	mkfs.ext2 iso/rpi2b.p1 -d sysroot/rpi2b/
-	dd if=iso/rpi2b.p1 of=iso/rpi2b.img seek=2048 count=38912
-	rm -f iso/rpi2b.p1
-
-
-run-rpi2b: all
-	pbl-server /dev/ttyUSB0 bin/rpi2b/boot/grub/cfg-file2
-
-
-debug-rpi2b: rpi2b-iso
-	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img -S
-
-qemu-rpi2b: rpi2b-iso
-	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda iso/rpi2b.img
-
-
-
-##===================================================================================================================
-## == These rules are the new rules to align with the v0.3.0 source tree changes
-##===================================================================================================================
 
 
 ##
 ## -- This rule will make sure that up is initialized and that we have created all the proper variants
 ##    ------------------------------------------------------------------------------------------------
 .PHONY: init
-init: Tuprules.inc
+init: tuprules.inc
 	if [ ! -f .tup/db ]; then `tup init`; fi;
 
 
 ##
-## -- Tup needs the project directory
-##    -------------------------------
-Tuprules.inc: Makefile
-	echo WS = `pwd` > Tuprules.inc
+## -- we need to know the current base folder
+##    ---------------------------------------
+tuprules.inc: Makefile
+	echo WS = `pwd` > $@
+
+
+## ==================================================================================================================
 
 
 ##
@@ -179,57 +129,90 @@ Tuprules.inc: Makefile
 
 
 ##
-## -- Copy the rules to build the .o files from the build rules repository
-##    --------------------------------------------------------------------
-targets/rpi2b/obj/kernel/Tupfile: build-rules/rpi2b-obj-kernel-Tupfile
-	mkdir -p $(dir $@)
-	cp $< $@
-
-
-##
-## -- Copy the rules to build the .elf files from the build rules repository
-##    ----------------------------------------------------------------------
-targets/rpi2b/bin/boot/Tupfile: build-rules/rpi2b-bin-boot-Tupfile
-	mkdir -p $(dir $@)
-	cp $< $@
-
-
-##
-## -- These are all the steps to build the rpi2b target
-##    -------------------------------------------------
+## -- This is the rule to build the rpi2b bootable image
+##    --------------------------------------------------
 .PHONY: rpi2b
-rpi2b: targets/rpi2b/obj/kernel/Tupfile targets/rpi2b/bin/boot/Tupfile
-	mkdir -p targets/rpi2b/bin/*
-	tup targets/rpi2b/bin/*
-
-
-
-##
-## == These rules make the x86-pc architecture
-##    =========================================
-
-
-##
-## -- Copy the rules to build the .o files from the build rules repository
-##    --------------------------------------------------------------------
-targets/x86-pc/obj/kernel/Tupfile: build-rules/x86-pc-obj-kernel-Tupfile
-	mkdir -p $(dir $@)
-	cp $< $@
+rpi2b: init
+	tup targets/$@/*
+	rm -fR img/rpi2b.*
+	rm -fR sysroot/rpi2b/*
+	mkdir -p sysroot/rpi2b img
+	cp -fR targets/rpi2b/bin/* sysroot/rpi2b/
+	find sysroot/rpi2b -type f -name Tupfile -delete
+	dd if=/dev/zero of=img/rpi2b.img count=20 bs=1048576
+	echo 'type=83' | sfdisk img/rpi2b.img
+	dd if=/dev/zero of=img/rpi2b.p1 count=38912 bs=512
+	mkfs.ext2 img/rpi2b.p1 -d sysroot/rpi2b/
+	dd if=img/rpi2b.p1 of=img/rpi2b.img seek=2048 count=38912
+	rm -f img/rpi2b.p1
 
 
 ##
-## -- Copy the rules to build the .elf files from the build rules repository
-##    ----------------------------------------------------------------------
-targets/x86-pc/bin/boot/Tupfile: build-rules/x86-pc-bin-boot-Tupfile
-	mkdir -p $(dir $@)
-	cp $< $@
+## -- Run the rpi2b executable on real hardware
+##    -----------------------------------------
+.PHONY: run-rpi2b
+run-rpi2b: rpi2b
+	pbl-server /dev/ttyUSB0 sysroot/rpi2b/boot/grub/cfg-file
 
 
 ##
-## -- These are all the steps to build the x86-pc target
+## -- Run the rpi2b target on qemu, setting up for debugging
+##    ------------------------------------------------------
+.PHONY: debug-rpi2b
+debug-rpi2b: rpi2b
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img -S
+
+
+##
+## -- Run the rpi2b target as a qemu emulation target
+##    -----------------------------------------------
+.PHONY: qemu-rpi2b
+qemu-rpi2b: rpi2b
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img
+
+
+## ==================================================================================================================
+
+
+##
+## == These rules make the x86-pc target
+##    ==================================
+
+
+##
+## -- This is the rule to build the x86-pc bootable image
 ##    ---------------------------------------------------
 .PHONY: x86-pc
-x86-pc: targets/x86-pc/obj/kernel/Tupfile targets/x86-pc/bin/boot/Tupfile
-	mkdir -p targets/x86-pc/bin/*
-	tup targets/x86-pc/bin/*
+x86-pc: init
+	tup targets/$@/*
+	rm -fR img/x86-pc.iso
+	rm -fR sysroot/x86-pc/*
+	mkdir -p sysroot/x86-pc img
+	cp -fR targets/x86-pc/bin/* sysroot/x86-pc/
+	find sysroot/x86-pc -type f -name Tupfile -delete
+	grub2-mkrescue -o img/x86-pc.iso sysroot/x86-pc
+
+
+##
+## -- Run the x86-pc on qemu
+##    ----------------------
+.PHONY: run-x86-pc
+run-x86-pc: x86-pc
+	qemu-system-i386 -m 3072 -serial stdio -cdrom img/x86-pc.iso
+
+
+##
+## -- Run the x86-pc on bochs
+##    -----------------------
+.PHONY: bochs-x86-pc
+bochs-x86-pc: x86-pc
+	bochs -f .bochsrc -q
+
+
+##
+## -- Debug the x86-pc on qemu
+##    ------------------------
+.PHONY: debug-x86-pc
+debug-x86-pc: x86-pc
+	qemu-system-i386 -m 3584 -serial mon:stdio -cdrom img/x86-pc.iso -S
 

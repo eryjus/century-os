@@ -13,7 +13,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Oct-27  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Mar-02  Initial   0.3.0   ADCL  Relocated
 //
 //===================================================================================================================
 
@@ -42,13 +42,13 @@ inline bool MessageWaiting(void) { return !IsListEmpty(&procs[currentPID]->messa
 //
 // -- Send a message to another process by PID
 //    ----------------------------------------
-int MessageSend(PID_t pid, Message_t *msg);
+extern "C" int MessageSend(PID_t pid, Message_t *msg);
 
 
 //
 // -- Receive a message
 //    -----------------
-int MessageReceive(Message_t *m);
+extern "C" int MessageReceive(Message_t *m);
 
 
 #endif

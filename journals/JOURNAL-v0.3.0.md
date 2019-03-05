@@ -990,3 +990,59 @@ I think I want to do the latter.
 
 Going back to the heap address, I have updated the wiki to use addresses starting at `0x90000000` for the heap.
 
+---
+
+With this change, I was able to commit the code.
+
+Now, I will need to start thinking about the memory map I will use for the pmm.  Overall, I want it to be very similar to the loader, but scaled back.  All address space must below `0x80000000` for the process (all user processes), and I want the virtual starting address to be `0x100000` -- though I'm not sure why.
+
+Now, I also need to consider how I am going to fold this module into the rest of the code.  I have decided to keep it a separate executable.  But, do I move it out to the same level as `kernel` is now?  Or let it remain in `modules`?  And, at the same time, I will need to take care of `libc`.
+
+Ultimately, I think leaving them in `modules` is the right thing to do.  I also ultimately want to move `kernel` back into `modules`.
+
+---
+
+### 2019-Feb-28
+
+So I am debating over how much of the `libc` code to implement myself.  I can write my own C library or I can port a `libc` to Century-OS.  According to [this site](https://stackoverflow.com/questions/34433976/is-there-a-difference-between-libc-newlib-and-uclibc-interface), `newlib` is only ISO C compliant.  This means that any messaging that I want to include is going to be an add-on feature to this under newlib.
+
+Now, if I want to make the system Posix compliant (which is a bitch to be sure), GNU `libc` has all the support built into that.  However, the kernel will need to be Posix compliant to start with and I am not there at all.
+
+My goal here is to get the Physical Memory Manager process operational.  For the moment, this will end up being a custom solution (which I will have to later retrofit to any other library I end up going with).  So, the end result is that I need to stick with what I have at the moment to keep things moving forward and port a library when I am ready -- not now as it will be a distraction.
+
+Focus back on the pmm to get it building again.
+
+---
+
+### 2019-Mar-01
+
+This evening I am working on updating the build to get the `pmm.elf` to build in the new targets.
+
+---
+
+I am struggling with the header files.  In my current situation, I need several types from the kernel, but I really am not interested in including all the kernel header folders.  This will mean some duplication...  and I am debating how to go about this....
+
+---
+
+### 2019-Mar-02
+
+So, I really need to get into this, starting with `types.h`.  I do not believe that I will need anything that is arch-specific for the PMM.  So, I should be able to create a symbolic link and update the `types.h` include with `__has_include()` checks.
+
+---
+
+I was finally able to get the PMM to compile.  At the same time I think there are some improvements that can be made to the build system.  I did add [Redmine #404](http://eryjus.ddns.net:3000/issues/404) for the build system.  There is a lot of duplication to resolve.
+
+---
+
+### 2019-Mar-03
+
+Working on the build system today....
+
+---
+
+### 2019-Mar-04
+
+Still working on the build system today....
+
+
+

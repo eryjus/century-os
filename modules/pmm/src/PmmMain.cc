@@ -22,6 +22,13 @@
 
 
 //
+// -- pmmBitmap is declared as a pointer to an address; the actual data will be provided by the kernel
+//    by mapping a page with the data.
+//    ------------------------------------------------------------------------------------------------
+uint32_t *pmmBitmap;
+
+
+//
 // -- This is the PMM dispatcher
 //    --------------------------
 extern "C" void PmmMain(void)

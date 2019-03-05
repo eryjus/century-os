@@ -56,6 +56,7 @@
 //  2013-Sep-02     73                   Add a lock to the process structure (removed 2018-Oct-14)
 //  2013-Sep-03     73                   Encapsulate Process Structure
 //  2018-Oct-14  Initial   0.1.0   ADCL  Copied this file from Century32 and cleaned it up for century-os
+//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
 //
 //===================================================================================================================
 
@@ -111,11 +112,11 @@ typedef enum { PTY_IDLE = 1,            // This is for the butler process when t
 // -- This is a process structure
 //    ---------------------------
 typedef struct Process_t {
-    regval_t stackPointer;              // This is the process current esp value (when not executing)
-    regval_t ss;                        // This is the process ss value
-    regval_t pageTables;                // This is the process cr3 value
+    archsize_t stackPointer;            // This is the process current esp value (when not executing)
+    archsize_t ss;                      // This is the process ss value
+    archsize_t pageTables;              // This is the process cr3 value
     PID_t pid;                          // This is the PID of this process
-    ptrsize_t ssAddr;                   // This is the address of the process stack
+    archsize_t ssAddr;                  // This is the address of the process stack
     size_t ssLength;                    // This is the length of the process stack
     char command[MAX_CMD_LEN];          // The identifying command, includes the terminating null
     size_t totalQuantum;                // This is the total quantum used by this process

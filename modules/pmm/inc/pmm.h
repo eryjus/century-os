@@ -51,7 +51,7 @@
 //
 // -- This is the bitmap itself
 //    -------------------------
-extern uint32_t pmmBitmap[BITMAP_SIZE];
+extern uint32_t *pmmBitmap;
 
 
 //

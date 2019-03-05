@@ -1,0 +1,27 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to 'make` build system -- build the object files for the kernel
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2019-Mar-03  Initial   0.3.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- Go get some additional information for building the targets
+##    -----------------------------------------------------------
+include ../../Tupfile.inc
+include $(WS)/arch/$(ARCH)/util/Tupfile.inc
+include $(WS)/modules/kernel/util/Tupfile.inc
+
+
+##
+## -- Some additional object files for this target
+##    --------------------------------------------
+: foreach  $(WS)/platform/$(PLAT)/interrupts/*.cc           |> !cc |>

@@ -1,0 +1,41 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to 'make` build system -- build the object files for the rpi2 binaries
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2019-Mar-03  Initial   0.3.0   ADCL  Initial version
+##
+#####################################################################################################################
+
+
+##
+## -- Go get some additional information for building the targets
+##    -----------------------------------------------------------
+include ../../Tupfile.inc
+include $(WS)/arch/$(ARCH)/util/Tupfile.inc
+
+
+##
+## -- Add some macros to the build
+##    ----------------------------
+OBJ = $(WS)/targets/$(TARGET)/obj
+LIBC = $(WS)/targets/$(TARGET)/bin/lib/libc.a
+
+
+##
+## -- These are the linker scripts
+##    ----------------------------
+KERNEL_LS = $(WS)/modules/kernel/util/$(TARGET).ld
+PMM_LS = $(WS)/modules/pmm/util/$(TARGET).ld
+
+
+##
+## -- The rules to make the bootable targets in this folder
+##    -----------------------------------------------------
+: $(OBJ)/kernel/*.o | $(KERNEL_LS) |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f; |> kernel.elf
+: $(OBJ)/pmm/*.o $(LIBC) | $(PMM_LS) |> $(LD) -T $(PMM_LS) $(LDFLAGS) -o %o %f; |> pmm.elf

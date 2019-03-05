@@ -1,27 +1,22 @@
-.directory
-.settings
-.project
+# These are the directories and files we will ignore
 .cproject
-.vscode
+.directory
+.project
+.settings
 .tup
-sysroot
-iso
-*.old
+.vscode
+img
 org.kde.konsole.desktop
-Tuprules.inc
-bin/rpi2b/boot/grub/cfg-file*
-
 p1
-targets
+sysroot
+Tuprules.inc
 
-obj/**/*.o
-maps/**/*.map
-
-bin/**/*.cfg
-bin/**/*.elf
-bin/**/*.img
-bin/**/*.h
-bin/**/cfg-file
-
-lib/**/*.a
+# now some generic files that will be ignored
 *.log
+*.o
+*.old
+*.elf
+*.a
+targets/**/grub.cfg
+targets/**/cfg-file*
+
