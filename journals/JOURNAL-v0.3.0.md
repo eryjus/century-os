@@ -1179,3 +1179,8 @@ I think the best thing to do for now it so fold the PMM into the kernel itself a
 So, I have pulled the PMM process out of the setup.  I have a working PMM with the current code, so I can keep this working like this for now.
 
 I am looking through Redmine to see what else I committed to myself to work on with this version.  I will admit that the desire to move on to something else is really strong.
+
+---
+
+This version is complete; and I am pushing the final version.
+
