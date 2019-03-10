@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  IdtBuild.cc -- This function will initialize the system to handle interrupts
+//  ExceptionInit.cc -- This function will initialize the system to handle interrupts
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -51,7 +51,7 @@ extern "C" void FIQTarget(void);
 //
 // -- Set up the Exception Vector Table
 //    ---------------------------------
-void IdtBuild(void)
+void ExceptionInit(void)
 {
     IdtSetAddr();
 

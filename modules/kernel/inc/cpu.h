@@ -86,48 +86,4 @@ extern "C" size_t kStrLen(const char *s);
 void CpuGetCapabilities(void);
 
 
-//
-// -- Now, arch-cpu.h is required to provide some specific values, perform some sanity checks here
-//    to make sure those values have been properly #defined.
-//    --------------------------------------------------------------------------------------------
-#ifndef BYTE_ALIGNMENT
-#   error "BYTE_ALIGNMENT must be #defined and was not"
-#endif
-
-#ifndef HW_DISCOVERY_LOC
-#   error "HW_DISCOVERY_LOC must be #defined and was not"
-#endif
-
-#ifndef PROCESS_PAGE_DIR
-#   error "PROCESS_PAGE_DIR must be #defined and was not"
-#endif
-
-#ifndef PROCESS_PAGE_TABLE
-#   error "PROCESS_PAGE_TABLE must be #defined and was not"
-#endif
-
-#ifndef MMU_FRAME_ADDR_PT
-#   error "MMU_FRAME_ADDR_PT must be #defined and was not"
-#endif
-
-#ifndef MMU_FRAME_ADDR_PD
-#   error "MMU_FRAME_ADDR_PD must be #defined and was not"
-#endif
-
-#ifndef PROCESS_STACK_BUILD
-#   error "PROCESS_STACK_BUILD must be #defined and was not"
-#endif
-
-#ifndef FRAME_BUFFER_VADDR
-#   error "FRAME_BUFFER_VADDR must be #defined and was not"
-#endif
-
-#ifndef EXCEPT_VECTOR_TABLE
-#   error "EXCEPT_VECTOR_TABLE must be #defined and was not"
-#endif
-
-#ifndef EXCEPTION_STACK_SIZE
-#   error "EXCEPTION_STACK_SIZE must be #defined and was not"
-#endif
-
 #endif

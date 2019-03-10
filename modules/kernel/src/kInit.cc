@@ -75,31 +75,10 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
-
-    for (int i = 0; i < GetModCount(); i ++) {
-        char *s = GetAvailModuleIdent(i);
-        if (s[0] == 'p' && s[1] == 'm' && s[2] == 'm' && (s[3] == 0 || s[3] == '.')) {
-            PmmStart(&localHwDisc->mods[i]);
-            break;
-        }
-    }
-
     TimerInit(&timerControl, 1000);
     EnableInterrupts();
     ProcessEnabled = true;
     HeapInit();
-#if 0
-
-    // -- let the Pmm know we are putting it in-charge
-    Message_t pmm;
-    kMemSetB(&pmm, 0, sizeof(Message_t));
-
-    kprintf("Preparing to send message to PMM\n");
-    pmm.msg = PMM_INIT;
-    pmm.dataPayload = (void *)GetPmmBitmap();
-    pmm.payloadSize = GetPmmFrameCount() << 12;            // convert this to bytes
-    MessageSend(PID_PMM, &pmm);
-#endif
 
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts

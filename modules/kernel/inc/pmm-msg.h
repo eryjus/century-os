@@ -34,3 +34,8 @@ typedef enum {
     PMM_INIT,
 } PmmMessages_t;
 
+
+//
+// -- this is the memory location where we will map the bitmap
+//    --------------------------------------------------------
+#define BITMAP_LOCATION     0x00108000

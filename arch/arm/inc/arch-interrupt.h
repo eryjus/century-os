@@ -77,7 +77,7 @@ typedef struct InterruptVector_t {
 //
 // -- Build the IDT and populate its gates; initialize the handlers to NULL
 //    ---------------------------------------------------------------------
-void IdtBuild(void);
+void ExceptionInit(void);
 
 
 //

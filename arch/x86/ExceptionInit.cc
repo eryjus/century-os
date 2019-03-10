@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  IdtBuild.cc -- Build the IDT Table in-place
+//  ExceptionInit.cc -- Build the IDT Table in-place
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -92,7 +92,7 @@ IdtEntry *idtEntries = (IdtEntry *)IDT_ADDRESS;
 //
 // -- Build the parts of the IDT we are going to use so far
 //    -----------------------------------------------------
-void __ldrtext IdtBuild(void)
+void __ldrtext ExceptionInit(void)
 {
     kprintf("Initializing the IDT properly\n");
 	kMemSetB((uint8_t *)idtEntries, 0, sizeof(IdtEntry) * 256);

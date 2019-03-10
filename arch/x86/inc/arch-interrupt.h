@@ -32,7 +32,7 @@ void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags);
 //
 // -- Build the IDT and populate its gates; initialize the handlers to NULL
 //    ---------------------------------------------------------------------
-void IdtBuild(void);
+void ExceptionInit(void);
 
 
 //

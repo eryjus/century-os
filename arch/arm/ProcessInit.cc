@@ -66,7 +66,7 @@ void ProcessInit(void)
 
     idleProcess.stackPointer = (archsize_t)msp;
     idleProcess.status = PROC_RUN;
-    idleProcess.pageTables = GetTTBR0();
+    idleProcess.pageTables = READ_TTBR0();
 
     // -- These are legal without a lock because interrupts are still disabled
     procs[PID_IDLE] = &idleProcess;

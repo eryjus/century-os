@@ -1044,5 +1044,138 @@ Working on the build system today....
 
 Still working on the build system today....
 
+---
 
+I finally have the build system cleaned up.  Now, I can focus on getting `pmm.elf` to load and start executing.  At least it is building.
 
+---
+
+### 2019-Mar-06
+
+I had previously added a number of memory allocations into the loader because I did not have a working PMM to allocate from.  This has changed.  I can now allocate frames from my PMM and do not need to statically allocate these in the binary.  The first order of business is to clean up those allocations.
+
+Surprisingly, everything still compiles.  I must have removed the references from code....  A quick review shows my confusion.  I was not doing this from the `pmm.elf` executable, but from the `loader.elf` binary -- which no longer exists.  So, I need to go through the `kernel.elf` and make sure I am processing the modules properly.
+
+---
+
+So I am at the point now where I need to split the `MmuMapToFrame()` function to be either a user or kernel space mapping.  I have (or had) some flags that I think will support this, so let me go see if they are still available.  It is still available:
+
+```C
+//
+// -- Some constants to help with mapping flags
+//    -----------------------------------------
+enum {
+    PG_KRN = 0x00000001,
+    PG_WRT = 0x00000002,
+};
+```
+
+So, I can use the PG_KRN constant to set this apart, but I will have to make sure all the current uses pass this flag -- for arm.
+
+Now, with that complete, I think I need to separate out the code to clear a frame into its own function.  I will need to call this from several places to I think it is going to be good to have a dedicated function for it.
+
+OK, now I also think I need a function to create a new TTL1/TTL2 table.  This should only ever need to be the user tables since there will only be 1 set of kernel tables.  This function would allocate the table and fully initialize it such that when the table is returned it is prepared for use in calls to `MmuMapToFrame()`.
+
+Now, however, this exposes a problem to me.  For this to work, I am going to need to either put this table into the TTBR0 register or I am going to need to temporarily map these frames for initialization.
+
+---
+
+I think the best thing to do is going to be to have a special memory location for building these structures out.  This is particularly true with x86 where I do not have the ability to replace the `cr3` register until things are completely ready.
+
+---
+
+### 2019-Mar-07
+
+I think I have the function ready that will create the paging tables for arm.  I now need to figure out if the best course of action is to install the new tables in the TTBR0 and manage them with the existing code or if I need to put them into a temporary location to have them managed.
+
+In the context of `PmmStart()`, this should be acceptable (and I can easily replace the contents of TTBR0 with those of TTBR1 when I am done).  I should not need to worry about anything needing access to that location and I will be running from kernel code.
+
+Now, once things are up and running and I want to spawn a new process, I should be able to do the same.  The problem will be when the task gets interrupted -- I do not want another task to start spawning a new process and stomp on my data.  This means I should be able to protect this section with a spinlock.
+
+The challenge will likely be (by way of example) the shell wants to launch an application and calls the kernel to create the new paging tables.  The shell has its own version of the TTBR0 which will need to be saved.  Then a new one is created and set up.  Finally, when the new process is ready to be scheduled, the old TTBR0 value will need to be restored and the kernel function returned.
+
+I think this will work.  I will start coding to make that happen.
+
+---
+
+As I get into this, I think I am going to need a "driver" for the pmm.  The current `PmmNewFrame()` function is currently located in the kernel address space, but really should be located in the loader address space.  This means that as soon as I replace the TTBR0 register, I am not able to allocate new frames to support any new TTL2 tables (which I know for a fact I will need at least 1 no matter what).  In the meantime, I think I am going to pre-allocate a slab of frames and free up anything that is not used at the end.
+
+However, this will also be most effective with some sort of a structure with functions to support the work.  I have some thinking to do.  The problem is that `MmuMapToFrame()` calls `MmuMakeTtl2Table()` which in turn calls `PmmNewFrame()` which will be in loader address space.
+
+---
+
+### 2019-Mar-08
+
+So, I am still debating the same chicken-and-egg problem I was a while ago.  How do I get the PMM up and running when I need to allocate frames from the PMM to get the PMM up and running?  The difference here is getting the mappings all in order rather than a functional one.  I do have some options:
+* Statically create the page tables at compile time
+* Create some special purpose functions to create page tables
+* Pre-allocate frames before switching out the TTBR0 and then use those (with purpose built functions) to complete the PMM mappings
+
+No matter what, I think I will need to collapse the sections to a more compact memory footprint so that I need to create fewer level 2 tables.
+
+---
+
+### 2019-Mar-09
+
+Today I am realizing that the elf file is loaded and managed in identity mapped address space.  And, once again, I am in a hard spot where I need both TTBR0 registers.
+
+---
+
+### 2019-Mar-10
+
+Well, this morning I am struck with the feeling that the hammer I would be using to get the PMM operational is too big.  My conversation on `freenode#osdev`:
+
+```
+[08:13] <eryjus> i have a bit of a chicken-and-egg problem getting my pmm loaded for a microkernel.  i'm fighting to get the mmu structures initialized for the pmm which will be its own process and own binary.  I'm certain I can solve the problem but I am struck with the feeling the hammer I would use is too big.  I want to step back from the specific problem an look at my methods first here - and one specific question is about where the pmm typically
+[08:13] <eryjus> resides in a microkernel: it runs in user space, but is it typically part of the kernel binary?
+[08:18] <mrvn> PMM is simplest done with a stack of some form.
+[08:19] <mrvn> And the MMU must be set by the kernel. You can manage page tables in a process but I would keep that in kernel too.
+[08:20] <mrvn> And yeah, the memory management must be there to load anything extra. So you have to have it in the kernel. At least a rudimentary one.
+[08:20] <mrvn> in the kernel image
+[08:20] <eryjus> understood, and I have a bitmap manager that works well.  my question today is more about the placement in the kernel binary vs its own binary -- which is more typical for a microkernel pmm?
+[08:20] <mrvn> can't be their own binary since you need memory to map the new binary
+[08:21] <mrvn> .oO(bitmaps are probably the worst, O(n) time and O(n) place.
+[08:21] <mrvn> space)
+[08:26] <eryjus> i do have an early allocator that I can use to allocate before I get the pmm running and I was going to just remap the bitmap into the pmm space when I put it in charge.  but that is better set up as its own process in the kernel binary?  (and I'm not ignoring your comment on bitmap vs. stack, I will come back to that)
+[08:27] <mrvn> better is subjective
+[08:28] <eryjus> s/better/mmore typical/
+[08:29] <mrvn> ask someone who has looked at a million microkernels to give you a percentage. But beware, a million flies eat shit. Doesn't make it taste better.
+[08:30] <eryjus> ok, fair enough
+[08:30] <mrvn> But really. PMM is just a bunch of pages. You hand them out, you get them back. Just keep a list of them in the kernel. Don't overthink it.
+[08:31] <mrvn> You can make a process to scrub pages in the background, I do that is my idle task. But otherwise keep it simple.
+[08:33] <eryjus> mrvn, so about the stack vs bitmap.  i originally discounted the stack because there are times I would need a number of contiguous frames (say an arm ttl1 table)..  to do this, I would need to search the stack to find such a block of frames or keep a number of frames in the block in the stack -- which would make freeing a frame rather expensive to maintain that integrity.
+[08:34] <mrvn> The other thing is: "placement in the kernel binary vs its own binary" is a bit arbitrary too. You can have it in the kernel binary and have it as their own process or have it seperate but run it as part of the kernel. It's just a way to load the stuff into memory.
+[08:34] <eryjus> so, with your previous statement, you are implying that this can be done as a separate process to scrub the stack...  ??
+[08:34] <eryjus> i think it's a brilliant idea i had not thought of...
+[08:35] <mrvn> eryjus: I have a list of used pages and scrubbed pages. When I need memory the kernel hands out scrubbed pages. If there are none it takes used pages, scrubbes them and hands them out. When the idle task run it looks if there are any used pages, scrubs them and puts them into the scrubbed list.
+[08:36] * eryjus nods
+[08:36] <eryjus> thank you
+[08:38] <mrvn> Putting the scrubbing into the idle task seemed like a simple way to scrubbing when I have nothing to do. Catch 2 birds with one stone.
+[08:39] <eryjus> i'm planning on a "butler" process to handle similar maintenance tasks for the OS.  Makes sense to add this to the list of things to do.
+[08:44] <eryjus> mrvn, so at that I'm seeing O(1) for allocating arbitrary frames and O(1) for deallocating frames.  If for some reason I want a specific frame allocated or a frame in a narrow range allocated, O(n)?
+[08:44] <mrvn> eryjus: finding a bit in a bitmap is O(n)
+[08:45] <eryjus> sorry, i meant for the stack implementation
+[08:45] <eryjus> containing frame/count pairs
+[08:46] <mrvn> yes. With a stack you get O(1) for allocating any odd page. If you need specific pages you are screwed and need to search the whole stack. But do you ever need that?
+[08:47] <mrvn> Sometimes you need that for hardware buffers but that's a boot times or a once in a boot ocurrance. So doesn't matter if it's O(n).
+[08:47] <eryjus> well, i remember reading something about DMA on x86, but I do not need that at the moment except during initialization (which should never drive algorithm choice I know).  I'm convinced, I just am wondering when to replace the pmm manager
+[08:48] <eryjus> (reconciuling it with my own priority list)
+[08:48] <mrvn> That's what I'm refering to, too. Some hardware on x86 can only do DMA in the lower 4GB of memory. Or ISA stuff even lower.
+[08:49] <mrvn> I initialize the PMM stack directly at boot and have never found a need to change it.
+```
+
+This leaves me with 2 thoughts:
+1. The Bitmap implementation for the PMM is crap
+1. I can be perfectly justified to put the pmm in the kernel (which would not be technically a micro-kernel if those ran at privilege, but more of a hybrid kernel)
+
+---
+
+Looking at [this web site](https://wiki.osdev.org/Microkernel), I can read that the pmm could be part of the kernel binary, but the process would be running in user space....
+
+I think the best thing to do for now it so fold the PMM into the kernel itself and let the kernel manage the memory at privilege.  This is not what I want to final product to look like, but it will allow me to get the kernel running again where I can start to make smaller changes again.
+
+---
+
+So, I have pulled the PMM process out of the setup.  I have a working PMM with the current code, so I can keep this working like this for now.
+
+I am looking through Redmine to see what else I committed to myself to work on with this version.  I will admit that the desire to move on to something else is really strong.

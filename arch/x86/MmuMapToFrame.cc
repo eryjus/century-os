@@ -44,10 +44,18 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         return;
     }
 
+
+#if DEBUG_MMU == 1
+    kprintf("Mapping address %p to frame %p\n", addr, frame);
+#endif
+
+
     PageEntry_t *pde = PD_ENTRY(addr);
 
     if (!pde->p) {
-        pde->frame = PmmNewFrame(1);
+        frame_t fr = PmmNewFrame(1);
+        MmuClearFrame(fr);
+        pde->frame = fr;
         pde->rw = 1;
         pde->us = 1;
         pde->p = 1;

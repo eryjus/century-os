@@ -110,6 +110,24 @@ wait_loop:
 initialize:
     ldr     r4,=_bssStart
     ldr     r9,=_bssEnd
+
+    ldr     r5,=kern_loc
+    ldr     r5,[r5]
+    ldr     r6,=phys_loc
+    ldr     r6,[r6]
+    ldr     r7,=_loaderEnd
+    ldr     r8,=_loaderStart
+
+    sub     r4,r5
+    add     r4,r6
+    add     r4,r7
+    sub     r4,r8
+
+    sub     r9,r5
+    add     r9,r6
+    add     r9,r7
+    sub     r9,r8
+
     mov     r5,#0
     mov     r6,#0
     mov     r7,#0

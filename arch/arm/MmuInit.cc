@@ -240,7 +240,7 @@ void __ldrtext MmuInit(void)
     kprintf("MMU: Mapping the frame buffer at %p for %x frames\n", fbAddr, fbSize);
 
     while (fbSize) {
-        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, 0);
+        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN);
         off += 0x1000;
         fbAddr += 0x1000;
         fbSize --;
@@ -262,7 +262,7 @@ void __ldrtext MmuInit(void)
     kprintf("MMU: Mapping the mmio addresses to %p for %x frames\n", mmioVirt, count + 1);
 
     while (count >= 0) {
-        MmuMapToFrame(mmioVirt, mmioPhys, 0);
+        MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN);
         mmioVirt += 0x1000;
         mmioPhys ++;
         count --;
@@ -272,7 +272,7 @@ void __ldrtext MmuInit(void)
     //
     // -- Next up is the VBAR -- which needs to be mapped.  This one is rather trivial.
     //    -----------------------------------------------------------------------------
-    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr, 0);
+    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr, PG_KRN);
 
 
     //
@@ -281,7 +281,7 @@ void __ldrtext MmuInit(void)
     //    ------------------------------------------------------------------------------------------------------
     archsize_t stackLoc = STACK_LOCATION;
     for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
-        MmuMapToFrame(stackLoc, PmmNewFrame(1), 0);
+        MmuMapToFrame(stackLoc, PmmNewFrame(1), PG_KRN);
     }
 
 

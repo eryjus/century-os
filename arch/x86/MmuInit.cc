@@ -46,7 +46,7 @@ void __ldrtext MmuInit(void)
 
     while (fbSize) {
         kprintf(".. Executing map of %p to %p\n", MMU_FRAMEBUFFER + off, fbAddr >> 12);
-        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, 0);
+        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN);
         off += 0x1000;
         fbAddr += 0x1000;
         fbSize --;
@@ -59,7 +59,7 @@ void __ldrtext MmuInit(void)
     //
     // -- Next up is the VBAR -- which needs to be mapped.  This one is rather trivial.
     //    -----------------------------------------------------------------------------
-    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr >> 12, 0);
+    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr >> 12, PG_KRN);
 
 
     //
@@ -68,7 +68,7 @@ void __ldrtext MmuInit(void)
     //    ------------------------------------------------------------------------------------------------------
     archsize_t stackLoc = STACK_LOCATION;
     for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
-        MmuMapToFrame(stackLoc, PmmNewFrame(1), 0);
+        MmuMapToFrame(stackLoc, PmmNewFrame(1), PG_KRN);
     }
 
 
@@ -76,7 +76,7 @@ void __ldrtext MmuInit(void)
     // -- Take care of some additional archicecture-specific initialization dependent on the MMU Setup being
     //    complete.
     //    --------------------------------------------------------------------------------------------------
-    IdtBuild();
+    ExceptionInit();
     CpuTssInit();
 
     kprintf("MMU: The MMU is initialized\n");

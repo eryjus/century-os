@@ -21,14 +21,14 @@
 ;;
 ;; -- Expose some labels to other fucntions that the linker can pick up
 ;;    -----------------------------------------------------------------
-    global		entry
+    global        entry
     global      JumpKernel
     global      NextEarlyFrame
 
 ;;
 ;; -- Now, we need some things from other functions imported
 ;;    ------------------------------------------------------
-    extern		LoaderMain			                        ;; allow reference to external LoaderMain
+    extern        LoaderMain                                    ;; allow reference to external LoaderMain
     extern      mb1Data                                     ;; the address of the MB1 MBI
     extern      mb2Data                                     ;; the address of the MB2 MBI
     extern      pmmEarlyFrame                               ;; the next frame to be allocated
@@ -183,9 +183,9 @@ ldtLoc:
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
-    section 	.ldrtext
-    align 		4
-    cpu			686
+    section     .ldrtext
+    align       4
+    cpu         586
 
 
 ;;

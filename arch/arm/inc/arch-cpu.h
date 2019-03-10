@@ -38,15 +38,8 @@
 
 
 //
-// -- Some specific memory locations
-//    ------------------------------
-#define PROCESS_PAGE_DIR    0xff430000
-#define PROCESS_PAGE_TABLE  0xff434000
-
-// -- these are dedicated to the function `MmuGetFrameForAddr()`, but documented here.
-#define MMU_FRAME_ADDR_PD   0xff436000
-#define MMU_FRAME_ADDR_PT   0xff43a000
-
+// -- This is the location where the stack will be initialized
+//    --------------------------------------------------------
 #define PROCESS_STACK_BUILD 0xff441000
 
 
@@ -57,18 +50,26 @@
 
 
 //
-// -- This is the location of the TTL1/TTL2 Tables
-//    --------------------------------------------
+// -- The address of the MMIO addresses
+//    ---------------------------------
+#define MMIO_VADDR          0xf8000000
+#define MMIO_LOADER_LOC     0x3f000000
+
+
+//
+// -- This is the location of the TTL1/TTL2 Tables in kernel space
+//    ------------------------------------------------------------
 #define TTL1_KRN_VADDR      0xff404000
 #define MGMT_KRN_TTL2       0xfffff000
 #define TTL2_KRN_VADDR      0xffc00000
 
 
 //
-// -- The address of the MMIO addresses
-//    ---------------------------------
-#define MMIO_VADDR          0xf8000000
-#define MMIO_LOADER_LOC     0x3f000000
+// -- This is the location of the TTL1/TTL2 Tables in user space
+//    ----------------------------------------------------------
+#define TTL1_USR_VADDR      0x20010000
+#define MGMT_USR_TTL2       0x7ffff000
+#define TTL2_USR_VADDR      0x7fc00000
 
 
 //
@@ -79,6 +80,16 @@
 #define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_KRN_VADDR)[((a) >> 20) & 0xffc])
 #define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_KRN_TTL2)[(a) >> 22])
 #define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_KRN_VADDR)[(a) >> 12])
+
+#define USR_TTL1_ENTRY(a)       (&((Ttl1_t *)TTL1_USR_VADDR)[(a) >> 20])
+#define USR_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_USR_VADDR)[((a) >> 20) & 0xffc])
+#define USR_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_USR_TTL2)[(a) >> 22])
+#define USR_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_USR_VADDR)[(a) >> 12])
+
+#define TTL1_ENTRY(a,f)         (((f)&PG_KRN)?KRN_TTL1_ENTRY(a):USR_TTL1_ENTRY(a))
+#define TTL1_ENTRY4(a,f)        (((f)&PG_KRN)?KRN_TTL1_ENTRY4(a):USR_TTL1_ENTRY4(a))
+#define TTL2_MGMT(a,f)          (((f)&PG_KRN)?KRN_TTL2_MGMT(a):USR_TTL2_MGMT(a))
+#define TTL2_ENTRY(a,f)         (((f)&PG_KRN)?KRN_TTL2_ENTRY(a):USR_TTL2_ENTRY(a))
 
 
 //
@@ -129,7 +140,7 @@ inline void HaltCpu(void) { __asm("wfi"); }
 //    -----------------------------------------
 #define MRC(cp15Spec) ({                                \
     uint32_t _val;                                      \
-    __asm__ volatile("mrc " cp15Spec : "=r" (_val));   \
+    __asm__ volatile("mrc " cp15Spec : "=r" (_val));    \
     _val;                                               \
 })
 
@@ -144,15 +155,25 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
-// -- A dummy function to enter system mode, since this is for the ARM
-//    ----------------------------------------------------------------
-extern "C" void EnterSystemMode(void);
+// -- Access to the TTBR0 Control Register
+//    ------------------------------------
+#define TTBR0               "p15, 0, %0, c2, c0, 0"
+#define READ_TTBR0()        MRC(TTBR0)
+#define WRITE_TTBR0(val)    MCR(TTBR0,val)
 
 
 //
-// -- Get the TTBR0
-//    -------------
-extern "C" archsize_t GetTTBR0(void);
+// -- Access to the TTBR1 Control Register
+//    ------------------------------------
+#define TTBR1               "p15, 0, %0, c2, c0, 1"
+#define READ_TTBR1()        MRC(TTBR1)
+#define WRITE_TTBR1(val)    MCR(TTBR1,val)
+
+
+//
+// -- A dummy function to enter system mode, since this is for the ARM
+//    ----------------------------------------------------------------
+extern "C" void EnterSystemMode(void);
 
 
 //

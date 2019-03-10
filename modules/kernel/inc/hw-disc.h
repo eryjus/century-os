@@ -49,7 +49,7 @@ typedef struct Module_t {
     uint32_t modStart;
     uint32_t modEnd;
     uint32_t modHdrSize;
-    archsize_t cr3;
+//    archsize_t cr3;
     archsize_t entry;
     char modIdent[MODULE_IDENT_LEN];             // this will point to at-risk memory
 } Module_t;
@@ -248,7 +248,7 @@ inline void AddModule(uint64_t at, uint64_t end, char *ident) {
 }
 
 inline void SetModuleHdrSize(int i, size_t s) { localHwDisc->mods[i].modHdrSize = s; }
-inline void SetModuleCr3(int i, archsize_t cr3) { localHwDisc->mods[i].cr3 = cr3; }
+//inline void SetModuleCr3(int i, archsize_t cr3) { localHwDisc->mods[i].cr3 = cr3; }
 inline void SetModuleEntry(int i, archsize_t entry) { localHwDisc->mods[i].entry = entry; }
 inline uint64_t GetAvailModuleStart(int i) { return localHwDisc->mods[i].modStart; }
 inline uint64_t GetAvailModuleEnd(int i) { return localHwDisc->mods[i].modEnd; }

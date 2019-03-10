@@ -33,6 +33,5 @@ include_rules
 ## -- create the cfg-file for pi-bootloader
 ##    -------------------------------------
 :   |>  echo   "kernel sysroot/rpi2b/boot/kernel.elf"                > %o;      \
-#        echo   "module sysroot/rpi2b/boot/pmm.elf"                  >> %o;      \
     |> cfg-file
 

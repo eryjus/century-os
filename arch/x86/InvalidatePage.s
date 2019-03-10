@@ -25,8 +25,8 @@ global InvalidatePage
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
-section .text
-cpu		686
+section     .text
+cpu	        586
 
 
 ;;

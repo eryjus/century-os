@@ -52,6 +52,8 @@ ProcessSwitch:
     @@ -- from here we are dealing with the target process
     ldr     r2,[r1,#PROC_CR3]               @@ get the paging table
     mcr     p15,0,r2,c2,c0,0                @@ write the ttl1 table to the TTLR0 register
+    isb                                     @@ flush the instruction fetch buffer and start over
+    dsb                                     @@ reset all memory fetches
 
     ldr     sp,[r1,#PROC_ESP]               @@ get the stack
 

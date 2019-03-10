@@ -48,10 +48,10 @@ __CFUNC void __ldrtext MmuEarlyInit(void)
 
 
     //
-    // -- First we need to complete the initialization of the TTL1 table.  Recall that only the first 4MB were
+    // -- First we need to complete the initialization of the Level 1 table.  Recall that only the first 4MB were
     //    mapped.  Therefore, I need to loop through the page directory and make sure I complete the
     //    initialization to `0x00000000`.
-    //    ----------------------------------------------------------------------------------------------------
+    //    -------------------------------------------------------------------------------------------------------
     LoaderSerialPutS("Clearing the remainder of the Page Directory\n");
     uint32_t *wrk = (uint32_t *)mmuLvl1Table;
     for (int i = 1; i < 0x400; i ++) {
@@ -136,8 +136,19 @@ __CFUNC void __ldrtext MmuEarlyInit(void)
     //    at ~1MB while many of the support functions will be at ~`0x80000000`.  Data may be at either location
     //    depending on the variable and the loader data will be at ~1MB.  The following `kprintf()` call illustrates
     //    this fact as the function is in kernel address space and the constant .rodata string is also in
-    //    kernel address space, but we are still running in loader code at ~1MB.
+    //    kernel address space, but we are still running in loader code at ~1MB.  The final task is to create a
+    //    page table for the temporary addresses around `0xff400000`.
     //    ----------------------------------------------------------------------------------------------------------
+    frame_t frame = NextEarlyFrame();
+    kMemSetB((void *)(frame << 12), 0, FRAME_SIZE);
+
+    PageEntry_t *pde = PD_ENTRY(MMU_CLEAR_FRAME);
+    pde->frame = frame;
+    pde->us = 1;
+    pde->rw = 1;
+    pde->p = 1;
+
+
 #if DEBUG_MMU == 1
     LoaderSerialPutS("MmuEarlyInit() is complete\n");
     kprintf("At this point, the kernel is fully mapped!!!\n");
