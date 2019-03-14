@@ -61,24 +61,24 @@ extern kMemSetB_t lMemSetB;
 //
 // -- This is the function that will allocate a frame during early initialization (< 4MB)
 //    -----------------------------------------------------------------------------------
-__CFUNC frame_t NextEarlyFrame(void);
+__CENTURY_FUNC__ frame_t NextEarlyFrame(void);
 
 //
 // -- function to initialize the loader functions
 //    -------------------------------------------
-__CFUNC void LoaderFunctionInit(void);
+__CENTURY_FUNC__ void LoaderFunctionInit(void);
 
 
 //
 // -- Early Initialization function to handle this initialization by architecture
 //    ---------------------------------------------------------------------------
-__CFUNC void EarlyInit(void);
+__CENTURY_FUNC__ void EarlyInit(void);
 
 
 //
 // -- Perform the MMU Early Initialization so that we can use the whole kernel source no matter where it is located
 //    -------------------------------------------------------------------------------------------------------------
-__CFUNC void MmuEarlyInit(void);
+__CENTURY_FUNC__ void MmuEarlyInit(void);
 
 
 

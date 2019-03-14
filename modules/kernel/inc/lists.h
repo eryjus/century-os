@@ -30,6 +30,7 @@
 //  2018-May-24  Initial   0.1.0   ADCL  Copy this file from century to century-os
 //  2018-Nov-09            0.1.0   ADCL  Reformat the list structures to have a list head, creating a separate type.
 //  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Mar-10  Initial   0.3.1   ADCL  Establish QueueHead_t and StackHead_t types
 //
 //===================================================================================================================
 
@@ -69,13 +70,14 @@ typedef struct ListHead_t {
 
 	List_t list;
 	Spinlock_t lock;
+    size_t count;               // -- this is available for use by software; not used by `lists.h`
 } ListHead_t;
 
 
 //
 // -- Declare and initialize a new List not in a structure
 //    ----------------------------------------------------
-#define NEW_LIST(name) ListHead_t name = { { &(name.list), &(name.list) }, {0, 0} };
+#define NEW_LIST(name) ListHead_t name = { { &(name.list), &(name.list) }, {0, 0}, 0 };
 
 
 //
@@ -162,6 +164,30 @@ inline void ListMove(ListHead_t * const head, ListHead_t::List_t * const entry) 
 inline void ListMoveTail(ListHead_t * const head, ListHead_t::List_t * const entry) {
 	__list_del(entry->prev, entry->next); ListAddTail(head, entry);
 }
+
+
+//
+// -- This is a queue; the next thing to operate on is at head
+//    --------------------------------------------------------
+typedef ListHead_t QueueHead_t;
+
+
+//
+// -- Enqueue a node onto a queue
+//    ---------------------------
+#define Enqueue ListAddTail
+
+
+//
+// -- This is a stack; the next thing to operate on is at head
+//    --------------------------------------------------------
+typedef ListHead_t StackHead_t;
+
+
+//
+// -- Push a node onto a stack
+//    ------------------------
+#define Push ListAdd
 
 
 #endif

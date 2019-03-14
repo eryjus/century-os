@@ -78,7 +78,6 @@ void kInit(void)
     TimerInit(&timerControl, 1000);
     EnableInterrupts();
     ProcessEnabled = true;
-    HeapInit();
 
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
@@ -128,8 +127,15 @@ void kInit(void)
     //
     // -- Phase 5: Assume the butler process role
     //      ---------------------------------------
-
     while (1) {
+        //
+        // -- Here we will look for pmm frames to clear
+        //    -----------------------------------------
+        PmmScrubBlock();
+
+        //
+        // -- there is nothing to do, so halt the cpu
+        //    ---------------------------------------
         HaltCpu();
     }
 }

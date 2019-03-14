@@ -61,8 +61,7 @@ extern "C" void SpinlockClear(Spinlock_t *lock);
 // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
 //    ---------------------------------------------------------------------------------------------
 static inline void SpinlockLock(Spinlock_t *lock) {
-    kprintf("Attempting lock by %x at address %p\n", currentPID, lock);
-    while (SpinlockAtomicLock(lock, 0, 1) != 0) { kprintf(".. lock (%x) appears to be held by %x\n", lock->locked, lock->lockHolder); }
+    while (SpinlockAtomicLock(lock, 0, 1) != 0) {  }
     lock->lockHolder = currentPID;
 }
 
@@ -70,10 +69,7 @@ static inline void SpinlockLock(Spinlock_t *lock) {
 //
 // -- This inline function will unlock a spinlock, clearing the lock holder
 //    ---------------------------------------------------------------------
-static inline void SpinlockUnlock(Spinlock_t *lock) {
-    SpinlockClear(lock); lock->lockHolder = 0;
-    kprintf("Lock at %p released\n", lock);
-}
+static inline void SpinlockUnlock(Spinlock_t *lock) { SpinlockClear(lock); lock->lockHolder = 0; }
 
 
 //

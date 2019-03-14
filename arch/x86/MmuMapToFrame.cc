@@ -53,7 +53,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     PageEntry_t *pde = PD_ENTRY(addr);
 
     if (!pde->p) {
-        frame_t fr = PmmNewFrame(1);
+        frame_t fr = PmmAllocateFrame();
         MmuClearFrame(fr);
         pde->frame = fr;
         pde->rw = 1;

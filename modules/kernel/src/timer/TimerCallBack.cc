@@ -56,8 +56,6 @@
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
-    kprintf(".");
-
 	if (!ProcessEnabled) {
         timerControl.TimerEoi(&timerControl);
         return;

@@ -12,6 +12,7 @@
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Jun-10  Initial   0.1.0   ADCL  Initial version
 //  2019-Feb-14  Initial   0.3.0   ADCL  Relocated
+//  2019-Mar-10  Initial   0.3.1   ADCL  Rebuild the PMM to be managed by a stack
 //
 //===================================================================================================================
 
@@ -21,58 +22,120 @@
 
 
 #include "types.h"
-#include "pmm-msg.h"
+#include "lists.h"
 #include "printf.h"
 #include "hw-disc.h"
+#include "mmu.h"
+#include "pmm-msg.h"
 
 
 //
-// -- Some quick worker functions to perform some type conversions
-//    ------------------------------------------------------------
-inline archsize_t PmmFrameToLinear(frame_t f) { return ((archsize_t)(f << 12)); }
-inline frame_t PmmLinearToFrame(archsize_t a) { return ((frame_t)(a >> 12)); }
+// -- This structure is used on the stack and scrubStack to keep track of the frame
+//    -----------------------------------------------------------------------------
+typedef struct PmmBlock_t {
+    ListHead_t::List_t list;
+    frame_t frame;
+    size_t count;
+} PmmBlock_t;
 
 
 //
-// -- Mark a frame as free (set the flag)
-//    -----------------------------------
-inline void PmmFreeFrame(frame_t f) { GetPmmBitmap()[f >> 5] |= (1 << (f & 0x1f)); }
+// -- This structure (there is only one of these on the system) manages all the PMM
+//    -----------------------------------------------------------------------------
+typedef struct PmmManager_t {
+    StackHead_t normalStack;
+    StackHead_t lowStack;
+    StackHead_t scrubStack;
+} PmmManager_t;
 
 
 //
-// -- Mark a frame as allocated (clear the flag)
-//    ------------------------------------------
-inline void PmmAllocFrame(frame_t f) { GetPmmBitmap()[f >> 5] &= (~(1 << (f & 0x1f))); }
+// -- This variable is the actual Physical Memory Manager data
+//    --------------------------------------------------------
+extern PmmManager_t pmm;
 
 
 //
-// -- Returns if a frame is allocated
-//    -------------------------------
-inline bool PmmIsFrameAlloc(frame_t f) { return (GetPmmBitmap()[f >> 5] & (1 << (f & 0x1f))) == 0; }
+// -- add the frames to an existing block if possible, returning if the operation was successful
+//    ------------------------------------------------------------------------------------------
+__CENTURY_FUNC__ bool _PmmAddToStackNode(StackHead_t *stack, frame_t frame, size_t count);
 
 
 //
-// -- Mark a range of frames as free (set the flag)
-//    ---------------------------------------------
-inline void PmmFreeFrameRange(frame_t f, size_t l) { for (frame_t end = f + l; f < end; f ++) PmmFreeFrame(f); }
+// -- This is the worker function to find a block and allocate it
+//    -----------------------------------------------------------
+__CENTURY_FUNC__ frame_t _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment);
 
 
 //
-// -- Mark a range of frames as allocated (clear the flag)
-//    ----------------------------------------------------
-inline void PmmAllocFrameRange(frame_t f, size_t l) { for (frame_t end = f + l; f < end; f ++) PmmAllocFrame(f); }
+// -- This is the worker function to find a block and allocate it
+//    -----------------------------------------------------------
+__CENTURY_FUNC__ frame_t _PmmDoRemoveFrame(StackHead_t *stack, bool scrub);
 
 
 //
-// -- Find a new frame and allocate it
-//    --------------------------------
-__CFUNC frame_t PmmNewFrame(size_t cnt);
+// -- Allocate a frame from the pmm
+//    -----------------------------
+__CENTURY_FUNC__ frame_t PmmAllocateFrame(void);
+
+
+//
+// -- Allocate a frame from low memory in the pmm
+//    -------------------------------------------
+__CENTURY_FUNC__ inline frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, false); }
+
+
+
+//
+// -- Allocate a block of aligned frames; bitAlignment is the significance of the alignment (min is 12 bits)
+//    ------------------------------------------------------------------------------------------------------
+__CENTURY_FUNC__ inline frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
+    return _PmmDoAllocAlignedFrames(&pmm.normalStack, count, bitAlignment);
+}
+
+
+//
+// -- Same as above but from low mem; bitAlignment is significance of the alignment (min is 12 bits)
+//    ----------------------------------------------------------------------------------------------
+__CENTURY_FUNC__ inline frame_t PmmAllocAlignedLowFrames(const size_t count, const size_t bitAlignment) {
+    return _PmmDoAllocAlignedFrames(&pmm.lowStack, count, bitAlignment);
+}
+
+
+//
+// -- Release a block of frames (very useful during initialization)
+//    -------------------------------------------------------------
+__CENTURY_FUNC__ void PmmReleaseFrameRange(const frame_t frame, const size_t count);
+
+
+//
+// -- Release a single frame
+//    ----------------------
+__CENTURY_FUNC__ inline void PmmReleaseFrame(const frame_t frame) { return PmmReleaseFrameRange(frame, 1); }
+
+
+//
+// -- Scrub a frame in preparation the next allocation (includes clearing the frame)
+//    ------------------------------------------------------------------------------
+__CENTURY_FUNC__ inline void PmmScrubFrame(const frame_t frame) { MmuClearFrame(frame); }
+
+
+//
+// -- This is the function to scrub a single block from the scrubStack
+//    ----------------------------------------------------------------
+__CENTURY_FUNC__ void __krntext PmmScrubBlock(void);
 
 
 //
 // -- Initialize the PMM
 //    ------------------
-__CFUNC void PmmInit(void);
+__CENTURY_FUNC__ void PmmInit(void);
+
+
+//
+// -- For debugging purposes, dump the state of the PMM manager
+//    ---------------------------------------------------------
+__CENTURY_FUNC__ void PmmDumpState(void);
 
 
 #endif

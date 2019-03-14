@@ -68,7 +68,7 @@ void HeapInit(void)
     archsize_t vLimit = vAddr + INITIAL_HEAP;
 
     for ( ; vAddr < vLimit; vAddr += 0x1000) {
-        MmuMapToFrame(vAddr, PmmNewFrame(1), PG_KRN | PG_WRT);
+        MmuMapToFrame(vAddr, PmmAllocateFrame(), PG_KRN | PG_WRT);
     }
 
     // -- Set up the heap structure and list of open blocks

@@ -23,20 +23,21 @@
 #include "serial.h"
 #include "mmu.h"
 #include "cpu.h"
+#include "heap.h"
 #include "fb.h"
 
 
 //
 // -- called from assembly language...
 //    --------------------------------
-__CFUNC void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
-extern "C" void UpdateKprintfPort(void);
+__CENTURY_FUNC__ void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
+__CENTURY_FUNC__ void UpdateKprintfPort(void);
 
 
 //
 // -- The actual loader main function
 //    -------------------------------
-__CFUNC void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+__CENTURY_FUNC__ void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
     extern void kInit(void);
 
@@ -45,8 +46,9 @@ __CFUNC void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t a
     EarlyInit();
     HwDiscovery();
     FrameBufferInit();
-    PmmInit();
     MmuInit();
+    HeapInit();
+    PmmInit();
     UpdateKprintfPort();
 
 
@@ -62,3 +64,4 @@ __CFUNC void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t a
 
     while (1) {}
 }
+

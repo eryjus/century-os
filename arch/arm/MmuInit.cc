@@ -109,7 +109,6 @@ void __ldrtext MmuInit(void)
     // -- it has not been touched yet, so we need a frame for the TTL2 table
     if (ttl1Entry->fault == 0b00) {
         frame_t ttl2 = NextEarlyFrame();
-        PmmAllocFrame(ttl2);
         void *addr = (void *)(ttl2 << 12);
         kMemSetB(addr, 0, FRAME_SIZE);
 
@@ -162,7 +161,6 @@ void __ldrtext MmuInit(void)
     // -- it has not been touched yet, so we need a frame for the TTL2 table
     if (ttl1Entry->fault == 0b00) {
         ttl2 = NextEarlyFrame();
-        PmmAllocFrame(ttl2);
         void *addr = (void *)(ttl2 << 12);
         kMemSetB(addr, 0, FRAME_SIZE);
 
@@ -281,7 +279,7 @@ void __ldrtext MmuInit(void)
     //    ------------------------------------------------------------------------------------------------------
     archsize_t stackLoc = STACK_LOCATION;
     for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
-        MmuMapToFrame(stackLoc, PmmNewFrame(1), PG_KRN);
+        MmuMapToFrame(stackLoc, PmmAllocateFrame(), PG_KRN);
     }
 
 

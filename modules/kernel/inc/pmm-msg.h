@@ -11,7 +11,6 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Nov-11  Initial    0.1.0  ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
 //
 //===================================================================================================================
 
@@ -34,8 +33,3 @@ typedef enum {
     PMM_INIT,
 } PmmMessages_t;
 
-
-//
-// -- this is the memory location where we will map the bitmap
-//    --------------------------------------------------------
-#define BITMAP_LOCATION     0x00108000

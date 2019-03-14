@@ -259,6 +259,7 @@ void HeapValidatePtr(const char *from);
 // -- A quick macro to make coding easier and more readable
 //    -----------------------------------------------------
 #define NEW(tp) (tp *)HeapAlloc(sizeof(tp), false)
+#define FREE(ptr)     HeapFree(ptr)
 
 
 #endif

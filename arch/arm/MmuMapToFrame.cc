@@ -43,7 +43,7 @@ static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     // -- We have been asked to create a new TTL2 table.  We got here, so we know we need a frame.
     //    Go get it.
     //    ----------------------------------------------------------------------------------------
-    frame_t frame = PmmNewFrame(1);
+    frame_t frame = PmmAllocateFrame();
 #if DEBUG_MMU == 1
     kprintf("The frame just allocated is at %p\n", frame);
 #endif

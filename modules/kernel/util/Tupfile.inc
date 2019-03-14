@@ -21,6 +21,10 @@ CFLAGS += -I $(WS)/arch/$(ARCH)/inc
 CFLAGS += -I $(WS)/platform/inc
 CFLAGS += -I $(WS)/platform/$(PLAT)/inc
 
+AFLAGS += -I $(WS)/modules/kernel/inc
+NFLAGS += -I$(WS)/modules/kernel/inc/
+
+
 
 ##
 ## -- Now, go compile all the source files for this binary

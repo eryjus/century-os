@@ -68,7 +68,7 @@ void __ldrtext MmuInit(void)
     //    ------------------------------------------------------------------------------------------------------
     archsize_t stackLoc = STACK_LOCATION;
     for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
-        MmuMapToFrame(stackLoc, PmmNewFrame(1), PG_KRN);
+        MmuMapToFrame(stackLoc, PmmAllocateFrame(), PG_KRN);
     }
 
 

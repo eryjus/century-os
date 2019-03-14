@@ -37,8 +37,8 @@ int MessageSend(PID_t pid, Message_t *m)
     void *payload = (m->payloadSize?HeapAlloc(m->payloadSize, false):NULL);
 
     if (!msg || !payload) {
-        if (msg) HeapFree(msg);
-        if (payload) HeapFree(payload);
+        if (msg) FREE(msg);
+        if (payload) FREE(payload);
 
         return -EUNDEF;
     }

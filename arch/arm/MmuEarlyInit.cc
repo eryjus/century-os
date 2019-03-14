@@ -37,7 +37,7 @@
 //
 // -- Complete the initialization of the Mmu for the loader to function properly
 //    --------------------------------------------------------------------------
-__CFUNC void __ldrtext MmuEarlyInit(void)
+__CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
 {
     extern uint8_t _kernelStart[];
     extern uint8_t _kernelEnd[];

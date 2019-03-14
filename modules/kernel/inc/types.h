@@ -36,7 +36,7 @@
 //
 // -- This will set up for a __cfunc -- a custom #define to stop name mangling
 //    ------------------------------------------------------------------------
-#define __CFUNC         extern "C"
+#define __CENTURY_FUNC__         extern "C"
 
 
 //

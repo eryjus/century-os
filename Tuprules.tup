@@ -41,21 +41,11 @@ CFLAGS += -c
 NFLAGS += -felf
 NFLAGS += -g
 NFLAGS += -w+all
-NFLAGS += -i$(WS)/bin/$(ARCH)/usr/include
-NFLAGS += -i$(WS)/modules/$(MOD)/inc/
-NFLAGS += -i$(WS)/modules/$(MOD)/inc/$(ARCH)/
-NFLAGS += -i$(WS)/inc/
-NFLAGS += -i$(WS)/inc/$(ARCH)/
 
 
 ##
 ## -- Build out the AFLAGS variable -- for gas
 ##    ----------------------------------------
-AFLAGS += -I $(WS)/bin/$(ARCH)/usr/include
-AFLAGS += -I $(WS)/modules/$(MOD)/inc/
-AFLAGS += -I $(WS)/modules/$(MOD)/inc/$(ARCH)/
-AFLAGS += -I $(WS)/inc/
-AFLAGS += -I $(WS)/inc/$(ARCH)/
 AFLAGS += -march=armv7ve
 
 
@@ -77,7 +67,7 @@ LDFLAGS += -O2
 !dump =     |> $(DUMP) -D %f > %o           |> %B.map
 
 ifeq ($(ARCH),x86)
-!as =       |> nasm $(NFLAGS) -o %o %f     |> %B.o
+!as =       |> nasm $(NFLAGS) -o %o %f      |> %B.o
 else
 !as =       |> $(AS) $(AFLAGS) -o %o %f     |> %B.o
 endif

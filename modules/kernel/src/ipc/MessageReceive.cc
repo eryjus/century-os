@@ -50,7 +50,7 @@ int MessageReceive(Message_t *m)
     }
 
     // -- free a previous payload
-    if (prevPayload) HeapFree(prevPayload);
+    if (prevPayload) FREE(prevPayload);
 
     m->msg = msg->msg;
     m->parm1 = msg->parm1;
@@ -61,7 +61,7 @@ int MessageReceive(Message_t *m)
     }
 
     m->payloadSize = msg->payloadSize;
-    HeapFree(msg);
+    FREE(msg);
 
     return SUCCESS;
 }

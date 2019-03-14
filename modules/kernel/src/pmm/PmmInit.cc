@@ -42,6 +42,7 @@
 #include "serial.h"
 #include "printf.h"
 #include "cpu.h"
+#include "heap.h"
 #include "hw-disc.h"
 #include "pmm.h"
 
@@ -56,16 +57,15 @@
 //
 // -- initialize the physical portion of the memory manager
 //    -----------------------------------------------------
-void __ldrtext PmmInit(void)
+__CENTURY_FUNC__ void __ldrtext PmmInit(void)
 {
-    extern char _kernelEnd[];           // This is the 1 byte past last frame that was loaded
-    extern frame_t pmmLastLook;
-    extern frame_t pmmLimit;
-    frame_t frame;
-    size_t length;
-
-
     kprintf("Startng PMM initialization\n");
+
+
+    // -- regardless of anything else, we need to initialize the lists
+    ListInit(&pmm.normalStack.list);
+    ListInit(&pmm.lowStack.list);
+    ListInit(&pmm.scrubStack.list);
 
 
     // -- Sanity check -- we cannot continue without a memory map
@@ -76,117 +76,43 @@ void __ldrtext PmmInit(void)
 
 
     //
-    // -- OK, the first order of business is to determine how big and where to put the table.  This will need to
-    //    be big enough to hold the last byte on the system.  Therefore the range will be from byte 0 to the
-    //    biggest mmap entry we have available for allocation.
-    //    ------------------------------------------------------------------------------------------------------
-    uint64_t bmLength  = 0;
-
+    // -- Now simply loop through the memory map and add the blocks to the scrubStack.  The only catch here is that
+    //    we will not deal with the first 4MB of memory, saving that for the cleanup after boot.
+    //    ---------------------------------------------------------------------------------------------------------
     for (int i = 0; i < GetMMapEntryCount(); i ++) {
-        if (bmLength < GetAvailMemStart(i) + GetAvailMemLength(i)) {
-            bmLength = GetAvailMemStart(i) + GetAvailMemLength(i);
+        frame_t frame = ((archsize_t)GetAvailMemStart(i)) >> 12;
+        size_t count = ((archsize_t)GetAvailMemLength(i)) >> 12;
+
+        // -- skip anything before 4MB
+        if (frame < 0x400 && count < 0x400) continue;
+        if (frame < 0x400) {
+            count -= (0x400 - frame);
+            frame = 0x400;
+        }
+
+        kprintf("Releasing block of memory from frame %x for a count of %x frames\n", frame, count);
+
+        PmmBlock_t *block = NEW(PmmBlock_t);
+        ListInit(&block->list);
+        block->frame = frame;
+        block->count = count;
+
+        //
+        // -- since we are guaranteed to be above 1MB, this is all the normal queue
+        //    ---------------------------------------------------------------------
+        SPIN_BLOCK(pmm.normalStack.lock) {
+            Push(&pmm.normalStack, &block->list);
+            pmm.normalStack.count = block->count;
+            SpinlockUnlock(&pmm.normalStack.lock);
         }
     }
 
-#if DEBUG_PMM == 1
-    kprintf("Upper memory limit: %p : %p\n", (uint32_t)(bmLength >> 32), (uint32_t)(bmLength & 0xffffffff));
-#endif
-
 
     //
-    // -- now, calculate the number of frames needed to hold the pmm bitmap.  Each single bit indicates the
-    //    allocation of a single frame.  Therefore a page (4096 bytes) can map 4096 * 8 frames or 32768 frames.
-    //    With a frame being 4096 bytes, the amount of memory that can be managed by a page is 32768 * 4096 bytes
-    //    or 128MB.  128MB can be addressed up to 0x08000000, or with 27 bits.  Therefore the math below.
-    //    -------------------------------------------------------------------------------------------------------
-    size_t pages = (bmLength >> (12 + 3 + 12)) + (bmLength&0x7ffffff?1:0);
-    pmmEarlyFrame -= pages;
-    frame_t bitmap = pmmEarlyFrame + 1;
-    uint32_t *start = (uint32_t *)(bitmap << 12);
+    // -- Do I need to address the framebuffer here?
+    //    ------------------------------------------
+    kprintf("The frame buffer is located at %p\n", GetFrameBufferAddr());
 
-
-#if DEBUG_PMM == 1
-    kprintf("%x pages are needed to hold the PMM Bitmap\n", pages);
-    kprintf("   these pages will start at %p\n", (uint32_t)start);
-#endif
-
-    SetPmmBitmap(start);
-    SetPmmFrameCount(pages);
-
-
-    //
-    // -- clear the bitmap -- everything is allocated to start
-    //    ----------------------------------------------------
-    kMemSetB((void *)start, 0, PmmFrameToLinear(pages));
-
-#if DEBUG_PMM == 1
-    kprintf("PMM Bitmap cleared and ready for marking unusable space\n");
-#endif
-
-
-    //
-    // -- now we loop through the available memory and set the frames to be available
-    //    ---------------------------------------------------------------------------
-    for (int i = 0; i < GetMMapEntryCount(); i ++) {
-        frame = PmmLinearToFrame(GetAvailMemStart(i));
-        length = PmmLinearToFrame(GetAvailMemLength(i));
-
-#if DEBUG_PMM == 1
-        kprintf("Grub Reports available memory at %p for %p frames\n", frame, length);
-#endif
-
-        PmmFreeFrameRange(frame, length);
-    }
-
-#if DEBUG_PMM == 1
-    kprintf("Marking the first 1MB and kernel binary frames as used, up to %x\n", PHYS_OF(_kernelEnd) >> 12);
-#endif
-
-    PmmAllocFrameRange(0, PHYS_OF(_kernelEnd) >> 12);
-    PmmAllocFrameRange((pmmEarlyFrame >> 12) + 1, 0x3ff - (pmmEarlyFrame >> 12));
-
-
-    // -- Allocate the Frame Buffer
-    if ((uint64_t)GetFrameBufferAddr() < GetUpperMemLimit() && GetFrameBufferAddr()) {
-#if DEBUG_PMM == 1
-            kprintf("Marking the frame buffer space as used starting at frame %p for %p frames.\n",
-                    GetFrameBufferAddr(), (1024 * 768 * 2) >> 12);
-#endif
-
-        PmmAllocFrameRange(PmmLinearToFrame((archsize_t)GetFrameBufferAddr()), (1024 * 768 * 2) >> 12);
-    }
-
-    // -- Allocate the loaded modules
-    if (HaveModData()) {
-        for (int i = 0; i < GetModCount(); i ++) {
-            frame = PmmLinearToFrame(GetAvailModuleStart(i));
-            length = PmmLinearToFrame(GetAvailModuleEnd(i)) - frame + 1;
-
-#if DEBUG_PMM == 1
-            kprintf("Marking the module %s space as used starting at frame %p for %p frames.\n",
-                    GetAvailModuleIdent(i), frame, length);
-#endif
-
-            PmmAllocFrameRange(frame, length);
-        }
-    }
-
-#if DEBUG_PMM == 1
-    kprintf("Finally, marking the stack, hardware communication area, kernel heap, and this "
-                "bitmap frames as used.\n");
-#endif
-
-    //
-    // -- Finally, we have to mark the bitmap itself as used and other early init allocations.
-    //    ------------------------------------------------------------------------------------
-    PmmAllocFrameRange(pmmEarlyFrame, 0x000003ff - pmmEarlyFrame);
-
-
-    //
-    // -- Complete the setup so that we can use the general `PmmNewFrame()` function to allocate
-    //    --------------------------------------------------------------------------------------
-    pmmLastLook = 0x00000400;                        // -- we will look from 4MB on...
-    pmmLimit = (frame_t)(bmLength >> 12);            // -- this is how far we will look
 
     kprintf("Phyiscal Memory Manager Initialized\n");
 }

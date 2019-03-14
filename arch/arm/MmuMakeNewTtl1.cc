@@ -32,13 +32,14 @@ Spinlock_t tableInitLock = {0};
 //    ---------------------------------------------------------------------
 frame_t MmuMakeNewTtl1Table(void)
 {
+#if 0
     //
     // -- This deserves some comment...  We need a 16K aligned table for 4 frames, so if we allocate 7 frames
     //    we are guaranteed to get one that is aligned properly.  The key here is going to be to find the
     //    correct frame and then free the other 3 frames.
     //    ---------------------------------------------------------------------------------------------------
     frame_t ttl1 = PmmNewFrame(7);          // allocate a ttl1 table
-    frame_t ttl2Mgmt = PmmNewFrame(1);      // allocate a ttl2 table for management
+    frame_t ttl2Mgmt = PmmAllocateFrame();      // allocate a ttl2 table for management
 
     //
     // -- properly align the 4 frames
@@ -114,4 +115,6 @@ frame_t MmuMakeNewTtl1Table(void)
 
 
     return ttl1;
+#endif
+    return 0;
 }
