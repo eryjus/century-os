@@ -93,13 +93,6 @@
 
 
 //
-// -- this is the location of the kernel stack
-//    ----------------------------------------
-#define STACK_LOCATION          0xff800000
-#define STACK_SIZE              0x1000
-
-
-//
 // -- These are critical CPU structure locations
 //    ------------------------------------------
 const archsize_t GDT_ADDRESS = 0xff401000;

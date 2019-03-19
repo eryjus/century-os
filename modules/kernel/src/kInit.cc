@@ -53,6 +53,19 @@ extern "C" void kInit(void);
 void PmmStart(Module_t *);
 
 
+Process_t *A;
+Process_t *B;
+
+
+void StartB(void)
+{
+    while (1) {
+        kprintf("B");
+        ProcessSwitch(A);
+    }
+}
+
+
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
@@ -77,7 +90,6 @@ void kInit(void)
     ProcessInit();
     TimerInit(&timerControl, 1000);
     EnableInterrupts();
-    ProcessEnabled = true;
 
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
@@ -122,8 +134,17 @@ void kInit(void)
 //    BREAKPOINT;
 
 
-    kprintf("Reached the end of initialization\n");
+    A = currentProcess;
+    B = ProcessCreate(StartB);
 
+
+    while (1) {
+        kprintf("A");
+        ProcessSwitch(B);
+    }
+
+
+#if 0
     //
     // -- Phase 5: Assume the butler process role
     //      ---------------------------------------
@@ -138,6 +159,7 @@ void kInit(void)
         //    ---------------------------------------
         HaltCpu();
     }
+#endif
 }
 
 
@@ -150,3 +172,4 @@ void idleMain(void)
         HaltCpu();
     }
 }
+

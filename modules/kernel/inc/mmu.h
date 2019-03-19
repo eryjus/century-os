@@ -48,6 +48,8 @@ enum {
 
 #define MMU_NEW_TABLE_INIT      0xff408000
 
+#define MMU_STACK_INIT_VADDR    0xff40a000
+
 
 //
 // -- With the page table structures given, map a virtual address to a physical frame
@@ -76,7 +78,13 @@ void MmuInit(void);
 //
 // -- Invalidate a page in the TLB
 //    ----------------------------
-extern "C" void InvalidatePage(archsize_t addr);
+__CENTURY_FUNC__ void InvalidatePage(archsize_t addr);
+
+
+//
+// -- Create a new set of paging tables for a new process
+//    ---------------------------------------------------
+__CENTURY_FUNC__ frame_t MmuNewVirtualSpace(frame_t stack);
 
 
 #endif

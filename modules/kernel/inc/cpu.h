@@ -86,4 +86,11 @@ extern "C" size_t kStrLen(const char *s);
 void CpuGetCapabilities(void);
 
 
+//
+// -- this is the location of the kernel stack
+//    ----------------------------------------
+#define STACK_LOCATION          0xff800000
+#define STACK_SIZE              0x1000
+
+
 #endif

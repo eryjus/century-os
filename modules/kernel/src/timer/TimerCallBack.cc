@@ -56,14 +56,5 @@
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
-	if (!ProcessEnabled) {
-        timerControl.TimerEoi(&timerControl);
-        return;
-    }
-
-	procs[currentPID]->totalQuantum ++;
-	if (-- procs[currentPID]->quantumLeft <= 0) {
-        timerControl.TimerEoi(&timerControl);
-        ProcessReschedule();
-    } else timerControl.TimerEoi(&timerControl);
+    timerControl.TimerEoi(&timerControl);
 }

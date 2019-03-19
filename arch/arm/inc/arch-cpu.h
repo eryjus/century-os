@@ -111,13 +111,6 @@
 
 
 //
-// -- this is the location of the kernel stack
-//    ----------------------------------------
-#define STACK_LOCATION          0xff800000
-#define STACK_SIZE              0x1000
-
-
-//
 // -- Read the low level timer value
 //    ------------------------------
 extern "C" uint64_t SysTimerCount(void);

@@ -30,6 +30,7 @@
 //    ----------------------------
 void SyscallReceiveMessage(isrRegs_t *regs)
 {
+    #if 0
     Message_t *msg = (Message_t *)SYSCALL_RCVMSG_PARM1(regs);
 
     if (msg == NULL) {
@@ -38,4 +39,5 @@ void SyscallReceiveMessage(isrRegs_t *regs)
     }
 
     SYSCALL_RETURN(regs) = MessageReceive(msg);
+    #endif
 }

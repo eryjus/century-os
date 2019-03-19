@@ -21,6 +21,7 @@
 #ifndef __IPC_H__
 #define __IPC_H__
 
+#if 0
 
 #include "types.h"
 #include "lists.h"
@@ -49,6 +50,9 @@ int MessageSend(PID_t pid, Message_t *msg);
 // -- Receive a message
 //    -----------------
 int MessageReceive(Message_t *m);
+
+
+#endif
 
 
 #endif

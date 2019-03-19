@@ -30,6 +30,7 @@
 //    ----------------------------
 void SyscallSendMessage(isrRegs_t *regs)
 {
+    #if 0
     PID_t pid = SYSCALL_SNDMSG_PARM1(regs);
     Message_t *msg = (Message_t *)SYSCALL_SNDMSG_PARM2(regs);
     Process_t *proc = ProcessGetStruct(pid);
@@ -45,4 +46,5 @@ void SyscallSendMessage(isrRegs_t *regs)
     }
 
     SYSCALL_RETURN(regs) = MessageSend(pid, (Message_t *)msg);
+    #endif
 }

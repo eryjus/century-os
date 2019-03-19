@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessVars.cc -- Global variables for process management
+//  MmuNewVirtualSpace.cc -- For a new process, create the user virtual address space
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,21 +10,23 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-14  Initial   0.1.0   ADCL  Initial version
+//  2019-Mar-16  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "process.h"
+#include "types.h"
+#include "spinlock.h"
+#include "pmm.h"
+#include "mmu.h"
 
 
 //
-// -- This is the current running process
-//    -----------------------------------
-__krndata Process_t *currentProcess = NULL;
-
-
-//
-// -- This is the next PID that will be allocated
-//    -------------------------------------------
-__krndata PID_t nextPID = 0;
+// -- for arm, all we need is a blank address space
+//    ---------------------------------------------
+frame_t __krntext MmuNewVirtualSpace(frame_t stack)
+{
+    frame_t rv = PmmAllocAlignedFrames(4, 14);
+    for (int i = 0; i < 4; i ++) MmuClearFrame(rv + i);
+    return rv;
+}

@@ -45,8 +45,8 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2012-Sep-23                             Initial version
-//  2013-Aug-20        46                   Added a reference to an allocated tty session
+//  2012-Sep-23                          Initial version
+//  2013-Aug-20     46                   Added a reference to an allocated tty session
 //  2013-Aug-22     58                   Normalize the TTY functions to use tty#
 //  2013-Aug-25     60                   Create the ability to find a process quickly by PID
 //  2013-Aug-25     67                   Add a list of locks a process holds
@@ -72,22 +72,11 @@
 
 
 //
-// -- The length of an identifying command
-//    ------------------------------------
-#define MAX_CMD_LEN             32
-
-
-//
-// -- Define the max number if PIDs that will be supported
-//    ----------------------------------------------------
-#define MAX_NUM_PID             32768
-
-
-//
 // -- This list is are the statuses available for a running process, indicating what queue it will be on.
 //    ---------------------------------------------------------------------------------------------------
 typedef enum { PROC_INIT,               // This is being created and is not on a queue yet
-        PROC_RUN,                       // This is eligible to run but may or may not be the current process
+        PROC_RUN,                       // This is currently running
+        PROC_READY,                     // This is ready to run
         PROC_END,                       // This has ended normally and has been added to the reaper queue
         PROC_MTXW,                      // This is waiting for a Mutex lock and is on the waiting queue
         PROC_SEMW,                      // This is waiting on a Semaphore and is on the waiting queue
@@ -95,6 +84,16 @@ typedef enum { PROC_INIT,               // This is being created and is not on a
         PROC_MSGW,                      // This is waiting for a message to be delivered and in on the waiting queue
         PROC_ZOMB,                      // This is a crashed process and is on the reaper queue
 } ProcStatus_t;
+
+
+//
+// -- This list is the policy choices for a running process
+//    -----------------------------------------------------
+typedef enum { POLICY_0,
+    POLICY_1,
+    POLICY_2,
+    POLICY_3,
+} ProcPolicy_t;
 
 
 //
@@ -112,178 +111,59 @@ typedef enum { PTY_IDLE = 1,            // This is for the butler process when t
 // -- This is a process structure
 //    ---------------------------
 typedef struct Process_t {
-    archsize_t stackPointer;            // This is the process current esp value (when not executing)
-    archsize_t ss;                      // This is the process ss value
-    archsize_t pageTables;              // This is the process cr3 value
+    archsize_t topOfStack;              // This is the process current esp value (when not executing)
+    archsize_t virtAddrSpace;           // This is the process top level page table
     PID_t pid;                          // This is the PID of this process
     archsize_t ssAddr;                  // This is the address of the process stack
-    size_t ssLength;                    // This is the length of the process stack
-    char command[MAX_CMD_LEN];          // The identifying command, includes the terminating null
-    size_t totalQuantum;                // This is the total quantum used by this process
-    ProcStatus_t status;                // This is the process status
+    char *command;                      // The identifying command, includes the terminating null
+    ProcPolicy_t policy;                // This is the scheduling policy
     ProcPriority_t priority;            // This is the process priority
+    ProcStatus_t status;                // This is the process status
     int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
-    bool isHeld;                        // Is this process held and on the Held list?
-    struct Spinlock_t lock;             // This is the lock needed to read/change values
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
-    ListHead_t lockList;                // This is the list of currently held locks (for the butler to release)
-    ListHead_t messages;                // This is the queue of messages for this process
-    void *prevPayload;                  // This is the previous payload in case the process did not allocate enough
 } Process_t;
 
 
 //
-// -- The initial flags for the processes
-//    -----------------------------------
-#define INIT_FLAGS        0x00000200
+// -- The currently running process:
+//    ------------------------------
+extern Process_t *currentProcess;
 
 
 //
-// -- This is the process table
-//    -------------------------
-extern Process_t *procs[MAX_NUM_PID];
-
-
-//
-// -- Is the scheduler Enabled?
-//    -------------------------
-extern bool ProcessEnabled;
-
-
-//
-// -- The butler process structure
-//    ----------------------------
-extern Process_t butler;
-
-
-//
-// -- Several Lists for managing processes
-//    ------------------------------------
-extern ListHead_t procOsPtyList;
-extern ListHead_t procHighPtyList;
-extern ListHead_t procNormPtyList;
-extern ListHead_t procLowPtyList;
-extern ListHead_t procIdlePtyList;
-extern ListHead_t procWaitList;
-extern ListHead_t procHeldList;
-extern ListHead_t procReaper;
+// -- This is the next PID that will be allocated
+//    -------------------------------------------
+extern PID_t nextPID;
 
 
 //
 // -- Initialize the process structures
 //    ---------------------------------
-void ProcessInit(void);
+__CENTURY_FUNC__ void ProcessInit(void);
 
 
 //
-// -- Allocate a new PID from the PID table
-//    -------------------------------------
-PID_t ProcessNewPID(void);
-
-
-//
-// -- Hold a process by PID
-//    ---------------------
-int ProcessHold(PID_t pid);
-
-
-//
-// -- Release a process by PID
-//    ------------------------
-int ProcessRelease(PID_t pid);
-
-
-//
-// -- Ready a process by PID
-//    ----------------------
-int ProcessReady(PID_t pid);
-
-
-//
-// -- Terminate a process
-//    -------------------
-int ProcessTerminate(PID_t pid);
-
-
-//
-// -- End a process normally
-//    ----------------------
-void ProcessEnd(void) __attribute__((noreturn));
-
-
-//
-// -- Put the process on the wait queue and set its status
-//    ----------------------------------------------------
-int ProcessRelease(ProcStatus_t newStat);
-
-
-//
-// -- Reschedule a process to the next one on the scheduler
-//    -----------------------------------------------------
-void ProcessReschedule(void);
-
-
-//
-// -- Put the process on the wait queue and set its status
-//    ----------------------------------------------------
-int ProcessWait(ProcStatus_t newStat);
-
-
-//
-// -- Switch to a new Process_t
-//    -------------------------
-extern "C" void ProcessSwitch(Process_t *current, Process_t *target);
-
-
-//
-// -- A function to get the Process structure from the PID
-//    ----------------------------------------------------
-inline Process_t *ProcessGetStruct(PID_t pid) { return (pid>=MAX_NUM_PID?NULL:procs[pid]); }
-
-
-//
-// -- Deallocate a PID from the PID table
-//    -----------------------------------
-inline void ProcessFreePID(PID_t pid) { if (pid < MAX_NUM_PID) procs[pid] = 0; }
-
-
-//
-// -- We need an additional include
+// -- New task initialization tasks
 //    -----------------------------
-#include "spinlock.h"
-#include <errno.h>
+__CENTURY_FUNC__ void ProcessStart(void);
 
 
 //
-// -- A spinlock needed for updating the procs table
-//    ----------------------------------------------
-extern Spinlock_t pidTableLock;
+// -- Create a new process
+//    --------------------
+__CENTURY_FUNC__ Process_t *ProcessCreate(void (*startingAddr)(void));
 
 
 //
-// -- These are some standard process PIDs
-//    ------------------------------------
-enum {
-    PID_IDLE = 0,
-    PID_BUTLER = 1,
-    PID_PMM = 2,
-};
+// -- Switch to a new process
+//    -----------------------
+__CENTURY_FUNC__ void ProcessSwitch(Process_t *proc);
 
 
 //
-// -- Standard sanity checks for PIDs
-//    -------------------------------
-#define SANITY_CHECK_PID(pid,proc)        do {                                          \
-                                            if (pid > MAX_NUM_PID) {                    \
-                                                return -EUNDEF;                         \
-                                            }                                           \
-                                                                                        \
-                                            proc = procs[pid];                          \
-                                                                                        \
-                                            if(!proc) {                                 \
-                                                return -EUNDEF;                         \
-                                            }                                           \
-                                        } while (0)
+// -- Create a new stack for a new process, and populate its contents
+//    ---------------------------------------------------------------
+__CENTURY_FUNC__ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
 
 
 #endif

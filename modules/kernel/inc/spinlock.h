@@ -62,7 +62,7 @@ extern "C" void SpinlockClear(Spinlock_t *lock);
 //    ---------------------------------------------------------------------------------------------
 static inline void SpinlockLock(Spinlock_t *lock) {
     while (SpinlockAtomicLock(lock, 0, 1) != 0) {  }
-    lock->lockHolder = currentPID;
+//    lock->lockHolder = currentPID;
 }
 
 
@@ -88,6 +88,18 @@ static inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->locked; }
 // -- This is the spinlock for the temporary page for frame population ahead of putting it to a process
 //    -------------------------------------------------------------------------------------------------
 extern Spinlock_t lockTempPage;
+
+
+//
+// -- This is the lock that controls access to the address space for initializing the table
+//    -------------------------------------------------------------------------------------
+extern Spinlock_t mmuTableInitLock;
+
+
+//
+// -- This is the lock that controls access to the address space for initializing the table
+//    -------------------------------------------------------------------------------------
+extern Spinlock_t mmuStackInitLock;
 
 
 #endif
