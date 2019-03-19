@@ -53,6 +53,12 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     rv->virtAddrSpace = mmuLvl1Table;
 
 
+    //
+    // -- Put this process on the queue to execute
+    //    ----------------------------------------
+    Enqueue(&roundRobin, &rv->stsQueue);
+
+
     return rv;
 }
 

@@ -48,4 +48,8 @@ void __krntext ProcessInit(void)
     currentProcess->status = PROC_RUN;
     currentProcess->quantumLeft = PTY_OS;
     ListInit(&currentProcess->stsQueue);
+
+    ListInit(&roundRobin.list);
+
+    Enqueue(&roundRobin, &currentProcess->stsQueue);
 }

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessVars.cc -- Global variables for process management
+// ProcessSchedule.cc -- Select the next process to schedule and switch to it
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,27 +10,25 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-14  Initial   0.1.0   ADCL  Initial version
+//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#include "types.h"
+#include "lists.h"
 #include "process.h"
 
 
 //
-// -- This is the current running process
-//    -----------------------------------
-__krndata Process_t *currentProcess = NULL;
+// -- pick the next process to execute and execute it
+//    -----------------------------------------------
+void __krntext ProcessSchedule(void)
+{
+    Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
+    ListRemoveInit(&next->stsQueue);
+    Enqueue(&roundRobin, &next->stsQueue);
 
+    if (next != currentProcess) ProcessSwitch(next);
+}
 
-//
-// -- This is the next PID that will be allocated
-//    -------------------------------------------
-__krndata PID_t nextPID = 0;
-
-
-//
-// -- This is the round robin queue of processes to execute
-//    -----------------------------------------------------
-__krndata QueueHead_t roundRobin = {0};

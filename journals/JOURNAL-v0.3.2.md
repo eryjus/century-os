@@ -122,3 +122,29 @@ x86-pc is working now.  I'm trying to get arm to work.
 ### 2019-Mar-18
 
 OK, I have this now!  The problem is that I am treating the arm architecture as if it is the x86 architecture.  In reality, the return address is not placed on the stack for arm.  If the function wants to preserve this return address, it is responsible for placing the register on the stack and preserving it itself.  So, for arm, to duplicate the call, I will need to simulate this call by populating `lr` with the actual starting address.
+
+After building the stack in a way I can restore things in the proper order, I am finally successful!
+
+Now, while I am not done with step 1, it is time to commit this code.
+
+---
+
+There are 3 things I left outstanding:
+1. The stack really needs to be relocated to user space.  I am not yet in user space scheduling, so I will leave this for later.
+1. There needs to be a stack for kernel calls.  Again, I am not yet in user space, so I will leave this for later.
+1. I should have a top level paging table for each process.  Currently, I am sharing the kernel tables.  As I am not yet back un user space, I will save this for later.
+
+So, this then moves me along to Step 2 in the tutorial.  Step 2 is to implement a trivial round-robin scheduler.  This is still a cooperative multi-tasker.
+
+If I recall the tutorial correctly, a good majority of this code is removed in later steps.  I'm OK with that.
+
+---
+
+### 2019-Mar-19
+
+I was able to get the Round Robin scheduler working yesterday at the end of the day.  This was with 2 processes.  I want to test with 3 or more processes today.  A simple test that worked well.
+
+I am going to commit with step 2.
+
+---
+

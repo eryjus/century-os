@@ -55,13 +55,59 @@ void PmmStart(Module_t *);
 
 Process_t *A;
 Process_t *B;
+Process_t *C;
+Process_t *D;
+Process_t *E;
+Process_t *F;
+Process_t *G;
+
 
 
 void StartB(void)
 {
     while (1) {
         kprintf("B");
-        ProcessSwitch(A);
+        ProcessSchedule();
+    }
+}
+
+void StartC(void)
+{
+    while (1) {
+        kprintf("C");
+        ProcessSchedule();
+    }
+}
+
+void StartD(void)
+{
+    while (1) {
+        kprintf("D");
+        ProcessSchedule();
+    }
+}
+
+void StartE(void)
+{
+    while (1) {
+        kprintf("E");
+        ProcessSchedule();
+    }
+}
+
+void StartF(void)
+{
+    while (1) {
+        kprintf("F");
+        ProcessSchedule();
+    }
+}
+
+void StartG(void)
+{
+    while (1) {
+        kprintf("G");
+        ProcessSchedule();
     }
 }
 
@@ -136,11 +182,16 @@ void kInit(void)
 
     A = currentProcess;
     B = ProcessCreate(StartB);
+    C = ProcessCreate(StartC);
+    D = ProcessCreate(StartD);
+    E = ProcessCreate(StartE);
+    F = ProcessCreate(StartF);
+    G = ProcessCreate(StartG);
 
 
     while (1) {
         kprintf("A");
-        ProcessSwitch(B);
+        ProcessSchedule();
     }
 
 

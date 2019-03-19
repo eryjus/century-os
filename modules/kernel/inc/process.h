@@ -137,6 +137,12 @@ extern PID_t nextPID;
 
 
 //
+// -- This is the round robin queue of processes
+//    ------------------------------------------
+extern QueueHead_t roundRobin;
+
+
+//
 // -- Initialize the process structures
 //    ---------------------------------
 __CENTURY_FUNC__ void ProcessInit(void);
@@ -164,6 +170,12 @@ __CENTURY_FUNC__ void ProcessSwitch(Process_t *proc);
 // -- Create a new stack for a new process, and populate its contents
 //    ---------------------------------------------------------------
 __CENTURY_FUNC__ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
+
+
+//
+// -- Perform a scheduling exercise to determine the next process to run
+//    ------------------------------------------------------------------
+__CENTURY_FUNC__ void ProcessSchedule(void);
 
 
 #endif
