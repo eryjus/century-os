@@ -29,5 +29,7 @@ __krndata TimerDevice_t timerControl = {
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
     .TimerEoi = _TimerEoi,
+    .TimerPlatformTick = _TimerPlatformTick,
+    .TimerCurrentCount = _TimerCurrentCount,
 };
 

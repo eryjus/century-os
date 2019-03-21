@@ -30,9 +30,16 @@ typedef archsize_t TimerBase_t;
 
 
 //
+// -- Read the low level timer value
+//    ------------------------------
+struct TimerDevice_t;
+extern "C" uint64_t SysTimerCount(struct TimerDevice_t *);
+
+
+//
 // -- This is the base location where we will find the pit Timer
 //    ----------------------------------------------------------
-#define TIMER           (MMIO_VADDR + 0x01000000)
+#define TIMER           (MMIO_VADDR + 0x00003000)
 
 
 //
@@ -54,6 +61,7 @@ typedef archsize_t TimerBase_t;
 #define CNTFRQ      "p15, 0, %0, c14, c0, 0"
 #define CNTP_CTL    "p15, 0, %0, c14, c2, 1"
 #define CNTP_TVAL   "p15, 0, %0, c14, c2, 0"
+#define CNTPCT      "p15, 0, %0, %1, c14"
 
 
 //
@@ -64,6 +72,7 @@ typedef archsize_t TimerBase_t;
 #define WRITE_CNTP_CTL(val)     MCR(CNTP_CTL,val)
 #define READ_CNTP_TVAL()        MRC(CNTP_TVAL)
 #define WRITE_CNTP_TVAL(val)    MCR(CNTP_TVAL,val)
+#define READ_CNTPCT()           MRRC(CNTPCT)
 
 
 

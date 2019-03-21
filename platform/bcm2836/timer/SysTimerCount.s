@@ -25,16 +25,16 @@
 @@
 @@ -- Some constants -- duplicated from arch-hw.h
 @@    -------------------------------------------
-.equ		HW_BASE,(0x3f000000)
-.equ		ST_BASE,(HW_BASE+0x3000)    @@ System Timer base address
-.equ		ST_CLO,(ST_BASE+4)        	@@ Counter Lower 32 bits
+.equ		BASE,0                      @@ The offset into the TimerDriver_t structure for the base
+.equ		ST_CLO,4                	@@ Counter Lower 32 bits
 
 
 @@
 @@ -- read the system time running count
 @@    ----------------------------------
 SysTimerCount:
-	ldr		r0,=ST_CLO                  @@ load the base address of the system timer
+	ldr		r0,[r0,#BASE]               @@ load the base address of the system timer
+    add     r0,#ST_CLO
 	ldrd	r0,r1,[r0]                  @@ Get the 64-bit timer "count" into r1:r0
 	mov		pc,lr						@@ return
 

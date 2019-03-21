@@ -37,6 +37,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     rv->priority = PTY_OS;
     rv->status = PROC_INIT;
     rv->quantumLeft = PTY_OS;
+    rv->timeUsed = 0;
     ListInit(&rv->stsQueue);
 
 

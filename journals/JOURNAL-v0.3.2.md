@@ -148,3 +148,18 @@ I am going to commit with step 2.
 
 ---
 
+I move on to Step 3 for accounting for CPU time.  This is where the 2 architectures depart from each other.  For rpi2b, I have a 64-bit counter that I can measure for each task change.  For x86, however, there is a only a 16-bit counter.  This is not nearly large enough to support my needs.  So, I will be constructing a counter that increments on each timer tick.  This will allow me to measure the number of ticks since boot.  This will work until I get the APIC implemented and have finer control over the timer for multiple cores.
+
+No matter what, I will have to update the `TimerDevice_t` structure so that I have all the support I need.
+
+---
+
+### 2019-Mar-21
+
+I was able to get some rudimentary time accounting working.  It is not perfect and I really need to switch out the PIT for the APIC.  There are also differences in emulation speed versus the real rpi2b hardware.  At some point down the road I will be working on real hardware for both and I will work to clean that up then.
+
+In the meantime, I start my day with a commit.
+
+---
+
+

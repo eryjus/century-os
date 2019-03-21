@@ -119,6 +119,7 @@ typedef struct Process_t {
     ProcPolicy_t policy;                // This is the scheduling policy
     ProcPriority_t priority;            // This is the process priority
     ProcStatus_t status;                // This is the process status
+    uint64_t timeUsed;                  // This is the relative amount of CPU used
     int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
 } Process_t;
@@ -176,6 +177,12 @@ __CENTURY_FUNC__ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(v
 // -- Perform a scheduling exercise to determine the next process to run
 //    ------------------------------------------------------------------
 __CENTURY_FUNC__ void ProcessSchedule(void);
+
+
+//
+// -- Update the time used for a process
+//    ----------------------------------
+__CENTURY_FUNC__ void ProcessUpdateTimeUsed(void);
 
 
 #endif

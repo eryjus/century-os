@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessSchedule.cc -- Select the next process to schedule and switch to it
+//  TimerCurrentCount.cc -- Get the current count from the timer
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,17 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
+//  2019-Mar-19  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "lists.h"
-#include "process.h"
+#include "timer.h"
 
 
-//
-// -- pick the next process to execute and execute it
-//    -----------------------------------------------
-void __krntext ProcessSchedule(void)
+uint64_t _TimerCurrentCount(TimerDevice_t *dev)
 {
-    ProcessUpdateTimeUsed();
-    Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-    ListRemoveInit(&next->stsQueue);
-    Enqueue(&roundRobin, &next->stsQueue);
-
-    if (next != currentProcess) ProcessSwitch(next);
+    return READ_CNTPCT();
 }
 

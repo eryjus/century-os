@@ -111,12 +111,6 @@
 
 
 //
-// -- Read the low level timer value
-//    ------------------------------
-extern "C" uint64_t SysTimerCount(void);
-
-
-//
 // -- Wait the specified number of MICRO-seconds (not milli-)
 //    -------------------------------------------------------
 void BusyWait(uint32_t microSecs);
@@ -144,6 +138,16 @@ inline void HaltCpu(void) { __asm("wfi"); }
 #define MCR(cp15Spec,val) ({                            \
     __asm__ volatile("mcr " cp15Spec :: "r" (val));     \
     __asm__ volatile("isb");                            \
+})
+
+
+//
+// -- a macro to read a 64-bit control register
+//    -----------------------------------------
+#define MRRC(cp15Spec) ({                                                   \
+    uint32_t _lval, _hval;                                                  \
+    __asm__ volatile("mrrc " cp15Spec : "=r" (_lval), "=r" (_hval));        \
+    (((uint64_t)(_hval))<<32)|_lval;                                        \
 })
 
 

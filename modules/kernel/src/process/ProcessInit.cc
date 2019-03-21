@@ -20,6 +20,7 @@
 
 #include "cpu.h"
 #include "heap.h"
+#include "timer.h"
 #include "process.h"
 
 
@@ -35,6 +36,8 @@ extern archsize_t mmuLvl1Table;
 //    ---------------------------------
 void __krntext ProcessInit(void)
 {
+    extern uint64_t lastTimer;
+
     kprintf("ProcessInit(): mmuLvl1Table = %p\n", mmuLvl1Table);
     currentProcess = NEW(Process_t);
 
@@ -47,9 +50,12 @@ void __krntext ProcessInit(void)
     currentProcess->priority = PTY_OS;
     currentProcess->status = PROC_RUN;
     currentProcess->quantumLeft = PTY_OS;
+    currentProcess->timeUsed = 0;
     ListInit(&currentProcess->stsQueue);
 
     ListInit(&roundRobin.list);
 
     Enqueue(&roundRobin, &currentProcess->stsQueue);
+
+    lastTimer = TimerCurrentCount(&timerControl);
 }

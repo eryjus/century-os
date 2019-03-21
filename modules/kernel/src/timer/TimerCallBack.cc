@@ -56,5 +56,6 @@
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
-    timerControl.TimerEoi(&timerControl);
+    if (timerControl.TimerPlatformTick) TimerPlatformTick(&timerControl);
+    TimerEoi(&timerControl);
 }

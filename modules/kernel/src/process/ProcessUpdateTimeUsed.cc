@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessSchedule.cc -- Select the next process to schedule and switch to it
+// ProcessUpdateTimeUsed.cc -- Update the time used for the current process before changing
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -17,19 +17,25 @@
 
 #include "types.h"
 #include "lists.h"
+#include "timer.h"
 #include "process.h"
 
 
 //
-// -- pick the next process to execute and execute it
-//    -----------------------------------------------
-void __krntext ProcessSchedule(void)
-{
-    ProcessUpdateTimeUsed();
-    Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-    ListRemoveInit(&next->stsQueue);
-    Enqueue(&roundRobin, &next->stsQueue);
+// -- This is the last timer value that was updated
+//    ---------------------------------------------
+__krndata uint64_t lastTimer = 0;
 
-    if (next != currentProcess) ProcessSwitch(next);
+
+//
+// -- Get the current timer value and update the time used of the current process
+//    ---------------------------------------------------------------------------
+void __krntext ProcessUpdateTimeUsed(void)
+{
+    uint64_t now = TimerCurrentCount(&timerControl);
+    uint64_t elapsed = now - lastTimer;
+
+    lastTimer = now;
+    currentProcess->timeUsed += elapsed;
 }
 

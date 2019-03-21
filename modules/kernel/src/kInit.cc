@@ -189,7 +189,22 @@ void kInit(void)
     G = ProcessCreate(StartG);
 
 
+    uint64_t n = 0;
+
     while (1) {
+        n ++;
+
+        if (n % 32 == 0) {
+            kprintf("\n");
+            kprintf("A timer = %p : %p\n", (uint32_t)(A->timeUsed >> 32), (uint32_t)A->timeUsed);
+            kprintf("B timer = %p : %p\n", (uint32_t)(B->timeUsed >> 32), (uint32_t)B->timeUsed);
+            kprintf("C timer = %p : %p\n", (uint32_t)(C->timeUsed >> 32), (uint32_t)C->timeUsed);
+            kprintf("D timer = %p : %p\n", (uint32_t)(D->timeUsed >> 32), (uint32_t)D->timeUsed);
+            kprintf("E timer = %p : %p\n", (uint32_t)(E->timeUsed >> 32), (uint32_t)E->timeUsed);
+            kprintf("F timer = %p : %p\n", (uint32_t)(F->timeUsed >> 32), (uint32_t)F->timeUsed);
+            kprintf("G timer = %p : %p\n", (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
+        }
+
         kprintf("A");
         ProcessSchedule();
     }

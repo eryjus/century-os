@@ -48,6 +48,12 @@
 
 
 //
+// -- Read from a 64-bit Memory Mapped I/O Register
+//    ---------------------------------------------
+#define MmioRead64(regLocation) (*(volatile uint64_t *)(regLocation))
+
+
+//
 // -- Include any platform-dependent I/O functions that might be required
 //    -------------------------------------------------------------------
 #if __has_include("platform-io.h")

@@ -46,6 +46,8 @@ typedef struct TimerDevice_t {
     void (*TimerCallBack)(isrRegs_t *reg);
     void (*TimerInit)(struct TimerDevice_t *, uint32_t);
     void (*TimerEoi)(struct TimerDevice_t *);
+    void (*TimerPlatformTick)(struct TimerDevice_t *);
+    uint64_t (*TimerCurrentCount)(struct TimerDevice_t *);
 } TimerDevice_t;
 
 
@@ -62,14 +64,18 @@ extern TimerDevice_t timerControl;
 //    ------------------------------------------------------------------------------------------------------
 inline void TimerInit(TimerDevice_t *dev, uint32_t freq) { dev->TimerInit(dev, freq); }
 inline void TimerEoi(TimerDevice_t *dev) { dev->TimerEoi(dev); }
+inline void TimerPlatformTick(TimerDevice_t *dev) { dev->TimerPlatformTick(dev); }
+inline uint64_t TimerCurrentCount(TimerDevice_t *dev) { return dev->TimerCurrentCount(dev); }
 
 
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-extern void TimerCallBack(isrRegs_t *reg);
-extern void _TimerInit(TimerDevice_t *dev, uint32_t freq);
-extern void _TimerEoi(TimerDevice_t *dev);
+__CENTURY_FUNC__ void TimerCallBack(isrRegs_t *reg);
+__CENTURY_FUNC__ void _TimerInit(TimerDevice_t *dev, uint32_t freq);
+__CENTURY_FUNC__ void _TimerEoi(TimerDevice_t *dev);
+__CENTURY_FUNC__ void _TimerPlatformTick(TimerDevice_t *dev);
+__CENTURY_FUNC__ uint64_t _TimerCurrentCount(TimerDevice_t *dev);
 
 
 #endif

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessSchedule.cc -- Select the next process to schedule and switch to it
+//  TimerPlatformTick.cc -- This is the update that needs to take place with every tick of the timer.
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,21 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
+//  2019-Mar-19  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "lists.h"
-#include "process.h"
+#include "timer.h"
 
 
 //
-// -- pick the next process to execute and execute it
-//    -----------------------------------------------
-void __krntext ProcessSchedule(void)
+// -- Do nothing on a timer tick
+//    --------------------------
+void __krntext _TimerPlatformTick(UNUSED(TimerDevice_t *dev))
 {
-    ProcessUpdateTimeUsed();
-    Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-    ListRemoveInit(&next->stsQueue);
-    Enqueue(&roundRobin, &next->stsQueue);
+    extern uint64_t ticksSinceBoot;
 
-    if (next != currentProcess) ProcessSwitch(next);
+    ticksSinceBoot ++;
 }
-
