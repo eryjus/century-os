@@ -34,3 +34,9 @@ __krndata PID_t nextPID = 0;
 // -- This is the round robin queue of processes to execute
 //    -----------------------------------------------------
 __krndata QueueHead_t roundRobin = {0};
+
+
+//
+// -- This is the number of times we have entered a critical section
+//    --------------------------------------------------------------
+__krndata int processLockCount = 0;

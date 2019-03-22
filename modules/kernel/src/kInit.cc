@@ -67,7 +67,9 @@ void StartB(void)
 {
     while (1) {
         kprintf("B");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 }
 
@@ -75,7 +77,9 @@ void StartC(void)
 {
     while (1) {
         kprintf("C");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 }
 
@@ -83,7 +87,9 @@ void StartD(void)
 {
     while (1) {
         kprintf("D");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 }
 
@@ -91,7 +97,9 @@ void StartE(void)
 {
     while (1) {
         kprintf("E");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 }
 
@@ -99,7 +107,9 @@ void StartF(void)
 {
     while (1) {
         kprintf("F");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 }
 
@@ -107,7 +117,9 @@ void StartG(void)
 {
     while (1) {
         kprintf("G");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 }
 
@@ -206,7 +218,9 @@ void kInit(void)
         }
 
         kprintf("A");
+        ProcessLockScheduler();
         ProcessSchedule();
+        ProcessUnlockScheduler();
     }
 
 

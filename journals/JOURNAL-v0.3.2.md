@@ -171,3 +171,13 @@ So, step 4 in the tutorial is a bit of a cleanup of the round robin scheduler.  
 The new round robin scheduler is working well, so I will commit.
 
 ---
+
+Step 5 is to add some basic locking to the scheduler.  While I already have a spinlock structure, I am going to duplicate the algorithms from the tutorial for now.  I know that the tutorial will replace this later and at that point I can make it more robust for me.
+
+---
+
+This was a simple change and is ready to commit.
+
+---
+
+

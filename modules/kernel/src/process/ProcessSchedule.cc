@@ -21,8 +21,8 @@
 
 
 //
-// -- pick the next process to execute and execute it
-//    -----------------------------------------------
+// -- pick the next process to execute and execute it; ProcessLockScheduler() must be called before calling
+//    -----------------------------------------------------------------------------------------------------
 void __krntext ProcessSchedule(void)
 {
     ProcessUpdateTimeUsed();

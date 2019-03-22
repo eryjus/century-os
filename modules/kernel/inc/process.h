@@ -68,6 +68,7 @@
 #include "types.h"
 #include "printf.h"
 #include "lists.h"
+#include "cpu.h"
 #include "spinlock.h"
 
 
@@ -144,6 +145,12 @@ extern QueueHead_t roundRobin;
 
 
 //
+// -- This is the number of times we have entered critical sections
+//    -------------------------------------------------------------
+extern int processLockCount;
+
+
+//
 // -- Initialize the process structures
 //    ---------------------------------
 __CENTURY_FUNC__ void ProcessInit(void);
@@ -183,6 +190,18 @@ __CENTURY_FUNC__ void ProcessSchedule(void);
 // -- Update the time used for a process
 //    ----------------------------------
 __CENTURY_FUNC__ void ProcessUpdateTimeUsed(void);
+
+
+//
+// -- Lock the scheduler for a critical section
+//    -----------------------------------------
+__CENTURY_FUNC__ inline void ProcessLockScheduler(void) { DisableInterrupts(); processLockCount ++; }
+
+
+//
+// -- Unlock the scheduler after a critical section
+//    ---------------------------------------------
+__CENTURY_FUNC__ inline void ProcessUnlockScheduler(void) { if ((-- processLockCount) == 0) EnableInterrupts(); }
 
 
 #endif
