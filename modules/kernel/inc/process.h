@@ -75,9 +75,9 @@
 // -- This list is are the statuses available for a running process, indicating what queue it will be on.
 //    ---------------------------------------------------------------------------------------------------
 typedef enum { PROC_INIT,               // This is being created and is not on a queue yet
-        PROC_RUN,                       // This is currently running
-        PROC_READY,                     // This is ready to run
-        PROC_END,                       // This has ended normally and has been added to the reaper queue
+        PROC_RUNNING,                   // This is currently running (See ProcessSwitch!)
+        PROC_READY,                     // This is ready to run (See ProcessSwitch!)
+        PROC_TERM,                      // This has ended
         PROC_MTXW,                      // This is waiting for a Mutex lock and is on the waiting queue
         PROC_SEMW,                      // This is waiting on a Semaphore and is on the waiting queue
         PROC_DLYW,                      // This is waiting for a timed event and is on the waiting queue
@@ -113,12 +113,12 @@ typedef enum { PTY_IDLE = 1,            // This is for the butler process when t
 typedef struct Process_t {
     archsize_t topOfStack;              // This is the process current esp value (when not executing)
     archsize_t virtAddrSpace;           // This is the process top level page table
+    ProcStatus_t status;                // This is the process status
     PID_t pid;                          // This is the PID of this process
     archsize_t ssAddr;                  // This is the address of the process stack
     char *command;                      // The identifying command, includes the terminating null
     ProcPolicy_t policy;                // This is the scheduling policy
     ProcPriority_t priority;            // This is the process priority
-    ProcStatus_t status;                // This is the process status
     uint64_t timeUsed;                  // This is the relative amount of CPU used
     int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue

@@ -37,6 +37,15 @@
 @@    ---------------------------------------------------------
     .equ        PROC_TOP_OF_STACK,0
     .equ        PROC_VIRT_ADDR_SPACE,4
+    .equ        PROC_STATUS,8
+
+
+@@
+@@ -- Some additional constants for use when managing process status
+@@    --------------------------------------------------------------
+    .equ        PROC_STS_RUNNING,1
+    .equ        PROC_STS_READY,2
+
 
 @@
 @@ -- This is the beginning of the code segment for this file
@@ -59,6 +68,12 @@ ProcessSwitch:
 @@    ----------------------------------------------------------------------------
     ldr     r1,=currentProcess              @@ get the address of the current process pointer
     ldr     r2,[r1]                         @@ get the address of the structure
+
+    ldr     r4,[r2,#PROC_STATUS]            @@ get the status
+    cmp     r4,#PROC_STS_RUNNING            @@ is the status running
+    addeq   r4,#1                           @@ this will change the status to PROC_STS_READY
+    streq   r4,[r2,#PROC_STATUS]            @@ store the result
+
     str     sp,[r2,#PROC_TOP_OF_STACK]      @@ save the current stack pointer
     mrc     p15,0,r3,c2,c0,0                @@ get the address of the current address space
 
@@ -68,6 +83,8 @@ ProcessSwitch:
 @@    -----------------------------------------------------------------------------
     str     r0,[r1]                         @@ set the new current process
     ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack
+    mov     r4,#PROC_STS_RUNNING            @@ load the status into a register
+    str     r4,[r0,#PROC_STATUS]            @@ ... and set the status
     ldr     r2,[r0,#PROC_VIRT_ADDR_SPACE]   @@ get the address space of the new task
 
     cmp     r2,r3                           @@ are they the same virtual address space?

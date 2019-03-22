@@ -26,10 +26,12 @@
 void __krntext ProcessSchedule(void)
 {
     ProcessUpdateTimeUsed();
-    Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-    ListRemoveInit(&next->stsQueue);
-    Enqueue(&roundRobin, &next->stsQueue);
 
-    if (next != currentProcess) ProcessSwitch(next);
+    if (IsListEmpty(&roundRobin) == false) {
+        Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
+        ListRemoveInit(&next->stsQueue);
+        Enqueue(&roundRobin, &currentProcess->stsQueue);
+        ProcessSwitch(next);
+    }
 }
 

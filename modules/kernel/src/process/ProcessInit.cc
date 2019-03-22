@@ -48,14 +48,12 @@ void __krntext ProcessInit(void)
     currentProcess->command = NULL;
     currentProcess->policy = POLICY_0;
     currentProcess->priority = PTY_OS;
-    currentProcess->status = PROC_RUN;
+    currentProcess->status = PROC_RUNNING;
     currentProcess->quantumLeft = PTY_OS;
     currentProcess->timeUsed = 0;
     ListInit(&currentProcess->stsQueue);
 
     ListInit(&roundRobin.list);
-
-    Enqueue(&roundRobin, &currentProcess->stsQueue);
 
     lastTimer = TimerCurrentCount(&timerControl);
 }

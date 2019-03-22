@@ -54,6 +54,14 @@
 ;;    ---------------------------------------------------------
 PROC_TOP_OF_STACK       EQU     0
 PROC_VIRT_ADDR_SPACE    EQU     4
+PROC_STATUS             EQU     8
+
+
+;;
+;; -- Some additional constants for use when managing process status
+;;    --------------------------------------------------------------
+PROC_STS_RUNNING        EQU     1
+PROC_STS_READY          EQU     2
 
 
 ;;
@@ -76,18 +84,25 @@ ProcessSwitch:
 ;;
 ;; -- Get the current task structure
 ;;    ------------------------------
-        mov     edi,[currentProcess]        ;; get the address of the current process
-        mov     [edi+PROC_TOP_OF_STACK],esp ;; save the top of the current stack
+        mov     esi,[currentProcess]        ;; get the address of the current process
+
+        cmp     dword [esi+PROC_STATUS],PROC_STS_RUNNING      ;; is this the current running process
+        jne     .saveStack
+        mov     dword [esi+PROC_STATUS],PROC_STS_READY    ;; make the status read to run
+
+.saveStack:
+        mov     [esi+PROC_TOP_OF_STACK],esp ;; save the top of the current stack
 
 
 ;;
 ;; -- next, we get the next task and prepare to switch to that
 ;;    --------------------------------------------------------
-        mov     esi,[esp+((4+1)*4)]         ;; get the new task's structure
-        mov     [currentProcess],esi        ;; this is now the currnet task
+        mov     edi,[esp+((4+1)*4)]         ;; get the new task's structure
+        mov     [currentProcess],edi        ;; this is now the currnet task
 
-        mov     esp,[esi+PROC_TOP_OF_STACK] ;; get the stop of the next process stack
-        mov     eax,[esi+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
+        mov     esp,[edi+PROC_TOP_OF_STACK] ;; get the stop of the next process stack
+        mov     dword [edi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running
+        mov     eax,[edi+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
         mov     ecx,cr3                     ;; get the current paging tables
 
         cmp     eax,ecx                     ;; are they the same?

@@ -162,4 +162,12 @@ In the meantime, I start my day with a commit.
 
 ---
 
+So, step 4 in the tutorial is a bit of a cleanup of the round robin scheduler.  This change is done to manage the condition of the `Process_t` status.  For me, this will mean a change in the `ProcStatus_t` enumeration.  This change also has be pulling the status field up in the `Process_t` structure so that it can be more easily calculated from the assembly code.
 
+---
+
+### 2019-Mar-22
+
+The new round robin scheduler is working well, so I will commit.
+
+---

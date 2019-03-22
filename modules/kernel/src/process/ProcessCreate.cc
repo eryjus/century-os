@@ -57,6 +57,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
+    rv->status = PROC_READY;
     Enqueue(&roundRobin, &rv->stsQueue);
 
 
