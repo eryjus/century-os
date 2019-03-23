@@ -180,4 +180,11 @@ This was a simple change and is ready to commit.
 
 ---
 
+Step 6 in the tutorial is to create the ability to block and unblock tasks.  This should also be relatively simple to build.
+
+And, after a quick cleanup of a condition check in `ProcessSchedule()`, everything still works.  Committing again.
+
+---
+
+
 

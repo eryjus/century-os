@@ -77,9 +77,7 @@ void StartC(void)
 {
     while (1) {
         kprintf("C");
-        ProcessLockScheduler();
-        ProcessSchedule();
-        ProcessUnlockScheduler();
+        ProcessBlock(PROC_DLYW);
     }
 }
 
@@ -215,6 +213,8 @@ void kInit(void)
             kprintf("E timer = %p : %p\n", (uint32_t)(E->timeUsed >> 32), (uint32_t)E->timeUsed);
             kprintf("F timer = %p : %p\n", (uint32_t)(F->timeUsed >> 32), (uint32_t)F->timeUsed);
             kprintf("G timer = %p : %p\n", (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
+
+            ProcessUnblock(C);
         }
 
         kprintf("A");

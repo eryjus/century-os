@@ -1,16 +1,19 @@
 //===================================================================================================================
 //
-// ProcessSchedule.cc -- Select the next process to schedule and switch to it
+// ProcessBlock.cc -- Block a process
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Note that this function will leave the current process not on any queue.  It is up to the calling procedure to
+//  manage the queue that this Process_t structure is left on.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
+//  2019-Mar-22  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -21,17 +24,13 @@
 
 
 //
-// -- pick the next process to execute and execute it; ProcessLockScheduler() must be called before calling
-//    -----------------------------------------------------------------------------------------------------
-void __krntext ProcessSchedule(void)
+// -- Block the current process
+//    -------------------------
+void __krntext ProcessBlock(ProcStatus_t reason)
 {
-    ProcessUpdateTimeUsed();
-
-    if (IsListEmpty(&roundRobin) == false) {
-        Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-        ListRemoveInit(&next->stsQueue);
-        if (currentProcess->status == PROC_RUNNING) Enqueue(&roundRobin, &currentProcess->stsQueue);
-        ProcessSwitch(next);
-    }
+    ProcessLockScheduler();
+    currentProcess->status = reason;
+    ProcessSchedule();
+    ProcessUnlockScheduler();
 }
 

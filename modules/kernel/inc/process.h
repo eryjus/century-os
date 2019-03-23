@@ -187,6 +187,18 @@ __CENTURY_FUNC__ void ProcessSchedule(void);
 
 
 //
+// -- Block a process
+//    ---------------
+__CENTURY_FUNC__ void ProcessBlock(ProcStatus_t reason);
+
+
+//
+// -- Unblock a process
+//    -----------------
+__CENTURY_FUNC__ void ProcessUnblock(Process_t *proc);
+
+
+//
 // -- Update the time used for a process
 //    ----------------------------------
 __CENTURY_FUNC__ void ProcessUpdateTimeUsed(void);
