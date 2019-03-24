@@ -42,6 +42,7 @@ typedef struct TimerDevice_t {
     TimerBase_t base;
     PicDevice_t *pic;
     archsize_t reloadValue;
+    float factor;
 
     void (*TimerCallBack)(isrRegs_t *reg);
     void (*TimerInit)(struct TimerDevice_t *, uint32_t);

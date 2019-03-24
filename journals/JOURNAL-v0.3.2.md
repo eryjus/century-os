@@ -186,5 +186,147 @@ And, after a quick cleanup of a condition check in `ProcessSchedule()`, everythi
 
 ---
 
+So, with Step 7, I am now forced to increase the accuracy of the timer counter.  This means I need to double check the calculations for the timer frequency.
+
+After a quick review, both architectures are calculating the frequency dynamically.  So, I am going to go with the concept that the emulator is not emulating the timing properly.  This means that I am programming the timer to fire every 1ms.  1 nano is 1000000ms.  Therefore, I need to update the timer properly to represent nanos.  This means revisiting step 3 to change everything to nanos.
+
+Now, is nanos too granular?  I think for my purposes it will be.  I think I will be able to get away with micros (or 1000000th of a second).  I am going to go that route.
+
+---
+
+So I have a problem with some of the math parts for arm.  I do not have the necessary library to do soft division and while the cross compiler is for hardware floating point arithmetic, it is still trying to use software floating point.  I will have to figure this out....
+
+---
+
+### 2019-Mar-23
+
+I raised my question to the group on `freenode#osdev`:
+
+```
+[10:19] <eryjus> I have finally gotten to a point where I need to do some division.  the x86 cross compiler handles this of course, but the armv7 cross is issuing an undefined reference to __eabi_uldivmod.  I have the cross configured (I thought anyway) for hard float support.  any suggestions?
+[10:19] <w1d3m0d3> isnt that a part of libgcc?
+[10:19] <geist> eryjus: depends on which kind of division you're doing
+[10:19] <w1d3m0d3> (don't quote me on that - i'm very rusty due to a lack of work)
+[10:20] <geist> what core are you compiling for?
+[10:20] <geist> not all of them have div instruction, so it may be defaulting to no div
+[10:20] <eryjus> uint32 / uint64 / uint32
+[10:20] <geist> no which arm core
+[10:20] <geist> oh i see you were answering my previous
+[10:21] <eryjus> the cpu is cortex-a7 for rpi2b
+[10:21] <geist> so do you specify any compile flags that call this out?
+[10:22] <eryjus> ahhh..  so udiv only has 32-bit division support
+[10:22] <eryjus> stand by on the compile flags
+[10:22] <eryjus> CFLAGS += -mlittle-endian CFLAGS += -mcpu=cortex-a7 CFLAGS += -mfpu=neon-vfpv4 CFLAGS += -mfloat-abi=hard
+[10:23] <geist> excellent. yes it's the 64bit div then
+[10:23] <geist> usually that results in it calling into libgcc
+[10:23] <geist> so now you have a much bigger problem, which is do you have a libgcc multilib that satisfies this
+[10:23] <geist> it's super annoying
+[10:23] <eryjus> and I think the answer will be probably not.
+[10:24] <geist> a) are you linking a libgcc.a?
+[10:24] <eryjus> no
+[10:24] <geist> that's probably your problem
+[10:24] <eryjus> attempted and failed -- but I did not pursue it well enough to properly give up on it
+[10:25] <geist> that's where it's defined. i'm looking at a disassembly of a libgcc.a and i can confirm its there
+[10:25] <geist> generally speaking if you're linking everything manually you can find the appropriate libgcc with something like
+[10:26] <geist> <path to your arm gcc> <CFLAGS you're using> --print-libgcc-file-name
+[10:26] <geist> it'll do the multilib search and give you the approprate libgcc that you can save and then add tothe link line
+[10:26] <geist> if that doesn't seem to work right, Dont Panic! it may be that you need to rebuild your toolchain with the appropriate hard float libgccs
+[10:28] <eryjus> ok, well my libgcc.a has the function...  I will work on getting it to link in properly.
+[10:28] <eryjus> thanks for the help
+[10:29] <geist> yep. keep in mind it still may have linkage problems. the trouble is to support all the varying amounts of ways to compile arm binaries there usually has to be multiple libgccs compiled
+[10:29] <geist> and depending on where you got your cross compiler, it may not have a specific libgcc that is hard float and whatnot
+[10:29] <geist> so may still require additional slething
+[10:29] <geist> also suggestion: dont do 64bit divs. as you can see it's going to call a software fallback routine
+[10:30] <geist> i've seen that easily spend hundreds of cycles
+[10:30] <geist> try to avoid 64bit divs and mods like the plague
+[10:34] <eryjus> geist, good advice.  thanks again
+[10:35] <geist> this is one of the other reasons i've been somewhat happier with 64bit arm since i started working with it. a lot of these old annoying toolchains and floating point and div and whatnot things go away
+[10:35] <geist> since they become standard on the new stuff
+[10:35] <eryjus> yeah, this will be called with every task switch -- I'm off to find a better way...
+[10:37] <geist> yah, if it's a time calculation those are hard. what i ended up doing in LK is building a fixed point math routine to convert ticks to time
+[10:37] <geist> the fixed point routine only uses multiplies but is based on the idea that you do all the complex calculation up front
+[10:37] <geist> https://github.com/littlekernel/lk/blob/master/lib/fixed_point/include/lib/fixed_point.h if you're interested
+[10:39] <geist> it looks pretty complicated, but all that code tends to flatten out to a handful of multiplies and there are no branches
+[10:39] <geist> arm cores can multiply like nobodies business
+[10:46] <eryjus> thx, I'll take a look
+```
+
+I was able to get the binary to link properly.  However, in execution, I have the following `undefined` abort:
+
+```
+Undefined Instruction:
+At address: 0xff800f80
+ R0: 0x80057120   R1: 0x8005822c   R2: 0x0000710c
+ R3: 0x90000040   R4: 0x00101a38   R5: 0x003fc000
+ R6: 0x8005c63c   R7: 0x80005d14   R8: 0x80005c88
+ R9: 0x800059b4  R10: 0x80057108  R11: 0x97a0abfe
+R12: 0x00007124   SP: 0x80000c60   LR_ret: 0x8000269c
+SPSR_ret: 0x600001d3     type: 0x1b
+
+Additional Data Points:
+User LR: 0xefefcdfe  User SP: 0xadffecf9
+Svc LR: 0xff800f90
+```
+
+The instruction before the return point is:
+
+```
+80002698:       f2c00010        vmov.i32        d16, #0 ; 0x00000000
+```
+
+The ARM-ARM states the following about this instruction:
+
+> Depending on settings in the CPACR, NSACR, HCPTR, and FPEXC registers, and the security state and mode in which the instruction is executed, an attempt to execute the instruction might be UNDEFINED, or trapped to Hyp mode. Summary of general controls of CP10 and CP11 functionality on page B1-1231 and Summary of access controls for Advanced SIMD functionality on page B1-1233 summarize these controls.
+
+I know for a fact, I am not yet doing anything with the registers CPACR, NASCR, HCPTR or FPEXC registers.  So, I will need to look there for solutions.
+
+---
+
+### 2019-Mar-24
+
+I found a table in the ARM-ARM that has the settings I need to enable the gloating point operations.  This is `Table B1-21` and this table illustrates that for all modes to be able to execute floating point instructions, the setting need to be:
+* CPACR.cp*n* = 0b11
+* NSACR.cp*n* = 1
+* HCPTR.TCP*n* = 0
+* FPEXC.EN = 1
+
+I need to make sure that that control registers cp10 and cp11 are accessible.
+
+So, the first task will be to program the `CPACR.cp10` and `CPACR.cp11` settings to be `0b11` so that they are available from PL0.
+
+Now, where to do this?  I need this all set up prior to the `TimerInit()` function call.  I believe that I should be able to take care of this during the `EarlyInit()` function.
+
+---
+
+So, the code that finally worked is:
+
+```C
+    //
+    // -- prepare the FPU for accepting commands
+    //    --------------------------------------
+    archsize_t cpacr = READ_CPACR();
+    kprintf("The initial value of CPACR is %p\n", cpacr);
+    cpacr |= (0b11<<20);
+    cpacr |= (0b11<<22);
+    kprintf("Writing CPACR back as %p\n", cpacr);
+    WRITE_CPACR(cpacr);
+
+    //
+    // -- and enable the fpu
+    //    ------------------
+    WRITE_FPEXC(1<<30);
+```
+
+NACR already had the bits set I needed, so there is no need to write those back; HCPTR is only accessible from PL2.
+
+---
+
+With that done, I can move on to the `sleep()` and related functions.  Well, I was able to implement `ProcessSleep()`, `ProcessMilliSleep()`, and `ProcessMicroSleep()`.  However, `ProcessMicroSleepUntil()` is not yet implemented and we are not ready to do this per the tutorial.
+
+So, I will commit after step 7.
+
+---
+
+
 
 

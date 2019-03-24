@@ -17,6 +17,7 @@
 
 #include "loader.h"
 #include "types.h"
+#include "printf.h"
 #include "serial.h"
 
 
@@ -29,4 +30,19 @@ void __ldrtext EarlyInit(void)
     SerialOpen(&loaderSerial);                   // initialize the serial port so we can output debug data
 
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
+
+    //
+    // -- prepare the FPU for accepting commands
+    //    --------------------------------------
+    archsize_t cpacr = READ_CPACR();
+    kprintf("The initial value of CPACR is %p\n", cpacr);
+    cpacr |= (0b11<<20);
+    cpacr |= (0b11<<22);
+    kprintf("Writing CPACR back as %p\n", cpacr);
+    WRITE_CPACR(cpacr);
+
+    //
+    // -- and enable the fpu
+    //    ------------------
+    WRITE_FPEXC(1<<30);
 }

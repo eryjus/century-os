@@ -133,11 +133,30 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- a macro to read a 32-bit floating point register
+//    ------------------------------------------------
+#define VMRS(vfpspec) ({                                    \
+    uint32_t _val;                                          \
+    __asm__ volatile("vmrs " "%0, " vfpSpec : "=r" (_val)); \
+    _val;                                                   \
+})
+
+
+//
 // -- a macro to write a 32-bit control register
 //    ------------------------------------------
 #define MCR(cp15Spec,val) ({                            \
     __asm__ volatile("mcr " cp15Spec :: "r" (val));     \
     __asm__ volatile("isb");                            \
+})
+
+
+//
+// -- a macro to write a 32-bit control register
+//    ------------------------------------------
+#define VMSR(vfpspec,val) ({                                \
+    __asm__ volatile("vmsr " vfpspec ", %0" :: "r" (val));  \
+    __asm__ volatile("isb");                                \
 })
 
 
@@ -165,6 +184,39 @@ inline void HaltCpu(void) { __asm("wfi"); }
 #define TTBR1               "p15, 0, %0, c2, c0, 1"
 #define READ_TTBR1()        MRC(TTBR1)
 #define WRITE_TTBR1(val)    MCR(TTBR1,val)
+
+
+//
+// -- Access to the CPACR control register
+//    ------------------------------------
+#define CPACR               "p15, 0, %0, c1, c0, 2"
+#define READ_CPACR()        MRC(CPACR)
+#define WRITE_CPACR(val)    MCR(CPACR,val)
+
+
+//
+// -- Access to the NSACR control register
+//    ------------------------------------
+#define NSACR               "p15, 0, %0, c1, c1, 2"
+#define READ_NSACR()        MRC(NSACR)
+#define WRITE_NSACR(val)    MCR(NSACR,val)
+
+
+//
+// -- Access to the HCPTR control register
+//    ------------------------------------
+#define HCPTR               "p15, 4, %0, c1, c1, 2"
+#define READ_HCPTR()        MRC(HCPTR)
+#define WRITE_HCPTR(val)    MCR(HCPTR,val)
+
+
+//
+// -- Access to the FPEXC register
+//    ----------------------------
+#define FPEXC               "fpexc"
+#define READ_FPEXC()        VMRS(FPEXC)
+#define WRITE_FPEXC(val)    VMSR(FPEXC,val)
+
 
 
 //

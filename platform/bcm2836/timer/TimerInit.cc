@@ -50,8 +50,6 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     WRITE_CNTP_CTL(1);                  // -- enable the timer
     WRITE_CNTP_TVAL(dev->reloadValue);
 
-    for (int i = 0; i < 20; i ++) {
-        kprintf(".. The current timer value is %x\n", READ_CNTP_TVAL());
-    }
+    dev->factor = READ_CNTFRQ() / 1000000.0;
 }
 

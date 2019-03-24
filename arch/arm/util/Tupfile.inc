@@ -27,8 +27,9 @@ OC = armv7-rpi2-linux-gnueabihf-objcopy
 ##
 ## -- Add some options to the build
 ##    -----------------------------
+CFLAGS += -mlittle-endian
 CFLAGS += -mcpu=cortex-a7
-CFLAGS += -marm
-CFLAGS += -mfpu=vfpv3
-CFLAGS += -mfloat-abi=softfp
+CFLAGS += -mfpu=neon-vfpv4
+CFLAGS += -mfloat-abi=hard
+
 

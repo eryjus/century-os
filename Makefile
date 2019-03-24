@@ -96,6 +96,8 @@
 
 .SILENT:
 
+ARMV7-LIB = $(shell armv7-rpi2-linux-gnueabihf-gcc  -mlittle-endian  -mcpu=cortex-a7  -mfpu=neon-vfpv4  -mfloat-abi=hard  --print-libgcc-file-name)
+
 
 ##
 ## -- This is the default rule, to compile everything
@@ -118,6 +120,7 @@ init: tuprules.inc
 ##    ---------------------------------------
 tuprules.inc: Makefile
 	echo WS = `pwd` > $@
+	echo ARMV7_LDFLAGS = $(dir $(ARMV7-LIB)) >> $@
 
 
 ## ==================================================================================================================

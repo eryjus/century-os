@@ -69,6 +69,7 @@
 #include "printf.h"
 #include "lists.h"
 #include "cpu.h"
+#include "timer.h"
 #include "spinlock.h"
 
 
@@ -205,6 +206,12 @@ __CENTURY_FUNC__ void ProcessUpdateTimeUsed(void);
 
 
 //
+// -- Sleep until the we reach the number of micro-seconds since boot
+//    ---------------------------------------------------------------
+__CENTURY_FUNC__ void ProcessMicroSleepUntil(uint64_t when);
+
+
+//
 // -- Lock the scheduler for a critical section
 //    -----------------------------------------
 __CENTURY_FUNC__ inline void ProcessLockScheduler(void) { DisableInterrupts(); processLockCount ++; }
@@ -214,6 +221,30 @@ __CENTURY_FUNC__ inline void ProcessLockScheduler(void) { DisableInterrupts(); p
 // -- Unlock the scheduler after a critical section
 //    ---------------------------------------------
 __CENTURY_FUNC__ inline void ProcessUnlockScheduler(void) { if ((-- processLockCount) == 0) EnableInterrupts(); }
+
+
+//
+// -- Micro-Sleep this number of micro-seconds
+//    ----------------------------------------
+__CENTURY_FUNC__ inline void ProcessMicroSleep(uint64_t micros) {
+    ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + micros);
+}
+
+
+//
+// -- Milli-Sleep this number of milli-seconds
+//    ----------------------------------------
+__CENTURY_FUNC__ inline void ProcessMilliSleep(uint64_t ms) {
+    ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + (ms * 1000));
+}
+
+
+//
+// -- Sleep this number of seconds
+//    ----------------------------
+__CENTURY_FUNC__ inline void ProcessSleep(uint64_t secs) {
+    ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + (secs * 1000000));
+}
 
 
 #endif

@@ -24,7 +24,7 @@
 //    --------------------------
 void __krntext _TimerPlatformTick(UNUSED(TimerDevice_t *dev))
 {
-    extern uint64_t ticksSinceBoot;
+    extern uint64_t microsSinceBoot;
 
-    ticksSinceBoot ++;
+    microsSinceBoot += 1000;
 }

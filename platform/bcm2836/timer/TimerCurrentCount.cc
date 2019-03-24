@@ -21,6 +21,6 @@
 
 uint64_t _TimerCurrentCount(TimerDevice_t *dev)
 {
-    return READ_CNTPCT();
+    return READ_CNTPCT() * dev->factor;
 }
 

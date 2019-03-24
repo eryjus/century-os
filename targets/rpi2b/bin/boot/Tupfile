@@ -27,6 +27,13 @@ OBJ = $(WS)/targets/$(TARGET)/obj
 
 
 ##
+## -- Some additional linker flags
+##    ----------------------------
+LDFLAGS += -L $(ARMV7_LDFLAGS)
+LIB = -l gcc
+
+
+##
 ## -- These are the linker scripts
 ##    ----------------------------
 KERNEL_LS = $(WS)/modules/kernel/util/$(TARGET).ld
@@ -35,4 +42,4 @@ KERNEL_LS = $(WS)/modules/kernel/util/$(TARGET).ld
 ##
 ## -- The rules to make the bootable targets in this folder
 ##    -----------------------------------------------------
-: $(OBJ)/kernel/*.o | $(KERNEL_LS) |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f; |> kernel.elf
+: $(OBJ)/kernel/*.o | $(KERNEL_LS) |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB); |> kernel.elf
