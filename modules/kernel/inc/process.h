@@ -152,6 +152,12 @@ extern int processLockCount;
 
 
 //
+// -- Are there pending task changes?
+//    -------------------------------
+extern bool processChangePending;
+
+
+//
 // -- Initialize the process structures
 //    ---------------------------------
 __CENTURY_FUNC__ void ProcessInit(void);

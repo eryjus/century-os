@@ -57,6 +57,20 @@
 @@ -- Execute a process switch
 @@    ------------------------
 ProcessSwitch:
+@@
+@@ -- before we get too crazy, do we need to postpone?
+@@    ------------------------------------------------
+    ldr     r1,=locksHeld                   @@ get the locks held address
+    ldr     r1,[r1]                         @@ and the count
+    cmp     r1,#0                           @@ is this zero?
+    beq     .cont                           @@ if zero, contunue
+
+    ldr     r1,=processChangePending        @@ get the address of the process change pending
+    mov     r0,#1                           @@ load the value to store
+    str     r0,[r1]                         @@ set the flag
+    mov     pc,lr                           @@ and return
+
+.cont:
     push    {lr}                            @@ save the link register; will pop it later to pc
     push    {lr}                            @@ save this value twice
     push    {ip}                            @@ save the intra-procedure call register (r12)

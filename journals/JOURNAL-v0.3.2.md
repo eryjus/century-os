@@ -327,6 +327,14 @@ So, I will commit after step 7.
 
 ---
 
+Step 8 is to improve locks.  One of the problems I had not really considered was that the CPU really should not change tasks when a lock is held.  In the past I wanted to let other things get a turn at the CPU, but when something else wanted the lock it would donate the CPU time to the lock holder.  Step 8 of this tutorial takes the approach to save the overhead of the task change when a lock is held.
 
+For now, I am going to go down this path with the tutorial.  I may change back to my original thinking later, once the kernel matures a bit more.
+
+With that, this means that I need to update the `Spinlock_t` functions to keep track of lock counts.  For this, I will change a couple of the inline functions into proper functions in their own files.
+
+A successful test means I can commit this code.
+
+---
 
 

@@ -41,47 +41,51 @@
 //    -------------------------------------------------------------
 typedef struct Spinlock_t {
     archsize_t locked;
-    PID_t lockHolder;
+    struct Process_t *lockHolder;
 } Spinlock_t;
+
+
+//
+// -- This is a count of the number of locks that are currently held and its lock
+//    ---------------------------------------------------------------------------
+extern int locksHeld;
+extern Spinlock_t lockCounterLock;
 
 
 //
 // -- This is an atomic function to lock a spinlock
 //    ---------------------------------------------
-extern "C" archsize_t SpinlockAtomicLock(Spinlock_t *lock, archsize_t expected, archsize_t newVal);
+__CENTURY_FUNC__ archsize_t SpinlockAtomicLock(Spinlock_t *lock, archsize_t expected, archsize_t newVal);
 
 
 //
 // -- This is an atomic function to unlock a spinlock
 //    -----------------------------------------------
-extern "C" void SpinlockClear(Spinlock_t *lock);
+__CENTURY_FUNC__ void SpinlockClear(Spinlock_t *lock);
 
 
 //
 // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
 //    ---------------------------------------------------------------------------------------------
-static inline void SpinlockLock(Spinlock_t *lock) {
-    while (SpinlockAtomicLock(lock, 0, 1) != 0) {  }
-//    lock->lockHolder = currentPID;
-}
+__CENTURY_FUNC__ void SpinlockLock(Spinlock_t *lock);
 
 
 //
 // -- This inline function will unlock a spinlock, clearing the lock holder
 //    ---------------------------------------------------------------------
-static inline void SpinlockUnlock(Spinlock_t *lock) { SpinlockClear(lock); lock->lockHolder = 0; }
+__CENTURY_FUNC__ void SpinlockUnlock(Spinlock_t *lock);
 
 
 //
 // -- This inline function returns the PID of the lock holder
 //    -------------------------------------------------------
-static inline PID_t SpinLockGetHolder(Spinlock_t *lock) { return lock->lockHolder; }
+//__CENTURY_FUNC__ inline struct Process_t *SpinLockGetHolder(Spinlock_t *lock) { return lock->lockHolder; }
 
 
 //
 // -- This inline function will determine if a spinlock is locked
 //    -----------------------------------------------------------
-static inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->locked; }
+__CENTURY_FUNC__ inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->locked; }
 
 
 //

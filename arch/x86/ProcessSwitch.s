@@ -47,6 +47,8 @@
 ;; -- Some global variables that are referenced
 ;;    -----------------------------------------
     extern  currentProcess
+    extern  locksHeld
+    extern  processChangePending
 
 
 ;;
@@ -75,6 +77,19 @@ cpu         586
 ;; -- Execute a process switch
 ;;    ------------------------
 ProcessSwitch:
+;;
+;; -- before we do too much, do we need to postpone?
+;;    ----------------------------------------------
+        cmp     dword [locksHeld],0
+        je      .cont
+
+        mov     dword [processChangePending],1
+        ret
+
+;;
+;; -- From here we take on the task change
+;;    ------------------------------------
+.cont:
         push    ebx                         ;; save ebx
         push    esi                         ;; save esi
         push    edi                         ;; save edi
