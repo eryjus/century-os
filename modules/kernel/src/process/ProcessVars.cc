@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "process.h"
 
 
@@ -33,7 +34,7 @@ __krndata PID_t nextPID = 0;
 //
 // -- This is the round robin queue of processes to execute
 //    -----------------------------------------------------
-__krndata QueueHead_t roundRobin = {0};
+__krndata QueueHead_t roundRobin;
 
 
 //
@@ -46,4 +47,17 @@ __krndata int processLockCount = 0;
 // -- Is there a pending process change?
 //    ----------------------------------
 __krndata bool processChangePending = false;
+
+
+//
+// -- This is the list of sleeping tasks
+//    ----------------------------------
+__krndata QueueHead_t sleepingTasks;
+
+
+//
+// -- This is the next time we have to wake something up
+//    --------------------------------------------------
+__krndata volatile uint64_t nextWake = (uint64_t)-1;
+
 

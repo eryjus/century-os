@@ -175,7 +175,7 @@ typedef ListHead_t QueueHead_t;
 //
 // -- Enqueue a node onto a queue
 //    ---------------------------
-#define Enqueue ListAddTail
+__CENTURY_FUNC__ inline void Enqueue(QueueHead_t *head, ListHead_t::List_t *list) { ListAddTail(head, list); }
 
 
 //
@@ -187,7 +187,7 @@ typedef ListHead_t StackHead_t;
 //
 // -- Push a node onto a stack
 //    ------------------------
-#define Push ListAdd
+__CENTURY_FUNC__ inline void Push(StackHead_t *head, ListHead_t::List_t *list) { ListAdd(head, list); }
 
 
 #endif

@@ -56,6 +56,38 @@
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
+    ProcessLockScheduler();
+
     if (timerControl.TimerPlatformTick) TimerPlatformTick(&timerControl);
+
+    //
+    // -- here we look for any sleeping tasks to wake
+    //    -------------------------------------------
+    uint64_t now = TimerCurrentCount(&timerControl);
+    if (now >= nextWake && IsListEmpty(&sleepingTasks) == false) {
+        uint64_t newWake = (uint64_t)-1;
+
+
+        //
+        // -- loop through and find the processes to wake up
+        //    ----------------------------------------------
+        ListHead_t::List_t *list = sleepingTasks.list.next;
+        while (list != &sleepingTasks.list) {
+            ListHead_t::List_t *next = list->next;      // must be saved before it is changed below
+            if (!list) Halt();
+            Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
+            if (now >= wrk->wakeAtMicros) {
+                wrk->wakeAtMicros = 0;
+                ListRemoveInit(&wrk->stsQueue);
+                ProcessUnblock(wrk);
+            } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
+
+            list = next;
+        }
+
+        nextWake = newWake;
+    }
+
     TimerEoi(&timerControl);
+    ProcessUnlockScheduler();
 }

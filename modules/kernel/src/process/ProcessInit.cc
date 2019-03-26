@@ -54,6 +54,7 @@ void __krntext ProcessInit(void)
     ListInit(&currentProcess->stsQueue);
 
     ListInit(&roundRobin.list);
+    ListInit(&sleepingTasks.list);
 
     lastTimer = TimerCurrentCount(&timerControl);
 }

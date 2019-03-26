@@ -122,6 +122,7 @@ typedef struct Process_t {
     ProcPolicy_t policy;                // This is the scheduling policy
     ProcPriority_t priority;            // This is the process priority
     uint64_t timeUsed;                  // This is the relative amount of CPU used
+    uint64_t wakeAtMicros;              // Wake this process at or after this micros since boot
     int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
 } Process_t;
@@ -146,6 +147,12 @@ extern QueueHead_t roundRobin;
 
 
 //
+// -- This is the list of sleeping tasks
+//    ----------------------------------
+extern QueueHead_t sleepingTasks;
+
+
+//
 // -- This is the number of times we have entered critical sections
 //    -------------------------------------------------------------
 extern int processLockCount;
@@ -155,6 +162,12 @@ extern int processLockCount;
 // -- Are there pending task changes?
 //    -------------------------------
 extern bool processChangePending;
+
+
+//
+// -- This is the next time we have to wake something up
+//    --------------------------------------------------
+extern volatile uint64_t nextWake;
 
 
 //

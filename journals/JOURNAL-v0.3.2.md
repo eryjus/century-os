@@ -337,4 +337,131 @@ A successful test means I can commit this code.
 
 ---
 
+So, step 9 will require a bit of coding to create a data elements for waiting tasks.  Let's see here:
+* I need a wake at micros element in `Process_t`.
+* I need a list to keep the waiting tasks in.
+* I want a variable holding the next micro since boot to wake something up.
+
+---
+
+### 2019-Mar-25
+
+Debugging still from yesterday....
+
+---
+
+Well, I have some not_good stuff going on:
+
+```
+00199567632d[CPU0  ] page fault for address 0000000080002b3d @ 0000000080002b3d
+00199567632d[CPU0  ] exception(0x0e): error_code=0000
+00199567632d[CPU0  ] interrupt(): vector = 0e, TYPE = 3, EXT = 1
+00199567632d[CPU0  ] page walk for address 0x00000000003fd870
+00199567632e[CPU0  ] interrupt(): gate not present
+00199567632d[CPU0  ] exception(0x0b): error_code=0073
+00199567632d[CPU0  ] exception(0x08): error_code=0000
+00199567632d[CPU0  ] interrupt(): vector = 08, TYPE = 3, EXT = 1
+00199567632e[CPU0  ] fetch_raw_descriptor: GDT: index (40bf) 817 > limit (7f)
+00199567632d[CPU0  ] exception(0x0d): error_code=40b9
+00199567632i[CPU0  ] CPU is in protected mode (active)
+00199567632i[CPU0  ] CS.mode = 32 bit
+00199567632i[CPU0  ] SS.mode = 32 bit
+00199567632i[CPU0  ] EFER   = 0x00000000
+00199567632i[CPU0  ] | EAX=00000000  EBX=8006b078  ECX=003fe000  EDX=00000002
+00199567632i[CPU0  ] | ESP=00000000  EBP=00000000  ESI=90000180  EDI=8006b078
+00199567632i[CPU0  ] | IOPL=0 ID vip vif ac vm RF nt of df if tf SF zf af PF CF
+00199567632i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00199567632i[CPU0  ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00199567632i[CPU0  ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00199567632i[CPU0  ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00199567632i[CPU0  ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00199567632i[CPU0  ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00199567632i[CPU0  ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00199567632i[CPU0  ] | EIP=80002b3d (80002b3d)
+00199567632i[CPU0  ] | CR0=0xe0000011 CR2=0x80002b3d
+00199567632i[CPU0  ] | CR3=0x00000000 CR4=0x00000010
+(0).[199567632] ??? (physical address not available)
+00199567632p[CPU0  ] >>PANIC<< exception(): 3rd (13) exception with no resolution
+```
+
+I had to look up what an exception `0x0b` was.  It's a "Segment Not Present" exception.  Again, not good.  It tells me that I am probably clobbering my GDT somewhere along the way.  Well, check that: it's after a page fault, so maybe I'm clobbering my IDT.
+
+Yeah, the IDT:
+
+```
+<bochs:3> info idt
+Interrupt Descriptor Table (base=0x00000000003fd800, limit=2047):
+IDT[0x00]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x01]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x02]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x03]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x04]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x05]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x06]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x07]=??? descriptor hi=0x00000000, lo=0x00000000
+IDT[0x08]=32-Bit Interrupt Gate target=0x40b8:0xa1d81e00, DPL=0
+IDT[0x09]=Code segment, base=0x4000cf1f, limit=0x80013fff, Execute/Read, Conforming, 64-bit
+IDT[0x0a]=??? descriptor hi=0xcf1f0010, lo=0xa1d88e00
+IDT[0x0b]=Data segment, base=0x1e53fc80, limit=0x000c9c00, Read-Only, Expand-down
+IDT[0x0c]=Code segment, base=0xfc7486fc, limit=0x08006fff, Execute-Only, Conforming, Accessed, 16-bit
+IDT[0x0d]=Code segment, base=0x74806018, limit=0x274e8fff, Execute-Only, Conforming, 32-bit
+IDT[0x0e]=16-Bit Trap Gate target=0x43b4:0x9d1fe80d, DPL=0
+IDT[0x0f]=Code segment, base=0xcb4be995, limit=0x8ede9fff, Execute-Only, Conforming, 32-bit
+```
+
+Well, OK both:
+
+```
+<bochs:4> info gdt
+Global Descriptor Table (base=0x00000000003fd000, limit=127):
+GDT[0x00]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x01]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x02]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x03]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x04]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x05]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x06]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x07]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x08]=Code segment, base=0x04000000, limit=0x00000000, Execute/Read, Non-Conforming, 16-bit
+GDT[0x09]=??? descriptor hi=0x000000cf, lo=0xef2ca8b8
+GDT[0x0a]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0b]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0c]=32-Bit Trap Gate target=0x0000:0x00000000, DPL=2
+GDT[0x0d]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0e]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0f]=??? descriptor hi=0x00000000, lo=0x00000000
+```
+
+These are both located in the same frame (`0x3fd000`), so it is probably getting allocated from the PMM somehow.  But, looking at the physical memory at that location looks reasonable.
+
+Ahhh... getting closer:
+
+```
+<bochs:8> page 0x3fd000
+ PDE: 0x00000000f000ff73    ps         A PCD pwt S W P
+ PTE: 0x00000000ffffffff       G PAT D A PCD PWT U W P
+linear page 0x00000000003fd000 maps to physical page 0x0000fffff000
+```
+
+It looks like my PDE is getting clobbered....  There's a clue....  My `cr3` register is getting clobbered.  This means I am scheduling to something that it never should see...  such as a `Process_t` at `0x00000000`, perhaps?
+
+The problem at this point is that I am unable to look at virtual memory since `cr3` was clobbered.  I will have to set up for a new session and break ahead of damage (I hope anyway).  I am going to start with `ProcessUnblock()` since that is a likely problem.
+
+A second debugging session identified that the problem is happening between the first and second call to `ProcessUnblock()`.  It could very well be in that first call.
+
+---
+
+Ok, to make sure I do not have a problem with `ProcessBlock()` and `ProcessUnblock()`, I removed my tests for `ProcessMicroSleepUntil()`.  This code still works properly (x86-pc), so the problem must be in the `ProcessMicroSleepUntil()` function.
+
+---
+
+I found the bug... I was changing the list before I was getting the next element in the list.
+
+Anyway, this is now testing properly, so I will commit again.
+
+---
+
+
+
+
 

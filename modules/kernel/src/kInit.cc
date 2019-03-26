@@ -67,9 +67,7 @@ void StartB(void)
 {
     while (1) {
         kprintf("B");
-        ProcessLockScheduler();
-        ProcessSchedule();
-        ProcessUnlockScheduler();
+        ProcessSleep(1);        // sleep 1 second
     }
 }
 
@@ -85,9 +83,7 @@ void StartD(void)
 {
     while (1) {
         kprintf("D");
-        ProcessLockScheduler();
-        ProcessSchedule();
-        ProcessUnlockScheduler();
+        ProcessMilliSleep(250);     // sleep 250 ms
     }
 }
 
@@ -95,9 +91,7 @@ void StartE(void)
 {
     while (1) {
         kprintf("E");
-        ProcessLockScheduler();
-        ProcessSchedule();
-        ProcessUnlockScheduler();
+        ProcessMicroSleep(1);       // 1 micro-second -- probably will not actually stop
     }
 }
 
@@ -206,13 +200,16 @@ void kInit(void)
 
         if (n % 32 == 0) {
             kprintf("\n");
-            kprintf("A timer = %p : %p\n", (uint32_t)(A->timeUsed >> 32), (uint32_t)A->timeUsed);
-            kprintf("B timer = %p : %p\n", (uint32_t)(B->timeUsed >> 32), (uint32_t)B->timeUsed);
-            kprintf("C timer = %p : %p\n", (uint32_t)(C->timeUsed >> 32), (uint32_t)C->timeUsed);
-            kprintf("D timer = %p : %p\n", (uint32_t)(D->timeUsed >> 32), (uint32_t)D->timeUsed);
-            kprintf("E timer = %p : %p\n", (uint32_t)(E->timeUsed >> 32), (uint32_t)E->timeUsed);
-            kprintf("F timer = %p : %p\n", (uint32_t)(F->timeUsed >> 32), (uint32_t)F->timeUsed);
-            kprintf("G timer = %p : %p\n", (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
+            kprintf("A (pid = %x) timer = %p : %p\n", A->pid, (uint32_t)(A->timeUsed >> 32), (uint32_t)A->timeUsed);
+            kprintf("B (pid = %x) timer = %p : %p\n", B->pid, (uint32_t)(B->timeUsed >> 32), (uint32_t)B->timeUsed);
+            kprintf("C (pid = %x) timer = %p : %p\n", C->pid, (uint32_t)(C->timeUsed >> 32), (uint32_t)C->timeUsed);
+            kprintf("D (pid = %x) timer = %p : %p\n", D->pid, (uint32_t)(D->timeUsed >> 32), (uint32_t)D->timeUsed);
+            kprintf("E (pid = %x) timer = %p : %p\n", E->pid, (uint32_t)(E->timeUsed >> 32), (uint32_t)E->timeUsed);
+            kprintf("F (pid = %x) timer = %p : %p\n", F->pid, (uint32_t)(F->timeUsed >> 32), (uint32_t)F->timeUsed);
+            kprintf("G (pid = %x) timer = %p : %p\n", G->pid, (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
+
+            kprintf("Low 32-bit ticks is %x\n", (uint32_t)TimerCurrentCount(&timerControl));
+            kprintf("Next wake time is %x\n", (uint32_t)nextWake);
 
             ProcessUnblock(C);
         }
