@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessMicroSleepUntil.cc -- Sleep until we get to the requested micros since boot
+// ProcessDumpRR.cc -- Dump the Round Robin Queue
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,31 +10,30 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Oct-14  Initial   0.1.0   ADCL  Initial version
+//  2019-Mar-26  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
+#include "lists.h"
 #include "process.h"
 
 
+
 //
-// -- sleep until we get to the number of micros since boot
-//    -----------------------------------------------------
-void __krntext ProcessMicroSleepUntil(uint64_t when)
+// -- Dump the Round Robin Queue
+//    --------------------------
+void __krntext ProcessDumpRR(void)
 {
-    ProcessEnterPostpone();
+    kprintf("Dumping the roundRobin queue:\n");
+    ListHead_t::List_t *list = roundRobin.list.next;
+    while (list != &roundRobin.list) {
+        ListHead_t::List_t *next = list->next;      // must be saved before it is changed below
+        Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
 
-    if (when < TimerCurrentCount(&timerControl)) {
-        ProcessExitPostpone();
-        return;
+        kprintf(".. pid %x at address %p\n", wrk->pid, wrk);
+
+        list = next;
     }
-
-    currentProcess->wakeAtMicros = when;
-    if (when < nextWake) nextWake = when;
-
-    Enqueue(&sleepingTasks, &currentProcess->stsQueue);
-    ProcessBlock(PROC_DLYW);
-    ProcessExitPostpone();
 }

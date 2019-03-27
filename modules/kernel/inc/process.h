@@ -155,13 +155,19 @@ extern QueueHead_t sleepingTasks;
 //
 // -- This is the number of times we have entered critical sections
 //    -------------------------------------------------------------
-extern int processLockCount;
+extern int schedulerLocksHeld;
 
 
 //
 // -- Are there pending task changes?
 //    -------------------------------
 extern bool processChangePending;
+
+
+//
+// -- the lock to hold to be able to increment the locks held count
+//    -------------------------------------------------------------
+extern Spinlock_t schedulerLock;
 
 
 //
@@ -233,13 +239,13 @@ __CENTURY_FUNC__ void ProcessMicroSleepUntil(uint64_t when);
 //
 // -- Lock the scheduler for a critical section
 //    -----------------------------------------
-__CENTURY_FUNC__ inline void ProcessLockScheduler(void) { DisableInterrupts(); processLockCount ++; }
+__CENTURY_FUNC__ void ProcessEnterPostpone(void);
 
 
 //
 // -- Unlock the scheduler after a critical section
 //    ---------------------------------------------
-__CENTURY_FUNC__ inline void ProcessUnlockScheduler(void) { if ((-- processLockCount) == 0) EnableInterrupts(); }
+__CENTURY_FUNC__ void ProcessExitPostpone(void);
 
 
 //
@@ -265,5 +271,10 @@ __CENTURY_FUNC__ inline void ProcessSleep(uint64_t secs) {
     ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + (secs * 1000000));
 }
 
+
+//
+// -- Dump the contents of the RoundRobin Queue
+//    -----------------------------------------
+__CENTURY_FUNC__ void ProcessDumpRR(void);
 
 #endif

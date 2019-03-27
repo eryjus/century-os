@@ -57,8 +57,12 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
+    ProcessEnterPostpone();
     rv->status = PROC_READY;
     Enqueue(&roundRobin, &rv->stsQueue);
+//    ProcessDumpRR();
+//    kprintf("Process %x added!\n", rv->pid);
+    ProcessExitPostpone();
 
 
     return rv;

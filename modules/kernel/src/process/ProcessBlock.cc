@@ -28,9 +28,10 @@
 //    -------------------------
 void __krntext ProcessBlock(ProcStatus_t reason)
 {
-    ProcessLockScheduler();
+    ProcessEnterPostpone();
     currentProcess->status = reason;
+//    kprintf(" (blocking pid %x) ", currentProcess->pid);
     ProcessSchedule();
-    ProcessUnlockScheduler();
+    ProcessExitPostpone();
 }
 

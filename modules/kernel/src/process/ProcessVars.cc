@@ -40,7 +40,7 @@ __krndata QueueHead_t roundRobin;
 //
 // -- This is the number of times we have entered a critical section
 //    --------------------------------------------------------------
-__krndata int processLockCount = 0;
+__krndata int schedulerLocksHeld = 0;
 
 
 //
@@ -60,4 +60,9 @@ __krndata QueueHead_t sleepingTasks;
 //    --------------------------------------------------
 __krndata volatile uint64_t nextWake = (uint64_t)-1;
 
+
+//
+// -- the lock to hold to be able to increment the locks held count
+//    -------------------------------------------------------------
+__krndata Spinlock_t schedulerLock;
 

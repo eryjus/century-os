@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessUnblock.cc -- Unblock a process
+// ProcessExitPostpone.cc -- Exit a postponed schedule block and take care of any pending schedule changes
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,27 +10,36 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-22  Initial   0.3.2   ADCL  Initial version
+//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
 #include "lists.h"
+#include "timer.h"
+#include "spinlock.h"
 #include "process.h"
 
 
 //
-// -- Block the current process
-//    -------------------------
-void __krntext ProcessUnblock(Process_t *proc)
+// -- decrease the lock count on the scheduler
+//    ----------------------------------------
+void __krntext ProcessExitPostpone(void)
 {
-//    kprintf("Unblock: %x\n", schedulerLocksHeld);
-    ProcessEnterPostpone();
+    SPIN_BLOCK(schedulerLock) {
+        schedulerLocksHeld --;
+        SpinlockUnlock(&schedulerLock);
+    }
 
-    proc->status = PROC_READY;
-    Enqueue(&roundRobin, &proc->stsQueue);
 
-    ProcessExitPostpone();
+    // -- interrupts are still disabled here
+    if (schedulerLocksHeld == 0) {
+        if (processChangePending != 0) {
+            processChangePending = 0;           // need to clear this to actually perform a change
+            ProcessSchedule();
+        }
+        EnableInterrupts();
+    }
 }
 

@@ -27,16 +27,43 @@ void __krntext ProcessSchedule(void)
 {
     ProcessUpdateTimeUsed();
 
-    if (locksHeld != 0) {
+    if (schedulerLocksHeld != 0) {
         processChangePending = true;
         return;
     }
 
     if (IsListEmpty(&roundRobin) == false) {
         Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
+//        kprintf("ProcessSchedule(): cond 1; pre\n");
+//        ProcessDumpRR();
         ListRemoveInit(&next->stsQueue);
         if (currentProcess->status == PROC_RUNNING) Enqueue(&roundRobin, &currentProcess->stsQueue);
+//        kprintf("ProcessSchedule(): cond 1; post\n");
+//        ProcessDumpRR();
         ProcessSwitch(next);
+    } else if (currentProcess->status == PROC_RUNNING) {
+        // -- Do nothing; the current process can continue
+    } else {
+        kprintf(";");
+        // -- No tasks available; so we go into idle mode
+        Process_t *save = currentProcess;       // we will save this process for later
+        currentProcess = NULL;                  // nothing is running!
+
+        do {
+            // -- -- temporarily enable interrupts for the timer to fire
+            EnableInterrupts();
+            HaltCpu();
+            DisableInterrupts();
+        } while (IsListEmpty(&roundRobin) == true);
+
+
+        // -- restore the current Process
+        ProcessUpdateTimeUsed();
+        currentProcess = save;
+        Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
+        ListRemoveInit(&next->stsQueue);
+//        kprintf("ProcessSchedule(): cond 3\n");
+        if (next != currentProcess) ProcessSwitch(next);
     }
 }
 

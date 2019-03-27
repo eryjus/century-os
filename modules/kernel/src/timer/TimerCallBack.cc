@@ -56,7 +56,8 @@
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
-    ProcessLockScheduler();
+    kprintf(".");
+    ProcessEnterPostpone();
 
     if (timerControl.TimerPlatformTick) TimerPlatformTick(&timerControl);
 
@@ -74,8 +75,8 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
         ListHead_t::List_t *list = sleepingTasks.list.next;
         while (list != &sleepingTasks.list) {
             ListHead_t::List_t *next = list->next;      // must be saved before it is changed below
-            if (!list) Halt();
             Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
+//            kprintf(" (checking pid %x at address %p) ", wrk->pid, wrk);
             if (now >= wrk->wakeAtMicros) {
                 wrk->wakeAtMicros = 0;
                 ListRemoveInit(&wrk->stsQueue);
@@ -89,5 +90,5 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     }
 
     TimerEoi(&timerControl);
-    ProcessUnlockScheduler();
+    ProcessExitPostpone();
 }

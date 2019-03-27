@@ -461,6 +461,79 @@ Anyway, this is now testing properly, so I will commit again.
 
 ---
 
+The next step in the tutorial is to handle idle time.  I currently have an idle time, but the tutorial coaches that this may not be the best approach -- in particular with today's power saving features.  Since it is not something I have done yet, I will go this route and update support for no task running.
+
+I have this coded, but my first test locks the CPU because I have interrupts disabled when `ProcessSchedule()` is called with nothing more to run, killing everything.  So, the question becomes, can I enable interrupts during this period?  I think I can because I really need to be able to wait for *something* and that *something* can be an interrupt that will allow a process to be scheduled.
+
+However, enabling interrupts allowed 1 extra schedule to happen.  This was not the solution.  In my mind, I keep going back to step 8 of the tutorial where we developed the concept of a delayed schedule change.  I feel I have a malformed process here and should really go back to using `Spinlock_t` to manage the locks.  This implementation would be a scheduler lock, preventing any schedule changes until the scheduler was unlocked.  Compare this to the scheduler structure locks, which would be several.
+
+Now, the problem here if going to be to keep track of the flags and whether a process has interrupts enabled.  Actually, a process should always have interrupts enabled.  What I need to keep track of is (from the perspective of the process) is making sure I enable interrupts on the same path out as I took on the way in.  For example, the timer interrupt will always restore interrupts back to what they were on the way in.  OK, good.  A blocking process will need to enable them on the way back out as well.  This way, when a timer interrupt that disabled interrupts on the way in switches to a process that previously disabled interrupts by blocking, enables them on the way back out from being blocked.
+
+Really, this is going to mean tracing all paths into `ProcessSwitch()` and all paths out of `ProcessSwitch()` and making certain that everything is balanced properly.
+
+So, I need to think about what really needs to be controlled by locks and why....
+
+#### `roundRobin` queue
+
+This is the queue of jobs that are ready to run.  This should be pretty obvious, but we do not want anything changing the list while we are traversing it.
+
+#### `sleepingTasks` queue
+
+This is the same as the `roundRobin` queue.
+
+#### `locksHeld` counter
+
+This is far less obvious.  x86 has `inc` and `dec` opcodes that work with memory locations, so it is almost trivial to increment and decrement a counter atomically.  However, the arm does not.  This counter needs to be read into a register, incremented/decremented by adding/subtracting 1, and then written back out to a memory location.  Because of these several instructions, there is a race condition that needs to be controlled with a lock.  I do not believe that reading `locksHeld` without a subsequent update will require a lock.
+
+It is also important to talk about `processChangePending`.  This does not need its own lock.  When it is read or updated it is read once and we move on with it's value or it is written once (based on the value of `locksHeld`).  When it is updated, it is simply stored a value of `1` to the memory location.  However, to be complete, we really should perform these updates with the `locksHeld` lock, simply to keep the 2 in sync.  These 2 variables work in conjunction with each other.  As a result of this edge case (read the value of 1 and later update a value of 0) race condition, these 2 variables will work with the same lock on this one use case.
+
+#### `Process_t` elements
+
+The `Process_t` structure does not have a lock on it.  Should it?  Once I get to several CPUs will I need one?  The only thing I think I need to really worry about is the list location (or the `stsQueue` member).  For this, I will need to remove it from one queue (for which I will need the proper lock to do) and then add it to the next queue (which again I need the proper lock to do).  The `status` field should correctly control which queue it is on.  So, for now, I will go without.  If nothing else, I can use `locksHeld` as a kind if double-check if need be later.
+
+---
+
+So, now going back to the tutorial, there is a `lock_stuff()` function that is called on entry and an `unlock_stuff()` function that is called on exit.  The premise here is that the scheduler cannot be re-entrant -- meaning that a process cannot be in the middle of blocking when an interrupt takes over and messes with what is going on.  This can probably be better represented with the function names `ProcessEnterPostpone()` and `ProcessExitPostpone()` where the former increments the `locksHeld` counter (which will be renamed to `schedulerLocksHeld` to be proper) and the latter decrements that same counter and when the `schedulerLocksHeld` counter reaches 0 performs a `ProcessSwitch()` to the proper task.  With this a timer interrupt will properly postpone a task swap when the scheduler functions are interrupted the `ProcessSwitch()` happens then the interrupted function unlocks, not from the timer callback function.
+
+Now, step 8 was supposed to take care of all this.  Obviously I missed a few things, or properly fubar'd them.  Either way, tomorrow or Wednesday, I will be going back and fixing this mess and trying to test again.  I will also have to back out some changes to `Spinlock_t`.
+
+---
+
+### 2019-Mar-26
+
+Today I start by mapping the paths into `ProcessSwitch()`.  `ProcessSwitch()` will also postpone a process swap when `schedulerLocksHeld > 0`.
+
+So, `ProcessEnterPostpone()` increments the number of locks.  This needs to be an atomic increment, so `schedulerLocksHeld` will be protected with a `Spinlock_t` lock.  `ProcessEnterPostpone()` will also disable interrupts.
+
+`ProcessExitPostpone()` will decrement the number of locks.  This also needs to be atomic, so the same `Spinlock_t` lock will be used.  However, when `schedulerLocksHeld` reaches 0, then `processChangePending` will be checked and if it is set, then will find and execute the next process, calling `ProcessSwitch()` to do this work.  `ProcessExitPostpone()` will also enable interrupts when `schedulerLocksHeld == 0`.
+
+`ProcessSchedule()` calls `ProcessSwitch()`.  However, it does not directly manage the lock count; the lock *MUST* be established before calling this function and the lock *MUST* be cleared by the calling function after returning.
+
+`ProcessCreate()` will need to call `ProcessEnterPostpone()` to lock the scheduler before adding the process to the `roundRobin` queue.  It will also need to call `ProcessExitPostpone()` to clear the lock.  `ProcessCreate()` should not directly trigger a reschedule, so the only thing that would trigger this would be something from `TimerCallBack()`.
+
+`ProcessInit()` is irrelevant since the scheduler is not active when this function is called.
+
+`ProcessBlock()` will lock and unlock the scheduler, calling `ProcessSchedule()` while the scheduler is locked.  When going through this function, we are guaranteed to have a process change at some point when `ProcessExitPostpone()` is called.
+
+`ProcessMicroSleetUntil()` will lock and unlock the scheduler, calling `ProcessBlock()` after the scheduler is unlocked.  However, there are 2 paths out of this function.  Path 1 is when the current task remains the executing task.  In this case, the `schedulerLocksHeld` will be decremented then returned immediately to the executing task.  Path 2 is when there is actually some time to pass before this task can run again.  In this case, the scheduler is unlocked and then `ProcessBlock()` will be called to find something else to process.  Recall that `ProcessBlock()` will get its own lock (and I think that is a critical point).
+
+`ProcessUnblock()` will lock the scheduler and then call `ProcessSwitch()`.  In this case, the scheduler is guaranteed to be locked to a process swap is also guaranteed to be deferred.  In this case, I think it better to simply set the `processChangePending` flag and save the call and return operations.
+
+Finally is `ProcessStart()`, which is called to initialize a new process.  This will need to release the `schedulerLocksHeld` for whatever process just set it.  Similarly, I a termination process will need to set this counter for something else to release.
+
+So, here is the kicker -- normal function calls must guarantee that the depth of `schedulerLocksHeld` is at most 1.  The `TimerCallBack()` may increment this lock count to 1 or to 2 only.  When it is 1, the `ProcessSwitch()` can happen immediately.  When it is 2, the swap will be deferred.
+
+So, with this, I can clean up my code a bit.
+
+---
+
+I am no longer locking up.  But I am losing processes in the in the `TimerCallBack()` function.  This function is dropping all other delayed processes.
+
+---
+
+I have this working now.  One key call-out here: the x86 arch does not yet have a running timer while the rpi2b does.  Therefore, a request to pause for 1micro is trivial and will not actually wait.  Therefore, once "E" gets control, it does not give it up.  I am not going to change this wait because I want to get into preemption to solve this problem.
+
+I am finally ready to commit this change.
 
 
 
