@@ -109,7 +109,6 @@ void StartG(void)
 {
     while (1) {
         kprintf("G");
-        ProcessMilliSleep(3);
     }
 }
 
@@ -204,7 +203,9 @@ void kInit(void)
         kprintf("Low 32-bit ticks is %x\n", (uint32_t)TimerCurrentCount(&timerControl));
         kprintf("Next wake time is %x\n", (uint32_t)nextWake);
 
+        ProcessEnterPostpone();
         ListRemoveInit(&C->stsQueue);
+        ProcessExitPostpone();
         ProcessUnblock(C);
 
         kprintf("A");

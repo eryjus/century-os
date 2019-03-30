@@ -47,7 +47,7 @@
 ;; -- Some global variables that are referenced
 ;;    -----------------------------------------
     extern  currentProcess
-    extern  locksHeld
+    extern  schedulerLocksHeld
     extern  processChangePending
 
 
@@ -57,6 +57,8 @@
 PROC_TOP_OF_STACK       EQU     0
 PROC_VIRT_ADDR_SPACE    EQU     4
 PROC_STATUS             EQU     8
+PROC_PRIORITY           EQU     12
+PROC_QUANTUM_LEFT       EQU     16
 
 
 ;;
@@ -80,7 +82,7 @@ ProcessSwitch:
 ;;
 ;; -- before we do too much, do we need to postpone?
 ;;    ----------------------------------------------
-        cmp     dword [locksHeld],0
+        cmp     dword [schedulerLocksHeld],0
         je      .cont
 
         mov     dword [processChangePending],1
@@ -117,6 +119,8 @@ ProcessSwitch:
 
         mov     esp,[edi+PROC_TOP_OF_STACK] ;; get the stop of the next process stack
         mov     dword [edi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running
+        mov     eax,dword [edi+PROC_PRIORITY]   ;; get the priority, which becomes the next quantum
+        add     dword [edi+PROC_QUANTUM_LEFT],eax   ;; add it to the amount left to overcome "overdrawn" procs
         mov     eax,[edi+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
         mov     ecx,cr3                     ;; get the current paging tables
 

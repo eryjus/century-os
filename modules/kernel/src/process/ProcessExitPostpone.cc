@@ -32,13 +32,13 @@ void __krntext ProcessExitPostpone(void)
         SpinlockUnlock(&schedulerLock);
     }
 
-
     // -- interrupts are still disabled here
     if (schedulerLocksHeld == 0) {
         if (processChangePending != 0) {
             processChangePending = 0;           // need to clear this to actually perform a change
             ProcessSchedule();
         }
+
         EnableInterrupts();
     }
 }

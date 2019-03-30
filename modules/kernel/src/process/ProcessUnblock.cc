@@ -25,7 +25,6 @@
 //    -------------------------
 void __krntext ProcessUnblock(Process_t *proc)
 {
-//    kprintf("Unblock: %x\n", schedulerLocksHeld);
     ProcessEnterPostpone();
 
     proc->status = PROC_READY;

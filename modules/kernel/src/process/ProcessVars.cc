@@ -40,13 +40,13 @@ __krndata QueueHead_t roundRobin;
 //
 // -- This is the number of times we have entered a critical section
 //    --------------------------------------------------------------
-__krndata int schedulerLocksHeld = 0;
+__krndata volatile int schedulerLocksHeld = 0;
 
 
 //
 // -- Is there a pending process change?
 //    ----------------------------------
-__krndata bool processChangePending = false;
+__krndata volatile bool processChangePending = false;
 
 
 //

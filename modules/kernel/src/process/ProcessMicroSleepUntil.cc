@@ -35,6 +35,6 @@ void __krntext ProcessMicroSleepUntil(uint64_t when)
     if (when < nextWake) nextWake = when;
 
     Enqueue(&sleepingTasks, &currentProcess->stsQueue);
-    ProcessBlock(PROC_DLYW);
     ProcessExitPostpone();
+    ProcessBlock(PROC_DLYW);
 }

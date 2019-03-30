@@ -30,7 +30,6 @@ void __krntext ProcessBlock(ProcStatus_t reason)
 {
     ProcessEnterPostpone();
     currentProcess->status = reason;
-//    kprintf(" (blocking pid %x) ", currentProcess->pid);
     ProcessSchedule();
     ProcessExitPostpone();
 }

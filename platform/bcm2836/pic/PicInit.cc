@@ -33,6 +33,7 @@ void _PicInit(PicDevice_t *dev)
 
     // -- for good measure, disable the FIQ
     MmioWrite(base1 + INT_FIQCTL, 0x0);
+    MmioWrite(base2 + TIMER_LOCAL_CONTROL, 0x00000000);                     // ensure the local timer is disabled
 
     // -- Disable all IRQs -- write to clear, anything that is high will be pulled low
     MmioWrite(base1 + INT_IRQDIS0, 0xffffffff);
@@ -41,8 +42,6 @@ void _PicInit(PicDevice_t *dev)
 
     // -- perform the per-core initialization
     int core = 0;               // TODO: will need to get the core dynamically
-    MmioWrite(base2 + TIMER_INTERRUPT_CONTROL + (core * 4), 0x00000002);         // select as IRQ for core 0
-    MmioWrite(base2 + TIMER_IRQ_SOURCE + (core * 4), 0x00000002);         // enable IRQs from the core for this CPU
-    MmioWrite(base2 + TIMER_FIQ_SOURCE + (core * 4), 0x00000000);         // force disable FIQ for all sources
+    MmioWrite(base2 + TIMER_INTERRUPT_CONTROL + (core * 4), 0x00000002);    // select as IRQ for core 0
 }
 

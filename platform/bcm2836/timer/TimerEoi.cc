@@ -29,5 +29,6 @@ void _TimerEoi(TimerDevice_t *dev)
 {
     if (!dev) return;
     WRITE_CNTP_TVAL(dev->reloadValue);
+    WRITE_CNTP_CTL(1);                              // -- enable the timer
 }
 

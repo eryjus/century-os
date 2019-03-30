@@ -25,6 +25,35 @@ archsize_t _PicGetIrq(PicDevice_t *dev)
     if (!dev) return -1;
 
     int core = 0;
+    archsize_t rv;
 
-    return MmioRead(dev->base2 + TIMER_IRQ_SOURCE + (core * 4));
+
+    //
+    // -- start by checking the core's interrupts
+    //    ---------------------------------------
+    archsize_t irq = MmioRead(dev->base2 + TIMER_IRQ_SOURCE + (core * 4)) & 0xff;       // mask out the relevant ints
+    rv = __builtin_ffs(irq);
+    if (rv != 0) return 64 + (rv - 1);
+
+
+    //
+    // -- ok, not a core-specific interrupt, check ints 0-31
+    //    --------------------------------------------------
+    irq = MmioRead(PIC + INT_IRQPEND1);
+    rv = __builtin_ffs(irq);
+    if (rv != 0) return rv - 1;
+
+
+    //
+    // -- now, if we make it here, try ints 32-63
+    //    ---------------------------------------
+    irq = MmioRead(PIC + INT_IRQPEND0);
+    rv = __builtin_ffs(irq);
+    if (rv != 0) return 32 + (rv - 1);
+
+
+    //
+    // -- finally if we get here, it must be a spurious interrupt
+    //    -------------------------------------------------------
+    return (archsize_t)-1;
 }

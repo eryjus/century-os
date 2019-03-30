@@ -35,6 +35,6 @@
 @@    -----------------------------------------------------
 EnableInterrupts:
     mrs     r0,cpsr                                 @@ Get the Current Program Status Register
-    and     r0,#~0x000001c0                         @@ Clear the bits that disable interrupts
+    and     r0,#~0x000000c0                         @@ Clear the bits that disable interrupts
     msr     cpsr,r0                                 @@ store the Current Program Status Register again
     mov     pc,lr                                   @@ return

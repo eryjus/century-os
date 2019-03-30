@@ -535,6 +535,192 @@ I have this working now.  One key call-out here: the x86 arch does not yet have 
 
 I am finally ready to commit this change.
 
+---
+
+### 2019-Mar-27
+
+I am finally at the point where I can take on some preemption.  Step 11 in the tutorial is to implement the preemption.
+
+Now, the tutorial keeps track of time, I am going to keep track of quantum (meaning the number of timer ticks that pass).  Therefore, I should not need to worry about any floating point setup for the arm cpu.  However, what I did not have before was the ability of a task to "overdraw" its quantum.  So, some changes are needed (changing the quantumLeft to an integer, which is already done).
+
+---
+
+For rpi2b, it appears that the timer is no longer firing!  CRAP!!  Something else to solve with this iteration.  I have the same problem with x86.  So, I am having a problem with synchronizing interrupts or something with creating a process and enabling interrupts.
+
+After adding some debugging code, I the following sequence, where `{^0xnn}` in an increase to `nn` and `{v0xnn}` is a decrease to `nn`, `.` is a timer interrupt, and '!' is a quantum check:
+
+```
+. {^0x1} ! {v0x0} {^0x1}
+. {^0x1} ! {v0x0} {v0x0}
+. {^0x1} ! {v0x0} {^0x1} {v0x0}
+. {^0x1} ! {v0x0}
+. {^0x1} ! {v0x0}
+. {^0x1} ! {v0x0} {^0x1} {v0x0} {^0x1} {v0x0} {^0x1} {v0x0}
+. {^0x1} ! {v0x0} {^0x1} {v0x0}
+. {^0x1} ! {v0x0}
+. {^0x1} ! {v0x0} {^0x1} {v0x0}
+    A {^0x1} {^0x2} {v0x1} {v0xffffffff}
+    B {^0x0} {^0x1} {v0xffffffff}
+    D {^0x0} {^0x1} {v0xffffffff}
+    E {^0x0} {^0x1} {v0xffffffff}
+    F {^0x0} {^0x1} {v0xffffffff}
+ ```
+
+So, there is definitely a problem.  In the first line, the count is increased to 1, decreased to 0, and then increased to 1 again.  Then there is a timer interrupt and the lock count is increased to 1...!!  However, I think this is a simple timing problem:
+
+```C
+    // -- interrupts are still disabled here
+    if (schedulerLocksHeld == 0) {
+        if (processChangePending != 0) {
+            processChangePending = 0;           // need to clear this to actually perform a change
+            ProcessSchedule();
+        }
+        EnableInterrupts();
+    }
+
+    kprintf(" {v%x} ", schedulerLocksHeld);
+```
+
+Interrupts are enabled before the debugging statement is executed.  So, it's a simple change to move that debugging statement.
+
+That solved the first problem.  The next problem is the sequence: `A {^0x1} {^0x2} {v0x1} {v0xffffffff}` where the lock counter is increased to 1, increased to 2, decreased to 1, and then decreased to -1!!.  What happened to 0??
+
+Now, however, I am not properly wrapping scheduler maintenance in `ProcessEnterPostpone()` ... `ProcessExitPostpone()`:
+
+```C
+        ListRemoveInit(&C->stsQueue);
+        ProcessUnblock(C);
+```
+
+Now it is technically correct, but it did not fix my problem.
+
+---
+
+I was able to get things cleaned up for x86.  My problem was that the `Spinlock_t` functions sill updated a lock count.  I removed that code and it helped.  I also needed to remove the unlock in `ProcessStart()` and explicitly enable interrupts in the same function.  x86 is working well at this point.
+
+However, the rpi2b timer is not firing anymore.  This broke somewhere along the way, but I am not sure when that broke.  I think I am going to have to go back in time to figure out when that broke.
+
+---
+
+I finally got back to a working timer.  I was able to do this by removing all code in `TimerCallBack()`.  So, I have a few issues to look at:
+1. Make sure I have the frequency right.
+1. Make sure I am handling the interrupt right.
+
+I'm sure there is more; I will look more into that tomorrow.
+
+---
+
+### 2019-Mar-28
+
+I am having a hell of a time with the timer on this rpi2b.  What a damned mess this is.  I'm going around in circles here and I'm not thrilled about it.
+
+Currently, as soon as I enable IRQs for the timer, I am burying the cpu in interrupts.  Whatever is triggering it, it is not getting reset in my EOI routine.  However, again, whatever is triggering it, it is being represented (or should I say recognized) as a timer interrupt.
+
+Adding a dump into the code to get the IRQ flags, I get the following (what the hell??!!):
+
+```
+Interrupt flags are 0x74696d65
+```
+
+OK, so hold on....  in `PicInit()`, I am writing to this register:
+
+```C
+    MmioWrite(base2 + TIMER_IRQ_SOURCE + (core * 4), 0x00000002);           // enable IRQs from the core for this CPU
+```
+
+In `PicGetIrq()`, I am reading from the same register:
+
+```C
+    archsize_t irq = MmioRead(dev->base2 + TIMER_IRQ_SOURCE + (core * 4));
+```
+
+OK, this implies to me that there is very likely a problem with my inline assembly.  Except it's not inline assembly, but MMIO reads/writes.
+
+---
+
+It dawns on me that `0xf8003060` might not be the correct address.  I am actually expecting this to be `0xf9003060`.  So, I need to go research that first.
+
+---
+
+With that corrected, I am now getting another IRQ that I am not expecting and I am not sure how to clear it.
+
+```
+Interrupt flags at 0xf9003060 are 0x00000100
+Basic flags are 0x00000100
+Block flags1 are 0x00008000
+Block flags2 are 0x00000000
+PANIC: Unhandled interrupt: 0x8
+```
+
+So, line by line:
+1. I have a GPU IRQ to handle
+1. I have at least 1 interrupt in IRQPEND1 register
+1. I have a pending IRQ15
+
+(oh, by the way, IRQ 15 is not documented)
+
+This looks to be a USB IRQ.  `lk` does not have a USB implementation.  However, `rpiboot` should.  I will have to research there.
+
+---
+
+### 2019-Mar-29
+
+I started with a crap-ton of research today, and a lot of reading... and some debugging code.  Here is what I know:
+* Reading the USB register that should reset the interrupt pending flag did nothing
+* If I do not enable the timer irq, then I get interrupts that fire, but they are all spurious
+* If I enable the timer irq, then I get interrupts that fire and bury the CPU
+
+at one point, I changed the `cpsr` to also have the `A` (I think it was) bit set for additional interrupts.  I need to double check that.  Changing that back had no effect on the behavior.
+
+Actually, I think I need to not enable the timer IRQ and focus on eliminating the spurious IRQ.  Then I can come back to the timer.
+
+Looking at my output, it actually looks like the timer is really firing.  Check that: it looks like *something* is triggering a (somewhat) regular interrupt:
+
+```
+Interrupt flags at 0xf9003060 are 0x00000000
+Basic flags at 0xf800b200 are 0x00000000
+Block flags1 at 0xf800b204 are 0x00000000
+Block flags2 at 0xf800b208 are 0x00000000
++@E+@E+@E+@E+@E+@E+@E+@E+@EInterrupt flags at 0xf9003060 are 0x00000000
+Basic flags at 0xf800b200 are 0x00000000
+Block flags1 at 0xf800b204 are 0x00000000
+Block flags2 at 0xf800b208 are 0x00000000
++@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@E+@Interrupt flags at 0xf9003060 are 0x00000000
+Basic flags at 0xf800b200 are 0x00000000
+Block flags1 at 0xf800b204 are 0x00000000
+Block flags2 at 0xf800b208 are 0x00000000
+E+@E+@E+@E+@E+@E+@E+@E+@E+@Interrupt flags at 0xf9003060 are 0x00000000
+Basic flags at 0xf800b200 are 0x00000000
+Block flags1 at 0xf800b204 are 0x00000000
+Block flags2 at 0xf800b208 are 0x00000000
+```
+
+---
+
+OK, holy crap!!  This issue turned out to be related to MMU mapping flags.  Once I got that cleared up, the spurious IRQs went away and I am now getting a timer tick -- but more to the point I am able to get the IRQ numbers dialed in correctly.
+
+So here is where I am at:
+
+```
+Interrupt flags at 0xf9003060 are 0x00000002
+Basic flags0 at 0xf800b200 are 0x00000000 (0x00000000)
+Block flags1 at 0xf800b204 are 0x00000000 (0x00000000)
+Block flags2 at 0xf800b208 are 0x00000000 (0x00000000)
+PANIC: Unhandled interrupt: 0x1
+```
+
+A couple of notes here:
+1. the irq number is wrong and I need to get that aligned properly
+1. the code to determine irq number is way inefficient
+
+In the interest of a quick test, I am going to install the IRQ handler to 1.
+
+---
+
+Getting this cleaned up is done.  And the rpi works!  One last test with the x86 to make sure I did not break anything there and I should be ready to commit these changes.
+
+---
+
 
 
 

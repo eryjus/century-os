@@ -27,6 +27,7 @@
 //    -----------------------------------------------------
 Process_t *ProcessCreate(void (*startingAddr)(void))
 {
+    kprintf("*");
     extern archsize_t mmuLvl1Table;
 
     Process_t *rv = NEW(Process_t);
@@ -60,8 +61,6 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     ProcessEnterPostpone();
     rv->status = PROC_READY;
     Enqueue(&roundRobin, &rv->stsQueue);
-//    ProcessDumpRR();
-//    kprintf("Process %x added!\n", rv->pid);
     ProcessExitPostpone();
 
 

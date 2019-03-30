@@ -171,6 +171,16 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- a macro to write to a 64-bit control register
+//    ---------------------------------------------
+#define MCRR(cp15Spec,val) ({                                               \
+    uint32_t _lval = (uint32_t)(val & 0xffffffff);                          \
+    uint32_t _hval = (uint32_t)(val >> 32);                                 \
+    __asm__ volatile("mcrr " cp15Spec :: "r" (_lval), "r" (_hval));         \
+})
+
+
+//
 // -- Access to the TTBR0 Control Register
 //    ------------------------------------
 #define TTBR0               "p15, 0, %0, c2, c0, 0"

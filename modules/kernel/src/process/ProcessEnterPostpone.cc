@@ -28,6 +28,7 @@
 void __krntext ProcessEnterPostpone(void)
 {
     DisableInterrupts();
+
     SPIN_BLOCK(schedulerLock) {
         schedulerLocksHeld ++;
         SpinlockUnlock(&schedulerLock);

@@ -39,7 +39,7 @@ extern "C" uint64_t SysTimerCount(struct TimerDevice_t *);
 //
 // -- This is the base location where we will find the pit Timer
 //    ----------------------------------------------------------
-#define TIMER           (MMIO_VADDR + 0x00003000)
+#define TIMER           (MMIO_VADDR + 0x01003000)
 
 
 //
@@ -59,20 +59,27 @@ extern "C" uint64_t SysTimerCount(struct TimerDevice_t *);
 // -- These are the control registers for the timer
 //    ---------------------------------------------
 #define CNTFRQ      "p15, 0, %0, c14, c0, 0"
-#define CNTP_CTL    "p15, 0, %0, c14, c2, 1"
-#define CNTP_TVAL   "p15, 0, %0, c14, c2, 0"
-#define CNTPCT      "p15, 0, %0, %1, c14"
-
-
-//
-// -- some access macros for reading and writing the timer registers
-//    --------------------------------------------------------------
 #define READ_CNTFRQ()           MRC(CNTFRQ)
+
+
+#define CNTP_CTL    "p15, 0, %0, c14, c2, 1"
 #define READ_CNTP_CTL()         MRC(CNTP_CTL)
 #define WRITE_CNTP_CTL(val)     MCR(CNTP_CTL,val)
+
+
+#define CNTP_TVAL   "p15, 0, %0, c14, c2, 0"
 #define READ_CNTP_TVAL()        MRC(CNTP_TVAL)
 #define WRITE_CNTP_TVAL(val)    MCR(CNTP_TVAL,val)
+
+
+#define CNTPCT      "p15, 0, %0, %1, c14"
 #define READ_CNTPCT()           MRRC(CNTPCT)
+
+
+#define CNTP_CVAL   "p15, 2, %0, %1, c14"
+#define READ_CNTP_CVAL()        MRRC(CNTP_CVAL)
+#define WRITE_CNTP_CVAL(val)    MCRR(CNTP_CVAL,val)
+
 
 
 

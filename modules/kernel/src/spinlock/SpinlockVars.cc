@@ -20,17 +20,6 @@
 
 
 //
-// -- This is a count of the number of locks that are currently held
-//    --------------------------------------------------------------
-__krndata int locksHeld = 0;
-
-
-//
-// -- The above counter needs a lock as well to prevent race conditions
-//    -----------------------------------------------------------------
-__krndata Spinlock_t lockCounterLock;
-
-//
 // -- This is a lock for use when initializing a stack
 //    ------------------------------------------------
 __krndata Spinlock_t mmuStackInitLock;

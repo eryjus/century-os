@@ -116,14 +116,14 @@ typedef struct Process_t {
     archsize_t topOfStack;              // This is the process current esp value (when not executing)
     archsize_t virtAddrSpace;           // This is the process top level page table
     ProcStatus_t status;                // This is the process status
+    ProcPriority_t priority;            // This is the process priority
+    int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
     PID_t pid;                          // This is the PID of this process
     archsize_t ssAddr;                  // This is the address of the process stack
     char *command;                      // The identifying command, includes the terminating null
     ProcPolicy_t policy;                // This is the scheduling policy
-    ProcPriority_t priority;            // This is the process priority
     uint64_t timeUsed;                  // This is the relative amount of CPU used
     uint64_t wakeAtMicros;              // Wake this process at or after this micros since boot
-    int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
 } Process_t;
 
@@ -155,13 +155,13 @@ extern QueueHead_t sleepingTasks;
 //
 // -- This is the number of times we have entered critical sections
 //    -------------------------------------------------------------
-extern int schedulerLocksHeld;
+extern volatile int schedulerLocksHeld;
 
 
 //
 // -- Are there pending task changes?
 //    -------------------------------
-extern bool processChangePending;
+extern volatile bool processChangePending;
 
 
 //

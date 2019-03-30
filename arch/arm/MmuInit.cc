@@ -260,7 +260,7 @@ void __ldrtext MmuInit(void)
     kprintf("MMU: Mapping the mmio addresses to %p for %x frames\n", mmioVirt, count + 1);
 
     while (count >= 0) {
-        MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN);
+        MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN | PG_DEVICE);
         mmioVirt += 0x1000;
         mmioPhys ++;
         count --;

@@ -40,6 +40,6 @@ void _PicEnableIrq(PicDevice_t *dev, int irq)
         addr = dev->base1 + INT_IRQENB1 + (4 * (irq / 32));
     }
 
-    kprintf("Enabling IRQ %x at address %p\n", 1<<shift, addr);
+    kprintf("Enabling IRQ bit %x at address %p\n", shift, addr);
     MmioWrite(addr, 1 << shift);
 }

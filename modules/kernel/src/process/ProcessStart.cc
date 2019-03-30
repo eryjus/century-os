@@ -32,6 +32,6 @@ void __krntext ProcessStart(void)
     //
     // -- At this point, complete any initialization needed for a new task
     //    ----------------------------------------------------------------
-    ProcessExitPostpone();
+    EnableInterrupts();
 }
 

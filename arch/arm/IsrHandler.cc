@@ -39,24 +39,14 @@ isrFunc_t isrHandlers[256] = {NULL_ISR};
 void IsrHandler(isrRegs_t *regs)
 {
     int intno = 0;
-    int i;
-    uint32_t pending = 0;
+    archsize_t pending = 0;
 
     // -- Here we need to determine the intno for the ISR
-    pending = PicGetIrq(&picControl);
+    pending = (int)PicGetIrq(&picControl);
 
-    for (i = 11; i >= 0; i --) {
-        if (pending & (1<<i)) {
-            intno = i;
-            goto process;
-        }
-    }
+    if (pending == (uint32_t)-1) return;        // spurious interrupt
+    intno = (int)pending;
 
-    kprintf("PANIC: Unable to determine interrupt number: %p\n", pending);
-    Halt();
-    return;
-
-process:
     if (isrHandlers[intno] != NULL) {
         isrFunc_t handler = isrHandlers[intno];
         handler(regs);

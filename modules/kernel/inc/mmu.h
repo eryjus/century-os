@@ -39,6 +39,7 @@
 enum {
     PG_KRN = 0x00000001,
     PG_WRT = 0x00000002,
+    PG_DEVICE = 0x80000000,         // used for ARM
 };
 
 

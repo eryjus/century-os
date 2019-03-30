@@ -26,22 +26,6 @@
 void __krntext SpinlockUnlock(Spinlock_t *lock)
 {
     SpinlockClear(lock);
-
-
-    //
-    // -- now, lock the counter lock so it can be incremented
-    //    NOTE: This is the only lock that can be scheduled away from
-    //    -----------------------------------------------------------
-    while (SpinlockAtomicLock(&lockCounterLock, 0, 1) != 0) {  }
-    locksHeld --;
-    SpinlockClear(&lockCounterLock);
-
-    if (locksHeld == 0) {
-        if (processChangePending) {
-            processChangePending = false;
-            ProcessSchedule();
-        }
-    }
 }
 
 
