@@ -43,6 +43,14 @@
 
 
 @@
+@@ -- Some local equates to access the scheduler elements
+@@    ---------------------------------------------------
+    .equ        SCH_CURRENT_PROCESS,0
+    .equ        SCH_CHG_PENDING,4
+    .equ        SCH_LOCKS_HELD,0x18
+
+
+@@
 @@ -- Some additional constants for use when managing process status
 @@    --------------------------------------------------------------
     .equ        PROC_STS_RUNNING,1
@@ -62,12 +70,12 @@ ProcessSwitch:
 @@
 @@ -- before we get too crazy, do we need to postpone?
 @@    ------------------------------------------------
-    ldr     r1,=schedulerLocksHeld          @@ get the locks held address
+    ldr     r1,=(scheduler+SCH_LOCKS_HELD)  @@ get the locks held address
     ldr     r1,[r1]                         @@ and the count
     cmp     r1,#0                           @@ is this zero?
     beq     .cont                           @@ if zero, contunue
 
-    ldr     r1,=processChangePending        @@ get the address of the process change pending
+    ldr     r1,=(scheduler+SCH_CHG_PENDING) @@ get the address of the process change pending
     mov     r0,#1                           @@ load the value to store
     str     r0,[r1]                         @@ set the flag
     mov     pc,lr                           @@ and return
@@ -82,7 +90,7 @@ ProcessSwitch:
 @@
 @@ -- Save the state by writing the current stack pointer to the current structure
 @@    ----------------------------------------------------------------------------
-    ldr     r1,=currentProcess              @@ get the address of the current process pointer
+    ldr     r1,=(scheduler+SCH_CURRENT_PROCESS) @@ get the address of the current process pointer
     ldr     r2,[r1]                         @@ get the address of the structure
 
     ldr     r4,[r2,#PROC_STATUS]            @@ get the status

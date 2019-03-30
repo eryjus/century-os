@@ -20,49 +20,22 @@
 
 
 //
-// -- This is the current running process
-//    -----------------------------------
-__krndata Process_t *currentProcess = NULL;
+// -- This is the scheduler object
+//    ----------------------------
+__krndata Scheduler_t scheduler = {
+    NULL,                   // currentProcess
+    false,                  // processChangePending
+    0,                      // nextPID
+    0xffffffffffffffff,     // nextWake
+    0,                      // schedulerLocksHeld
+    {0},                    // schedulerLock
+    {{&scheduler.queueOS.list, &scheduler.queueOS.list}, {0}, 0},                   // the os ready queue
+    {{&scheduler.queueHigh.list, &scheduler.queueHigh.list}, {0}, 0},               // the high ready queue
+    {{&scheduler.queueNormal.list, &scheduler.queueNormal.list}, {0}, 0},           // the normal ready queue
+    {{&scheduler.queueLow.list, &scheduler.queueLow.list}, {0}, 0},                 // the low ready queue
+    {{&scheduler.listBlocked.list, &scheduler.listBlocked.list}, {0}, 0},           // the list of blocked processes
+    {{&scheduler.listSleeping.list, &scheduler.listSleeping.list}, {0}, 0},         // the list of sleeping processes
+    {{&scheduler.listTerminated.list, &scheduler.listTerminated.list}, {0}, 0},     // the list of terminated tasks
+};
 
-
-//
-// -- This is the next PID that will be allocated
-//    -------------------------------------------
-__krndata PID_t nextPID = 0;
-
-
-//
-// -- This is the round robin queue of processes to execute
-//    -----------------------------------------------------
-__krndata QueueHead_t roundRobin;
-
-
-//
-// -- This is the number of times we have entered a critical section
-//    --------------------------------------------------------------
-__krndata volatile int schedulerLocksHeld = 0;
-
-
-//
-// -- Is there a pending process change?
-//    ----------------------------------
-__krndata volatile bool processChangePending = false;
-
-
-//
-// -- This is the list of sleeping tasks
-//    ----------------------------------
-__krndata QueueHead_t sleepingTasks;
-
-
-//
-// -- This is the next time we have to wake something up
-//    --------------------------------------------------
-__krndata volatile uint64_t nextWake = (uint64_t)-1;
-
-
-//
-// -- the lock to hold to be able to increment the locks held count
-//    -------------------------------------------------------------
-__krndata Spinlock_t schedulerLock;
 

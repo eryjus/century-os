@@ -42,10 +42,10 @@ void __krntext ProcessUpdateTimeUsed(void)
     uint64_t elapsed = now - lastTimer;
     lastTimer = now;
 
-    if (currentProcess == NULL) {
+    if (scheduler.currentProcess == NULL) {
         cpuIdleTime += elapsed;
     } else {
-        currentProcess->timeUsed += elapsed;
+        scheduler.currentProcess->timeUsed += elapsed;
     }
 }
 

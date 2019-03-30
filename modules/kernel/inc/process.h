@@ -84,13 +84,12 @@ typedef enum { PROC_INIT,               // This is being created and is not on a
         PROC_SEMW,                      // This is waiting on a Semaphore and is on the waiting queue
         PROC_DLYW,                      // This is waiting for a timed event and is on the waiting queue
         PROC_MSGW,                      // This is waiting for a message to be delivered and in on the waiting queue
-        PROC_ZOMB,                      // This is a crashed process and is on the reaper queue
 } ProcStatus_t;
 
 
 //
-// -- This list is the policy choices for a running process
-//    -----------------------------------------------------
+// -- This list is the policy choices for a running process; unused currently
+//    -----------------------------------------------------------------------
 typedef enum { POLICY_0,
     POLICY_1,
     POLICY_2,
@@ -101,8 +100,7 @@ typedef enum { POLICY_0,
 //
 // -- This is list is the priority of the process, which doubles as the quantum that will be given a process
 //    ------------------------------------------------------------------------------------------------------
-typedef enum { PTY_IDLE = 1,            // This is for the butler process when there is nothing to do
-        PTY_LOW = 5,                    // This is a low priority user process
+typedef enum { PTY_LOW = 5,             // This is a low priority user process
         PTY_NORM = 10,                  // This is a normal user process
         PTY_HIGH = 20,                  // This is a high priority user process
         PTY_OS = 30,                    // This is an OS or Driver process
@@ -129,51 +127,34 @@ typedef struct Process_t {
 
 
 //
-// -- The currently running process:
-//    ------------------------------
-extern Process_t *currentProcess;
+// -- This structure encapsulates the whole of the scheduler
+//    ------------------------------------------------------
+typedef struct Scheduler_t {
+    // -- These fields can only be changed after ProcessEnterPostpone(); SMP may change this
+    Process_t *currentProcess;              // the process that is currently executing on the cpu
+    volatile bool processChangePending;     // whether there is a change that is pending
+    PID_t nextPID;                          // the next pid number to allocate
+    volatile uint64_t nextWake;             // the next tick-since-boot when a process needs to wake up
+
+    // -- This is a critical field controlled by its lock
+    volatile int schedulerLocksHeld;        // the depth of the locks
+    Spinlock_t schedulerLock;               // lock must be held to change the above field
+
+    // -- and the different lists a process might be on, locks in each list will be used
+    QueueHead_t queueOS;                    // this is the queue for the OS tasks -- if it can run it does
+    QueueHead_t queueHigh;                  // this is the queue for High pty tasks
+    QueueHead_t queueNormal;                // these are the typical tasks -- most non-OS tasks will be here
+    QueueHead_t queueLow;                   // low priority tasks which do not need cpu unless there is nothing else
+    ListHead_t  listBlocked;                // these are blocked tasks for any number of reasons
+    ListHead_t  listSleeping;               // these are sleeping tasks, which the timer interrupt will investigate
+    ListHead_t  listTerminated;             // these are terminated tasks, which are waiting to be torn down
+} Scheduler_t;
 
 
 //
-// -- This is the next PID that will be allocated
-//    -------------------------------------------
-extern PID_t nextPID;
-
-
-//
-// -- This is the round robin queue of processes
-//    ------------------------------------------
-extern QueueHead_t roundRobin;
-
-
-//
-// -- This is the list of sleeping tasks
-//    ----------------------------------
-extern QueueHead_t sleepingTasks;
-
-
-//
-// -- This is the number of times we have entered critical sections
-//    -------------------------------------------------------------
-extern volatile int schedulerLocksHeld;
-
-
-//
-// -- Are there pending task changes?
+// -- And the scheduler object itself
 //    -------------------------------
-extern volatile bool processChangePending;
-
-
-//
-// -- the lock to hold to be able to increment the locks held count
-//    -------------------------------------------------------------
-extern Spinlock_t schedulerLock;
-
-
-//
-// -- This is the next time we have to wake something up
-//    --------------------------------------------------
-extern volatile uint64_t nextWake;
+extern Scheduler_t scheduler;
 
 
 //
@@ -213,6 +194,12 @@ __CENTURY_FUNC__ void ProcessSchedule(void);
 
 
 //
+// -- Place a process on the correct ready queue
+//    ------------------------------------------
+__CENTURY_FUNC__ void ProcessReady(Process_t *proc);
+
+
+//
 // -- Block a process
 //    ---------------
 __CENTURY_FUNC__ void ProcessBlock(ProcStatus_t reason);
@@ -237,6 +224,18 @@ __CENTURY_FUNC__ void ProcessMicroSleepUntil(uint64_t when);
 
 
 //
+// -- Terminate a task
+//    ----------------
+__CENTURY_FUNC__ void ProcessTerminate(Process_t *proc);
+
+
+//
+// -- Elect to end the current task
+//    -----------------------------
+__CENTURY_FUNC__ inline void ProcessEnd(void) { ProcessTerminate(scheduler.currentProcess); }
+
+
+//
 // -- Lock the scheduler for a critical section
 //    -----------------------------------------
 __CENTURY_FUNC__ void ProcessEnterPostpone(void);
@@ -246,6 +245,12 @@ __CENTURY_FUNC__ void ProcessEnterPostpone(void);
 // -- Unlock the scheduler after a critical section
 //    ---------------------------------------------
 __CENTURY_FUNC__ void ProcessExitPostpone(void);
+
+
+//
+// -- remove the process for its list, if it is on one
+//    ------------------------------------------------
+__CENTURY_FUNC__ void ProcessListRemove(Process_t *proc);
 
 
 //
@@ -271,10 +276,5 @@ __CENTURY_FUNC__ inline void ProcessSleep(uint64_t secs) {
     ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + (secs * 1000000));
 }
 
-
-//
-// -- Dump the contents of the RoundRobin Queue
-//    -----------------------------------------
-__CENTURY_FUNC__ void ProcessDumpRR(void);
 
 #endif

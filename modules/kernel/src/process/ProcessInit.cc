@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ProcessInit.h -- Initialize the process structures
+//  ProcessInit.cc -- Initialize the process structures
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -39,22 +39,19 @@ void __krntext ProcessInit(void)
     extern uint64_t lastTimer;
 
     kprintf("ProcessInit(): mmuLvl1Table = %p\n", mmuLvl1Table);
-    currentProcess = NEW(Process_t);
+    scheduler.currentProcess = NEW(Process_t);
 
-    currentProcess->topOfStack = 0;
-    currentProcess->virtAddrSpace = mmuLvl1Table;
-    currentProcess->pid = nextPID ++;          // -- this is the butler process ID
-    currentProcess->ssAddr = STACK_LOCATION;
-    currentProcess->command = NULL;
-    currentProcess->policy = POLICY_0;
-    currentProcess->priority = PTY_OS;
-    currentProcess->status = PROC_RUNNING;
-    currentProcess->quantumLeft = PTY_OS;
-    currentProcess->timeUsed = 0;
-    ListInit(&currentProcess->stsQueue);
-
-    ListInit(&roundRobin.list);
-    ListInit(&sleepingTasks.list);
+    scheduler.currentProcess->topOfStack = 0;
+    scheduler.currentProcess->virtAddrSpace = mmuLvl1Table;
+    scheduler.currentProcess->pid = scheduler.nextPID ++;          // -- this is the butler process ID
+    scheduler.currentProcess->ssAddr = STACK_LOCATION;
+    scheduler.currentProcess->command = NULL;
+    scheduler.currentProcess->policy = POLICY_0;
+    scheduler.currentProcess->priority = PTY_OS;
+    scheduler.currentProcess->status = PROC_RUNNING;
+    scheduler.currentProcess->quantumLeft = PTY_OS;
+    scheduler.currentProcess->timeUsed = 0;
+    ListInit(&scheduler.currentProcess->stsQueue);
 
     lastTimer = TimerCurrentCount(&timerControl);
 }

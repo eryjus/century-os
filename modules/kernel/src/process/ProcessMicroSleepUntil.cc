@@ -31,10 +31,14 @@ void __krntext ProcessMicroSleepUntil(uint64_t when)
         return;
     }
 
-    currentProcess->wakeAtMicros = when;
-    if (when < nextWake) nextWake = when;
+    scheduler.currentProcess->wakeAtMicros = when;
+    if (when < scheduler.nextWake) scheduler.nextWake = when;
 
-    Enqueue(&sleepingTasks, &currentProcess->stsQueue);
+    SPIN_BLOCK(scheduler.listSleeping.lock) {
+        Enqueue(&scheduler.listSleeping, &scheduler.currentProcess->stsQueue);
+        SpinlockUnlock(&scheduler.listSleeping.lock);
+    }
+
     ProcessExitPostpone();
     ProcessBlock(PROC_DLYW);
 }

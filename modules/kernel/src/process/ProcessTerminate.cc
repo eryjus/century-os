@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessUnblock.cc -- Unblock a process
+// ProcessTerminate.cc -- End a task by placing it on the terminated queue
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,25 +10,32 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-22  Initial   0.3.2   ADCL  Initial version
+//  2019-Mar-29  Initial   0.3.2   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "lists.h"
+#include "printf.h"
+#include "cpu.h"
 #include "process.h"
 
 
 //
-// -- Block the current process
-//    -------------------------
-void __krntext ProcessUnblock(Process_t *proc)
+// -- Terminate a task
+//    ----------------
+void __krntext ProcessTerminate(Process_t *proc)
 {
     ProcessEnterPostpone();
 
-    proc->status = PROC_READY;
-    ProcessReady(proc);
+    ProcessListRemove(proc);
+
+    SPIN_BLOCK(scheduler.listTerminated.lock) {
+        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+        SpinlockUnlock(&scheduler.listTerminated.lock);
+    }
+
+    ProcessBlock(PROC_TERM);
 
     ProcessExitPostpone();
 }

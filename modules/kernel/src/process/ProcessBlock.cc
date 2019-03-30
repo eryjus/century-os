@@ -29,7 +29,7 @@
 void __krntext ProcessBlock(ProcStatus_t reason)
 {
     ProcessEnterPostpone();
-    currentProcess->status = reason;
+    scheduler.currentProcess->status = reason;
     ProcessSchedule();
     ProcessExitPostpone();
 }

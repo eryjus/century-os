@@ -46,9 +46,7 @@
 ;;
 ;; -- Some global variables that are referenced
 ;;    -----------------------------------------
-    extern  currentProcess
-    extern  schedulerLocksHeld
-    extern  processChangePending
+    extern  scheduler
 
 
 ;;
@@ -59,6 +57,14 @@ PROC_VIRT_ADDR_SPACE    EQU     4
 PROC_STATUS             EQU     8
 PROC_PRIORITY           EQU     12
 PROC_QUANTUM_LEFT       EQU     16
+
+
+;;
+;; -- some local equates for accessing the structure offsets
+;;    ------------------------------------------------------
+SCH_CURRENT_PROCESS     EQU     0
+SCH_CHG_PENDING         EQU     4
+SCH_LOCKS_HELD          EQU     0x14
 
 
 ;;
@@ -82,10 +88,10 @@ ProcessSwitch:
 ;;
 ;; -- before we do too much, do we need to postpone?
 ;;    ----------------------------------------------
-        cmp     dword [schedulerLocksHeld],0
+        cmp     dword [scheduler+SCH_LOCKS_HELD],0
         je      .cont
 
-        mov     dword [processChangePending],1
+        mov     dword [scheduler+SCH_CHG_PENDING],1
         ret
 
 ;;
@@ -101,7 +107,7 @@ ProcessSwitch:
 ;;
 ;; -- Get the current task structure
 ;;    ------------------------------
-        mov     esi,[currentProcess]        ;; get the address of the current process
+        mov     esi,[scheduler+SCH_CURRENT_PROCESS]        ;; get the address of the current process
 
         cmp     dword [esi+PROC_STATUS],PROC_STS_RUNNING      ;; is this the current running process
         jne     .saveStack
@@ -115,7 +121,7 @@ ProcessSwitch:
 ;; -- next, we get the next task and prepare to switch to that
 ;;    --------------------------------------------------------
         mov     edi,[esp+((4+1)*4)]         ;; get the new task's structure
-        mov     [currentProcess],edi        ;; this is now the currnet task
+        mov     [scheduler+SCH_CURRENT_PROCESS],edi        ;; this is now the currnet task
 
         mov     esp,[edi+PROC_TOP_OF_STACK] ;; get the stop of the next process stack
         mov     dword [edi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running

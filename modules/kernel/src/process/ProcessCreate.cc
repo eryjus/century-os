@@ -32,7 +32,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
 
     Process_t *rv = NEW(Process_t);
 
-    rv->pid = nextPID ++;           // -- this is the butler process ID
+    rv->pid = scheduler.nextPID ++;           // -- this is the butler process ID
     rv->command = NULL;
     rv->policy = POLICY_0;
     rv->priority = PTY_OS;
@@ -60,7 +60,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //    ----------------------------------------
     ProcessEnterPostpone();
     rv->status = PROC_READY;
-    Enqueue(&roundRobin, &rv->stsQueue);
+    ProcessReady(rv);
     ProcessExitPostpone();
 
 

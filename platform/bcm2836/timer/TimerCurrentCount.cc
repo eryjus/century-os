@@ -18,9 +18,17 @@
 #include "types.h"
 #include "timer.h"
 
+//
+// -- This is the number of ticks since boot
+//    --------------------------------------
+uint64_t microsSinceBoot = 0;
 
+
+//
+// -- Get the number of micros since boot
+//    -----------------------------------
 uint64_t _TimerCurrentCount(TimerDevice_t *dev)
 {
-    return READ_CNTPCT() * dev->factor;
+    return microsSinceBoot;
 }
 

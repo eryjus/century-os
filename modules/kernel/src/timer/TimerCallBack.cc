@@ -64,36 +64,42 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     // -- here we look for any sleeping tasks to wake
     //    -------------------------------------------
     uint64_t now = TimerCurrentCount(&timerControl);
-    if (now >= nextWake && IsListEmpty(&sleepingTasks) == false) {
+    if (now >= scheduler.nextWake && IsListEmpty(&scheduler.listSleeping) == false) {
         uint64_t newWake = (uint64_t)-1;
 
 
         //
         // -- loop through and find the processes to wake up
         //    ----------------------------------------------
-        ListHead_t::List_t *list = sleepingTasks.list.next;
-        while (list != &sleepingTasks.list) {
+        ListHead_t::List_t *list = scheduler.listSleeping.list.next;
+        while (list != &scheduler.listSleeping.list) {
             ListHead_t::List_t *next = list->next;      // must be saved before it is changed below
             Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
             if (now >= wrk->wakeAtMicros) {
                 wrk->wakeAtMicros = 0;
-                ListRemoveInit(&wrk->stsQueue);
+
+                SPIN_BLOCK(scheduler.listSleeping.lock) {
+                    ListRemoveInit(&wrk->stsQueue);
+                    SpinlockUnlock(&scheduler.listSleeping.lock);
+                }
+
                 ProcessUnblock(wrk);
             } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
 
             list = next;
         }
 
-        nextWake = newWake;
+//         kprintf("Updating nextWake to be %p : %p\n", (uint32_t)(newWake >> 32), (uint32_t)newWake);
+        scheduler.nextWake = newWake;
     }
 
 
     //
     // -- adjust the quantum and see if it is time to change tasks
     //    --------------------------------------------------------
-    if (currentProcess != NULL) {
-        currentProcess->quantumLeft --;
-        if (currentProcess->quantumLeft <= 0) ProcessSchedule();
+    if (scheduler.currentProcess != NULL) {
+        scheduler.currentProcess->quantumLeft --;
+        if (scheduler.currentProcess->quantumLeft <= 0) ProcessSchedule();
     }
 
     TimerEoi(&timerControl);

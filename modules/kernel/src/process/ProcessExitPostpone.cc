@@ -27,15 +27,15 @@
 //    ----------------------------------------
 void __krntext ProcessExitPostpone(void)
 {
-    SPIN_BLOCK(schedulerLock) {
-        schedulerLocksHeld --;
-        SpinlockUnlock(&schedulerLock);
+    SPIN_BLOCK(scheduler.schedulerLock) {
+        scheduler.schedulerLocksHeld --;
+        SpinlockUnlock(&scheduler.schedulerLock);
     }
 
     // -- interrupts are still disabled here
-    if (schedulerLocksHeld == 0) {
-        if (processChangePending != 0) {
-            processChangePending = 0;           // need to clear this to actually perform a change
+    if (scheduler.schedulerLocksHeld == 0) {
+        if (scheduler.processChangePending != 0) {
+            scheduler.processChangePending = 0;           // need to clear this to actually perform a change
             ProcessSchedule();
         }
 

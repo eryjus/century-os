@@ -21,44 +21,71 @@
 
 
 //
+// -- Find the next process to give the CPU to
+//    ----------------------------------------
+static Process_t *ProcessNext(void)
+{
+    if (IsListEmpty(&scheduler.queueOS) == false) {
+        return FIND_PARENT(scheduler.queueOS.list.next, Process_t, stsQueue);
+    } else if (IsListEmpty(&scheduler.queueHigh) == false) {
+        return FIND_PARENT(scheduler.queueHigh.list.next, Process_t, stsQueue);
+    } else if (IsListEmpty(&scheduler.queueNormal) == false) {
+        return FIND_PARENT(scheduler.queueNormal.list.next, Process_t, stsQueue);
+    } else if (IsListEmpty(&scheduler.queueLow) == false) {
+        return FIND_PARENT(scheduler.queueLow.list.next, Process_t, stsQueue);
+    } else {
+        return NULL;
+    }
+}
+
+
+//
 // -- pick the next process to execute and execute it; ProcessLockScheduler() must be called before calling
 //    -----------------------------------------------------------------------------------------------------
 void __krntext ProcessSchedule(void)
 {
+    Process_t *next = NULL;
     ProcessUpdateTimeUsed();
 
-    if (schedulerLocksHeld != 0) {
-        processChangePending = true;
+    if (scheduler.schedulerLocksHeld != 0) {
+        scheduler.processChangePending = true;
         return;
     }
 
-    if (IsListEmpty(&roundRobin) == false) {
-        Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-        ListRemoveInit(&next->stsQueue);
-        if (currentProcess->status == PROC_RUNNING) Enqueue(&roundRobin, &currentProcess->stsQueue);
+    next = ProcessNext();
+    if (next != NULL) {
+//        kprintf(" (switching)");
+        ProcessListRemove(next);
+
+        if (scheduler.currentProcess->status == PROC_RUNNING) {
+            ProcessReady(scheduler.currentProcess);
+        }
+
         ProcessSwitch(next);
-    } else if (currentProcess->status == PROC_RUNNING) {
+    } else if (scheduler.currentProcess->status == PROC_RUNNING) {
+//        kprintf(" (continuing)");
         // -- Do nothing; the current process can continue; reset quantum
-        currentProcess->quantumLeft += currentProcess->priority;
+        scheduler.currentProcess->quantumLeft += scheduler.currentProcess->priority;
     } else {
+//        kprintf(" (idle)");
         // -- No tasks available; so we go into idle mode
-        Process_t *save = currentProcess;       // we will save this process for later
-        currentProcess = NULL;                  // nothing is running!
+        Process_t *save = scheduler.currentProcess;       // we will save this process for later
+        scheduler.currentProcess = NULL;                  // nothing is running!
 
         do {
             // -- -- temporarily enable interrupts for the timer to fire
             EnableInterrupts();
             HaltCpu();
             DisableInterrupts();
-        } while (IsListEmpty(&roundRobin) == true);
+            next = ProcessNext();
+        } while (next == NULL);
 
 
-        // -- restore the current Process
+        // -- restore the current Process and change if needed
         ProcessUpdateTimeUsed();
-        currentProcess = save;
-        Process_t *next = FIND_PARENT(roundRobin.list.next, Process_t, stsQueue);
-        ListRemoveInit(&next->stsQueue);
-        if (next != currentProcess) ProcessSwitch(next);
+        scheduler.currentProcess = save;
+        ProcessListRemove(next);
+        if (next != scheduler.currentProcess) ProcessSwitch(next);
     }
 }
 

@@ -721,6 +721,125 @@ Getting this cleaned up is done.  And the rpi works!  One last test with the x86
 
 ---
 
+I can finally now move on to step 12 of the tutorial which is terminating a task.  This should be relatively easy as we just block the task and put it on a reaper queue.  My butler task will take care of the cleanup.  Later, if I find I will need it, I can add a reaper process running at a higher priority to take care of cleanup if I find it is taking too long.  For now I will just add the process to a terminated queue.
 
+Also, I had the step numbers wrong at the top of this Journal.  I will be skipping the Mutexes and Semaphores section as well as the IPC section.  These are steps 13 and 14 (sections 14 and 15) of the tutorial.
 
+---
 
+So, the function to terminate a process was easy -- no cleanup though yet.  I also added a function to self-terminate.
+
+The next thing to work on was the upgraded scheduler.  For that, I am going to work my way back to the original design with several queues.  I am also going to pull several of the structures together under a parent structure, which I hope to make things easier for debugging later -- similar to how I have my kernel heap organized.  Then, finally, I will work on getting a terminated process cleaned up.
+
+Tomorrow.
+
+---
+
+### 2019-Mar-30
+
+Here is what I have come up with to replace the scheduler variables:
+
+```C
+//
+// -- This structure encapsulates the whole of the scheduler
+//    ------------------------------------------------------
+typedef struct Scheduler_t {
+    // -- some critical fields and their lock
+    Spinlock_t schedulerLock;               // this lock must be held to change these fields:
+    volatile int schedulerLocksHeld;        // ... this is the depth of the locks
+    volatile bool processChangePending;     // ... this is whether there is a change that is pending
+    volatile Process_t *currentProcess;     // ... this is the process that is currently executing on cpu
+
+    // -- some additional fields that are not lock-controlled
+    PID_t nextPID;                          // the next pid number to allocate
+    volatile uint64_t nextWake;             // the next tick-since-boot when a process needs to wake up
+
+    // -- and the different lists a process might be on, locks in each list will be used
+    QueueHead_t queueOS;                    // this is the queue for the OS tasks -- if it can run it does
+    QueueHead_t queueHigh;                  // this is the queue for High pty tasks
+    QueueHead_t queueNormal;                // these are the typical tasks -- most non-OS tasks will be here
+    QueueHead_t queueLow;                   // low priority tasks which do not need cpu unless there is nothing else
+    ListHead_t  listBlocked;                // these are blocked tasks for any number of reasons
+    ListHead_t  listSleeping;               // these are sleeping tasks, which the timer interrupt will investigate
+    ListHead_t  listTerminated;             // these are terminated tasks, which are waiting to be torn down
+} Scheduler_t;
+```
+
+Now, what I am pondering is whether I want to have a global process list or not.  There are only so many places a process can be in, but at the same time, there are so many places a process can be in.  For now, nothing is requiring it except my own OCD, so I will leave it out.  I can always add it later -- perhaps when I get to an integrated debugger.
+
+And, make no mistake, the compile is way broken at the moment.
+
+I also want to take a moment to comment on what this structure does to performance.  There is now an extra level of indirection that is added to all memory reads/writes.  I may come back later and tune how this is laid out.
+
+---
+
+Of course, I broke it.  Things are not swapping anymore.  No clue why, but I haven't really looked into it too much.  I have been making sure that I have the other fundamentals ready.  I do know that the x86 and arm arches behave differently, so I am nearly positive that I have a problem with `ProcessSwitch()`.
+
+Ok, so I am going to take on the debugging now.  I am going to start with the x86 first since I have a few extra debugging options available to me.  I also think I am closer to having a working system there than I am with arm.
+
+So, I definitely have a problem with the next wake ticks:
+
+```
+ABBBBB
+A (pid = 0x0) timer = 0x00000000 : 0x000007d0
+B (pid = 0x1) timer = 0x00000000 : 0x00000000
+Low 32-bit ticks is 0x2161690
+Next wake time is 0xffffffff
+```
+
+Since process B sleeps for 1 sec at each iteration, there should always be a value in `scheduler.nextWake` -- it should never have `0xffffffff` when it gets to dumping the contents.  So, let's get to the bottom of that....
+
+---
+
+So, I discovered that the 64-bit unsigned integers on the arm 32-bit arch need to be 64-bit aligned.  This is a bit lesson here, as putting these values on the stack and reading them from assembly will be problematic.  As it is, the I had problems reading the `scheduler` structure from asm when it was defined in C.  I had to add the following debugging code to decipher the locations and sizes:
+
+```C
+    kprintf("The offset of scheduler.currentProcess is %x (%x)\n", offsetof(Scheduler_t, currentProcess), sizeof(scheduler.currentProcess));
+    kprintf("The offset of scheduler.processChangePending is %x (%x)\n", offsetof(Scheduler_t, processChangePending), sizeof(scheduler.processChangePending));
+    kprintf("The offset of scheduler.nextPID is %x (%x)\n", offsetof(Scheduler_t, nextPID), sizeof(scheduler.nextPID));
+    kprintf("The offset of scheduler.nextWake is %x (%x)\n", offsetof(Scheduler_t, nextWake), sizeof(scheduler.nextWake));
+    kprintf("The offset of scheduler.schedulerLocksHeld is %x (%x)\n", offsetof(Scheduler_t, schedulerLocksHeld), sizeof(scheduler.schedulerLocksHeld));
+```
+
+Now, arm gave the following results:
+
+```
+The offset of scheduler.currentProcess is 0x0 (0x4)
+The offset of scheduler.processChangePending is 0x4 (0x1)
+The offset of scheduler.nextPID is 0x8 (0x4)
+The offset of scheduler.nextWake is 0x10 (0x8)
+The offset of scheduler.schedulerLocksHeld is 0x18 (0x4)
+```
+
+and x86 these:
+
+```
+The offset of scheduler.currentProcess is 0x0 (0x4)
+The offset of scheduler.processChangePending is 0x4 (0x1)
+The offset of scheduler.nextPID is 0x8 (0x4)
+The offset of scheduler.nextWake is 0xc (0x8)
+The offset of scheduler.schedulerLocksHeld is 0x14 (0x4)
+```
+
+So, what to do with this information?  Do I force the alignment of the structure attribute?  No, and this is because when I get into 64-bit stuff, I will have a whole new list of offsets to determine.  I am not going to pad a 32-bit structure for 64-bits.  So, I will change the architecture-specific assembly to match what the compiler generates.
+
+So, AB is working again....  Adding process C back in.  Which for x86 does not block.
+
+So, it appears that process C exists on both the ready queue and in the current process variable at the same time.  This is a no-no.  Next task to research....
+
+Ok, that solved, add D back in.  D, E, F, and G all work now.  This is actually rather solid at this point.
+
+I think I am going to hold off on the terminated process cleanup for a while.  Right now, I have nothing I need to clean up after and I do not expect to get to that point yet.  I will capture this in Redmine.
+
+---
+
+So, before I get into the final commit for this version, I want to think through the next steps a bit first.  There are, I guess 5 possible places I could go:
+1. Implement SMP
+1. Get back into user space -- I had it and then lost that
+1. Add a 64-bit architecture
+1. Start an integrated debugger
+1. Add vfs support (which will need a file system in order to test)
+
+I think the vfs is probably off the table since it is still too big at the moment....  I do not yet see much of a point of getting to user space until I have a file system I can load stuff from....  So, I am down to SMP, 64-bit, or an integrated debugger.  SMP will drive the need for IPC and messaging, which is not too bad to take on.
+
+Stay tuned....

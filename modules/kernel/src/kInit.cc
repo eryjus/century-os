@@ -131,6 +131,12 @@ void kInit(void)
     FrameBufferPutS("Welcome to CenturyOS -- a hobby operating system\n");
     FrameBufferPutS("    (initializing...)\n");
 
+    kprintf("The offset of scheduler.currentProcess is %x (%x)\n", offsetof(Scheduler_t, currentProcess), sizeof(scheduler.currentProcess));
+    kprintf("The offset of scheduler.processChangePending is %x (%x)\n", offsetof(Scheduler_t, processChangePending), sizeof(scheduler.processChangePending));
+    kprintf("The offset of scheduler.nextPID is %x (%x)\n", offsetof(Scheduler_t, nextPID), sizeof(scheduler.nextPID));
+    kprintf("The offset of scheduler.nextWake is %x (%x)\n", offsetof(Scheduler_t, nextWake), sizeof(scheduler.nextWake));
+    kprintf("The offset of scheduler.schedulerLocksHeld is %x (%x)\n", offsetof(Scheduler_t, schedulerLocksHeld), sizeof(scheduler.schedulerLocksHeld));
+
     //
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
@@ -181,7 +187,7 @@ void kInit(void)
 //    BREAKPOINT;
 
 
-    A = currentProcess;
+    A = scheduler.currentProcess;
     B = ProcessCreate(StartB);
     C = ProcessCreate(StartC);
     D = ProcessCreate(StartD);
@@ -201,11 +207,9 @@ void kInit(void)
         kprintf("G (pid = %x) timer = %p : %p\n", G->pid, (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
 
         kprintf("Low 32-bit ticks is %x\n", (uint32_t)TimerCurrentCount(&timerControl));
-        kprintf("Next wake time is %x\n", (uint32_t)nextWake);
+        kprintf("Next wake time is %x\n", (uint32_t)scheduler.nextWake);
 
-        ProcessEnterPostpone();
-        ListRemoveInit(&C->stsQueue);
-        ProcessExitPostpone();
+        ProcessListRemove(C);       // make sure C is not on a ready queue
         ProcessUnblock(C);
 
         kprintf("A");
@@ -229,16 +233,5 @@ void kInit(void)
         HaltCpu();
     }
 #endif
-}
-
-
-//
-// -- This is ths Idle process
-//    ------------------------
-void idleMain(void)
-{
-    while (1) {
-        HaltCpu();
-    }
 }
 
