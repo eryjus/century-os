@@ -27,6 +27,14 @@
 
 
 @@
+@@ -- make sure that if the required symbols are defined
+@@    --------------------------------------------------
+.ifndef ENABLE_BRANCH_PREDICTOR
+    .equ        ENABLE_BRANCH_PREDICTOR,0
+.endif
+
+
+@@
 @@ -- Now, expose our function to everyone
 @@    ------------------------------------
     .global     ProcessSwitch
@@ -119,6 +127,11 @@ ProcessSwitch:
 
     cmp     r2,r3                           @@ are they the same virtual address space?
     mcrne   p15,0,r2,c2,c0,0                @@ replace the top level mmu tables
+
+.if ENABLE_BRANCH_PREDICTOR
+    mcrne   p15,0,r0,c7,c5,6                @@ invalidate the branch predictor (required maintenance when enabled)
+.endif
+
     isb                                     @@ flush the instruction fetch buffer and start over
     dsb                                     @@ reset all memory fetches
 

@@ -118,6 +118,8 @@ void __ldrtext MmuInit(void)
             kprintf("Mapping a new ttl2 table at address %p to table %p\n", &ttl1Entry[i], (ttl2<<2) + i);
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
             ttl1Entry[i].fault = 0b01;
+
+            BPIALLIS();
         }
     }
 
@@ -140,6 +142,8 @@ void __ldrtext MmuInit(void)
         ttl2Table[idx + i].b = 1;
         ttl2Table[idx + i].nG = 0;
         ttl2Table[idx + i].fault = 0b10;
+
+        BPIALLIS();
     }
 
 
@@ -168,6 +172,8 @@ void __ldrtext MmuInit(void)
             kprintf(".. Setting the ttl2 table for MB %x\n", (TTL2_KRN_VADDR >> 20) + i);
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
             ttl1Entry[i].fault = 0b01;
+
+            BPIALLIS();
         }
     } else ttl2 = ttl1Entry->ttl2;
 
@@ -191,6 +197,8 @@ void __ldrtext MmuInit(void)
     ttl2Mgmt[0x3ff].b = 1;
     ttl2Mgmt[0x3ff].nG = 0;
     ttl2Mgmt[0x3ff].fault = 0b10;
+
+    BPIALLIS();
 
 
     //
@@ -221,6 +229,8 @@ void __ldrtext MmuInit(void)
             ttl2Mgmt->b = 1;
             ttl2Mgmt->nG = 0;
             ttl2Mgmt->fault = 0b10;
+
+            BPIALLIS();
         }
     }
 

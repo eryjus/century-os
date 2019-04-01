@@ -104,6 +104,8 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
 
                 ttl1Entry[i].fault = 0b01;
                 ttl1Entry[i].ttl2 = (newFrame << 2) + i;
+
+                BPIALLIS();
             }
         }
 
@@ -152,6 +154,8 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
         ttl2Entry->b = 1;
         ttl2Entry->nG = 0;
         ttl2Entry->fault = 0b10;
+
+        BPIALLIS();
 
         pageCurr ++;
     }

@@ -37,6 +37,7 @@ frame_t MmuUnmapPage(archsize_t addr)
     frame_t rv = ttl2Entry->frame;
     *(uint32_t *)ttl2Entry = 0;
 
+    BPIALLIS();
     InvalidatePage(addr & 0xfffff000);
 
     return rv;

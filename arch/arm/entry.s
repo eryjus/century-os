@@ -23,6 +23,14 @@
 
 
 @@
+@@ -- make sure that if the required symbols are defined
+@@    --------------------------------------------------
+.ifndef ENABLE_BRANCH_PREDICTOR
+    .equ        ENABLE_BRANCH_PREDICTOR,0
+.endif
+
+
+@@
 @@ -- explose some global symbols
     .global     entry
     .global     pmmEarlyFrame           @@ -- picked up by the pmm for initialization
@@ -96,6 +104,19 @@ hyp:
 cont:
     mov     sp,#0x8000                  @@ set the stack
 
+@@
+@@ -- some early CPU initialization
+@@    -----------------------------
+.if ENABLE_BRANCH_PREDICTOR
+    mrc     p15,0,r3,c1,c0,0            @@ get the SCTLR
+    orr     r3,#(1<<11)                 @@ set the Z bit for branch prediction (may be forced on by HW!)
+    mcr     p15,0,r3,c1,c0,0            @@ write the SCTLR back with the branch predictor guaranteed enabled
+.endif
+
+
+@@
+@@ -- figure out which CPU we are on; one CPU 0 continues after this
+@@    --------------------------------------------------------------
     mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
     and     r3,r3,#0x3                  @@ Extract CPU ID bits
     cmp     r3,#0
@@ -325,7 +346,7 @@ bssLoop:
     mcr     p15,0,r0,c2,c0,0            @@ write the ttl1 table to the TTBR0 register
     mcr     p15,0,r0,c2,c0,1            @@ write the ttl1 table to the TTBR1 register as well; will use later
 
-    mov     r1,#0                       @@ This is the number of bits to use to determine which table; short format please
+    mov     r1,#0                       @@ This is the number of bits to use to determine which table; short format
     mcr     p15,0,r1,c2,c0,2            @@ write these to the TTBCR0
 
     mov     r1,#0xffffffff              @@ All domains can manage all things by default
@@ -333,7 +354,11 @@ bssLoop:
 
     mrc     p15,0,r1,c1,c0,0            @@ This gets the cp15 register 1 and puts it in r0
     orr     r1,#1                       @@ set bit 0
-    mcr     p15,0,r1,c1,c0,0            @@ Put the cp15 register 1 back, with the MMU enable
+    mcr     p15,0,r1,c1,c0,0            @@ Put the cp15 register 1 back, with the MMU enabled
+
+.if ENABLE_BRANCH_PREDICTOR
+    mcr     p15,0,r0,c7,c5,6            @@ invalidate the branch predictor (required maintenance when enabled)
+.endif
 
 
 @@ -- finally jump to the loader initialization function

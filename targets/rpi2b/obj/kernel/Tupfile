@@ -14,6 +14,13 @@
 
 
 ##
+## -- Set some defines needed by this targets
+##    ---------------------------------------
+CCDEFINE += -DENABLE_BRANCH_PREDICTOR=1
+ASDEFINE += -defsym ENABLE_BRANCH_PREDICTOR=1
+
+
+##
 ## -- Go get some additional information for building the targets
 ##    -----------------------------------------------------------
 include ../../Tupfile.inc

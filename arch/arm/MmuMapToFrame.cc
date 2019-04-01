@@ -79,6 +79,8 @@ static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
 #if DEBUG_MMU == 1
     kprintf("TTL2 table prepared\n");
 #endif
+
+    BPIALLIS();
     return frame;
 }
 
@@ -140,5 +142,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
     InvalidatePage(addr & 0xfffff000);
+
+    BPIALLIS();
 }
 

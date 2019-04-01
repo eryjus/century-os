@@ -181,19 +181,16 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
-// -- Access to the TTBR0 Control Register
-//    ------------------------------------
-#define TTBR0               "p15, 0, %0, c2, c0, 0"
-#define READ_TTBR0()        MRC(TTBR0)
-#define WRITE_TTBR0(val)    MCR(TTBR0,val)
+// == These are the individual control registers (ordered by CRn, CRM, op1, op2)
+//    ==========================================================================
 
 
 //
-// -- Access to the TTBR1 Control Register
-//    ------------------------------------
-#define TTBR1               "p15, 0, %0, c2, c0, 1"
-#define READ_TTBR1()        MRC(TTBR1)
-#define WRITE_TTBR1(val)    MCR(TTBR1,val)
+// -- Access to the SCTLR (System Control Register)
+//    ---------------------------------------------
+#define SCTLR               "p15, 0, %0, c1, c0, 0"
+#define READ_SCTLR()        MRC(SCTLR)
+#define WRITE_SCTLR(val)    MCR(SCTLR,val)
 
 
 //
@@ -221,12 +218,41 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- Access to the TTBR0 Control Register
+//    ------------------------------------
+#define TTBR0               "p15, 0, %0, c2, c0, 0"
+#define READ_TTBR0()        MRC(TTBR0)
+#define WRITE_TTBR0(val)    MCR(TTBR0,val)
+
+
+//
+// -- Access to the TTBR1 Control Register
+//    ------------------------------------
+#define TTBR1               "p15, 0, %0, c2, c0, 1"
+#define READ_TTBR1()        MRC(TTBR1)
+#define WRITE_TTBR1(val)    MCR(TTBR1,val)
+
+
+//
 // -- Access to the FPEXC register
 //    ----------------------------
 #define FPEXC               "fpexc"
 #define READ_FPEXC()        VMRS(FPEXC)
 #define WRITE_FPEXC(val)    VMSR(FPEXC,val)
 
+
+//
+// -- branch prediction maintenance
+//    -----------------------------
+#if defined(ENABLE_BRANCH_PREDICTOR) && ENABLE_BRANCH_PREDICTOR == 1
+#define BPIMVA(mem)         MCR("p15, 0, %0, c7, c5, 7",mem)
+#define BPIALL()            MCR("p15, 0, %0, c7, c5, 6",0)
+#define BPIALLIS()          MCR("p15, 0, %0, c7, c1, 6",0)
+#else
+#define BPIMVA(mem)
+#define BPIALL()
+#define BPIALLIS()
+#endif
 
 
 //

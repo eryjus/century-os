@@ -35,14 +35,18 @@ void __ldrtext EarlyInit(void)
     // -- prepare the FPU for accepting commands
     //    --------------------------------------
     archsize_t cpacr = READ_CPACR();
-    kprintf("The initial value of CPACR is %p\n", cpacr);
     cpacr |= (0b11<<20);
     cpacr |= (0b11<<22);
-    kprintf("Writing CPACR back as %p\n", cpacr);
     WRITE_CPACR(cpacr);
 
     //
     // -- and enable the fpu
     //    ------------------
     WRITE_FPEXC(1<<30);
+
+
+    //
+    // -- go get the value of the SCTLR and print it out
+    //    ----------------------------------------------
+    WRITE_SCTLR(READ_SCTLR() & ~(1<<11));
 }
