@@ -215,6 +215,12 @@ extern "C" void Ltr(uint16_t tr);
 void CpuTssInit(void);
 
 
+//
+// -- wbinvd -- Write Back and Invalidate Data Cache
+//    ----------------------------------------------
+#define WBINVD()            __asm volatile("wbinvd")
+
+
 
 //
 // -- Change the page directory to the physical address provided
@@ -226,6 +232,16 @@ extern "C" void MmuSwitchPageDir(archsize_t physAddr);
 // -- a lightweight function to halt the cpu
 //    --------------------------------------
 inline void HaltCpu(void) { __asm("hlt"); }
+
+
+//
+// -- cache maintenance functions
+//    ---------------------------
+#if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
+#   define CLEAN_CACHE(mem,len)  WBINVD()
+#else
+#   define CLEAN_CACHE(mem,len)
+#endif
 
 
 //

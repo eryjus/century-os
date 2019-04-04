@@ -23,11 +23,20 @@
 
 
 @@
-@@ -- make sure that if the required symbols are defined
-@@    --------------------------------------------------
+@@ -- make sure that if the required symbols are defined; Branch Predictor
+@@    --------------------------------------------------------------------
 .ifndef ENABLE_BRANCH_PREDICTOR
     .equ        ENABLE_BRANCH_PREDICTOR,0
 .endif
+
+
+@@
+@@ -- Cache (instruction and data)
+@@    ----------------------------
+.ifndef ENABLE_CACHE
+    .equ        ENABLE_CACHE,0
+.endif
+
 
 
 @@
@@ -113,10 +122,17 @@ cont:
     mcr     p15,0,r3,c1,c0,0            @@ write the SCTLR back with the branch predictor guaranteed enabled
 .endif
 
+.if ENABLE_CACHE
+    mrc     p15,0,r3,c1,c0,0            @@ get the SCTLR
+    orr     r3,#(1<<2)                  @@ set the data cache enabled
+    orr     r3,#(1<<12)                 @@ set the instruction cache enabled
+    mcr     p15,0,r3,c1,c0,0            @@ write the SCTLR back with the caches enabled
+.endif
+
 
 @@
-@@ -- figure out which CPU we are on; one CPU 0 continues after this
-@@    --------------------------------------------------------------
+@@ -- figure out which CPU we are on; only CPU 0 continues after this
+@@    ---------------------------------------------------------------
     mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
     and     r3,r3,#0x3                  @@ Extract CPU ID bits
     cmp     r3,#0
@@ -228,6 +244,70 @@ bssLoop:
     mcr     p15,0,r0,c12,c0,0           @@ !!! physical addr (identity mapped); will need to change in kernel mmu
 
 
+
+@@===================================================================================================================
+
+
+@@
+@@ -- for debugging purposes, set up the VBAR to be at address 0x00000000; this will override what is configured
+@@    above.
+@@    ----------------------------------------------------------------------------------------------------------
+
+
+@@ -- clear out r0 for address 0x00000000
+    mov     r0,#0                       @@ we want address 0
+
+@@ -- prepare the bit-coded jump instruction
+    movw    r1,#0xf018                  @@ and fill in the bottom 2 bytes
+    movt    r1,#0xe59f                  @@ this is the bitcode of the jump instruction
+
+@@ -- fill in the jump instructions
+    str     r1,[r0,#0x00]               @@ These are the jump instructions (not used -- reset)
+    str     r1,[r0,#0x04]               @@ These are the jump instructions (UNDEF)
+    str     r1,[r0,#0x08]               @@ These are the jump instructions (SVC CALL)
+    str     r1,[r0,#0x0c]               @@ These are the jump instructions (PREFETCH ABORT)
+    str     r1,[r0,#0x10]               @@ These are the jump instructions (DATA ABORT)
+    str     r1,[r0,#0x14]               @@ These are the jump instructions (not used -- hyp mode)
+    str     r1,[r0,#0x18]               @@ These are the jump instructions (IRQ INT)
+    str     r1,[r0,#0x1c]               @@ These are the jump instructions (FIQ INT)
+
+@@ -- fill in the jump targets
+    ldr     r1,=LoaderResetTarget
+    str     r1,[r0,#0x20]               @@ The target for a reset (never used but filled in anyway)
+
+    ldr     r1,=LoaderUndefinedTarget
+    str     r1,[r0,#0x24]               @@ The target for an UNDEF
+
+    ldr     r1,=LoaderSuperTarget
+    str     r1,[r0,#0x28]               @@ The target for SUPER
+
+    ldr     r1,=LoaderPrefetchTarget
+    str     r1,[r0,#0x2c]               @@ The target for PREFETCH ABORT
+
+    ldr     r1,=LoaderDataAbortTarget
+    str     r1,[r0,#0x30]               @@ The target for DATA ABORT
+
+    mov     r1,#0
+    str     r1,[r0,#0x34]               @@ The target for not used (hyp)
+
+    ldr     r1,=LoaderIRQTarget
+    str     r1,[r0,#0x38]               @@ The target for IRQ
+
+    ldr     r1,=LoaderFIQTarget
+    str     r1,[r0,#0x3c]               @@ The target for FIQ
+
+@@ -- Set up the VBAR to use an absolute address
+    mrc     p15,0,r1,c1,c0,0
+    and     r1,r1,#(~(1<<13))
+    mcr     p15,0,r1,c1,c0,0
+
+    mcr     p15,0,r0,c12,c0,0           @@ !!! physical addr (identity mapped); will need to change in kernel mmu
+
+
+@@===================================================================================================================
+
+
+
 @@
 @@ -- Now we want to set up paging for initialization -- we are only concerned with identity mapping the first
 @@    4MB of memory and this table needs to be 16K aligned.  This is why we allocated it first -- we can
@@ -248,8 +328,8 @@ bssLoop:
 @@                             3322222222221111111111
 @@                             10987654321098765432109876543210
 @@                             --------------------------------
-@@    This value needs to be 0b00000000000000010000110000001110 for regular normal memory
-@@    This value needs to be 0b00000000000000010000110000000010 for devices (MMIO memory)
+@@    This value needs to be 0b00000000000000010001110000001110 for regular normal memory
+@@    This value needs to be 0b00000000000000010000110000000110 for devices (MMIO memory)
 @@                             +----------+|||||+-+++|+--+|||++
 @@                                   |     ||||| | | N  | ||| |
 @@              The 1MB frame addr --+     ||||| | | o  | ||| +-------- Section/Supersection entry
@@ -264,8 +344,8 @@ bssLoop:
 @@    all of this mess ends up being 0x00090c0e for 1MB and I need to add 0x00100000 for each MB after that for
 @@    4MB total.
 @@    ---------------------------------------------------------------------------------------------------------
-    movw    r1,#0x0c0e                  @@ set the low bytes of the ttl1 word
-    movt    r1,#0x0009                  @@ set the high bytes
+    movw    r1,#0x1c0e                  @@ set the low bytes of the ttl1 word
+    movt    r1,#0x0001                  @@ set the high bytes
 
     str     r1,[r0,#0x00]               @@ Set section 0 (0-1MB)
 
@@ -291,9 +371,10 @@ bssLoop:
 @    orr     r1,r1,r2                    @@ make the entry we want to write
 
 @@ -- perform the above commented code manually for a hard-coded address 0x3f000000
-    movw    r1,#0x0c0e                  @@ set the low bytes of the ttl1 word
-    movt    r1,#0x3f09                  @@ set the high bytes
+    movw    r1,#0x0c06                  @@ set the low bytes of the ttl1 word
+    movt    r1,#0x3f01                  @@ set the high bytes
 
+@@ -- 0x3f0 << 2 == 0xfc0; we need to convert entry indexes into byte offsets
     str     r1,[r0,#0xfc0]              @@ and set section for cbar
 
     add     r1,#0x100000                @@ move to the next 1MB frame
@@ -342,7 +423,7 @@ bssLoop:
     str     r1,[r0,#0xffc]              @@ and set section for cbar
 
 
-@@ -- now we enable paging
+@@ -- now we enable caches
     mcr     p15,0,r0,c2,c0,0            @@ write the ttl1 table to the TTBR0 register
     mcr     p15,0,r0,c2,c0,1            @@ write the ttl1 table to the TTBR1 register as well; will use later
 
@@ -352,6 +433,7 @@ bssLoop:
     mov     r1,#0xffffffff              @@ All domains can manage all things by default
     mcr     p15,0,r1,c3,c0,0            @@ write these to the domain access register
 
+@@ -- now we enable paging
     mrc     p15,0,r1,c1,c0,0            @@ This gets the cp15 register 1 and puts it in r0
     orr     r1,#1                       @@ set bit 0
     mcr     p15,0,r1,c1,c0,0            @@ Put the cp15 register 1 back, with the MMU enabled
@@ -360,6 +442,9 @@ bssLoop:
     mcr     p15,0,r0,c7,c5,6            @@ invalidate the branch predictor (required maintenance when enabled)
 .endif
 
+.if ENABLE_CACHE
+    mcr     p15,0,r0,c7,c1,0            @@ invalidate all instruction caches (required maintenance when enabled)
+.endif
 
 @@ -- finally jump to the loader initialization function
     b       LoaderMain                  @@ straight jump -- not a call

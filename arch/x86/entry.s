@@ -19,6 +19,14 @@
 
 
 ;;
+;; -- take care of making sure that the conditional assemble flags are defined
+;;    ------------------------------------------------------------------------
+%ifndef ENABLE_CACHE
+%define ENABLE_CACHE 0
+%endif
+
+
+;;
 ;; -- Expose some labels to other fucntions that the linker can pick up
 ;;    -----------------------------------------------------------------
     global        entry
@@ -361,6 +369,16 @@ newGdt:
     mov     eax,cr0                     ;; get that control register
     or      eax,1<<31                   ;; set the PG bit
     mov     cr0,eax                     ;; all hell can break loose from here!
+
+
+;;
+;; -- enable caches if defined
+;;    ------------------------
+%if ENABLE_CACHE == 1
+    mov     eax,cr0                     ;; get the control register
+    or      eax,(1<<29|1<<30)           ;; enable the CD and NW bits
+    mov     cr0,eax                     ;; save the cr0 register
+%endif
 
 
 ;;

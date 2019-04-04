@@ -19,6 +19,10 @@
 CCDEFINE += -DENABLE_BRANCH_PREDICTOR=1
 ASDEFINE += -defsym ENABLE_BRANCH_PREDICTOR=1
 
+CCDEFINE += -DCACHE_LINE_SIZE=64
+CCDEFINE += -DENABLE_CACHE=1
+ASDEFINE += -defsym ENABLE_CACHE=1
+
 
 ##
 ## -- Go get some additional information for building the targets

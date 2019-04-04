@@ -30,6 +30,8 @@
 #include "mmu.h"
 #include "printf.h"
 
+
+#define DEBUG_MMU 1
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
@@ -155,10 +157,13 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
         ttl2Entry->nG = 0;
         ttl2Entry->fault = 0b10;
 
-        BPIALLIS();
-
         pageCurr ++;
     }
+
+    CLEAN_CACHE(kernelStart, kernelEnd - kernelStart);
+    ICIALLU();
+    BPIALLIS();
+
 
     //
     // -- From here on, we have access to the kernel functions without restriction; the laoder code will still be
@@ -168,8 +173,10 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     //    kernel address space, but we are still running in loader code at ~1MB.
     //    ----------------------------------------------------------------------------------------------------------
 #if DEBUG_MMU == 1
-    LoaderSerialPutS("kprintf() should work:\n");
-    kprintf("At this point, the kernel is fully mapped!!!\n");
+    LoaderSerialPutS("kprintf() should work; address at: ");  LoaderSerialPutHex((uint32_t)kprintf);
+            LoaderSerialPutChar('\n');
+
+    kprintf("At this point, the kernel is fully mapped!!!\n");   // -- having trouble with cache enabled with this
 #endif
 }
 

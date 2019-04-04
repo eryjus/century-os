@@ -59,12 +59,15 @@ enum {
 static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static const char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
 
 //
 // -- This is a printf()-like function to print to the serial port
 //    ------------------------------------------------------------
 int kprintf(const char *fmt, ...)
 {
+    SerialEarlyPutChar('$');
+
 	int printed = 0;
 	const char *dig = digits;
 	archsize_t val;

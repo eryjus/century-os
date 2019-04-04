@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//  SerialEarlyPutChar.cc -- Write a single character to the UART Serial Port -- for being called early in boot
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,25 +10,27 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-Jun-09  Initial   0.1.0   ADCL  Initial version
+//  2019-Apr-02  Initial   0.4.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
-#include "printf.h"
-#include "hw-disc.h"
+#include "loader.h"
+#include "hardware.h"
+#include "serial.h"
 
-__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
+
+__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t ch);
 
 //
-// -- Perform the hardware discovery
-//    ------------------------------
-void __ldrtext HwDiscovery(void)
+// -- Write a single character to the UART
+//    ------------------------------------
+void __ldrtext SerialEarlyPutChar(uint8_t ch)
 {
-    lMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
-    Mb1Parse();
-    Mb2Parse();
-//    ArchDiscovery();
+    if (ch == '\n') SerialEarlyPutChar('\r');
+
+    while ((MmioRead(LDR_SERIAL_BASE + AUX_MU_LSR_REG) & (1<<5)) == 0) { }
+
+    MmioWrite(LDR_SERIAL_BASE + AUX_MU_IO_REG, ch);
 }

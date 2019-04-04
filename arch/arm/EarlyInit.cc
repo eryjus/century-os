@@ -21,6 +21,7 @@
 #include "serial.h"
 
 
+
 //
 // -- Perform the early initialization.  The goal here is to not have to worry about loader/kernel code once
 //    this is complete
@@ -43,10 +44,4 @@ void __ldrtext EarlyInit(void)
     // -- and enable the fpu
     //    ------------------
     WRITE_FPEXC(1<<30);
-
-
-    //
-    // -- go get the value of the SCTLR and print it out
-    //    ----------------------------------------------
-    WRITE_SCTLR(READ_SCTLR() & ~(1<<11));
 }

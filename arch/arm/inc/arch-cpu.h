@@ -123,6 +123,13 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- Synchronization Barriers
+//    ------------------------
+#define DSB()              __asm volatile("dsb")
+#define ISB()              __asm volatile("isb")
+
+
+//
 // -- a macro to read a 32-bit control register
 //    -----------------------------------------
 #define MRC(cp15Spec) ({                                \
@@ -186,6 +193,20 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- Access to the CTR (Cache Type Register)
+//    ---------------------------------------
+#define CTR                 "p15, 0, %0, c0, c0, 1"
+#define READ_CTR()          MRC(CTR)
+
+
+//
+// -- Access to the CLIDR (Cache Level ID Register)
+//    ---------------------------------------------
+#define CLIDR               "p15, 1, %0, c0, c0, 1"
+#define READ_CLIDR()        MRC(CLIDR)
+
+
+//
 // -- Access to the SCTLR (System Control Register)
 //    ---------------------------------------------
 #define SCTLR               "p15, 0, %0, c1, c0, 0"
@@ -234,6 +255,22 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- Access to the IFSR (Instruction Faulting Status Register)
+//    ---------------------------------------------------------
+#define IFSR                "p15, 0, %0, c5, c0, 1"
+#define READ_IFSR()         MRC(IFSR)
+#define WRITE_IFSR(val)     MCR(IFSR,val)
+
+
+//
+// -- Access to the IFAR (Instruction Faulting Address Register)
+//    ----------------------------------------------------------
+#define IFAR                "p15, 0, %0, c6, c0, 2"
+#define READ_IFAR()         MRC(IFAR)
+#define WRITE_IFAR(val)     MCR(IFAR,val)
+
+
+//
 // -- Access to the FPEXC register
 //    ----------------------------
 #define FPEXC               "fpexc"
@@ -245,13 +282,56 @@ inline void HaltCpu(void) { __asm("wfi"); }
 // -- branch prediction maintenance
 //    -----------------------------
 #if defined(ENABLE_BRANCH_PREDICTOR) && ENABLE_BRANCH_PREDICTOR == 1
-#define BPIMVA(mem)         MCR("p15, 0, %0, c7, c5, 7",mem)
-#define BPIALL()            MCR("p15, 0, %0, c7, c5, 6",0)
-#define BPIALLIS()          MCR("p15, 0, %0, c7, c1, 6",0)
+#   define BPIMVA(mem)          MCR("p15, 0, %0, c7, c5, 7",mem)
+#   define BPIALL()             MCR("p15, 0, %0, c7, c5, 6",0)
+#   define BPIALLIS()           MCR("p15, 0, %0, c7, c1, 6",0)
 #else
-#define BPIMVA(mem)
-#define BPIALL()
-#define BPIALLIS()
+#   define BPIMVA(mem)
+#   define BPIALL()
+#   define BPIALLIS()
+#endif
+
+
+//
+// -- cache maintenance functions
+//    ---------------------------
+#if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
+#   define DCIMVAC(mem)         MCR("p15, 0, %0, c7, c6, 1",mem)
+#   define DCOSW(sw)            MCR("p15, 0, %0, c7, c6, 2",sw)
+#   define DCCMVAC(mem)         MCR("p15, 0, %0, c7, c10, 1",mem)
+#   define DCCSW(sw)            MCR("p15, 0, %0, c7, c10, 2",sw)
+#   define DCCMVAU(mem)         MCR("p15, 0, %0, c7, c11, 1",mem)
+#   define DCCIMVAC(mem)        MCR("p15, 0, %0, c7, c14, 1",mem)
+#   define DCCISW(sw)           MCR("p15, 0, %0, c7, c14, 2",sw)
+
+#   define ICIALLUIS()          MCR("p15, 0, %0, c7, c1, 0",0)
+#   define ICIALLU()            MCR("p15, 0, %0, c7, c5, 0",0)
+#   define ICIMVAU(mem)         MCR("p15, 0, %0, c7, c5, 1",mem)
+
+#   define CLEAN_CACHE(mem,len)                                                         \
+        do {                                                                            \
+            archsize_t loc = mem & ~(CACHE_LINE_SIZE - 1);                              \
+            for ( ; loc < mem + len; loc += CACHE_LINE_SIZE) {                          \
+                DCCMVAC(loc);                                                           \
+            }                                                                           \
+            DSB();                                                                      \
+        } while(0)
+
+#else
+#   define DCIMVAC(mem)
+#   define DCOSW(sw)
+#   define DCCMVAC(mem)
+#   define DCCSW(sw)
+#   define DCCMVAU(mem)
+#   define DCCIMVAC(mem)
+#   define DCCISW(sw)
+
+#   define ICIALLUIS()
+#   define ICIALLU()
+#   define ICIMVAU(mem)
+
+#   define CLEAN_CACHE(mem,len)
+
 #endif
 
 

@@ -64,13 +64,13 @@ LDFLAGS += -O2
 ## -- Create the !macros
 ##    ------------------
 !ar =       |> $(AR) crs %o %f                          |>
-!cc =       |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f       |> %B.o
+!cc =       |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f     |> %B.o
 !dump =     |> $(DUMP) -D %f > %o                       |> %B.map
 
 ifeq ($(ARCH),x86)
-!as =       |> nasm $(NFLAGS) -o %o %f                  |> %B.o
+!as =       |> nasm $(NFLAGS) $(CCDEFINE)  -o %o %f     |> %B.o
 else
-!as =       |> $(AS) $(AFLAGS) $(ASDEFINE) -o %o %f       |> %B.o
+!as =       |> $(AS) $(AFLAGS) $(ASDEFINE) -o %o %f     |> %B.o
 endif
 
 

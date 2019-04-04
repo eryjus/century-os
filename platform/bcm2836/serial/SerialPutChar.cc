@@ -17,6 +17,7 @@
 
 
 #include "hardware.h"
+#include "cpu.h"
 #include "serial.h"
 
 
@@ -28,8 +29,8 @@ void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
     if (!dev) return;
     if (ch == '\n') dev->SerialPutChar(dev, '\r');
 
-//    while (!dev->SerialHasRoom(dev)) { }
     while ((MmioRead(dev->base + AUX_MU_LSR_REG) & (1<<5)) == 0) { }
 
     MmioWrite(dev->base + AUX_MU_IO_REG, ch);
+    DSB();
 }
