@@ -96,6 +96,7 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
         ListInit(&block->list);
         block->frame = frame;
         block->count = count;
+        CLEAN_PMM_BLOCK(block);
 
         //
         // -- since we are guaranteed to be above 1MB, this is all the normal queue
@@ -106,6 +107,8 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
             SpinlockUnlock(&pmm.normalStack.lock);
         }
     }
+
+    CLEAN_PMM();
 
 
     //

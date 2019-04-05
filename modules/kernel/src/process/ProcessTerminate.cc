@@ -35,7 +35,10 @@ void __krntext ProcessTerminate(Process_t *proc)
         SpinlockUnlock(&scheduler.listTerminated.lock);
     }
 
-    ProcessBlock(PROC_TERM);
+    if (proc == scheduler.currentProcess) ProcessBlock(PROC_TERM);
+    else proc->status = PROC_TERM;
+
+    CLEAN_PROCESS(proc);
 
     ProcessExitPostpone();
 }

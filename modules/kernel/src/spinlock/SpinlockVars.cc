@@ -22,10 +22,10 @@
 //
 // -- This is a lock for use when initializing a stack
 //    ------------------------------------------------
-__krndata Spinlock_t mmuStackInitLock;
+__krndata Spinlock_t mmuStackInitLock = {0};
 
 
 //
 // -- This is a lock for use when initializing a level 2 table for the mmu
 //    --------------------------------------------------------------------
-__krndata Spinlock_t mmuTableInitLock;
+__krndata Spinlock_t mmuTableInitLock = {0};

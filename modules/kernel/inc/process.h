@@ -277,4 +277,28 @@ __CENTURY_FUNC__ inline void ProcessSleep(uint64_t secs) {
 }
 
 
+//
+// -- For the scheduler structure, clean the cache pushing the changes to ram
+//    -----------------------------------------------------------------------
+#define CLEAN_SCHEDULER()           CLEAN_CACHE(&scheduler, sizeof(Scheduler_t))
+
+
+//
+// -- For the scheduler structure, invalidate the cache forcing a re-read from ram
+//    ----------------------------------------------------------------------------
+#define INVALIDATE_SCHEDULER()      INVALIDATE_CACHE(&scheduler, sizeof(Scheduler_t))
+
+
+//
+// -- for a Process structure, clean the cache pushing the changes to ram
+//    -------------------------------------------------------------------
+#define CLEAN_PROCESS(proc)         CLEAN_CACHE(proc, sizeof(Process_t))
+
+
+//
+// -- for a Process structure, invalidate the cache forcing a re-read from ram
+//    ------------------------------------------------------------------------
+#define INVALIDATE_PROCESS(proc)    INVALIDATE_CACHE(proc, sizeof(Process_t))
+
+
 #endif

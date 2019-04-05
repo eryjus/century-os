@@ -60,6 +60,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //    ----------------------------------------
     ProcessEnterPostpone();
     rv->status = PROC_READY;
+    CLEAN_PROCESS(rv);
     ProcessReady(rv);
     ProcessExitPostpone();
 

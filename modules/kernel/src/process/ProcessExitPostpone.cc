@@ -39,6 +39,7 @@ void __krntext ProcessExitPostpone(void)
             ProcessSchedule();
         }
 
+        CLEAN_SCHEDULER();
         EnableInterrupts();
     }
 }

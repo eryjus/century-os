@@ -36,6 +36,8 @@ __CENTURY_FUNC__ void __krntext PmmScrubBlock(void)
             ListRemoveInit(list);
             block = FIND_PARENT(list, PmmBlock_t, list);
             pmm.scrubStack.count -= block->count;
+            CLEAN_PMM_BLOCK(block);
+            CLEAN_PMM();
         }
 
         SpinlockUnlock(&pmm.scrubStack.lock);
@@ -67,4 +69,7 @@ __CENTURY_FUNC__ void __krntext PmmScrubBlock(void)
             SpinlockUnlock(&stack->lock);
         }
     }
+
+    CLEAN_PMM_BLOCK(block);
+    CLEAN_PMM();
 }

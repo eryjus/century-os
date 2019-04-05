@@ -22,6 +22,7 @@
 
 #include "types.h"
 #include "printf.h"
+#include "cpu.h"
 
 
 //
@@ -104,6 +105,19 @@ extern Spinlock_t mmuTableInitLock;
 // -- This is the lock that controls access to the address space for initializing the table
 //    -------------------------------------------------------------------------------------
 extern Spinlock_t mmuStackInitLock;
+
+
+//
+// -- This macro will clean (flush) the cache for a Spinlock, making changes visible to all
+//    -------------------------------------------------------------------------------------
+#define CLEAN_SPINLOCK(lock) CLEAN_CACHE(lock, sizeof(Spinlock_t))
+
+
+//
+// -- This macro will invalidate the cache for a Spinlock, forcing it the be re-read from memory
+//    ------------------------------------------------------------------------------------------
+#define INVALIDATE_SPINLOCK(lock) INVALIDATE_CACHE(lock, sizeof(Spinlock_t))
+
 
 
 #endif

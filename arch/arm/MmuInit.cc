@@ -119,7 +119,7 @@ void __ldrtext MmuInit(void)
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
             ttl1Entry[i].fault = 0b01;
 
-            BPIALLIS();
+            INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
         }
     }
 
@@ -143,7 +143,7 @@ void __ldrtext MmuInit(void)
         ttl2Table[idx + i].nG = 0;
         ttl2Table[idx + i].fault = 0b10;
 
-        BPIALLIS();
+        INVALIDATE_PAGE(&ttl2Table[idx + i], &ttl2Table[idx + i]);
     }
 
 
@@ -173,7 +173,7 @@ void __ldrtext MmuInit(void)
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
             ttl1Entry[i].fault = 0b01;
 
-            BPIALLIS();
+            INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
         }
     } else ttl2 = ttl1Entry->ttl2;
 
@@ -198,7 +198,7 @@ void __ldrtext MmuInit(void)
     ttl2Mgmt[0x3ff].nG = 0;
     ttl2Mgmt[0x3ff].fault = 0b10;
 
-    BPIALLIS();
+    INVALIDATE_PAGE(&ttl2Mgmt[0x3ff], ttl2Mgmt);
 
 
     //
@@ -230,7 +230,7 @@ void __ldrtext MmuInit(void)
             ttl2Mgmt->nG = 0;
             ttl2Mgmt->fault = 0b10;
 
-            BPIALLIS();
+            INVALIDATE_PAGE(ttl2Mgmt, ttl2Mgmt);
         }
     }
 
@@ -248,7 +248,7 @@ void __ldrtext MmuInit(void)
     kprintf("MMU: Mapping the frame buffer at %p for %x frames\n", fbAddr, fbSize);
 
     while (fbSize) {
-        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN);
+        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN | PG_DEVICE);
         off += 0x1000;
         fbAddr += 0x1000;
         fbSize --;

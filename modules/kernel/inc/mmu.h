@@ -77,12 +77,6 @@ void MmuInit(void);
 
 
 //
-// -- Invalidate a page in the TLB
-//    ----------------------------
-__CENTURY_FUNC__ void InvalidatePage(archsize_t addr);
-
-
-//
 // -- Create a new set of paging tables for a new process
 //    ---------------------------------------------------
 __CENTURY_FUNC__ frame_t MmuNewVirtualSpace(frame_t stack);

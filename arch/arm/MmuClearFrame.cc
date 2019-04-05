@@ -46,7 +46,8 @@ void MmuClearFrame(frame_t frame)
 #if DEBUG_MMU == 1
         kprintf("Lock obtained\n");
 #endif
-        InvalidatePage(MMU_CLEAR_FRAME);
+        INVALIDATE_PAGE(ttl2Entry, MMU_CLEAR_FRAME);
+
         ttl2Entry->frame = frame;
         ttl2Entry->s = 1;
         ttl2Entry->apx = 0;
@@ -56,7 +57,8 @@ void MmuClearFrame(frame_t frame)
         ttl2Entry->b = 1;
         ttl2Entry->nG = 0;
         ttl2Entry->fault = 0b10;
-        InvalidatePage(MMU_CLEAR_FRAME);
+
+        INVALIDATE_PAGE(ttl2Entry, MMU_CLEAR_FRAME);
 
 
 #if DEBUG_MMU == 1

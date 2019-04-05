@@ -47,5 +47,6 @@ void __krntext ProcessUpdateTimeUsed(void)
     } else {
         scheduler.currentProcess->timeUsed += elapsed;
     }
+    CLEAN_PROCESS(scheduler.currentProcess);
 }
 

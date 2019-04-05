@@ -31,10 +31,12 @@
 #include "printf.h"
 
 
-#define DEBUG_MMU 1
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
+
+__CENTURY_FUNC__ void DecorateRegs(void);
+
 
 //
 // -- Complete the initialization of the Mmu for the loader to function properly
@@ -65,6 +67,7 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
         if (i < 4) continue;
         if (i >= 0x3f0 && i < 0x400) continue;
         wrk[i] = 0;
+        INVALIDATE_PAGE(&wrk[i], &wrk[i]);
     }
 
 
@@ -107,7 +110,7 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
                 ttl1Entry[i].fault = 0b01;
                 ttl1Entry[i].ttl2 = (newFrame << 2) + i;
 
-                BPIALLIS();
+                INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
             }
         }
 
@@ -157,6 +160,8 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
         ttl2Entry->nG = 0;
         ttl2Entry->fault = 0b10;
 
+        INVALIDATE_PAGE(ttl2Entry, pageCurr<<12);
+
         pageCurr ++;
     }
 
@@ -173,10 +178,8 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     //    kernel address space, but we are still running in loader code at ~1MB.
     //    ----------------------------------------------------------------------------------------------------------
 #if DEBUG_MMU == 1
-    LoaderSerialPutS("kprintf() should work; address at: ");  LoaderSerialPutHex((uint32_t)kprintf);
-            LoaderSerialPutChar('\n');
-
     kprintf("At this point, the kernel is fully mapped!!!\n");   // -- having trouble with cache enabled with this
+    LoaderSerialPutS("Did we get here?\n");
 #endif
 }
 

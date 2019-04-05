@@ -138,4 +138,18 @@ __CENTURY_FUNC__ void PmmInit(void);
 __CENTURY_FUNC__ void PmmDumpState(void);
 
 
+//
+// -- Clean/Invalidate PMM Manager structure
+//    --------------------------------------
+#define CLEAN_PMM()                 CLEAN_CACHE(&pmm, sizeof(PmmManager_t))
+#define INVALIDATE_PMM()            INVALIDATE_CACHE(&pmm, sizeof(PmmManager_t))
+
+
+//
+// -- Clean/Invalidate PMM Block Structure
+//    ------------------------------------
+#define CLEAN_PMM_BLOCK(blk)        CLEAN_CACHE(blk, sizeof(PmmBlock_t))
+#define INVALIDATE_PMM_BLOCK(blk)   INVALIDATE_CACHE(blk, sizeof(PmmBlock_t))
+
+
 #endif

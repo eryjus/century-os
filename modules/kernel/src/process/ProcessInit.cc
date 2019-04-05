@@ -52,6 +52,8 @@ void __krntext ProcessInit(void)
     scheduler.currentProcess->quantumLeft = PTY_OS;
     scheduler.currentProcess->timeUsed = 0;
     ListInit(&scheduler.currentProcess->stsQueue);
+    CLEAN_SCHEDULER();
+    CLEAN_PROCESS(scheduler.currentProcess);
 
     lastTimer = TimerCurrentCount(&timerControl);
 }

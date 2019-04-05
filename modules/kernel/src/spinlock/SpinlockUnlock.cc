@@ -26,6 +26,7 @@
 void __krntext SpinlockUnlock(Spinlock_t *lock)
 {
     SpinlockClear(lock);
+    CLEAN_SPINLOCK(lock);
 }
 
 

@@ -112,6 +112,7 @@ void *HeapAlloc(size_t size, bool align)
 			HeapCheckHealth();
 			RestoreInterrupts(flags);
 			SPIN_RLS(heapLock);
+            CLEAN_HEAP();
 
 			return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
 		}
@@ -123,6 +124,7 @@ void *HeapAlloc(size_t size, bool align)
 		HeapCheckHealth();
 		RestoreInterrupts(flags);
 		SPIN_RLS(heapLock);
+        CLEAN_HEAP();
 
 		return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
 	}

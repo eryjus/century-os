@@ -262,4 +262,18 @@ void HeapValidatePtr(const char *from);
 #define FREE(ptr)     HeapFree(ptr)
 
 
+//
+// -- manage cache for the heap
+//    -------------------------
+#define CLEAN_HEAP()                    CLEAN_CACHE(kHeap, sizeof(KHeap_t))
+#define INVALIDATE_HEAP()               INVALIDATE_CACHE(kHeap, sizeof(KHeap_t))
+
+
+//
+// -- manage cache for an entry
+//    -------------------------
+#define CLEAN_ENTRY(ent)                CLEAN_CACHE(ent, sizeof(OrderedList_t))
+#define INVALIDATE_ENTRY(ent)           INVALIDATE_CACHE(ent, sizeof(OrderedList_t))
+
+
 #endif

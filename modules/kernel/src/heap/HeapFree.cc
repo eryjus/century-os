@@ -79,4 +79,6 @@ void HeapFree(void *mem)
 		RestoreInterrupts(flags);
 		SPIN_RLS(heapLock);
 	}
+
+    CLEAN_HEAP();
 }

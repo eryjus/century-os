@@ -66,8 +66,6 @@ __CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
 //    ------------------------------------------------------------
 int kprintf(const char *fmt, ...)
 {
-    SerialEarlyPutChar('$');
-
 	int printed = 0;
 	const char *dig = digits;
 	archsize_t val;

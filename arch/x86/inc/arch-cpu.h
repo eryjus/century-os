@@ -238,9 +238,11 @@ inline void HaltCpu(void) { __asm("hlt"); }
 // -- cache maintenance functions
 //    ---------------------------
 #if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
-#   define CLEAN_CACHE(mem,len)  WBINVD()
+#   define CLEAN_CACHE(mem,len)         WBINVD()
+#   define INVALIDATE_CACHE(mem,len)    WBINVD()
 #else
 #   define CLEAN_CACHE(mem,len)
+#   define INVALIDATE_CACHE(mem,len)
 #endif
 
 

@@ -39,6 +39,8 @@ void __krntext ProcessMicroSleepUntil(uint64_t when)
         SpinlockUnlock(&scheduler.listSleeping.lock);
     }
 
+    CLEAN_PROCESS(scheduler.currentProcess);
+
     ProcessExitPostpone();
     ProcessBlock(PROC_DLYW);
 }

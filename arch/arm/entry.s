@@ -45,6 +45,7 @@
     .global     pmmEarlyFrame           @@ -- picked up by the pmm for initialization
     .global     NextEarlyFrame
     .global     JumpKernel
+    .global     DecorateRegs
 
 @@
 @@ -- This is the multiboot header.  During the link process, it will be relocated to the beginning of the
@@ -253,7 +254,7 @@ bssLoop:
 @@    above.
 @@    ----------------------------------------------------------------------------------------------------------
 
-
+.if 0
 @@ -- clear out r0 for address 0x00000000
     mov     r0,#0                       @@ we want address 0
 
@@ -302,7 +303,7 @@ bssLoop:
     mcr     p15,0,r1,c1,c0,0
 
     mcr     p15,0,r0,c12,c0,0           @@ !!! physical addr (identity mapped); will need to change in kernel mmu
-
+.endif
 
 @@===================================================================================================================
 
@@ -469,3 +470,38 @@ NextEarlyFrame:         @@ called from C
 JumpKernel:
     mov     sp,r1                       @@ set the stack
     mov     pc,r0                       @@ very simply set the new program counter; no fuss
+
+
+
+@@
+@@ -- Decorate the registers
+@@    ----------------------
+DecorateRegs:
+    mov     r0,#0x0000
+    movt    r0,#0x0000
+    mov     r1,#0x1111
+    movt    r1,#0x1111
+    mov     r2,#0x2222
+    movt    r2,#0x2222
+    mov     r3,#0x3333
+    movt    r3,#0x3333
+    mov     r4,#0x4444
+    movt    r4,#0x4444
+    mov     r5,#0x5555
+    movt    r5,#0x5555
+    mov     r6,#0x6666
+    movt    r6,#0x6666
+    mov     r7,#0x7777
+    movt    r7,#0x7777
+    mov     r8,#0x8888
+    movt    r8,#0x8888
+    mov     r9,#0x9999
+    movt    r9,#0x9999
+    mov     r10,#0xaaaa
+    movt    r10,#0xaaaa
+    mov     r11,#0xbbbb
+    movt    r11,#0xbbbb
+    mov     r12,#0xcccc
+    movt    r12,#0xcccc
+    mov     pc,lr
+

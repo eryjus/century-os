@@ -46,11 +46,15 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoRemoveFrame(StackHead_t *stack, bool sc
                 FREE(block);
             }
 
+            CLEAN_PMM_BLOCK(block);
+
             // -- scrub the frame if requested
             if (scrub) PmmScrubFrame(rv);
         }
 
         SpinlockUnlock(&stack->lock);
-        return rv;
     }
+
+    CLEAN_PMM();
+    return rv;
 }

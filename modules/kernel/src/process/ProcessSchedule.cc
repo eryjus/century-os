@@ -54,26 +54,27 @@ void __krntext ProcessSchedule(void)
 
     next = ProcessNext();
     if (next != NULL) {
-//        kprintf(" (switching)");
         ProcessListRemove(next);
+        CLEAN_PROCESS(next);
 
         if (scheduler.currentProcess->status == PROC_RUNNING) {
             ProcessReady(scheduler.currentProcess);
         }
 
+        CLEAN_SCHEDULER();
+
         ProcessSwitch(next);
     } else if (scheduler.currentProcess->status == PROC_RUNNING) {
-//        kprintf(" (continuing)");
         // -- Do nothing; the current process can continue; reset quantum
         scheduler.currentProcess->quantumLeft += scheduler.currentProcess->priority;
     } else {
-//        kprintf(" (idle)");
         // -- No tasks available; so we go into idle mode
         Process_t *save = scheduler.currentProcess;       // we will save this process for later
         scheduler.currentProcess = NULL;                  // nothing is running!
 
         do {
             // -- -- temporarily enable interrupts for the timer to fire
+            CLEAN_SCHEDULER();
             EnableInterrupts();
             HaltCpu();
             DisableInterrupts();
@@ -85,7 +86,12 @@ void __krntext ProcessSchedule(void)
         ProcessUpdateTimeUsed();
         scheduler.currentProcess = save;
         ProcessListRemove(next);
+
+        CLEAN_PROCESS(next);
+        CLEAN_SCHEDULER();
         if (next != scheduler.currentProcess) ProcessSwitch(next);
     }
+
+    CLEAN_SCHEDULER();
 }
 

@@ -212,7 +212,153 @@ The task to start the day today is to figure out what kind of pre-fetch abort I 
 
 Today I need to take a step back and see if I can describe my problem.  Hopefully, if I describe the problem properly either I can find something to research further or I can paste this into a gist and ask for more help.  To prepare for this, I will commit my code.
 
+---
+
+The simple description of my problem is that with the `SCTLR.C` (data caches) bit enabled, I am not able to successfully make the first function call into kernel address space (I am not doing anything with user space privilege at this time).  I have `SCTLR.I` (instruction caches) and `SCTLR.Z` (branch prediction; but this cannot be disabled) also enabled.  If I do not enable `SCTLR.C`, everything works as it should with no other changes.  Not enabling `SCTLR.I` has no change on the behavior -- the behavior is dependent on `SCTLR.C`.
+
+With `SCTLR.C` enabled, the first function call into kernel address space, I end up with a pre-fetch abort.  The register dump from this abort is the following:
+
+```
+Pre-Fetch Abort Exception:
+The faulting address is: 0x80100000
+The faulting status is : 0x00000005
+Register structure at: 0x00007fa0
+ R0: 0x8000573c  R1: 0x3f215000  R2: 0x3f215054
+ R3: 0x00000020  R4: 0x00175000  R5: 0x00005514
+ R6: 0x00000000  R7: 0x00000000  R8: 0x00000000
+ R9: 0x00175000 R10: 0x474ab59b R11: 0xd7c0abfe
+R12: 0x000001c0  SP: 0x00100024  LR_ret: 0x80100000
+```
+
+A couple of notes about what I am seeing here:
+1. address `0x80100000` is no in my kernel.  It is beyond the end of the kernel in the space between the `.bss` section and the heap (which starts at `0x90000000`).
+1. the faulting status `0b00101` indicated that I have a translation problem at level 1.  I would expect this given the address since there is no need to map this address.
+
+The last address in my kernel space is `0x8006f658` for 4 bytes based on objdump and `0x8006f65c` based on readelf.  Therefore, the last TTL1 entry for my kernel address space is `0x800` and the first for the heap is `0x900`.  The TTL1 entry for address `0x80100000` (`0x801`) would not be mapped.  So, given the address, the exception is accurate.  However, I am not able to determine where this address is coming from.
+
+My [entry code](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s) performs the following actions:
+1. [If the cpu is in Hyp mode, thunk it out of that mode; otherwise set the cpu in SVC mode](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L87).
+1. make a stack (I know this is a problem and will be cleaned up as I get closer to enabling the other cores).
+1. [Enable Branch Prediction (ENABLE_BRANCH_PREDICTOR equals 1)](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L119).
+1. [Enable Data and Instruction Caches (ENABLE_CACHE equals 1)](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L125).
+1. [Disable other CPUs](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L133).  In reality, my loader also does this and does not re-enable them, so this code is only executed once.
+1. [Clear the .bss](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L146).  The not-so-fancy math is to make sure I am getting the physical address of the kernel-space .bss section.
+1. [Allocate frames for the TTL1 table and the Exception Vector Table](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L185).  These frames are allocated backwards from 4MB.
+1. [Populate the Exception Vector Table frame we just allocated](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L200).  This will be available from virtual address space.
+1. [For debugging purposes, redo the Exception Vector Table for address `0x00000000`](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L257).  This is used for debugging right now until I get stuff sorted out and can work in kernel address space again.
+1. [Initialize the TTL1 table to identity map the first 4 MB as sections](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L311).  Additionally, the MMIO addresses are identity mapped.
+1. [Set the TTLBR0 and TTBR1 registers](https://github.com/eryjus/century-os/blob/master/arch/arm/entry.s#L426) (just noticed the comment is incorrect and will clean that up).
+1. Enable the MMU, invalidate the branch predictor and clear the instruction caches and then jump to (not call) `LoaderMain()`.
 
 
+[`LoaderMain()` is still in lower memory space (~1MB)](https://github.com/eryjus/century-os/blob/master/modules/kernel/src/loader/LoaderMain.cc#L38), and performs the following actions:
+1. `LoaderFunctionInit()` is responsible for setting up some function pointers to the physical address of some key kernel functions.  These are very surgical and have been carefully written so not depend on any kernel address space addresses.
+1. `EarlyInit()` sets up the Serial Port for debugging output and then calls `MmuEarlyInit()`.  It does a few other things, but never gets there.
 
 
+`MmuEarlyInit()` is responsible for completing the MMU initialization that was started in `entry.s` (such as clearing the unused TTL1 entries).  [It is also responsible for mapping the kernel address space so that functions can be called in kernel address space and data in kernel address space can be referenced](https://github.com/eryjus/century-os/blob/master/arch/arm/MmuEarlyInit.cc#L39).
+
+This is where I have my problems.  All of this works until I get to the `kprintf()` function call at the end (it works perfectly when I `SCTLR.C` is not enabled).  The `kprintf()` function never gets control and the above pre-fetch abort is issued.
+
+I do have a function call to a known-working function to print a `'$'` character to the serial port and this character is never outputted.
+
+---
+
+So, I posted on `freenode#osdev` the following and was able to work out my problems:
+
+```
+[15:25] <eryjus> I am still having a problem with caches enabled, and I am at a loss for where else to look.  I have tried to collect what I think is the relevant information and bits of code here: https://gist.github.com/eryjus/dd5a7e1ee2afb2de0ccbaffddc3b9d10
+[15:25] <eryjus> any help is greatly appreciated.
+
+...
+
+[15:56] <doug16k> eryjus, is your kernel a bunch of NOPs and it just nops off the end of the kernel and faults?
+[15:57] <doug16k> eryjus, try loading a bunch of known recognizable values into every register before you jump, and see what you have in registers by the time it falls off the kernel space
+
+...
+
+[16:50] <eryjus> doug16k, that thought has some promise -- if the memory location contains 0x0, then the it disassembles to `andeq r0.r0.r0`.  The only thing that makes me pause is that page 0x800ff000 is not mapped.
+
+...
+
+[16:50] <eryjus> let me work on a test to be sure
+
+...
+
+[17:17] <eryjus> doug16k, so what I was able to determine is that when SCTLR.C is enabled, the memory read at the location of kprintf is all 0x00000000 while with that bit turned off the values are correct.
+[17:18] <doug16k> I had a feeling it might be 0
+[17:18] <doug16k> "falls off the end" almost always means "it's all zeros"
+[17:18] <eryjus> so, the CPU is not seeing the physical memory I am mapping the kernel to...  at least that's a better definition of the problem
+[17:21] <geist> this is where you need to invest in some cache flushing routines
+[17:22] <geist> depending on the precise sequence of the starting cpu and the new cpus as they come up, they may be looking at stale cache lines
+[17:23] <eryjus> geist, is that directed at me?
+[17:23] <geist> yes
+[17:24] <eryjus> still only 1 cpu active -- trying to get nibble my way through all the things I have not done yet to prep.
+[17:26] <geist> oh i thought you were booting secondary cores
+[17:26] <eryjus> hang on though....: "Therefore, an example instruction sequence for writing a translation table entry, covering changes to the instruction or data mappings in a uniprocessor system is:"
+[17:26] <eryjus> this sequence I am not doing.
+[17:27] <geist> indeed. remember before when i was mentioning that you write to a page table (they call them translation tables) you have to do a memory barrier to make sure the hardware can actually see it?
+[17:27] <eryjus> I hear Eddie Murphy in the barber shop in Coming to America: Ah-hah!
+[17:27] <geist> and in some cases (though not the cpu you have) you had to actually flush the cpu cache prior to having the hardware fetch it
+[17:27] <geist> but all modern armv7 and v8 cores the MMU is cache coherent relative to the cpu
+
+...
+
+[17:53] <eryjus> doug16k and geist, thanks for the tips.  I am not 100% yet, but I know what I need to do.  I appreciate the push in the right direction.
+```
+
+So the problem ended up being improper TLB maintenance when I mapped a new entry.  I was mistakenly under the impression that when the entry was not previously mapped there was nothing more to do than map it.  On the other hand, when caching is enabled, there is a litany of instructions to feed the CPU to keep it in sync.  These are `#define`d here:
+
+```C
+//
+// -- This is a well-defined sequence to clean up after changing the translation tables
+//    ---------------------------------------------------------------------------------
+#define INVALIDATE_PAGE(ent,vma)                                    \
+        do {                                                        \
+            DCCMVAC(ent);                                           \
+            DSB();                                                  \
+            TLBIMVAA(vma);                                          \
+            BPIALL();                                               \
+            DSB();                                                  \
+            ISB();                                                  \
+        } while (0)
+```
+
+So, now the problem is that there are several other places that need to be cleaned up with this.
+
+---
+
+Now the next problem to solve is that the frame buffer is not reporting its size properly.  Neither the frame buffer nor the size are correct with caching on.
+
+---
+
+I finally have the frame buffer initializing properly.  The key here was to make sure that the cache and memory were in sync at the right times.  This appears to be a difference between "cleaning" and "invalidating" the cache.  The resulting code looks like this:
+
+```C
+    CLEAN_CACHE(mbBuf, sizeof(mbBuf));
+    MailboxSend(&loaderMailbox, 8, (archsize_t)mbBuf);
+    MailboxReceive(&loaderMailbox, 8);
+    INVALIDATE_CACHE(mbBuf, sizeof(mbBuf));
+```
+
+Where `CLEAN_CACHE` is required to make the changes visible to the GPU and then `INVALIDATE_CACHE` is required because the memory was updated outside the visibility of the CPU.  I think the best way to think about it is that we need to `CLEAN` after a write that needs to be visible and `INVALIDATE` before a read where the data could have changed.
+
+So, everything is working again.  The next step is to take a look at the scheduler and heap and make sure that the structures are being updated properly and cache is cleaned at the right times.
+
+This work will happen tomorrow.  I hope to be able to commit this version by the end of the day tomorrow.
+
+---
+
+### 2019-Apr-05
+
+I actually will start with the `Spinlock_t` structure first.  This will need to be managed for sure and I missed that yesterday.  Any time this structure changes, I will need to `CLEAN` the cache for this structure.  At the same time, though, do I need to `INVALIDATE` the cache for the structure before I start accessing it to force a re-read from memory?
+
+I did end up adding the invalidate ahead of locking the spinlock just for good measure.  I hope this does not come back to haunt me.
+
+For the scheduler, there are 2 structures that need to be managed: the `Scheduler_t` structure and the `Process_t` structure.  In either case, I will want to manage the cache, and in keeping with the decision above will invalidate and clean both as appropriate.
+
+I also forgot about the PMM structure where there is a `PmmManager_t` and a `PmmBlock_t` to manage.
+
+For the heap, I have the allocation and free functions that clean up the heap cache entries, and I believe that should work.  I hope.
+
+With that, I have tested and I should be able to commit these changes.

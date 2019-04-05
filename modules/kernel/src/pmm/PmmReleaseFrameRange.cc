@@ -42,4 +42,7 @@ __CENTURY_FUNC__ void __krntext PmmReleaseFrameRange(const frame_t frame, const 
         pmm.scrubStack.count += block->count;
         SpinlockUnlock(&pmm.scrubStack.lock);
     }
+
+    CLEAN_PMM();
+    CLEAN_PMM_BLOCK(block);
 }

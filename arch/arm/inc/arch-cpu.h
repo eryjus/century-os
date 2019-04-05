@@ -271,6 +271,12 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- Perform a TLBIMVAA (TLB Invalidate by MVA ALL ASID)
+//    ---------------------------------------------------
+#define TLBIMVAA(mem)       MCR("p15, 0, %0, c8, c7, 3",mem)
+
+
+//
 // -- Access to the FPEXC register
 //    ----------------------------
 #define FPEXC               "fpexc"
@@ -310,9 +316,22 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 #   define CLEAN_CACHE(mem,len)                                                         \
         do {                                                                            \
-            archsize_t loc = mem & ~(CACHE_LINE_SIZE - 1);                              \
-            for ( ; loc < mem + len; loc += CACHE_LINE_SIZE) {                          \
+            DSB();                                                                      \
+            archsize_t loc = ((archsize_t)(mem)) & ~(CACHE_LINE_SIZE - 1);              \
+            archsize_t end = ((archsize_t)(mem)) + len;                                 \
+            for ( ; loc <= end; loc += CACHE_LINE_SIZE) {                               \
                 DCCMVAC(loc);                                                           \
+            }                                                                           \
+            DSB();                                                                      \
+        } while(0)
+
+#   define INVALIDATE_CACHE(mem,len)                                                    \
+        do {                                                                            \
+            DSB();                                                                      \
+            archsize_t loc = ((archsize_t)(mem)) & ~(CACHE_LINE_SIZE - 1);              \
+            archsize_t end = ((archsize_t)(mem)) + len;                                 \
+            for ( ; loc <= end; loc += CACHE_LINE_SIZE) {                               \
+                DCIMVAC(loc);                                                           \
             }                                                                           \
             DSB();                                                                      \
         } while(0)
@@ -331,8 +350,22 @@ inline void HaltCpu(void) { __asm("wfi"); }
 #   define ICIMVAU(mem)
 
 #   define CLEAN_CACHE(mem,len)
-
+#   define INVALIDATE_CACHE(mem,len)
 #endif
+
+
+//
+// -- This is a well-defined sequence to clean up after changing the translation tables
+//    ---------------------------------------------------------------------------------
+#define INVALIDATE_PAGE(ent,vma)                                    \
+        do {                                                        \
+            DCCMVAC(ent);                                           \
+            DSB();                                                  \
+            TLBIMVAA(((uint32_t)vma) & 0xfffff000);                 \
+            BPIALL();                                               \
+            DSB();                                                  \
+            ISB();                                                  \
+        } while (0)
 
 
 //

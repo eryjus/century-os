@@ -96,14 +96,12 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoAllocAlignedFrames(StackHead_t *stack, 
     //    -----------------------------------------------------------------------------
     frame_t frameBits = ~(((frame_t)-1) << (bitAlignment<12?0:bitAlignment-12));
 
-
     //
     // -- Now, starting from the bottom of the stack, we look for a block big enough to suit our needs
     //    --------------------------------------------------------------------------------------------
     ListHead_t::List_t *wrk = stack->list.prev;
     while (wrk != &stack->list) {
         PmmBlock_t *block = FIND_PARENT(wrk, PmmBlock_t, list);
-
         frame_t end = block->frame + block->count - 1;
 
         // -- here we determine if the block is big enough
@@ -121,6 +119,8 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoAllocAlignedFrames(StackHead_t *stack, 
                     ListRemoveInit(wrk);
                     stack->count -= block->count;
                     SpinlockUnlock(&stack->lock);
+                    CLEAN_PMM_BLOCK(block);
+                    CLEAN_PMM();
                     return PmmSplitBlock(stack, block, (block->frame + frameBits) & ~frameBits, count);
                 }
 
@@ -131,6 +131,8 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoAllocAlignedFrames(StackHead_t *stack, 
 
         wrk = wrk->prev;
     }
+
+    CLEAN_PMM();
 
     return 0;
 }

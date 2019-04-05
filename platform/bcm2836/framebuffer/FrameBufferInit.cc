@@ -74,8 +74,11 @@ void __ldrtext FrameBufferInit(void)
     mbBuf[30] = 0;          // last tag
     mbBuf[31] = 0;          // clear one more anyway
 
+
+    CLEAN_CACHE(mbBuf, sizeof(mbBuf));
     MailboxSend(&loaderMailbox, 8, (archsize_t)mbBuf);
     MailboxReceive(&loaderMailbox, 8);
+    INVALIDATE_CACHE(mbBuf, sizeof(mbBuf));
 
 
     fb = (uint16_t *)(mbBuf[24] + 0x40000000);

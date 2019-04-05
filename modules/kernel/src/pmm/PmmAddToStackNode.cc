@@ -48,10 +48,14 @@ __CENTURY_FUNC__ bool __krntext _PmmAddToStackNode(StackHead_t *stack, frame_t f
                 block->count += count;
                 stack->count += count;
 
+                CLEAN_PMM_BLOCK(block);
+
                 goto exit;
             } else if (frame == block->frame + block->count) {
                 block->count += count;
                 stack->count += count;
+
+                CLEAN_PMM_BLOCK(block);
 
                 goto exit;
             }

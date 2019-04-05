@@ -28,6 +28,8 @@ void __krntext ProcessUnblock(Process_t *proc)
     ProcessEnterPostpone();
 
     proc->status = PROC_READY;
+    CLEAN_PROCESS(proc);
+
     ProcessReady(proc);
 
     ProcessExitPostpone();

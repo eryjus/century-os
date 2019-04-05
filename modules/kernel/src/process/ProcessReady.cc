@@ -63,5 +63,7 @@ void __krntext ProcessReady(Process_t *proc)
 
         break;
     }
+
+    CLEAN_PROCESS(proc);
 }
 

@@ -56,8 +56,10 @@ static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     // -- The next order of business is to map this into the Management table.  This needs to be done for
     //    every new table, so there is nothing to check -- we know we need to do this.
     //    -----------------------------------------------------------------------------------------------
-    InvalidatePage(addr & 0xfffff000);
     Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
+
+    INVALIDATE_PAGE(ttl2Entry, addr);
+
     ttl2Entry = TTL2_MGMT(addr, flags);
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
@@ -68,7 +70,8 @@ static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     ttl2Entry->b = 1;
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
-    InvalidatePage(addr & 0xfffff000);
+
+    INVALIDATE_PAGE(ttl2Entry, addr);
 
 
     //
@@ -119,6 +122,8 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         for (int i = 0; i < 4; i ++) {
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
             ttl1Entry[i].fault = 0b01;
+
+            INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
         }
     }
 
@@ -131,7 +136,8 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     if (ttl2Entry->fault != 0b00) return;
 
-    InvalidatePage(addr & 0xfffff000);
+    INVALIDATE_PAGE(ttl2Entry, addr);
+
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
@@ -141,8 +147,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     ttl2Entry->b = 1;
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
-    InvalidatePage(addr & 0xfffff000);
 
-    BPIALLIS();
+    INVALIDATE_PAGE(ttl2Entry, addr);
 }
 

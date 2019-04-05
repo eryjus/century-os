@@ -33,5 +33,7 @@ void __krntext ProcessEnterPostpone(void)
         scheduler.schedulerLocksHeld ++;
         SpinlockUnlock(&scheduler.schedulerLock);
     }
+
+    CLEAN_SCHEDULER();
 }
 
