@@ -131,6 +131,73 @@ typedef struct HardwareDiscovery_t {
     uint16_t fgColor;
     uint16_t rowPos;
     uint16_t colPos;
+
+
+    //
+    // -- The location of the ACPI tables
+    //    -------------------------------
+    archsize_t rsdp;
+
+
+    //
+    // -- CPUID Data
+    //    ----------
+    bool cpuidSupported;
+
+    uint32_t cpuid00eax;
+    uint32_t cpuid00ebx;
+    uint32_t cpuid00ecx;
+    uint32_t cpuid00edx;
+
+    uint32_t cpuid01eax;
+    uint32_t cpuid01ebx;
+    uint32_t cpuid01ecx;
+    uint32_t cpuid01edx;
+
+    uint32_t cpuid02eax;
+    uint32_t cpuid02ebx;
+    uint32_t cpuid02ecx;
+    uint32_t cpuid02edx;
+
+    uint32_t cpuid03eax;
+    uint32_t cpuid03ebx;
+    uint32_t cpuid03ecx;
+    uint32_t cpuid03edx;
+
+    uint32_t cpuid04eax;
+    uint32_t cpuid04ebx;
+    uint32_t cpuid04ecx;
+    uint32_t cpuid04edx;
+
+    uint32_t cpuid05eax;
+    uint32_t cpuid05ebx;
+    uint32_t cpuid05ecx;
+    uint32_t cpuid05edx;
+
+    uint32_t cpuid06eax;
+    uint32_t cpuid06ebx;
+    uint32_t cpuid06ecx;
+    uint32_t cpuid06edx;
+
+    uint32_t cpuid07eax;
+    uint32_t cpuid07ebx;
+    uint32_t cpuid07ecx;
+    uint32_t cpuid07edx;
+
+    uint32_t cpuid09eax;
+    uint32_t cpuid09ebx;
+    uint32_t cpuid09ecx;
+    uint32_t cpuid09edx;
+
+    uint32_t cpuid0aeax;
+    uint32_t cpuid0aebx;
+    uint32_t cpuid0aecx;
+    uint32_t cpuid0aedx;
+
+    uint32_t cpuid0beax;
+    uint32_t cpuid0bebx;
+    uint32_t cpuid0becx;
+    uint32_t cpuid0bedx;
 } HardwareDiscovery_t;
 
 
@@ -320,5 +387,18 @@ inline uint16_t GetColPos(void) { return localHwDisc->colPos; }
 inline void SetRowPos(uint16_t p) { localHwDisc->rowPos = p; }
 inline uint16_t GetRowPos(void) { return localHwDisc->rowPos; }
 
+
+//
+// -- access to the rsdp member
+//    -------------------------
+inline void SetRsdp(archsize_t p) { localHwDisc->rsdp = p; }
+inline archsize_t GetRsdp(void) { return localHwDisc->rsdp; }
+
+
+//
+// -- access to cpuid support
+//    -----------------------
+inline void SetCpuid(bool c) { localHwDisc->cpuidSupported = c; }
+inline bool GetCpuid(void) { return localHwDisc->cpuidSupported; }
 
 #endif

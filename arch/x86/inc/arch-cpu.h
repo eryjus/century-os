@@ -216,16 +216,9 @@ void CpuTssInit(void);
 
 
 //
-// -- wbinvd -- Write Back and Invalidate Data Cache
-//    ----------------------------------------------
-#define WBINVD()            __asm volatile("wbinvd")
-
-
-
-//
 // -- Change the page directory to the physical address provided
 //    ----------------------------------------------------------
-extern "C" void MmuSwitchPageDir(archsize_t physAddr);
+__CENTURY_FUNC__ void MmuSwitchPageDir(archsize_t physAddr);
 
 
 //
@@ -240,21 +233,43 @@ inline void HaltCpu(void) { __asm("hlt"); }
 #if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
 #   define CLEAN_CACHE(mem,len)         WBINVD()
 #   define INVALIDATE_CACHE(mem,len)    WBINVD()
+#   define WBINVD()                     __asm volatile("wbinvd")
 #else
 #   define CLEAN_CACHE(mem,len)
 #   define INVALIDATE_CACHE(mem,len)
+#   define WBINVD()
 #endif
+
+
+//
+// -- CPUID function -- lifted from: https://wiki.osdev.org/CPUID
+//    issue a single request to CPUID. Fits 'intel features', for instance note that even if only "eax" and "edx"
+//    are of interest, other registers will be modified by the operation, so we need to tell the compiler about it.
+//    -------------------------------------------------------------------------------------------------------------
+static inline void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
+    __asm volatile("cpuid":"=a"(*a),"=b"(*b),"=c"(*c),"=d"(*d):"a"(code)); }
 
 
 //
 // -- A dummy function to enter system mode, since this is for the ARM
 //    ----------------------------------------------------------------
-extern "C" inline void EnterSystemMode(void) {}
+__CENTURY_FUNC__ inline void EnterSystemMode(void) {}
 
 
 //
 // -- Get the CR3 value
 //    -----------------
-extern "C" archsize_t GetCr3(void);
+__CENTURY_FUNC__ archsize_t GetCr3(void);
 
+
+//
+// -- Check if CPUID is supported
+//    ---------------------------
+__CENTURY_FUNC__ int CheckCpuid(void);
+
+
+//
+// -- Collect the CPUID information
+//    -----------------------------
+__CENTURY_FUNC__ void CollectCpuid(void);
 

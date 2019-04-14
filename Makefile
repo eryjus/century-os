@@ -201,7 +201,7 @@ x86-pc: init
 ##    ----------------------
 .PHONY: run-x86-pc
 run-x86-pc: x86-pc
-	qemu-system-i386 -m 3072 -serial stdio -cdrom img/x86-pc.iso
+	qemu-system-i386 -m 3584 -serial stdio -cdrom img/x86-pc.iso
 
 
 ##
@@ -218,4 +218,14 @@ bochs-x86-pc: x86-pc
 .PHONY: debug-x86-pc
 debug-x86-pc: x86-pc
 	qemu-system-i386 -m 3584 -serial mon:stdio -cdrom img/x86-pc.iso -S
+
+
+##
+## -- Write the .iso image to a USB stick (sdb)
+##    -----------------------------------------
+.PHONY: write-x86-pc
+write-x86-pc: x86-pc
+	sudo umount /dev/sdb1 || true
+	sudo dd bs=4M if=img/x86-pc.iso of=/dev/sdb
+
 

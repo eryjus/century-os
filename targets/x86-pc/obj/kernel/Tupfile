@@ -16,7 +16,7 @@
 ##
 ## -- Set some defines needed by this targets
 ##    ---------------------------------------
-CCDEFINE += -DENABLE_CACHE=1
+CCDEFINE += -DENABLE_CACHE=0
 
 
 ##
@@ -30,4 +30,6 @@ include $(WS)/modules/kernel/util/Tupfile.inc
 ##
 ## -- Some additional object files for this target
 ##    --------------------------------------------
+: foreach  $(WS)/platform/$(PLAT)/acpi/*.cc                 |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/interrupts/*.cc           |> !cc |>
+

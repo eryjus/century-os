@@ -47,6 +47,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 ## -- Now, go compile all the platform-specific source
 ##    ------------------------------------------------
 : foreach  $(WS)/platform/$(PLAT)/framebuffer/*.cc          |> !cc |>
+: foreach  $(WS)/platform/$(PLAT)/init/*.cc                 |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/pic/*.cc                  |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/serial/*.cc               |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/timer/*.cc                |> !cc |>

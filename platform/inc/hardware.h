@@ -56,6 +56,10 @@
 //
 // -- Include any platform-dependent I/O functions that might be required
 //    -------------------------------------------------------------------
+#if __has_include("platform-acpi.h")
+#   include "platform-acpi.h"
+#endif
+
 #if __has_include("platform-io.h")
 #   include "platform-io.h"
 #endif

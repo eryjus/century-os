@@ -52,4 +52,21 @@ void FrameBufferDrawChar(char ch);
 void FrameBufferPutS(const char *s);
 
 
+//
+// -- Output a hex string to the screen
+//    ---------------------------------
+#define FrameBufferPutHex(val)                                      \
+    do {                                                            \
+        FrameBufferDrawChar('0');                                   \
+        FrameBufferDrawChar('x');                                   \
+        for (int i = 28; i >= 0; i -= 4) {                          \
+            char c = (((val) >> i) & 0x0f);                         \
+                                                                    \
+            if (c > 9) FrameBufferDrawChar(c - 10 + 'a');           \
+            else FrameBufferDrawChar(c + '0');                      \
+        }                                                           \
+    } while (0)
+
+
+
 #endif

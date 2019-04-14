@@ -18,6 +18,7 @@
 #include "loader.h"
 #include "types.h"
 #include "printf.h"
+#include "platform.h"
 #include "serial.h"
 
 
@@ -31,6 +32,8 @@ void __ldrtext EarlyInit(void)
     SerialOpen(&loaderSerial);                   // initialize the serial port so we can output debug data
 
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
+
+    PlatformEarlyInit();
 
     //
     // -- prepare the FPU for accepting commands

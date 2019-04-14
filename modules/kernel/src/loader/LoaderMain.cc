@@ -44,7 +44,6 @@ __CENTURY_FUNC__ void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, arc
 
     LoaderFunctionInit();               // go and initialize all the function locations
     EarlyInit();
-    HwDiscovery();
     FrameBufferInit();
     MmuInit();
     HeapInit();

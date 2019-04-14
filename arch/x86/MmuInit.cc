@@ -29,6 +29,10 @@
 #include "mmu.h"
 
 
+#ifndef DEBUG_MMU
+#   define DEBUG_MMU 0
+#endif
+
 //
 // -- complete the mmu initialization
 void __ldrtext MmuInit(void)
@@ -42,10 +46,14 @@ void __ldrtext MmuInit(void)
     fbSize >>= 12;                          // -- now, the number of frames to map
     archsize_t off = 0;
 
+#if DEBUG_MMU == 1
     kprintf("MMU: Mapping the frame buffer at %p for %x frames\n", fbAddr, fbSize);
+#endif
 
     while (fbSize) {
+#if DEBUG_MMU == 1
         kprintf(".. Executing map of %p to %p\n", MMU_FRAMEBUFFER + off, fbAddr >> 12);
+#endif
         MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN);
         off += 0x1000;
         fbAddr += 0x1000;

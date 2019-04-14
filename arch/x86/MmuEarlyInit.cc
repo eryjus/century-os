@@ -30,7 +30,7 @@
 #include "mmu.h"
 #include "printf.h"
 
-#define DEBUG_MMU 1
+
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
@@ -52,7 +52,10 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     //    mapped.  Therefore, I need to loop through the page directory and make sure I complete the
     //    initialization to `0x00000000`.
     //    -------------------------------------------------------------------------------------------------------
+#if DEBUG_MMU == 1
     LoaderSerialPutS("Clearing the remainder of the Page Directory\n");
+#endif
+
     uint32_t *wrk = (uint32_t *)mmuLvl1Table;
     for (int i = 1; i < 0x400; i ++) {
         wrk[i] = 0;
@@ -62,7 +65,10 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     //
     // -- The next step is to recursively map the Page Directory
     //    ------------------------------------------------------
+#if DEBUG_MMU == 1
     LoaderSerialPutS("Recursively mapping the Page Directory\n");
+#endif
+
     PageEntry_t *recurs = &pageDirectory[1023];
     recurs->frame = ((archsize_t)mmuLvl1Table) >> 12;
     recurs->rw = 1;
@@ -76,15 +82,25 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     //
     //    We start with creating page tables as needed to map the entire kernel.
     //    -----------------------------------------------------------------------------------------------------
+#if DEBUG_MMU == 1
     LoaderSerialPutS("Preparing to create page tables as needed for the kernel\n");
+#endif
+
     for (archsize_t section = kernelStart; section < kernelEnd; section += 0x400000) {
+#if DEBUG_MMU == 1
         LoaderSerialPutS("Mapping Page Table for "); LoaderSerialPutHex(section); LoaderSerialPutChar('\n');
+#endif
         PageEntry_t *pde = PD_ENTRY(section);
+#if DEBUG_MMU == 1
         LoaderSerialPutS(".. Checking PDE at "); LoaderSerialPutHex((uint32_t)pde); LoaderSerialPutChar('\n');
+#endif
 
         if (pde->p == 0) {
             frame_t newFrame = NextEarlyFrame();
+
+#if DEBUG_MMU == 1
             LoaderSerialPutS("Making new table at frame "); LoaderSerialPutHex(newFrame); LoaderSerialPutChar('\n');
+#endif
 
             if (newFrame < PHYS_OF(_kernelEnd) >> 12) {
                 LoaderSerialPutS("Out of memory in MmuEarlyInit(); add another 4MB section\n");
@@ -108,9 +124,15 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     //
     // -- pass #2, we will go back and map the individual pages to the kernel as loaded in memory
     //    ---------------------------------------------------------------------------------------
+#if DEBUG_MMU == 1
     LoaderSerialPutS("Mapping the actual pages for the kernel\n");
+#endif
+
     for (archsize_t section = kernelStart; section < kernelEnd; section += 0x1000) {
+#if DEBUG_MMU == 1
         LoaderSerialPutS("Mapping Page Table for "); LoaderSerialPutHex(section); LoaderSerialPutChar('\n');
+#endif
+
         PageEntry_t *pte = PT_ENTRY(section);
         if (pte->p != 0) {
             LoaderSerialPutS("This page is already mapped!!!  ");
@@ -121,8 +143,11 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
         }
 
         frame_t frame = PHYS_OF(section) >> 12;
+
+#if DEBUG_MMU == 1
         LoaderSerialPutS(".. The PTE address is "); LoaderSerialPutHex((uint32_t)pte); LoaderSerialPutChar('\n');
         LoaderSerialPutS(".. The resulting frame is "); LoaderSerialPutHex(frame); LoaderSerialPutChar('\n');
+#endif
 
         pte->frame = frame;
         pte->us = 1;

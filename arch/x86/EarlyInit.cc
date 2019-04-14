@@ -17,7 +17,10 @@
 
 #include "loader.h"
 #include "types.h"
+#include "cpu.h"
+#include "hw-disc.h"
 #include "serial.h"
+#include "platform.h"
 
 
 //
@@ -28,5 +31,12 @@ void __ldrtext EarlyInit(void)
 {
     SerialOpen(&loaderSerial);       // initialize the serial port so we can output debug data
 
+    if (CheckCpuid() != 0) {
+        SetCpuid(true);
+        CollectCpuid();
+    }
+
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
+
+    PlatformEarlyInit();
 }

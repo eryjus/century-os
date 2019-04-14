@@ -1,37 +1,34 @@
 //===================================================================================================================
 //
-//  SpinlockLock.cc -- Lock a spinlock
+//  PlatformEarlyInit.cc -- Handle the early initialization for the bcm2835 platform
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  This function is called after `MmuEarlyInit()`, so we expect to have access to kernel virtual memory addresses.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-24  Initial   0.3.2   ADCL  Initial version; converted from an inline function
+//  2019-Apr-05  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
-#include "spinlock.h"
+#include "hardware.h"
+#include "hw-disc.h"
+#include "platform.h"
 
 
 //
-// -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
-//    ---------------------------------------------------------------------------------------------
-void __krntext SpinlockLock(Spinlock_t *lock)
+// -- Handle the early initialization for the pc platform
+//    ---------------------------------------------------
+void __ldrtext PlatformEarlyInit(void)
 {
-    while (SpinlockAtomicLock(lock, 0, 1) != 0) {  }
-//    CLEAN_SPINLOCK(lock);
-
-    //
-    // -- Note the lock holder; may use later
-    //    -----------------------------------
-//    lock->lockHolder = currentProcess;
-//    CLEAN_SPINLOCK(lock);
+    HwDiscovery();
 }
+
 
 

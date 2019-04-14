@@ -38,6 +38,7 @@
 #include "fb.h"
 #include "hw-disc.h"
 #include "interrupt.h"
+#include "hardware.h"
 #include "printf.h"
 #include "heap.h"
 #include "process.h"
@@ -130,6 +131,15 @@ void kInit(void)
     FrameBufferClear();
     FrameBufferPutS("Welcome to CenturyOS -- a hobby operating system\n");
     FrameBufferPutS("    (initializing...)\n");
+    FrameBufferPutS("The RSDP is located at "); FrameBufferPutHex(GetRsdp()); FrameBufferDrawChar('\n');
+
+#ifdef RSDP_t
+#   define RSDT        ((RSDP_t *)GetRsdp())->rsdtAddress
+#else
+#   define RSDT        0
+#endif
+    FrameBufferPutS("The RSDT is located at ");  FrameBufferPutHex(RSDT); FrameBufferDrawChar('\n');
+#undef RSDT
 
     kprintf("The offset of scheduler.currentProcess is %x (%x)\n", offsetof(Scheduler_t, currentProcess), sizeof(scheduler.currentProcess));
     kprintf("The offset of scheduler.processChangePending is %x (%x)\n", offsetof(Scheduler_t, processChangePending), sizeof(scheduler.processChangePending));

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  SpinlockLock.cc -- Lock a spinlock
+//  platform.h -- These are the common functions for interacting with the platform
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,22 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-24  Initial   0.3.2   ADCL  Initial version; converted from an inline function
+//  2019-Apr-05  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#ifndef __PLATFORM_H__
+#define __PLATFORM_H__
+
+
 #include "types.h"
-#include "spinlock.h"
 
 
 //
-// -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
-//    ---------------------------------------------------------------------------------------------
-void __krntext SpinlockLock(Spinlock_t *lock)
-{
-    while (SpinlockAtomicLock(lock, 0, 1) != 0) {  }
-//    CLEAN_SPINLOCK(lock);
-
-    //
-    // -- Note the lock holder; may use later
-    //    -----------------------------------
-//    lock->lockHolder = currentProcess;
-//    CLEAN_SPINLOCK(lock);
-}
+// -- This is the early platform initialization function
+//    --------------------------------------------------
+__CENTURY_FUNC__ void PlatformEarlyInit(void);
 
 
+#endif

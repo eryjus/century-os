@@ -27,6 +27,7 @@
 
 #include "types.h"
 #include "hw-disc.h"
+#include "printf.h"
 #include "fb.h"
 
 
