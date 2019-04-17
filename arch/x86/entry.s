@@ -36,7 +36,7 @@
 ;;
 ;; -- Now, we need some things from other functions imported
 ;;    ------------------------------------------------------
-    extern        LoaderMain                                    ;; allow reference to external LoaderMain
+    extern      LoaderMain                                  ;; allow reference to external LoaderMain
     extern      mb1Data                                     ;; the address of the MB1 MBI
     extern      mb2Data                                     ;; the address of the MB2 MBI
     extern      pmmEarlyFrame                               ;; the next frame to be allocated
@@ -121,11 +121,26 @@ dd      LEN                                                 ;; total length of t
 dd      CHECK2                                              ;; mb2 checksum
 
 align           8
+Type1Start:
+dw      1                                                   ;; type=1
+dw      0                                                   ;; not optional
+dd      Type1End-Type1Start                                 ;; size = 40
+;dd      1                                                   ;; provide boot command line
+;dd      2                                                   ;; provide boot loader name
+;dd      3                                                   ;; provide module info
+;dd      4                                                   ;; provide basic memory info
+;dd      5                                                   ;; provide boot device
+dd      6                                                   ;; provide memory map
+;dd      8                                                   ;; provide frame buffer info
+;dd      9                                                   ;; provide elf symbol table
+Type1End:
+
+align           8
 Type4Start:
 dw      4                                                   ;; type=4
-dw      1                                                   ;; Graphics
+dw      0                                                   ;; not optional
 dd      Type4End-Type4Start                                 ;; size = 12
-dd      0                                                   ;; graphics support
+dd      1                                                   ;; graphics
 Type4End:
 
 align           8
@@ -146,6 +161,7 @@ dd      Type6End-Type6Start                                 ;; size = 8 bytes ev
 Type6End:
 
 align           8
+Type8Start:
 dw      0                                                   ;; Type=0
 dw      0                                                   ;; flags=0
 dd      8                                                   ;; size=8

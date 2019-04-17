@@ -21,7 +21,7 @@ include_rules
 #
 # -- Create the grub.cfg file
 #    ------------------------
-: |>     echo "set timeout=3"                                       >  %o;       \
+: |>    echo "set timeout=3"                                        >  %o;       \
         echo "set default=0"                                        >> %o;       \
         echo "menuentry \"Century (Multiboot)\" {"                  >> %o;       \
         echo "  multiboot /boot/kernel.elf"                         >> %o;       \

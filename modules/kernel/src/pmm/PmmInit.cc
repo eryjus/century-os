@@ -80,8 +80,14 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
     //    we will not deal with the first 4MB of memory, saving that for the cleanup after boot.
     //    ---------------------------------------------------------------------------------------------------------
     for (int i = 0; i < GetMMapEntryCount(); i ++) {
-        frame_t frame = ((archsize_t)GetAvailMemStart(i)) >> 12;
-        size_t count = ((archsize_t)GetAvailMemLength(i)) >> 12;
+        uint64_t start = GetAvailMemStart(i);
+        uint64_t end = start + GetAvailMemLength(i);
+
+        if ((start & 0xffffffff00000000) != 0) continue;      // -- if it is above 32-bit space, it is not usable
+        if (end > 0x100000000) end = 0x100000000;      // -- yes, this is a 9-digit hex number!!
+
+        frame_t frame = (archsize_t)(start >> 12);
+        size_t count = (archsize_t)((end - start) >> 12);
 
         // -- skip anything before 4MB
         if (frame < 0x400 && count < 0x400) continue;

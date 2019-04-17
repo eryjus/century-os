@@ -204,6 +204,7 @@ typedef struct Mb2FbInfo_t {
 // -- The multiboot 2 information structure
 //    -------------------------------------
 __ldrdata void *mb2Data;
+extern void *mb1Data;
 
 
 //
@@ -213,15 +214,19 @@ void __ldrtext Mb2Parse(void)
 {
     if (!mb2Data) return;
 
-    kprintf("Parsing MB2 Info\n");
+    kprintf("Parsing MB2 Info at %p (MB1 info at %p)\n", mb2Data, mb1Data);
+    kprintf(".. size = %x\n", ((uint32_t *)mb2Data)[0]);
+    kprintf(".. resv = %x\n", ((uint32_t *)mb2Data)[1]);
 
     uint32_t locn = (uint32_t)mb2Data + sizeof(Mb2Fixed_t);
     bool lastTag = false;
 
     while (!lastTag) {
         Mb2BasicTag_t *tag = (Mb2BasicTag_t *)locn;
+        kprintf("MB2 info: %x\n", tag->type);
         switch (tag->type) {
         case MB2_TAG_LAST_TAG:
+            kprintf(".. Last Tag\n");
             lastTag = true;
             break;
 
@@ -254,6 +259,7 @@ void __ldrtext Mb2Parse(void)
         }
 
         case MB2_TAG_BOOT_DEV: {
+            kprintf(".. Boot Device\n");
 //            Mb2BootDevice_t *dev = (Mb2BootDevice_t *)locn;
 //            MbLocalSetBootDev(dev->biosDev, dev->partition, dev->subPartition, 0xffffffff);
             break;
@@ -273,6 +279,7 @@ void __ldrtext Mb2Parse(void)
         }
 
         case MB2_TAG_VBE: {
+            kprintf(".. VBE info\n");
 //            Mb2VbeInfo_t *vbe = (Mb2VbeInfo_t *)locn;
 //            MbLocalSetVbe(vbe->vbeMode, vbe->vbeInterfaceSeg, vbe->vbeInterfaceOff, vbe->vbeInterfaceLen,
 //                    vbe->vbeControlInfo, vbe->vbeModeInfo);
@@ -297,6 +304,7 @@ void __ldrtext Mb2Parse(void)
         }
 
         case MB2_TAG_ELF_SYMS: {
+            kprintf(".. Elf Syms\n");
 //            Mb2ElfSymbols_t *elf = (Mb2ElfSymbols_t *)locn;
 //            MbLocalSetElfSyms(elf->num, elf->entSize, elf->shndx);
 
@@ -304,6 +312,7 @@ void __ldrtext Mb2Parse(void)
         }
 
         case MB2_TAG_APM: {
+            kprintf(".. APM\n");
 //            Mb2Apm_t *apm = (Mb2Apm_t *)locn;
 //            MbLocalSetApm(apm->version, apm->cseg, apm->offset, apm->cseg16, apm->dseg, apm->flags, apm->csegLen,
 //                    apm->cseg16Len, apm->dsegLen);

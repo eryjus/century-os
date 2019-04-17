@@ -230,14 +230,18 @@ void __ldrtext Mb1Parse(void)
         uint32_t size = mb1Data->mmapLen;
         Mb1MmapEntry_t *entry = (Mb1MmapEntry_t *)(((uint32_t)mb1Data->mmapAddr));
         while (size) {
-            kprintf("  iterating in mmap - size is: %p\n", size);
-            kprintf("    entry address is: %p\n", entry);
-            kprintf("    entry type is: 0x%x\n", entry->mmapType);
-            kprintf("    entry base is: %p : %p\n", (uint32_t)(entry->mmapAddr>>32),
-                    (uint32_t)entry->mmapAddr&0xffffffff);
-            kprintf("    entry length is: %p : %p\n", (uint32_t)(entry->mmapLength>>32),
-                    (uint32_t)entry->mmapLength&0xffffffff);
-            kprintf("    entry size is: %p\n", entry->mmapSize);
+            if (entry->mmapType == 1) {
+                kprintf("  iterating in mmap\n");
+                kprintf("    entry address is: %p\n", entry);
+                kprintf("    entry type is: %x\n", entry->mmapType);
+                kprintf("    entry base is: %p : %p\n", (uint32_t)(entry->mmapAddr>>32),
+                        (uint32_t)entry->mmapAddr&0xffffffff);
+                kprintf("    entry length is: %p : %p\n", (uint32_t)(entry->mmapLength>>32),
+                        (uint32_t)entry->mmapLength&0xffffffff);
+                kprintf("    entry size is: %p\n", entry->mmapSize);
+            }
+
+#if DEBUG_MB==1
             kprintf("  MMap Entry count is: %x\n", GetMMapEntryCount());
 
             uint32_t *wrk = (uint32_t *)entry;
@@ -246,6 +250,7 @@ void __ldrtext Mb1Parse(void)
             }
 
             kprintf("  Through all entries...\n");
+#endif
 
             if (entry->mmapType == 1) AddAvailMem(entry->mmapAddr, entry->mmapLength);
             uint64_t newLimit = entry->mmapAddr + entry->mmapLength;

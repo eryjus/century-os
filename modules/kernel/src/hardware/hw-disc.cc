@@ -22,6 +22,6 @@
 //
 // -- This is the local version of what we have found for hardware; these will be located in the loader addr space.
 //    -------------------------------------------------------------------------------------------------------------
-extern uint8_t _localHwDisc[];
-__ldrdata HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)_localHwDisc;
+__ldrdata HardwareDiscovery_t _localHwDisc;
+__ldrdata HardwareDiscovery_t *localHwDisc = &_localHwDisc;
 

@@ -16,7 +16,7 @@
 ##
 ## -- Set some defines needed by this targets
 ##    ---------------------------------------
-CCDEFINE += -DENABLE_CACHE=0
+CCDEFINE += -DENABLE_CACHE=1
 
 
 ##

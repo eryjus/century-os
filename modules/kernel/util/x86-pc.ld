@@ -56,10 +56,6 @@ SECTIONS {
         LONG(KERN);
 
         *(.ldrbss)                      /* -- loader bss (again, things that will not get passed to the kernel */
-        . = ALIGN(4096);
-
-        _localHwDisc = .;               /* -- this will be the location of the hardware discovery structire */
-        BYTE(0);                        /* -- be sure something is allocated */
     }
     . = ALIGN(4096);
     _loaderEnd = .;

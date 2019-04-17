@@ -266,3 +266,636 @@ The rpi2b test has been running for about 5 minutes on real hardware.  However, 
 Well, it looks like that is perfectly normal -- the text is in process A and it is being preempted properly by G which is preempted by A again.
 
 However, thinking about this, I probably have some race condition in x86 that is causing this.  It would explain the different behaviors in the emulator configs...
+
+---
+
+### 2019-Apr-14
+
+Out of desperation, I did check out v0.4.0 and compile and run it.  This version still works.  The current version of v0.4.1 does not.  So, it is safe to say that the things I changed between the 2 somehow either broke code or exposed broken code.
+
+So, what changed between the 2 versions?
+1. I increased memory for the qemu emulator (this is a possible cause)
+1. I added a command to write to the USB stick (not likely)
+1. I created a `PlatformEarlyInit()` function and called it (this is a possible cause)
+1. I added a function to check if `CPUID` is supported (low likelihood, but cannot be eliminated)
+1. I added a function to collect the `CPUID` information (low likelihood, but cannot be eliminated)
+1. I also extended the `localHwDisc` structure which may be bigger than one frame and my compile time check is failing (near 0 likelihood, but will check to confirm)
+1. I disabled debugging on `MmuEarlyInit()` (near 0 likelihood but will check to confirm)
+1. I added conditional compile tags to `MmuEarlyInit()` (near 0 likelihood but will check to confirm)
+1. I added conditional compile tags to `MmuInit()` (near 0 likelihood but will check to confirm)
+1. I moved the location of `#define WBINVD()` to be conditioned (not likely since the change was done to debug this code)
+1. I changed several function prototypes from `extern "C"` to `__CENTURY_FUNC__` (not likely since they are the same)
+1. I added a `FrameBufferPutHex()` macro and called it (not likely, but will check)
+1. I added several ACPI determination functions (not likely but will check)
+
+Let me go after the 2 most probable causes.  First the memory change.  And....!!!!  it turned out to be the memory change that created the problem!!
+
+WTF!!!!
+
+Ok, bochs was set to 3072 MB memory.  So I changed it to 3584 MB, and it still works.
+
+So, this makes the possible candidates the PMM and the Memory Map.  I am unable to check MB2 since that does not return a memory map for some reason.  OK, but MB2 does have the code to determine the memory map and that should be working.  So, let me start with that.
+
+---
+
+Well, the MB2 structure is located at `0x00103048`.  I believe that this is right after the kernel.  On the other hand, the MB1 structure is located at `0x00010000`, putting it in low memory.
+
+Both multiboot specifications state:
+
+> The Multiboot information structure and its related substructures may be placed anywhere in memory by the boot loader (with the exception of the memory reserved for the kernel and boot modules, of course). It is the operating system’s responsibility to avoid overwriting this memory until it is done using it.
+
+I may be having such a problem with MB2 since it is hanging off the end of the kernel.  Before moving everything into the kernel, this all worked, so that may have something to do with it....
+
+---
+
+### 2019-Apr-15
+
+After removing the intermediate alignment statements I get the following code:
+
+```
+00100030 <MultibootHeader2>:
+  100030:       d6                      (bad)
+  100031:       50                      push   %eax
+  100032:       52                      push   %edx
+  100033:       e8 00 00 00 00          call   100038 <MultibootHeader2+0x8>
+  100038:       40                      inc    %eax
+  100039:       00 00                   add    %al,(%eax)
+  10003b:       00 ea                   add    %ch,%dl
+  10003d:       ae                      scas   %es:(%edi),%al
+  10003e:       ad                      lods   %ds:(%esi),%eax
+  10003f:       17                      pop    %ss
+
+00100040 <Type4Start>:
+  100040:       04 00                   add    $0x0,%al
+  100042:       01 00                   add    %eax,(%eax)
+  100044:       0c 00                   or     $0x0,%al
+  100046:       00 00                   add    %al,(%eax)
+  100048:       00 00                   add    %al,(%eax)
+        ...
+
+0010004c <Type5Start>:
+  10004c:       05 00 01 00 14          add    $0x14000100,%eax
+  100051:       00 00                   add    %al,(%eax)
+  100053:       00 00                   add    %al,(%eax)
+  100055:       04 00                   add    $0x0,%al
+  100057:       00 00                   add    %al,(%eax)
+  100059:       03 00                   add    (%eax),%eax
+  10005b:       00 10                   add    %dl,(%eax)
+  10005d:       00 00                   add    %al,(%eax)
+        ...
+
+00100060 <Type6Start>:
+  100060:       06                      push   %es
+  100061:       00 01                   add    %al,(%ecx)
+  100063:       00 08                   add    %cl,(%eax)
+  100065:       00 00                   add    %al,(%eax)
+        ...
+
+00100068 <Type6End>:
+  100068:       00 00                   add    %al,(%eax)
+  10006a:       00 00                   add    %al,(%eax)
+  10006c:       08 00                   or     %al,(%eax)
+        ...
+```
+ Putting the alignments back in:
+
+ ```
+ 00100030 <MultibootHeader2>:
+  100030:       d6                      (bad)
+  100031:       50                      push   %eax
+  100032:       52                      push   %edx
+  100033:       e8 00 00 00 00          call   100038 <MultibootHeader2+0x8>
+  100038:       48                      dec    %eax
+  100039:       00 00                   add    %al,(%eax)
+  10003b:       00 e2                   add    %ah,%dl
+  10003d:       ae                      scas   %es:(%edi),%al
+  10003e:       ad                      lods   %ds:(%esi),%eax
+  10003f:       17                      pop    %ss
+
+00100040 <Type4Start>:
+  100040:       04 00                   add    $0x0,%al
+  100042:       01 00                   add    %eax,(%eax)
+  100044:       0c 00                   or     $0x0,%al
+  100046:       00 00                   add    %al,(%eax)
+  100048:       00 00                   add    %al,(%eax)
+        ...
+
+0010004c <Type4End>:
+  10004c:       90                      nop
+  10004d:       90                      nop
+  10004e:       90                      nop
+  10004f:       90                      nop
+
+00100050 <Type5Start>:
+  100050:       05 00 01 00 14          add    $0x14000100,%eax
+  100055:       00 00                   add    %al,(%eax)
+  100057:       00 00                   add    %al,(%eax)
+  100059:       04 00                   add    $0x0,%al
+  10005b:       00 00                   add    %al,(%eax)
+  10005d:       03 00                   add    (%eax),%eax
+  10005f:       00 10                   add    %dl,(%eax)
+  100061:       00 00                   add    %al,(%eax)
+        ...
+
+00100064 <Type5End>:
+  100064:       90                      nop
+  100065:       90                      nop
+  100066:       90                      nop
+  100067:       90                      nop
+
+00100068 <Type6Start>:
+  100068:       06                      push   %es
+  100069:       00 01                   add    %al,(%ecx)
+  10006b:       00 08                   add    %cl,(%eax)
+  10006d:       00 00                   add    %al,(%eax)
+        ...
+ ```
+
+Notice the nop. between the End and Start tags.
+
+Now, the former will not boot.  It cannot identify the tags properly and finds something incorrect.  The latter on the other hand does boot but I do not get any boot information (including memory map).
+
+---
+
+OK, I have my MB2 issues figured out.  The short answer is that my _localHwDisc structure is overlaying my MB2 MBI structure.  Grub2 is putting this structure at `0x103048` and my `_localHwDisc` structure is at `0x103000`, but is approaching a page in size.  I am ultimately overwriting the MBI with the `_localHwDisc` data.
+
+I am going to articulate why this is happening, but I need to take this on tomorrow.
+
+---
+
+### 2019-Apr-16
+
+Today I need to start by properly documenting what I found last night with the MB2 MBI table being overwritten (and then once that is done, fix it!).
+
+First, the output from the kernel indicates the location of the MBI block:
+
+```
+Parsing MB2 Info at 0x00103048 (MB1 info at 0x00000000)
+.. size = 0x0
+.. resv = 0x0
+```
+
+However, notice that the size is `0`, which is not what I would expect.  To confirm, I went to an execution log:
+
+```
+----------------
+IN:
+0x001022c3:  3d 89 62 d7 36           cmpl     $0x36d76289, %eax
+0x001022c8:  75 06                    jne      0x1022d0
+
+EAX=36d76289 EBX=00103048 ECX=00000000 EDX=00000000
+ESI=00000000 EDI=00000000 EBP=00000000 ESP=0007ff00
+EIP=001022c3 EFL=00200006 [-----P-] CPL=0 II=0 A20=1 SMM=0 HLT=0
+ES =0018 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+CS =0010 00000000 ffffffff 00cf9a00 DPL=0 CS32 [-R-]
+SS =0018 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+DS =0018 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+FS =0018 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+GS =0018 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+LDT=0000 00000000 0000ffff 00008200 DPL=0 LDT
+TR =0000 00000000 0000ffff 00008b00 DPL=0 TSS32-busy
+GDT=     000010b0 00000020
+IDT=     00000000 00000000
+CR0=00000011 CR2=00000000 CR3=00000000 CR4=00000000
+DR0=00000000 DR1=00000000 DR2=00000000 DR3=00000000
+DR6=ffff0ff0 DR7=00000400
+CCS=2badb002 CCD=0b29b287 CCO=SUBL
+EFER=0000000000000000
+```
+
+That address is stored in `ebx`.  Looking now at the MB2 specification, I note that this address is indeed supposed to be in `ebx`:
+
+> #### 3.6.1 Boot information format
+> Upon entry to the operating system, the EBX register contains the physical address of a Multiboot2 information data structure, through which the boot loader communicates vital information to the operating system. The operating system can use or ignore any parts of the structure as it chooses; all information passed by the boot loader is advisory only.
+> The Multiboot2 information structure and its related substructures may be placed anywhere in memory by the boot loader (with the exception of the memory reserved for the kernel and boot modules, of course). It is the operating system’s responsibility to avoid overwriting this memory until it is done using it.
+
+So, indeed, `ebx` contains the value I am looking for.
+
+Looking at a disassembly of my binary, I see the following structure ahead of this location:
+
+```
+00103000 <_localHwDisc>:
+        ...
+```
+
+This means that the local structure for `_localHwDisc` is located at the frame address just ahead of the MBI structure.  This is not supposed to overlap.  Currently the structure is defined as:
+
+```C
+//
+// -- This structure will hold a stage-3 loader local copy of the provided multiboot information.
+//    -------------------------------------------------------------------------------------------
+typedef struct HardwareDiscovery_t {
+    //
+    // -- The BIOS information
+    //    --------------------
+    archsize_t ebdaLocation;
+    uint16_t com1;
+    uint16_t com2;
+    uint16_t com3;
+    uint16_t com4;
+    uint16_t lpt1;
+    uint16_t lpt2;
+    uint16_t lpt3;
+    uint16_t videoPort;
+
+    //
+    // -- the memory limit information
+    //    ----------------------------
+    bool memLimitsAvail;
+    uint32_t availLowerMem;
+    uint32_t availUpperMem;
+    uint64_t upperMemLimit;
+
+    //
+    // -- the memory map information
+    //    --------------------------
+    bool memMapAvail;
+    int memMapCount;
+    MMap_t mmap[NUM_MMAP_ENTRIES];
+
+    //
+    // -- the module information
+    //    ----------------------
+    bool modAvail;
+    int modCount;
+    Module_t mods[MAX_MODULES];
+    frame_t modHighestFrame;
+
+    //
+    // -- the Physical Memory Manager location and other relevant info
+    //    ------------------------------------------------------------
+    uint32_t *pmmBitmap;
+    size_t pmmFrameCount;
+
+    //
+    // -- FrameBufferInformation
+    //    ----------------------
+    // -- Frame Buffer Info
+    bool frameBufferAvail;
+    uint16_t *fbAddr;
+    uint32_t fbPitch;
+    uint32_t fbWidth;
+    uint32_t fbHeight;
+    uint8_t fbBpp;
+    FrameBufferType fbType;
+
+    //---------------------------------
+
+    //
+    // -- The console properties; which will be also passed to the kernel
+    //    ---------------------------------------------------------------
+    uint16_t bgColor;
+    uint16_t fgColor;
+    uint16_t rowPos;
+    uint16_t colPos;
+
+
+    //
+    // -- The location of the ACPI tables
+    //    -------------------------------
+    archsize_t rsdp;
+
+
+    //
+    // -- CPUID Data
+    //    ----------
+    bool cpuidSupported;
+
+    uint32_t cpuid00eax;
+    uint32_t cpuid00ebx;
+    uint32_t cpuid00ecx;
+    uint32_t cpuid00edx;
+
+    uint32_t cpuid01eax;
+    uint32_t cpuid01ebx;
+    uint32_t cpuid01ecx;
+    uint32_t cpuid01edx;
+
+    uint32_t cpuid02eax;
+    uint32_t cpuid02ebx;
+    uint32_t cpuid02ecx;
+    uint32_t cpuid02edx;
+
+    uint32_t cpuid03eax;
+    uint32_t cpuid03ebx;
+    uint32_t cpuid03ecx;
+    uint32_t cpuid03edx;
+
+    uint32_t cpuid04eax;
+    uint32_t cpuid04ebx;
+    uint32_t cpuid04ecx;
+    uint32_t cpuid04edx;
+
+    uint32_t cpuid05eax;
+    uint32_t cpuid05ebx;
+    uint32_t cpuid05ecx;
+    uint32_t cpuid05edx;
+
+    uint32_t cpuid06eax;
+    uint32_t cpuid06ebx;
+    uint32_t cpuid06ecx;
+    uint32_t cpuid06edx;
+
+    uint32_t cpuid07eax;
+    uint32_t cpuid07ebx;
+    uint32_t cpuid07ecx;
+    uint32_t cpuid07edx;
+
+    uint32_t cpuid09eax;
+    uint32_t cpuid09ebx;
+    uint32_t cpuid09ecx;
+    uint32_t cpuid09edx;
+
+    uint32_t cpuid0aeax;
+    uint32_t cpuid0aebx;
+    uint32_t cpuid0aecx;
+    uint32_t cpuid0aedx;
+
+    uint32_t cpuid0beax;
+    uint32_t cpuid0bebx;
+    uint32_t cpuid0becx;
+    uint32_t cpuid0bedx;
+} HardwareDiscovery_t;
+```
+
+... this is easily more than `0x48` bytes long, even without counting bytes.  Therefore, the data elements are overlapping.  This should not be the case.
+
+Specifically, the linker script is written to address this (or, so I thought):
+
+```
+    .loader : {       /* This is where the loader will be located -- things to be reclaimed: */
+        *(.mboot)                       /* -- multiboot header comes first */
+        *(.ldrtext)                     /* -- loader text (code) */
+        *(.text.startup)                /* -- this is additional initialization code */
+        . = ALIGN(8);                   /* -- the next table needs to align to 8 bytes */
+
+        init_start = .;                 /* -- here we have an array of functions that need to be called */
+        *(.ctors)
+        *(.ctors.*)
+        *(.init_array)
+        *(SORT_BY_INIT_PRIORITY(.init_array.*))
+        init_end = .;
+
+        . = ALIGN(8);                   /* -- re-align to 8 bytes */
+        *(.ldrrodata)                   /* -- loader rodata (like strings) */
+        *(.ldrdata)                     /* -- loader data (things that will not get passed to the kernel */
+
+        phys_loc = .;                   /* -- provide variable `phys_loc` with the value of PHYS */
+        LONG(PHYS);
+
+        kern_loc = .;                   /* -- provide variable `kern_loc` wiht the value of KERN */
+        LONG(KERN);
+
+        *(.ldrbss)                      /* -- loader bss (again, things that will not get passed to the kernel */
+        . = ALIGN(4096);
+
+        _localHwDisc = .;               /* -- this will be the location of the hardware discovery structire */
+        BYTE(0);                        /* -- be sure something is allocated */
+    }
+    . = ALIGN(4096);
+    _loaderEnd = .;
+    PHYS_OFFSET = .;
+```
+
+Well, I am reserving a single byte and then aligning the rest of the loader section to the frame (or so I thought).
+
+However, looking at the sections using `readelf -a targets/x86-pc/bin/boot/kernel.elf`, I get the following program headers:
+
+```
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x03001 0x03001 RWE 0x1000
+  LOAD           0x005000 0x80000000 0x00104000 0x06c1c 0x06c1c R E 0x1000
+  LOAD           0x00c000 0x80007000 0x0010b000 0x791c8 0x7e68c RW  0x1000
+```
+
+In particular the first LOAD header is loaded at address `0x00100000` and has a memory length of `0x03001` bytes.  This, then, puts the ending location of the `_loaderHwDisc` structure at `0x00103001` from the linker script but `sizeof(_loaderHwDisc)` in the C code (which again, while I have not counted it, is clearly more than `0x48` bytes long).
+
+So, then, GRUB2 was able to find a little wedge of memory between the (incorrect) end of the `_localHwDisc` structure and the start of the kernel code page targeted for upper memory and place the data for the MBI in that space.
+
+Finally, to seal my fate here, the structure is located in what is effectively an uninitialized loader bss section.  As a result I am very diligent about initializing every byte of this memory for fear it is not pre-cleared for me when I first access it:
+
+```C
+__ldrdata HardwareDiscovery_t *localHwDisc = (HardwareDiscovery_t *)_localHwDisc;
+
+//
+// -- Perform the hardware discovery
+//    ------------------------------
+void __ldrtext HwDiscovery(void)
+{
+    lMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
+    Mb1Parse();
+    Mb2Parse();
+//    ArchDiscovery();
+}
+```
+
+This function clears the `_localHwDisc` structure, and the MBI structure at the same time.
+
+---
+
+Now, I can get back to my problem with memory size....  In particular, when I have 3072MB of memory, the system works properly; when I have 3584MB of memory the system crashes.
+
+So, one of the questions I have is about where the bounds are on this.
+* 4096 crashes
+* 4000 simply locks up
+* 3070 runs
+* 3072 runs
+* 3073 runs
+* 3075 runs
+* 3080 runs
+* 3090 runs
+* 3095 runs
+* 3200 runs
+* 3300 runs
+* 3400 runs
+* 3500 runs
+* 3550 runs
+* 3580 runs
+* 3583 runs
+* 3584 indeed crashes
+
+And with this last crash, I have some interesting results:
+
+```
+Found the mbi structure at 0x00010000
+  The flags are: 0x00001a67
+Setting basic memory information
+Identifying command line information:
+Setting memory map data
+  iterating in mmap - size is: 0x000000a8
+    entry address is: 0x0001009c
+    entry type is: 0x0x1
+    entry base is: 0x00000000 : 0x00000000
+    entry length is: 0x00000000 : 0x0009fc00
+    entry size is: 0x00000014
+  MMap Entry count is: 0x0
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0x00000000
+        32-bit entry 0x2 contains 0x00000000
+        32-bit entry 0x3 contains 0x0009fc00
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000001
+  Through all entries...
+  iterating in mmap - size is: 0x00000090
+    entry address is: 0x000100b4
+    entry type is: 0x0x2
+    entry base is: 0x00000000 : 0x0009fc00
+    entry length is: 0x00000000 : 0x00000400
+    entry size is: 0x00000014
+  MMap Entry count is: 0x1
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0x0009fc00
+        32-bit entry 0x2 contains 0x00000000
+        32-bit entry 0x3 contains 0x00000400
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000002
+  Through all entries...
+  iterating in mmap - size is: 0x00000078
+    entry address is: 0x000100cc
+    entry type is: 0x0x2
+    entry base is: 0x00000000 : 0x000f0000
+    entry length is: 0x00000000 : 0x00010000
+    entry size is: 0x00000014
+  MMap Entry count is: 0x1
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0x000f0000
+        32-bit entry 0x2 contains 0x00000000
+        32-bit entry 0x3 contains 0x00010000
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000002
+  Through all entries...
+  iterating in mmap - size is: 0x00000060
+    entry address is: 0x000100e4
+    entry type is: 0x0x1
+    entry base is: 0x00000000 : 0x00100000
+    entry length is: 0x00000000 : 0xbfee0000
+    entry size is: 0x00000014
+  MMap Entry count is: 0x1
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0x00100000
+        32-bit entry 0x2 contains 0x00000000
+        32-bit entry 0x3 contains 0xbfee0000
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000001
+  Through all entries...
+  iterating in mmap - size is: 0x00000048
+    entry address is: 0x000100fc
+    entry type is: 0x0x2
+    entry base is: 0x00000000 : 0xbffe0000
+    entry length is: 0x00000000 : 0x00020000
+    entry size is: 0x00000014
+  MMap Entry count is: 0x2
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0xbffe0000
+        32-bit entry 0x2 contains 0x00000000
+        32-bit entry 0x3 contains 0x00020000
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000002
+  Through all entries...
+  iterating in mmap - size is: 0x00000030
+    entry address is: 0x00010114
+    entry type is: 0x0x2
+    entry base is: 0x00000000 : 0xfffc0000
+    entry length is: 0x00000000 : 0x00040000
+    entry size is: 0x00000014
+  MMap Entry count is: 0x2
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0xfffc0000
+        32-bit entry 0x2 contains 0x00000000
+        32-bit entry 0x3 contains 0x00040000
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000002
+  Through all entries...
+  iterating in mmap - size is: 0x00000018
+    entry address is: 0x0001012c
+    entry type is: 0x0x1
+    entry base is: 0x00000001 : 0x00000000
+    entry length is: 0x00000000 : 0x20000000
+    entry size is: 0x00000014
+  MMap Entry count is: 0x2
+        32-bit entry 0x0 contains 0x00000014
+        32-bit entry 0x1 contains 0x00000000
+        32-bit entry 0x2 contains 0x00000001
+        32-bit entry 0x3 contains 0x20000000
+        32-bit entry 0x4 contains 0x00000000
+        32-bit entry 0x5 contains 0x00000001
+  Through all entries...
+Memory Map is complete
+```
+
+I need to clean this up a bit, but the last memory location is outside 32-bit address space.
+
+I am going to clean up the logs first and then do some additional testing.
+
+---
+
+So, for 3584MB of memory, the usable mmap looks like this:
+
+```
+Setting memory map data
+  iterating in mmap
+    entry address is: 0x0001009c
+    entry type is: 0x1
+    entry base is: 0x00000000 : 0x00000000
+    entry length is: 0x00000000 : 0x0009fc00
+    entry size is: 0x00000014
+  iterating in mmap
+    entry address is: 0x000100e4
+    entry type is: 0x1
+    entry base is: 0x00000000 : 0x00100000
+    entry length is: 0x00000000 : 0xbfee0000
+    entry size is: 0x00000014
+  iterating in mmap
+    entry address is: 0x0001012c
+    entry type is: 0x1
+    entry base is: 0x00000001 : 0x00000000
+    entry length is: 0x00000000 : 0x20000000
+    entry size is: 0x00000014
+Memory Map is complete
+```
+
+This equates to about 640KB, <3GB, and then 512MB (which is above 32-bit address space).
+
+For 3583MB, I get the following map:
+
+```
+Setting memory map data
+  iterating in mmap
+    entry address is: 0x0001009c
+    entry type is: 0x1
+    entry base is: 0x00000000 : 0x00000000
+    entry length is: 0x00000000 : 0x0009fc00
+    entry size is: 0x00000014
+  iterating in mmap
+    entry address is: 0x000100e4
+    entry type is: 0x1
+    entry base is: 0x00000000 : 0x00100000
+    entry length is: 0x00000000 : 0xdfde0000
+    entry size is: 0x00000014
+Memory Map is complete
+```
+
+... and notice that first of all the memory is in 32-bit address space.
+
+Finally, the last thing to consider here is that I am artificially converting the value to 32-bits:
+
+```C
+    for (int i = 0; i < GetMMapEntryCount(); i ++) {
+        frame_t frame = ((archsize_t)GetAvailMemStart(i)) >> 12;
+        size_t count = ((archsize_t)GetAvailMemLength(i)) >> 12;
+```
+
+This means that my starting address of `0x0000 0001 0000 0000` is actually converted to `0x00000000` and that is wrong.
+
+In fact, I cannot use any physical memory that is outside this 32-bit size.  I am going to have to test for and discard anything that cannot be used.
+
+And that works.  Good god!  I am going to commit these changes.
+
+---
+
+
+
+
+
+

@@ -198,7 +198,7 @@ typedef struct HardwareDiscovery_t {
     uint32_t cpuid0bebx;
     uint32_t cpuid0becx;
     uint32_t cpuid0bedx;
-} HardwareDiscovery_t;
+} HardwareDiscovery_t __attribute__((aligned(4096)));
 
 
 //

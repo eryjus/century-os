@@ -25,7 +25,7 @@
 void __krntext SpinlockLock(Spinlock_t *lock)
 {
     while (SpinlockAtomicLock(lock, 0, 1) != 0) {  }
-//    CLEAN_SPINLOCK(lock);
+    CLEAN_SPINLOCK(lock);
 
     //
     // -- Note the lock holder; may use later
