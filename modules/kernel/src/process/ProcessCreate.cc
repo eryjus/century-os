@@ -27,7 +27,6 @@
 //    -----------------------------------------------------
 Process_t *ProcessCreate(void (*startingAddr)(void))
 {
-    kprintf("*");
     extern archsize_t mmuLvl1Table;
 
     Process_t *rv = NEW(Process_t);

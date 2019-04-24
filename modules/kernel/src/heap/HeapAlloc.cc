@@ -54,78 +54,78 @@ Spinlock_t heapLock = {0};
 //    -------------------------------------
 void *HeapAlloc(size_t size, bool align)
 {
-	SPIN_BLOCK(heapLock) {
-		archsize_t flags = DisableInterrupts();
-		size_t adjustedSize;
-		OrderedList_t *entry;
-		KHeapHeader_t *hdr;
+    SPIN_BLOCK(heapLock) {
+        archsize_t flags = DisableInterrupts();
+        size_t adjustedSize;
+        OrderedList_t *entry;
+        KHeapHeader_t *hdr;
 
-		if (size < HEAP_SMALLEST) size = HEAP_SMALLEST;		    // must allocate at least 1 byte
+        if (size < HEAP_SMALLEST) size = HEAP_SMALLEST;            // must allocate at least 1 byte
 
-		if (size & (BYTE_ALIGNMENT - 1)) {	                    // Check for alignment
-			size += BYTE_ALIGNMENT;
-			size &= ~(BYTE_ALIGNMENT - 1);
-		}
+        if (size & (BYTE_ALIGNMENT - 1)) {                        // Check for alignment
+            size += BYTE_ALIGNMENT;
+            size &= ~(BYTE_ALIGNMENT - 1);
+        }
 
-		adjustedSize = size + sizeof(KHeapHeader_t) + sizeof(KHeapFooter_t);
+        adjustedSize = size + sizeof(KHeapHeader_t) + sizeof(KHeapFooter_t);
 
-		entry = HeapFindHole(adjustedSize, align);
+        entry = HeapFindHole(adjustedSize, align);
 
-		// -- are we out of memory?
-		if (!entry) {
-			HeapCheckHealth();
-			RestoreInterrupts(flags);
-			SPIN_RLS(heapLock);
+        // -- are we out of memory?
+        if (!entry) {
+            HeapCheckHealth();
+            RestoreInterrupts(flags);
+            SPIN_RLS(heapLock);
 
-			return 0;
-		}
+            return 0;
+        }
 
-		HeapValidateHdr(entry->block, "HeapAlloc()");
-		hdr = entry->block;
+        HeapValidateHdr(entry->block, "HeapAlloc()");
+        hdr = entry->block;
 
-		// if we are aligning, take care of it now
-		if (align) {
-			entry = HeapAlignToPage(entry);		// must reset entry
+        // if we are aligning, take care of it now
+        if (align) {
+            entry = HeapAlignToPage(entry);        // must reset entry
 
-			if (!entry) {
-				HeapCheckHealth();
-				RestoreInterrupts(flags);
-				SPIN_RLS(heapLock);
+            if (!entry) {
+                HeapCheckHealth();
+                RestoreInterrupts(flags);
+                SPIN_RLS(heapLock);
 
-				return 0;
-			}
+                return 0;
+            }
 
-			HeapValidateHdr(entry->block, "HeapAlloc() after alignment");
-			hdr = entry->block;
-		}
+            HeapValidateHdr(entry->block, "HeapAlloc() after alignment");
+            hdr = entry->block;
+        }
 
-		// perfect fit -OR- just a little too big
-		if (hdr->size == adjustedSize || adjustedSize - hdr->size < MIN_HOLE_SIZE) {
-			KHeapFooter_t *ftr;
+        // perfect fit -OR- just a little too big
+        if (hdr->size == adjustedSize || adjustedSize - hdr->size < MIN_HOLE_SIZE) {
+            KHeapFooter_t *ftr;
 
-			ftr = (KHeapFooter_t *)((byte_t *)hdr + hdr->size - sizeof(KHeapFooter_t));
+            ftr = (KHeapFooter_t *)((byte_t *)hdr + hdr->size - sizeof(KHeapFooter_t));
 
-			HeapReleaseEntry(entry);
-			hdr->_magicUnion.isHole = 0;
-			ftr->_magicUnion.isHole = 0;
-			HeapValidateHdr(hdr, "Resulting Header before return (good size)");
-			HeapCheckHealth();
-			RestoreInterrupts(flags);
-			SPIN_RLS(heapLock);
+            HeapReleaseEntry(entry);
+            hdr->_magicUnion.isHole = 0;
+            ftr->_magicUnion.isHole = 0;
+            HeapValidateHdr(hdr, "Resulting Header before return (good size)");
+            HeapCheckHealth();
+            RestoreInterrupts(flags);
+            SPIN_RLS(heapLock);
             CLEAN_HEAP();
 
-			return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
-		}
+            return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
+        }
 
-		// the only thing left is that it is too big and needs to be split
-		hdr = HeapSplitAt(entry, adjustedSize);		// var entry is no longer valid after call
-		HeapValidatePtr("HeapAlloc()");
-		HeapValidateHdr(hdr, "Resulting Header before return (big size)");
-		HeapCheckHealth();
-		RestoreInterrupts(flags);
-		SPIN_RLS(heapLock);
+        // the only thing left is that it is too big and needs to be split
+        hdr = HeapSplitAt(entry, adjustedSize);        // var entry is no longer valid after call
+        HeapValidatePtr("HeapAlloc()");
+        HeapValidateHdr(hdr, "Resulting Header before return (big size)");
+        HeapCheckHealth();
+        RestoreInterrupts(flags);
+        SPIN_RLS(heapLock);
         CLEAN_HEAP();
 
-		return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
-	}
+        return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
+    }
 }

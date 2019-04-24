@@ -29,15 +29,13 @@
 //
 // -- Register an ISR handler to the ISR Handler table
 //    ------------------------------------------------
-void IsrRegister(uint8_t interrupt, isrFunc_t func)
+isrFunc_t IsrRegister(uint8_t interrupt, isrFunc_t func)
 {
-	archsize_t flags = DisableInterrupts();
+    archsize_t flags = DisableInterrupts();
+    isrFunc_t rv = isrHandlers[interrupt];
 
-    if (isrHandlers[interrupt] != NULL_ISR) {
-        kprintf("When registering interrupt %d, a handler is already registered; user IsrUnregister()\n", interrupt);
-    } else {
-	    isrHandlers[interrupt] = func;
-    }
+    isrHandlers[interrupt] = func;
 
-	RestoreInterrupts(flags);
+    RestoreInterrupts(flags);
+    return rv;
 }

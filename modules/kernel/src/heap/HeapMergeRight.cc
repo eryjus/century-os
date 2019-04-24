@@ -32,22 +32,22 @@
 //    -------------------------------------------------------------------------------
 OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr)
 {
-	KHeapFooter_t *rightFtr;
-	KHeapHeader_t *rightHdr;
+    KHeapFooter_t *rightFtr;
+    KHeapHeader_t *rightHdr;
 
-	if (!hdr) HeapError("Bad Header passed into HeapMergeRight()", "");
+    if (!hdr) HeapError("Bad Header passed into HeapMergeRight()", "");
 
-	rightHdr = (KHeapHeader_t *)((byte_t *)hdr + hdr->size);
-	rightFtr = (KHeapFooter_t *)((byte_t *)rightHdr + rightHdr->size - sizeof(KHeapFooter_t));
+    rightHdr = (KHeapHeader_t *)((byte_t *)hdr + hdr->size);
+    rightFtr = (KHeapFooter_t *)((byte_t *)rightHdr + rightHdr->size - sizeof(KHeapFooter_t));
 
-	if ((byte_t *)rightFtr + sizeof(KHeapFooter_t) > kHeap->endAddr) return 0;
-	HeapValidateHdr(rightHdr, "rightHeader in HeapMergeRight()");
-	if (!rightHdr->_magicUnion.isHole) return 0;		// make sure the left block is a hole
+    if ((byte_t *)rightFtr + sizeof(KHeapFooter_t) > kHeap->endAddr) return 0;
+    HeapValidateHdr(rightHdr, "rightHeader in HeapMergeRight()");
+    if (!rightHdr->_magicUnion.isHole) return 0;        // make sure the left block is a hole
 
-	HeapReleaseEntry(rightHdr->entry);
-	hdr->size += rightHdr->size;
-	rightFtr->hdr = hdr;
-	hdr->_magicUnion.isHole = rightFtr->_magicUnion.isHole = 1;
+    HeapReleaseEntry(rightHdr->entry);
+    hdr->size += rightHdr->size;
+    rightFtr->hdr = hdr;
+    hdr->_magicUnion.isHole = rightFtr->_magicUnion.isHole = 1;
 
-	return HeapNewListEntry(hdr, 0);
+    return HeapNewListEntry(hdr, 0);
 }

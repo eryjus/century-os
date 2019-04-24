@@ -31,11 +31,11 @@
 //    ------------------------
 void HeapValidatePtr(const char *from)
 {
-	if (!kHeap->heapMemory) {
-		HeapError(from, "Start of heapMemory is empty");
-	}
+    if (!kHeap->heapMemory) {
+        HeapError(from, "Start of heapMemory is empty");
+    }
 
-	if (!kHeap->heapMemory) return;
+    if (!kHeap->heapMemory) return;
 
-	HeapValidateHdr(kHeap->heapMemory->block, from);
+    HeapValidateHdr(kHeap->heapMemory->block, from);
 }

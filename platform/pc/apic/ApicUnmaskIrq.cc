@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  IsrUnregister.cc -- Unregister an ISR Handler
+//  ApicUnmaskIrq.cc -- Unmask an IRQ so that it is effectively enabled
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,30 +10,31 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Jul-06  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Apr-20  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
 #include "cpu.h"
-#include "printf.h"
+#include "hw-disc.h"
+#include "mmu.h"
 #include "interrupt.h"
+#include "pic.h"
 
 
 //
-// -- Remove an ISR handler from the handlers table
-//    ---------------------------------------------
-void IsrUnregister(uint8_t interrupt)
+// -- Enable an IRQ by unmasking it
+//    -----------------------------
+void __krntext _ApicUnmaskIrq(PicDevice_t *dev, int irq)
 {
-    archsize_t flags = DisableInterrupts();
+    if (!dev) return;
+    if (irq < 0 || irq > 23) return;
 
-    if (isrHandlers[interrupt] == NULL_ISR) {
-        kprintf("When unregistering interrupt %d, no handler is registered\n", interrupt);
-    } else {
-        isrHandlers[interrupt] = NULL_ISR;
-    }
+    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
+    archsize_t addr = data->ioapicBase;
+    int reg = IOREDTBL0 + (2 * irq);
 
-    RestoreInterrupts(flags);
+    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) & ~(1<<16));
 }
+

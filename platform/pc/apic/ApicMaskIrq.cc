@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  PicDisableIrq.cc -- Diable the PIC from passing along an IRQ
+//  ApicMaskIrq.cc -- Mask an IRQ so that it is effectively disabled
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,34 +10,31 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
+//  2019-Apr-20  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#include "types.h"
 #include "cpu.h"
-#include "hardware.h"
+#include "hw-disc.h"
+#include "mmu.h"
+#include "interrupt.h"
 #include "pic.h"
 
 
 //
-// -- Disable the PIC from passing along an IRQ (some call it masking)
-//    ----------------------------------------------------------------
-void _PicDisableIrq(PicDevice_t *dev, int irq)
+// -- Disable an IRQ by masking it
+//    ----------------------------
+void __krntext _ApicMaskIrq(PicDevice_t *dev, int irq)
 {
     if (!dev) return;
-    if (irq < 0 || irq > 71) return;
+    if (irq < 0 || irq > 23) return;
 
-    int shift;
-    archsize_t addr;
+    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
+    archsize_t addr = data->ioapicBase;
+    int reg = IOREDTBL0 + (2 * irq);
 
-    if (irq >= 64) {
-        shift = irq - 64;
-        addr = dev->base1 + INT_IRQDIS0;
-    } else {
-        shift = irq % 32;
-        addr = dev->base1 + INT_IRQDIS1 + (4 * (irq / 32));
-    }
-
-    MmioWrite(addr, 1 << shift);
+    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) | (1<<16));
 }
+

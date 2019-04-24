@@ -20,6 +20,7 @@
 #include "cpu.h"
 #include "hw-disc.h"
 #include "serial.h"
+#include "printf.h"
 #include "platform.h"
 
 
@@ -37,6 +38,5 @@ void __ldrtext EarlyInit(void)
     }
 
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
-
     PlatformEarlyInit();
 }

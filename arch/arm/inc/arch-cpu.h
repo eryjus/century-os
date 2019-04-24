@@ -26,6 +26,12 @@
 
 
 //
+// -- This is the max IOAPICs that can be defined for this arch
+//    ---------------------------------------------------------
+#define MAX_IOAPIC          1
+
+
+//
 // -- This is the natural byte alignment for this architecture
 //    --------------------------------------------------------
 #define BYTE_ALIGNMENT      4

@@ -198,6 +198,20 @@ typedef struct HardwareDiscovery_t {
     uint32_t cpuid0bebx;
     uint32_t cpuid0becx;
     uint32_t cpuid0bedx;
+
+    //
+    // -- Local APIC info
+    //    ---------------
+    size_t lapicCount;
+
+    //
+    // -- IO APIC Address and Count
+    //    -------------------------
+    int ioApicCount;
+    struct {
+        archsize_t addr;
+        int gsiBase;
+    } ioApic[MAX_IOAPIC];
 } HardwareDiscovery_t __attribute__((aligned(4096)));
 
 
@@ -400,5 +414,21 @@ inline archsize_t GetRsdp(void) { return localHwDisc->rsdp; }
 //    -----------------------
 inline void SetCpuid(bool c) { localHwDisc->cpuidSupported = c; }
 inline bool GetCpuid(void) { return localHwDisc->cpuidSupported; }
+inline bool HasLocalApic(void) { return !!(localHwDisc->cpuid01edx & (1<<9)); }
+
+
+//
+// -- access to the local APIC fields
+//    -------------------------------
+inline void IncLocalApic(void) { localHwDisc->lapicCount ++; }
+inline size_t GetLocalApicCount(void) { return localHwDisc->lapicCount; }
+
+//
+// -- access to the IO APIC
+//    ---------------------
+inline void AddIoapic(archsize_t addr, int gsi) { localHwDisc->ioApic[localHwDisc->ioApicCount ++] = { addr, gsi}; }
+inline int GetIoapicCount(void) { return localHwDisc->ioApicCount; }
+inline archsize_t GetIoapicAddr(int i) { return localHwDisc->ioApic[i].addr; }
+inline int GetIoapicGsi(int i) { return localHwDisc->ioApic[i].gsiBase; }
 
 #endif

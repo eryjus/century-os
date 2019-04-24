@@ -20,7 +20,7 @@
 
 
 #ifndef __TYPES_H__
-# 	error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
+#     error "Do not include 'arch-types.h' directly; include 'types.h' instead, which will pick up this file."
 #endif
 
 
@@ -46,28 +46,28 @@ typedef archsize_t devaddr_t;
 // -- This is the order of the registers on the stack
 //    -----------------------------------------------
 typedef struct isrRegs_t {
-	archsize_t ss;
-	archsize_t gs;
-	archsize_t fs;
-	archsize_t es;
-	archsize_t ds;
-	archsize_t cr3;
-	archsize_t cr2;
-	archsize_t cr0;
-	archsize_t edi;
-	archsize_t esi;
-	archsize_t ebp;
-	archsize_t esp;
-	archsize_t ebx;
-	archsize_t edx;
-	archsize_t ecx;
-	archsize_t eax;
-	archsize_t intno;
-	archsize_t ackIRQ;
-	archsize_t errcode;
-	archsize_t eip;
-	archsize_t cs;
-	archsize_t eflags;
+    archsize_t ss;
+    archsize_t gs;
+    archsize_t fs;
+    archsize_t es;
+    archsize_t ds;
+    archsize_t cr3;
+    archsize_t cr2;
+    archsize_t cr0;
+    archsize_t edi;
+    archsize_t esi;
+    archsize_t ebp;
+    archsize_t esp;
+    archsize_t ebx;
+    archsize_t edx;
+    archsize_t ecx;
+    archsize_t eax;
+    archsize_t intno;
+    archsize_t ackIRQ;
+    archsize_t errcode;
+    archsize_t eip;
+    archsize_t cs;
+    archsize_t eflags;
 } isrRegs_t;
 
 
@@ -75,11 +75,11 @@ typedef struct isrRegs_t {
 // -- The Interrupt Descriptor Table Entry
 //    ------------------------------------
 typedef struct IdtEntry {
-	uint16_t baseLow;
-	uint16_t sel;
-	uint8_t always0;
-	uint8_t flags;
-	uint16_t baseHigh;
+    uint16_t baseLow;
+    uint16_t sel;
+    uint8_t always0;
+    uint8_t flags;
+    uint16_t baseHigh;
 } __attribute__((packed)) IdtEntry;
 
 

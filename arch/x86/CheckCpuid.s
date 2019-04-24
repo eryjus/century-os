@@ -18,14 +18,14 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-	global CheckCpuid
+    global CheckCpuid
 
 
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
 section .ldrtext
-cpu		586
+cpu        586
 
 
 ;;

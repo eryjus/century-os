@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  PicEnableIrq.cc -- Enable the PIC to pass along an IRQ
+//  ApicInit.cc -- Perform an EOI on the Local APIC
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,32 +10,26 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
+//  2019-Apr-19  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#include "types.h"
 #include "cpu.h"
-#include "hardware.h"
+#include "mmu.h"
 #include "pic.h"
 
 
 //
-// -- Enable the PIC to pass along an IRQ (some call it unmasking)
-//    ------------------------------------------------------------
-void _PicEnableIrq(PicDevice_t *dev, int irq)
+// -- End of interrupt signal
+//    -----------------------
+void _ApicEoi(PicDevice_t *dev, int irq)
 {
     if (!dev) return;
-    if (irq < 0 || irq > 15) return;
+    if (irq < 0 || irq > 23) return;
 
-    uint16_t port;
-
-    if (irq < 8) {
-        port = dev->base1 + PIC_MASTER_DATA;
-    } else {
-        port = dev->base2 + PIC_SLAVE_DATA;
-        irq -= 8;
-    }
-
-    outb(port, inb(port) & ~(1 << irq));
+    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
+    MmioWrite(data->localApicBase + LAPIC_EOI, 0);
 }
+

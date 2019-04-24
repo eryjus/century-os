@@ -30,26 +30,26 @@
 //    ----------------------------------------
 OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr)
 {
-	KHeapFooter_t *leftFtr = NULL;
-	KHeapHeader_t *leftHdr = NULL;
-	KHeapFooter_t *thisFtr = NULL;
+    KHeapFooter_t *leftFtr = NULL;
+    KHeapHeader_t *leftHdr = NULL;
+    KHeapFooter_t *thisFtr = NULL;
 
-	if (!hdr) HeapError("Bad Header passed into HeapMergeLeft()", "");
+    if (!hdr) HeapError("Bad Header passed into HeapMergeLeft()", "");
 
-	thisFtr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
-	leftFtr = (KHeapFooter_t *)((char *)hdr - sizeof(KHeapFooter_t));
+    thisFtr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
+    leftFtr = (KHeapFooter_t *)((char *)hdr - sizeof(KHeapFooter_t));
 
-	// -- Check of this fits before dereferencing the pointer -- may end in `#PF` if first block
-	if ((byte_t *)leftHdr < kHeap->strAddr) return 0;
-	leftHdr = leftFtr->hdr;
+    // -- Check of this fits before dereferencing the pointer -- may end in `#PF` if first block
+    if ((byte_t *)leftHdr < kHeap->strAddr) return 0;
+    leftHdr = leftFtr->hdr;
 
-	if (!leftHdr->_magicUnion.isHole) return 0;		// make sure the left block is a hole
+    if (!leftHdr->_magicUnion.isHole) return 0;        // make sure the left block is a hole
 
-	HeapReleaseEntry(leftHdr->entry);
+    HeapReleaseEntry(leftHdr->entry);
 
-	leftHdr->size += hdr->size;
-	thisFtr->hdr = leftHdr;
-	leftHdr->_magicUnion.isHole = thisFtr->_magicUnion.isHole = 1;
+    leftHdr->size += hdr->size;
+    thisFtr->hdr = leftHdr;
+    leftHdr->_magicUnion.isHole = thisFtr->_magicUnion.isHole = 1;
 
-	return HeapNewListEntry(leftHdr, 0);
+    return HeapNewListEntry(leftHdr, 0);
 }

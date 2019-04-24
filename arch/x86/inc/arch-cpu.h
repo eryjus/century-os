@@ -22,6 +22,12 @@
 
 
 //
+// -- This is the max IOAPICs that can be defined for this arch
+//    ---------------------------------------------------------
+#define MAX_IOAPIC          64
+
+
+//
 // -- This is the natural byte alignment for this architecture
 //    --------------------------------------------------------
 #define BYTE_ALIGNMENT      4
@@ -248,6 +254,29 @@ inline void HaltCpu(void) { __asm("hlt"); }
 //    -------------------------------------------------------------------------------------------------------------
 static inline void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
     __asm volatile("cpuid":"=a"(*a),"=b"(*b),"=c"(*c),"=d"(*d):"a"(code)); }
+
+
+//
+// -- Model Specific Registers
+//    ------------------------
+#define RDMSR(r)        ({ uint32_t _lo, _hi;                                                           \
+                            __asm volatile("rdmsr\n"                                                    \
+                                    : "=a"(_lo),"=d"(_hi) : "c"(r));                                    \
+                            (((uint64_t)_hi) << 32) | _lo;                                              \
+                        })
+#define WRMSR(r,v)      ({ uint32_t _lo = (uint32_t)(v & 0xffffffff);                                   \
+                            uint32_t _hi = (uint32_t)(v >> 32);                                         \
+                            __asm volatile("wrmsr\n"                                                    \
+                                    : : "c"(r),"a"(_lo),"d"(_hi));                                      \
+                        })
+
+
+//
+// -- Access macros for the APIC
+//    --------------------------
+#define APIC_BASE               (0x1b)
+#define READ_APIC_BASE()        RDMSR(APIC_BASE)
+#define WRITE_APIC_BASE(v)      WRMSR(APIC_BASE,v)
 
 
 //

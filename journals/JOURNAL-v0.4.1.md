@@ -894,8 +894,396 @@ And that works.  Good god!  I am going to commit these changes.
 
 ---
 
+Now, I can get back to spinning up the APIC....
 
+OK, so what is next here?  I have been able to pull the CPUID stuff and store it in the hardware discovery structure.  I have also been able to pull the MADT and determine what is available to me, but I am not doing anything with that yet expect reporting it.  I also have the old Century32 code where I read msr `0x1b` to find the APIC base -- not parsing the ACPI data at all.
 
+I keep going back to that Model Specific Register in my mind, so I need to research that some more.
+
+---
+
+So, the ACPI data reports:
+
+```
+.... MADT_IO_APIC
+...... APIC Addr: 0xfec00000, Global Sys Int Base: 0x0
+```
+
+... while the MSR `0x1b` reports:
+
+```
+The APIC base address is at 0xfee00900
+```
+
+Now, the bottom 12 bits are flags so they can be ignored, resulting in an address of `0xfee00000`.  Well, `0xfec00000` != `0xfee00000`.
+
+---
+
+### 2019-Apr-17
+
+I believe that at this moment I do not need the IOAPIC address I discovered by parsing the ACPI tables.  This is not needed until I start to spin up the other processors.  So, the value I get from MSR `0x1b` is the one I will work with.
+
+Now, at the same time, the location in physical memory is one that I may want to change -- not sure.  I should be able to map a page to the physical address and map this into the MMIO range (`0xf8000000`) so that I can access this from virtual memory addresses.  This address must be page-aligned and occupies a single page.
+
+Now, the last thing is going to be to create a `TimerDevice_t` structure for the APIC timer to get it up and running.  Since I need to calibrate the timer, I will also need to add an `Init()` member and probably an `EarlyInit()` member.  I will also need to expand the platform-specific data for the timer since for the APIC I will need to access the normal PIT timer as well as the real time clock.
+
+While I was not wanting to update rpi2b target in this version, it looks like it is going to have to happen anyway.  As a matter of fact, I will probably need a `PlatformInit()` function to take the place of `TimerInit()` in `kInit()`.
+
+Now, the next thing is whether it is more typical to bundle the timer and PIC together into a single driver....  I'm kind of leaning that way at the moment.
+
+---
+
+bcos_ states the following:
+
+```
+It's more common to have an "interrupt controller abstraction" (for PIC, IO APIC, whatever); then a separate "timer abstraction" (for PIT, HPET, whatever); and auto-select the lower level pieces of code independently
+```
+
+His explanation has me thinking.  I am wondering if that is more of a parent-child relationship (pic-timer).  I think I am going to look at `lk` for a little inspiration....  `lk` does not really structured in this manner, so that is not really going to help.
+
+So, certainly, there is a requirement for timer to issue an EOI when completed -- well, check that: it is a requirement for the PIC to *receive* an EOI at the end of the interrupt.  So, can't the PIC be responsible for dispatching the periodic timer interrupt and then responsible for issuing the EOI itself?  Probably not, since the timer call-back is also rescheduling, which means that the path out of the `ProcessSchedule()` is not the same as the path in (and therefore cannot be assumed to go through the pic dispatcher).  Now, on the other hand, `ProcessExitPostpone()` should be able to handle this -- but this is still outside of the pic dispatcher.
+
+---
+
+So, at the moment, the pic and timer are separate in my kernel.  I think I am going to keep them separate for now -- allowing me to postpone the decision until I get a little more under my belt.  The conversation on IRC is such that I really don't want to take this on at the moment.
+
+So, what to do here?  Let's start with an RTC implementation so I can calibrate the APIC timer properly.  Well, that is not going to work because the RTC does not have the fidelity I want.  So I will go with the algorithm presented [here](https://wiki.osdev.org/APIC_timer#Example_code_in_ASM).  I also used this in Century32.  However, rather than copying it over, I am going to rewrite it using the Century code (and the wiki) as a template to make sure I fully understand what I am doing.
+
+Ultimately, I think I am going to end up with some `PickPic()` function to determine the best pic implementation for what I have available, and some other `PickTimer()` function to determine the best timer to use (probably given the pic).  That actually sounds like a good place to start tomorrow.  Both functions would perform the `Init()` functions for what was chosen.  I will need to develop out the `PicDevice_t` structure a bit more.
+
+---
+
+### 2019-Apr-18
+
+I started my day today by creating a `PlatformInit()` function and moving the call to `UpdateKprintfPort()` into that function.  From here, I am able to write the `PickPic()` function to determine which is the best pic driver to use for the kernel.  On bcm2835, this is trivial -- there is only 1 choice.  However, for the pc platform there are really several choices and I need to determine which is the best.  Right now, I am only supporting 2 but that can expand in the future.
+
+OK, so the x86 will `#GP` if I try to read a register that does not exist.  So, I actually need to check for a local APIC before I try to use it.
+
+---
+
+### 2019-Apr-19
+
+I have been thinking -- I believe I will need to choose a timer and a pic at the same time -- not independently.  I will not need to combine the abstractions, but they really do work hand-in-hand.  As an example, once I know the best pic choice, I also will have the best timer choice for the pic.  Then I can initialize them at the same time -- or more to the point in the same function.
+
+---
+
+I'm struggling with this....  I know I can copy code and get the Local APIC Timer up and running and "wire" it to the PIC.  This is what I did in Century32.  I am not interested in copying code -- plus I was not certain this actually worked right.
+
+Part of what I am struggling with is how to organize the devices -- as there may be multiple IO APICs and each responsible for a range of IRQs.
+
+Let's start with some thoughts:
+* The timer will need to register its callback function with the PIC (as an Interrupt Handler)
+* The timer will need to program its own interrupt rate
+* The timer will need to issue an EOI to the PIC
+* The PIC will need to be able to mask/unmask interrupts
+* The PIC will need to be able to register handlers
+* The PIC will need to be able to associate IRQs with Handlers
+* The PIC will need to be able to assign IRQ priorities
+
+So, what I am seeing here is that the IO APIC or 8259(A) will be used for the PIC-related tasks and the PIT or the LAPIC will be used for timer functions.  The timer needs to know about the PIC, but the PIC does not need to know about the timer.
+
+However, the PIC really should be responsible for managing the interrupt tables.
+
+So, the overall structure really is set up properly...  the `TimerDevice_t` needs to know about the `PicDevice_t` that is being used.  However, the `PicDevice_t` could really be multiple -- or an array.  Also, the `TimerDevice_t` should also be multiple (or per core).
+
+Linux allows for 64 IO APICS (PICs) and 256 LAPICs (Timers).  I'm not sure I can go quite that big with my kernel, but it is clear that I will need multiple.  Another thing is that the LAPIC is more per-core than the IO APIC.
+
+So, the methods I need to include for the PIC are:
+* Init() -- Initialize the device or device tree
+* RegisterHandler() -- Register a handler for an interrupt
+* DeregisterHandler() -- Deregister a handler for an interrupt (make it a common interrupt handler)
+* MaskIrq() -- Disable an IRQ
+* UnmaskIrq() -- Enable an IRQ
+* EndOfInterrupt() -- End of interrupt
+* DetermineIrq() -- Determine IRQ number triggering interrupt
+
+The attributes I need to support are more closely aligned to the hardware I am writing for.  Therefore, there needs to be an attribute for this data (which may actually be an array!).
+
+So, my generic `PicDevice_t` structure will need to look something like this:
+
+```C
+typedef struct GenericDevData_t {
+    archsize_t baseLocation;
+} GenericDevData_t;
+
+typedef struct GenericDevice_t {
+    struct GenericDevice_t *parent;
+    List_t siblings;
+    ListHead_t children;
+    char name[MAX_DEV_NAME];
+    GenericDevData_t *deviceData;
+} GenericDevice_t;
+
+typedef struct PicDevice_t {
+    GenericDevice_t genericDev;
+
+    void (*Init)(PicDevice_t *, const char *);
+    archsize_t (*RegisterHandler)(PicDevice_t *, int, archsize_t);
+    archsize_t (*DeregisterHandler)(PicDevice_t *, int);
+    bool (*MaskIrq)(PicDevice_t *, int);
+    bool (*UnmaskIrq)(PicDevice_t *, int);
+    void (*EndOfInterrupt)(PicDevice_t *, int);
+    int (*DetermineIrq)(PicDevice_t *);
+} PicDevice_t;
+```
+
+Well, this is what I will start with anyway.
+
+---
+
+OK, I have most of the structure translated.  I can compile it, but I cannot yet run the result.  x86-pc target only.  I take that back, it runs for the 8259 pic.
+
+---
+
+### 2019-Apr-20
+
+I am going to start by cleaning up the rpi2b pic.  And I am now getting a Prefetch Abort.  Well, something is not right....
+
+It looks like the problem might be in the timer callback function.
+
+Well, it helps if I still initialize the variables....
+
+As for Register and Deregister functions, I have created this Redmine to track this, since I am not going to take this on now: http://eryjus.ddns.net:3000/issues/409.
+
+So, I believe that my SMP pic implementation on the pc platform needs to take into be the IOAPIC.  The Local APIC is a bit closer to IPI and Timer functionality from what I see.
+
+---
+
+Hmmmm....
+
+> xy are determined by the x and y fields in the APIC Base Address Relocation Register located in the PIIX3. Range for x = 0-Fh and the range for y = 0,4,8,Ch.
+
+However, when I look at the `APIC_BASE` MSR in the Intel guides, I do not see an `x` or a `y` field defined.  Maybe I need to look somewhere else?
+
+I found the PIIX3 data sheet and have the following text in ther:
+
+> This register provides the modifier for the APIC base address. APIC is mapped in the memory space at the locations FEC0_xy00h and FEC0_xy10h (x=0-Fh, y=0,4,8,Ch). The value of 'y' is defined by bits [1,0] and the value of 'x' is defined by bits [5:2]. Thus, the relocation register provides 1-Kbyte address granularity (i.e., potentially up to 64 IOAPICs can be uniformly addresses in the memory space). The default value of 00h provides mapping of the IOAPIC unit at the addresses FEC0_0000h and FEC0_0010h.
+
+I also read that the PIIX3 is part of the northbridge chipset.  One final note, everything I have read states that I really can expect the `x` and `y` values to be `0` and `0` unless I change it -- along with the APIC Base address in MSR `0x1b`.  Finally, I should be able to determine the values of `x` and `y` by reading MSR `0x1b` and parsing out the 2 relevant nibbles.  I could compare them but that should not be needed.
+
+Actually, check that: The IOAPIC address is discovered from the MADT tables.  For the x86 32-bit arch, there can be up to 64 IOAPICs.  Maybe that was 256...???  Anyway, for now, I will only support 64.
+
+---
+
+So, reading [this web page](http://www.osdever.net/tutorials/view/advanced-programming-interrupt-controller), I see that IRQ0-15 are mapped to IOAPIC registers 0-15.  This means I can set up the interrupt for each to be to Global System Interrupt (GSI) `0x20` to `0x2f`... just as they would for the 8259(A) PIC.  Or.....  I can take advantage of priorities like the author did and map the timer to the highest priority interrupt (meaning a higher number).
+
+---
+
+So, at this point I have to actually map out the interrupts (well, for x86; rpi2b has a single IRQ interrupt not including the FIQ interrupt).  Bona Fide notes the following:
+
+> Conventionally, from highest to lowest priority, the IRQ's go 0,1,2,8,9,10,11,12,13,14,15,3,4,5,6,7.
+
+I see no reason to deviate from that convention.
+
+I will start with the following table, skipping anything that is not currently in use:
+
+| Interrupt |  Use |
+|:---------:|:-----|
+| 0x00 | Divide by 0 |
+| 0x02 | NMI |
+| 0x03 | Breakpoint |
+| 0x04 | Overflow |
+| 0x05 | Bound |
+| 0x06 | Undefined Opcode |
+| 0x07 | No Math Coproc |
+| 0x08 | Double Fault |
+| 0x09 | Coporicessor Overrun |
+| 0x0a | Invalid TSS |
+| 0x0b | Segment Not Present |
+| 0x0c | Stack Segment Fault |
+| 0x0d | General Protection Fault |
+| 0x0e | Page Fault |
+| 0x10 | x87 Floating Point Error |
+| 0x11 | Alignment Check |
+| 0x12 | Machine Check |
+| 0x13 | SIMD Floating Point Exception |
+| 0x64 | Century System Call |
+| 0x80 | IRQ 7 - LPT1
+| 0x88 | IRQ 6 - Floppy Disk
+| 0x90 | IRQ 5 - LPT2 (if enabled)
+| 0x98 | IRQ 4 - COM1 (if enabled)
+| 0xa0 | IRQ 3 - COM2 (if enabled)
+| 0xa8 | IRQ 15 - Secondary ATA Hard Disk
+| 0xb0 | IRQ 14 - Primary ATA Hard Disk
+| 0xb8 | IRQ 13 - FPU / Coprocessor / Inter-processor
+| 0xc0 | IRQ 12 - PS2 Mouse
+| 0xc8 | IRQ 11 - Free for peripherals / SCSI / NIC
+| 0xd0 | IRQ 10 - Free for peripherals / SCSI / NIC
+| 0xd8 | IRQ 9 - Free for peripherals / legacy SCSI / NIC
+| 0xe0 | IRQ 8 - CMOS real-time clock (if enabled)
+| 0xe8 | IRQ 2 - Cascade (used internally by the two PICs. never raised)
+| 0xf0 | IRQ 1 - Keyboard Interrupt
+| 0xf8 | IRQ 0 - Timer |
+| 0xff | Spurrious Interrupt |
+
+Well, that will be the plan anyway....  For now.
+
+The last 2 tasks for me are to be able to issue an EOI for an interrupt and to build the device structure.  The problem with the EOI is that I need to do that through the Local APIC and the IOAPIC has no knowledge of the LAPIC.
+
+---
+
+### 2019-Apr-21
+
+> The APIC is a split architecture design, with a local component (LAPIC) usually integrated into the processor itself, and an optional I/O APIC on a system bus.
+
+* [source](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)
+
+So, I have been thinking about this all wrong.  I have been (incorrectly) trying to tie an OS function to a particular chip or system resource, such as:
+* The PIC to the IO APIC.
+* The timer to the Local APIC.
+
+In my mind, I have been trying to artifically tie the a system component to have a single responsibility.
+
+This is not the case.
+
+The comment I quoted above tells me that my OS-level responsibilities might lie spread across several system components.  And the epiphany that goes with that is that a single system components might be able to fulfill several OS-level responsibilities.
+
+So, let me see if I can articulate this better....  I need a PIC, which will be responsible for distributing interrupts to different processors.  My new understanding is that an IO APIC can exist with each bus such that there are multiple IO APICs on the system.  Depending on where a peripheral is connected, I will need to program the IO APIC to send any IRQ from that device to a certain core.  Now, when an IRQ needs to be acknowledged, the Local APIC is where that takes place, not the IO APIC.  This allows the core to receive more interrupts.  In effect, the PIC is split across multiple system components.
+
+On the other hand, the Local APIC can also provide timer functionalities generating an interrupt for a periodic or one-shot timer.  In effect, the Local APIC will have multiple responsibilities.
+
+Now, I am not sure *why* I had this mental block, but I just was not able to get my head around this concept on my own -- not without reading the above quote.  At that point everything made sense.
+
+So, what is left?
+
+Well, I have most of this thing coded.  What is left is the EOI code, and for that I need to know about the LAPIC address.  Now, this will be in MSR `0x1b` (whereas the IOAPIC is in the ACPI structures) so I can grab that on initialization (is it different by CPU?) and will need to be stored in the Driver Data structure -- which means I actually need to add one rather than using `work`.
+
+Finally, I will need to disable the 8259(A) PIC in the initialization.
+
+With that, I should be in a position to start testing and debugging with a single core.
+
+To start with, I have some naming to clean up.
+
+---
+
+First test ran, but was still using the 8259...  Second test runs but the timer is not firing.  I guess I really should not be surprised.  I figure at this point if I need to use the APIC for interrupt routing, I should also use the APIC for the timer since I have one.  Now, on the other hand, is my code flawed?  Is `PicPick()` ever being called?  It is.
+
+---
+
+### 2019-Apr-22
+
+Back to my quandry from yesterday: is it possible to wire the PIT to the IOAPIC?  Mind: I am not interested in why would you want to do that?  I am interested in is it possible.
+
+Well, let's see here...  I think is is possible.  IRQ0 is available to be mapped -- but it is in table redirection table position 2.  So, I need to update my code for mapping and such.  I also need to drop in some debugging code to make sure the correct components are being called.
+
+---
+
+OK, now I have an IRQ -- but only one.  I had the redirection entry set to a logical set of CPUs, with none defined.  After cleaning that up and setting the IRQ to be fixed, I am getting exactly one interrupt.  This means I have an EOI problem.
+
+And this line in my debugging output tells me that I have an address problem:
+
+```
+******ISR******
+...issuing EOI to address 0x000000b0
+```
+
+So, this address is pulled from MSR `0x1b`.  Hmmm.....
+
+---
+
+OK, I have this mostly working now.  I am getting a page fault without my debugging code in the ISR.  But when I leave it in, the kernel works.  I probably have a race conodition somewhere.
+
+However, I have been able to prove to myself that the PIT timer will work with the APIC.  I just need to clean it up a bit.
+
+---
+
+OK, I have been able to identify a stack drain.  Aparently, I am enabling interrupts before I get completely out of the ISR -- and therefore before I am able to completely scrub the stack.
+
+```
+     1: v=20 e=0000 i=0 cpl=0 IP=0008:80001b1c pc=80001b1c SP=0010:ff800f6c env->regs[R_EAX]=00000000
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f6c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f60
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f60
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f14
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f14
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f14
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f14
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800f10
+ESI=00102da0 EDI=003fd800 EBP=000007d0 ESP=ff800e94
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800ef0
+     2: v=20 e=0000 i=0 cpl=0 IP=0008:80001b1c pc=80001b1c SP=0010:ff800ef4 env->regs[R_EAX]=00000000
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800ef4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800ee8
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800ee8
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e9c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e9c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e9c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e9c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e98
+ESI=00102da0 EDI=003fd800 EBP=00000bb8 ESP=ff800e1c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e78
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e78
+     3: v=20 e=0000 i=0 cpl=0 IP=0008:80001b1c pc=80001b1c SP=0010:ff800e7c env->regs[R_EAX]=00000000
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e7c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e70
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e24
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e24
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e24
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e24
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e20
+ESI=00102da0 EDI=003fd800 EBP=00000fa0 ESP=ff800da4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e00
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800e00
+
+... [snip]...
+
+    49: v=20 e=0000 i=0 cpl=0 IP=0008:80001a2a pc=80001a2a SP=0010:ff80011c env->regs[R_EAX]=00000010
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff80011c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800110
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000c4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000c4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000c4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000c4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000c0
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000a0
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000d4
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000d8
+    50: v=20 e=0000 i=0 cpl=0 IP=0008:80001a2d pc=80001a2d SP=0010:ff8000d8 env->regs[R_EAX]=00000010
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000d8
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff8000cc
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800080
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800080
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800080
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800080
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff80007c
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800000
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800000
+```
+
+After this, I have a page fault related to a stack address.
+
+```
+check_exception old: 0xffffffff new 0xe
+    51: v=0e e=0002 i=0 cpl=0 IP=0008:80003340 pc=80003340 SP=0010:ff800000 CR2=ff7ffffc
+EAX=00200082 EBX=8008e218 ECX=ffffffff EDX=ff800080
+ESI=00102da0 EDI=003fd800 EBP=00000000 ESP=ff800000
+EIP=80003340 EFL=00200086 [--S--P-] CPL=0 II=0 A20=1 SMM=0 HLT=0
+ES =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+CS =0008 00000000 ffffffff 00cf9a00 DPL=0 CS32 [-R-]
+SS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+DS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+FS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+GS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+LDT=0000 00000000 0000ffff 00008200 DPL=0 LDT
+TR =004b ff401080 000fffff 000fe900 DPL=3 TSS32-avl
+GDT=     003fd000 0000007f
+IDT=     003fd800 000007ff
+CR0=e0000011 CR2=ff7ffffc CR3=003fe000 CR4=00000010
+DR0=00000000 DR1=00000000 DR2=00000000 DR3=00000000
+DR6=ffff0ff0 DR7=00000400
+CCS=00000008 CCD=ff800000 CCO=SUBL
+EFER=0000000000000000
+```
+
+So I definitely have a race condition to get the stack cleaned up before the next timer interrupt.
+
+And I got it....  I was incorrectly `EnableInterrups()` from within `ProcessExitPostpone()`.  Removing this call cleaned things up.
+
+Testing rpi2b....  Still works.
+
+Time for a commit.
+
+---
 
 
 

@@ -24,42 +24,42 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-	global kStrCpy
+    global kStrCpy
 
 
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
 section .text
-cpu		586
+cpu        586
 
 
 ;;
 ;; -- Copy a string to a new location
 ;;    -------------------------------
 kStrCpy:
-	cld
-	push	esi				                                ;; save this register
-	push	edi				                                ;; and this one
+    cld
+    push    esi                                                ;; save this register
+    push    edi                                                ;; and this one
 
-	mov		edi,[esp+12]	                                ;; get the destination
-	mov		esi,[esp+16]	                                ;; get the string
+    mov        edi,[esp+12]                                    ;; get the destination
+    mov        esi,[esp+16]                                    ;; get the string
 
 .loop:
-	cmp		byte [esi],0	                                ;; is the string over?
-	je		.out			                                ;; if so, leave
+    cmp        byte [esi],0                                    ;; is the string over?
+    je        .out                                            ;; if so, leave
 
-	mov		al,[esi]		                                ;; get the character
-	mov		[edi],al		                                ;; and set the new character
+    mov        al,[esi]                                        ;; get the character
+    mov        [edi],al                                        ;; and set the new character
 
-	inc		esi				                                ;; move to the next character
-	inc		edi				                                ;; and the next loc in the buffer
-	jmp		.loop			                                ;; and do it again
+    inc        esi                                                ;; move to the next character
+    inc        edi                                                ;; and the next loc in the buffer
+    jmp        .loop                                            ;; and do it again
 
 .out:
-	mov		byte [edi],0	                                ;; write terminating null
-	mov		eax,[esp+12]	                                ;; set the return value
+    mov        byte [edi],0                                    ;; write terminating null
+    mov        eax,[esp+12]                                    ;; set the return value
 
-	pop		edi				                                ;; restore the register
-	pop		esi				                                ;; and this one
-	ret
+    pop        edi                                                ;; restore the register
+    pop        esi                                                ;; and this one
+    ret

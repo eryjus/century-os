@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  PicDisableIrq.cc -- Disable the PIC from passing along an IRQ
+//  PicMaskIrq.cc -- Disable the PIC from passing along an IRQ
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -23,7 +23,7 @@
 //
 // -- Disable the PIC from passing along an IRQ (some call it masking)
 //    ----------------------------------------------------------------
-void _PicDisableIrq(PicDevice_t *dev, int irq)
+void _PicMaskIrq(PicDevice_t *dev, int irq)
 {
     if (!dev) return;
     if (irq < 0 || irq > 15) return;
@@ -31,9 +31,9 @@ void _PicDisableIrq(PicDevice_t *dev, int irq)
     uint16_t port;
 
     if (irq < 8) {
-        port = dev->base1 + PIC_MASTER_DATA;
+        port = PIC1 + PIC_MASTER_DATA;
     } else {
-        port = dev->base2 + PIC_SLAVE_DATA;
+        port = PIC2 + PIC_SLAVE_DATA;
         irq -= 8;
     }
 

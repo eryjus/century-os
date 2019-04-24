@@ -28,6 +28,7 @@
 
 
 #include "types.h"
+#include "lists.h"
 
 
 //
@@ -36,9 +37,21 @@
 
 
 //
+// -- This is he maximum size of the name of the device (which will probably be used in a vfs somewhere)
+//    --------------------------------------------------------------------------------------------------
+#define MAX_DEV_NAME        128
+
+
+//
 // -- Write to a Memory Mapped I/O Register
 //    -------------------------------------
 #define MmioWrite(regLocation,data) (*(volatile archsize_t *)(regLocation) = (data))
+
+
+//
+// -- Write to a 64-bit Memory Mapped I/O Register
+//    --------------------------------------------
+#define MmioWrite64(regLocation,data) (*(volatile uint64_t *)(regLocation) = (data))
 
 
 //
@@ -51,6 +64,26 @@
 // -- Read from a 64-bit Memory Mapped I/O Register
 //    ---------------------------------------------
 #define MmioRead64(regLocation) (*(volatile uint64_t *)(regLocation))
+
+
+//
+// -- This is the base of a device data structure; this structure will need to be included
+//    as the first data member (not a pointer) of any device's specific data.
+//    ------------------------------------------------------------------------------------
+typedef void *DeviceData_t;
+
+
+//
+// -- This structure is the basis for any device that is managed in Century; this structure will also
+//    need to be included as the first data member (not a pointer) of any device's structure.
+//    -----------------------------------------------------------------------------------------------
+typedef struct GenericDevice_t {
+    struct GenericDevice_t *parent;
+    ListHead_t::List_t siblings;
+    ListHead_t children;
+    char name[MAX_DEV_NAME];
+    DeviceData_t deviceData;
+} GenericDevice_t;
 
 
 //

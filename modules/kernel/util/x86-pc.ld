@@ -103,15 +103,15 @@ SECTIONS {
      *    ----------------------------------------------
      */
     _stabStart = .;
-	.stab : {
-		*(.stab);
-		*(.stabstr);
+    .stab : {
+        *(.stab);
+        *(.stabstr);
         *(.debug*);
         *(.got*)
-		BYTE(0)		/* Force the linker to allocate space for this section */
-	}
+        BYTE(0)        /* Force the linker to allocate space for this section */
+    }
     . = ALIGN(4096);
-	_stabEnd = .;
+    _stabEnd = .;
 
 
     _dataStart = .;

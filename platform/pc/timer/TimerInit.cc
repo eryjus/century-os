@@ -27,6 +27,7 @@
 #include "hardware.h"
 #include "cpu.h"
 #include "interrupt.h"
+#include "pic.h"
 #include "timer.h"
 
 
@@ -43,20 +44,22 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
 {
     if (!dev) return;
 
-    PicInit(dev->pic);
+    dev->pic = picControl;
 
     uint16_t port = dev->base;
 
-	uint32_t divisor = 1193180 / frequency;
-	uint8_t l = (uint8_t)(divisor & 0xff);
-	uint8_t h = (uint8_t)((divisor >> 8) & 0xff);
+    uint32_t divisor = 1193180 / frequency;
+    uint8_t l = (uint8_t)(divisor & 0xff);
+    uint8_t h = (uint8_t)((divisor >> 8) & 0xff);
 
-	IsrRegister(32, dev->TimerCallBack);
+    PicRegisterHandler(dev->pic, 2, 32, dev->TimerCallBack);
+    PicUnmaskIrq(dev->pic, 2);
+//    IsrRegister(32, dev->TimerCallBack);  TODO: duplicate this for the 8259 PIC
 
-	outb(port + TIMER_COMMAND, 0x36);
-	outb(port + TIMER_CHAN_0, l);
-	outb(port + TIMER_CHAN_0, h);
+    outb(port + TIMER_COMMAND, 0x36);
+    outb(port + TIMER_CHAN_0, l);
+    outb(port + TIMER_CHAN_0, h);
 
-    PicEnableIrq(dev->pic, 0x01);
+    PicUnmaskIrq(dev->pic, 0x01);
 }
 

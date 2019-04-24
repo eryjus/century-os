@@ -27,10 +27,10 @@ void CpuTssInit(void)
 {
     kprintf("Initializing the TSS\n");
 
-	kMemSetB((void *)TSS_ADDRESS, 0, 512);
+    kMemSetB((void *)TSS_ADDRESS, 0, 512);
 
-	cpuStructs->tss.ss0 = 0x10;
-	cpuStructs->tss.esp0 = ((archsize_t)tssStack + TSS_STACK_SIZE);
-	cpuStructs->tss.ds = cpuStructs->tss.es = cpuStructs->tss.fs = cpuStructs->tss.gs = cpuStructs->tss.ss = 0x10;
-	cpuStructs->tss.cs = 0x08;
+    cpuStructs->tss.ss0 = 0x10;
+    cpuStructs->tss.esp0 = ((archsize_t)tssStack + TSS_STACK_SIZE);
+    cpuStructs->tss.ds = cpuStructs->tss.es = cpuStructs->tss.fs = cpuStructs->tss.gs = cpuStructs->tss.ss = 0x10;
+    cpuStructs->tss.cs = 0x08;
 }

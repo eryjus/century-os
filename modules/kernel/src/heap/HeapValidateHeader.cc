@@ -31,39 +31,39 @@
 //    --------------------------------------------------------------
 void HeapValidateHdr(KHeapHeader_t *hdr, const char *from)
 {
-	KHeapFooter_t *ftr;
+    KHeapFooter_t *ftr;
 
-	if (!hdr) {
-		HeapError(from, "Unable to validate NULL header");
-	}
+    if (!hdr) {
+        HeapError(from, "Unable to validate NULL header");
+    }
 
-	ftr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
+    ftr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
 
-	if ((hdr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
-		HeapError(from, "Invalid Heap Header Magic Number");
-	}
+    if ((hdr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
+        HeapError(from, "Invalid Heap Header Magic Number");
+    }
 
-	if ((ftr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
-		HeapError(from, "Invalid Heap Footer Magic Number");
-	}
+    if ((ftr->_magicUnion.magicHole & 0xfffffffe) != HEAP_MAGIC) {
+        HeapError(from, "Invalid Heap Footer Magic Number");
+    }
 
-	if (hdr->_magicUnion.magicHole != ftr->_magicUnion.magicHole) {
-		HeapError(from, "Header/Footer Magic Number/Hole mismatch");
-	}
+    if (hdr->_magicUnion.magicHole != ftr->_magicUnion.magicHole) {
+        HeapError(from, "Header/Footer Magic Number/Hole mismatch");
+    }
 
-	if (hdr->_magicUnion.isHole == 1 && hdr->entry == 0) {
-		HeapError(from, "Heap hole has no ordered list entry");
-	}
+    if (hdr->_magicUnion.isHole == 1 && hdr->entry == 0) {
+        HeapError(from, "Heap hole has no ordered list entry");
+    }
 
-	if (hdr->_magicUnion.isHole == 0 && hdr->entry != 0) {
-		HeapError(from, "Heap allocated block has an ordered list entry");
-	}
+    if (hdr->_magicUnion.isHole == 0 && hdr->entry != 0) {
+        HeapError(from, "Heap allocated block has an ordered list entry");
+    }
 
-	if (hdr->entry && hdr->entry->block != hdr) {
-		HeapError(from, "Entry does not point to this header");
-	}
+    if (hdr->entry && hdr->entry->block != hdr) {
+        HeapError(from, "Entry does not point to this header");
+    }
 
-	if (hdr->entry && hdr->entry->size != hdr->size) {
-		HeapError(from, "Header/Entry size mismatch");
-	}
+    if (hdr->entry && hdr->entry->size != hdr->size) {
+        HeapError(from, "Header/Entry size mismatch");
+    }
 }

@@ -27,7 +27,7 @@ global GetCr3
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
 section .text
-cpu		586
+cpu        586
 
 
 ;;

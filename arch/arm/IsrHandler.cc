@@ -24,6 +24,7 @@
 #include "hardware.h"
 #include "printf.h"
 #include "timer.h"
+#include "pic.h"
 #include "interrupt.h"
 
 
@@ -39,13 +40,13 @@ isrFunc_t isrHandlers[256] = {NULL_ISR};
 void IsrHandler(isrRegs_t *regs)
 {
     int intno = 0;
-    archsize_t pending = 0;
+    int pending = 0;
 
     // -- Here we need to determine the intno for the ISR
-    pending = (int)PicGetIrq(&picControl);
+    pending = PicDetermineIrq(picControl);
 
-    if (pending == (uint32_t)-1) return;        // spurious interrupt
-    intno = (int)pending;
+    if (pending == -1) return;        // spurious interrupt
+    intno = pending;
 
     if (isrHandlers[intno] != NULL) {
         isrFunc_t handler = isrHandlers[intno];

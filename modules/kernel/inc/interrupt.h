@@ -36,7 +36,7 @@ void IsrUnregister(uint8_t interrupt);
 //
 // -- Register an ISR (fails if something is already registered)
 //    ----------------------------------------------------------
-void IsrRegister(uint8_t interrupt, isrFunc_t func);
+isrFunc_t IsrRegister(uint8_t interrupt, isrFunc_t func);
 
 
 //

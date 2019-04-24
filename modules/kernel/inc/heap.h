@@ -68,12 +68,12 @@
 // -- Define some quick macros to help with managing the heap
 //    -------------------------------------------------------
 #define HEAP_SMALLEST           32
-#define HEAP_MAGIC				((uint32_t)0xBAB6BADC)
-#define HEAP_CHECK(x)			(((x) & 0xfffffffe) == HEAP_MAGIC)
-#define MIN_HOLE_SIZE			(sizeof(KHeapHeader_t) + sizeof(KHeapHeader_t) + HEAP_SMALLEST)
+#define HEAP_MAGIC                ((uint32_t)0xBAB6BADC)
+#define HEAP_CHECK(x)            (((x) & 0xfffffffe) == HEAP_MAGIC)
+#define MIN_HOLE_SIZE            (sizeof(KHeapHeader_t) + sizeof(KHeapHeader_t) + HEAP_SMALLEST)
 
-#define HEAP_MIN_SIZE	        0x00010000
-#define ORDERED_LIST_STATIC		(1024)
+#define HEAP_MIN_SIZE            0x00010000
+#define ORDERED_LIST_STATIC        (1024)
 
 
 //
@@ -86,16 +86,16 @@ struct OrderedList_t;
 // -- This is the heap block header, used to manage a block of memory in the heap
 //    ---------------------------------------------------------------------------
 typedef struct KHeapHeader_t {
-	union {
-		struct {
-			uint32_t isHole : 1;	            // == 1 if this is a hole (not used)
-			uint32_t magic : 31;	            // magic number (BAB6 BADC when bit 0 is forced to 0)
-		};
-		uint32_t magicHole;		                // this is the aggregate of the bit fields
-	} _magicUnion;
+    union {
+        struct {
+            uint32_t isHole : 1;                // == 1 if this is a hole (not used)
+            uint32_t magic : 31;                // magic number (BAB6 BADC when bit 0 is forced to 0)
+        };
+        uint32_t magicHole;                        // this is the aggregate of the bit fields
+    } _magicUnion;
 
-	struct OrderedList_t *entry;	                // pointer to the OrderedList entry if hole; NULL if allocated
-	size_t size;				                // this size includes the size of the header and footer
+    struct OrderedList_t *entry;                    // pointer to the OrderedList entry if hole; NULL if allocated
+    size_t size;                                // this size includes the size of the header and footer
 } __attribute__((packed)) KHeapHeader_t;
 
 
@@ -103,15 +103,15 @@ typedef struct KHeapHeader_t {
 // -- This is the beap block footer, used in conjunction with the heap header to makage the heap memory
 //    -------------------------------------------------------------------------------------------------
 typedef struct KHeapFooter_t {
-	union {
-		struct {
-			uint32_t isHole : 1;	            // the field is the header is the one used
-			uint32_t magic : 31;	            // magic number (0xBAB6_BADC when bit 0 is forced to 0)
-		};
-		uint32_t magicHole;		                // this is the aggregate of the bit fields
-	} _magicUnion;
+    union {
+        struct {
+            uint32_t isHole : 1;                // the field is the header is the one used
+            uint32_t magic : 31;                // magic number (0xBAB6_BADC when bit 0 is forced to 0)
+        };
+        uint32_t magicHole;                        // this is the aggregate of the bit fields
+    } _magicUnion;
 
-	KHeapHeader_t *hdr;			                // pointer back to the header
+    KHeapHeader_t *hdr;                            // pointer back to the header
 } __attribute__((packed)) KHeapFooter_t;
 
 
@@ -125,10 +125,10 @@ typedef int (*cmpFunc)(KHeapHeader_t *, KHeapHeader_t *);
 // -- The heap is implemented as an ordered list for a bet-fit implementation
 //    -----------------------------------------------------------------------
 typedef struct OrderedList_t {
-	KHeapHeader_t *block;			            // pointer to the block of heap memory
-	size_t size;				                // the size of the memory pointed to
-	struct OrderedList_t *prev;	                // pointer to the previous entry
-	struct OrderedList_t *next;	                // pointer to the next entry
+    KHeapHeader_t *block;                        // pointer to the block of heap memory
+    size_t size;                                // the size of the memory pointed to
+    struct OrderedList_t *prev;                    // pointer to the previous entry
+    struct OrderedList_t *next;                    // pointer to the next entry
 } OrderedList_t;
 
 
@@ -136,14 +136,14 @@ typedef struct OrderedList_t {
 // -- This is the heap control structure, maintianing the heap integrity
 //    ------------------------------------------------------------------
 typedef struct KHeap_t {
-	OrderedList_t *heapMemory;	                // the start of all heap memory lists < 512 bytes
-	OrderedList_t *heap512;		                // the start of heap memory >= 512 bytes
-	OrderedList_t *heap1K;		                // the start of heap memory >= 1K bytes
-	OrderedList_t *heap4K;		                // the start of heap memory >= 4K bytes
-	OrderedList_t *heap16K;		                // the start of heap memory >= 16K bytes
-	byte_t *strAddr;				            // the start address of the heap
-	byte_t *endAddr;				            // the ending address of the heap
-	byte_t *maxAddr;				            // the max address to which the heap can grow
+    OrderedList_t *heapMemory;                    // the start of all heap memory lists < 512 bytes
+    OrderedList_t *heap512;                        // the start of heap memory >= 512 bytes
+    OrderedList_t *heap1K;                        // the start of heap memory >= 1K bytes
+    OrderedList_t *heap4K;                        // the start of heap memory >= 4K bytes
+    OrderedList_t *heap16K;                        // the start of heap memory >= 16K bytes
+    byte_t *strAddr;                            // the start address of the heap
+    byte_t *endAddr;                            // the ending address of the heap
+    byte_t *maxAddr;                            // the max address to which the heap can grow
 } KHeap_t;
 
 

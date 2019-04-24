@@ -16,6 +16,7 @@
 
 
 #include "printf.h"
+#include "hw-disc.h"
 #include "lists.h"              // for MEMBER_OFFSET
 #include "hardware.h"
 
@@ -42,6 +43,7 @@ void __ldrtext AcpiReadMadt(archsize_t loc)
                 kprintf(".... MADT_PROCESSOR_LOCAL_APIC\n");
                 kprintf("...... Proc ID %x; APIC ID %x; %s\n", local->procId, local->apicId,
                         local->flags&1?"enabled":"disabled");
+                IncLocalApic();
             }
 
             break;
@@ -51,6 +53,7 @@ void __ldrtext AcpiReadMadt(archsize_t loc)
                 MadtIoApic_t *local = (MadtIoApic_t *)wrk;
                 kprintf(".... MADT_IO_APIC\n");
                 kprintf("...... APIC Addr: %p, Global Sys Int Base: %x\n", local->ioApicAddr, local->gsiBase);
+                AddIoapic(local->ioApicAddr, local->gsiBase);
             }
 
             break;

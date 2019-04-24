@@ -23,9 +23,21 @@
 
 
 //
+// -- Update where kprintf outputs its data to
+//    ----------------------------------------
+__CENTURY_FUNC__ void UpdateKprintfPort(void);
+
+
+//
 // -- This is the early platform initialization function
 //    --------------------------------------------------
 __CENTURY_FUNC__ void PlatformEarlyInit(void);
+
+
+//
+// -- Complete the platform initialization
+//    ------------------------------------
+__CENTURY_FUNC__ void PlatformInit(void);
 
 
 #endif

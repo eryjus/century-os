@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  PicVars.cc -- These are the variables for the bcm2835 Pic
+//  ApicVars.cc -- These are the variables for the x86 APIC
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,38 +10,32 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
+//  2019-Apr-19  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "timer.h"
-#include "cpu.h"
+#include "types.h"
 #include "pic.h"
 
 
 //
-// -- This is the data that will be used to manage the pic
-//    ----------------------------------------------------
-__krndata Bcm2835Pic_t bcm2835Data = {
-    .picLoc = PIC,
-    .timerLoc = TIMER,
-};
+// -- This is the structure for the data needed by this driver
+//    --------------------------------------------------------
+__krndata ApicDeviceData_t apicData = {0};
+
 
 //
 // -- This is the device description that is used to output data to the serial port during loader initialization
 //    ----------------------------------------------------------------------------------------------------------
-__krndata PicDevice_t picBcm2835 = {
-    .device = { .deviceData = (DeviceData_t *)&bcm2835Data, },
-    .PicInit = _PicInit,
-    .PicMaskIrq = _PicMaskIrq,
-    .PicUnmaskIrq = _PicUnmaskIrq,
-    .PicDetermineIrq = _PicDetermineIrq,
+__krndata PicDevice_t apicDriver = {
+    .device = {
+        .name = {'a', 'p', 'i', 'c', '\0'},
+        .deviceData = (DeviceData_t)&apicData,
+    },
+    .PicInit = _ApicInit,
+    .PicRegisterHandler = _ApicRegisterHandler,
+    .PicMaskIrq = _ApicMaskIrq,
+    .PicUnmaskIrq = _ApicUnmaskIrq,
+    .PicEoi = _ApicEoi,
 };
-
-
-//
-// -- This is the pic we are going to use
-//    -----------------------------------
-PicDevice_t *picControl = &picBcm2835;
-

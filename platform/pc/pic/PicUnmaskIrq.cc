@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  IsrUnregister.cc -- Unregister an ISR Handler
+//  PicUnmaskIrq.cc -- Enable the PIC to pass along an IRQ
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,30 +10,32 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Jul-06  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Feb-24  Initial   0.3.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
 #include "cpu.h"
-#include "printf.h"
-#include "interrupt.h"
+#include "hardware.h"
+#include "pic.h"
 
 
 //
-// -- Remove an ISR handler from the handlers table
-//    ---------------------------------------------
-void IsrUnregister(uint8_t interrupt)
+// -- Enable the PIC to pass along an IRQ (some call it unmasking)
+//    ------------------------------------------------------------
+void _PicUnmaskIrq(PicDevice_t *dev, int irq)
 {
-    archsize_t flags = DisableInterrupts();
+    if (!dev) return;
+    if (irq < 0 || irq > 15) return;
 
-    if (isrHandlers[interrupt] == NULL_ISR) {
-        kprintf("When unregistering interrupt %d, no handler is registered\n", interrupt);
+    uint16_t port;
+
+    if (irq < 8) {
+        port = PIC1 + PIC_MASTER_DATA;
     } else {
-        isrHandlers[interrupt] = NULL_ISR;
+        port = PIC2 + PIC_SLAVE_DATA;
+        irq -= 8;
     }
 
-    RestoreInterrupts(flags);
+    outb(port, inb(port) & ~(1 << irq));
 }

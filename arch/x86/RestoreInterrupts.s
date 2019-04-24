@@ -24,21 +24,21 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-	global RestoreInterrupts
+    global RestoreInterrupts
 
 
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
 section .text
-cpu		586
+cpu        586
 
 
 ;;
 ;; -- RestoreInterrupts() -- Restore interrupts to the state passed in (32-bit)
 ;;    -------------------------------------------------------------------------
 RestoreInterrupts:
-	mov		eax,[esp+4]				                        ;; get the parameter
-	push	eax						                        ;; push it on the stack
-	popfd							                        ;; and pop off the flags register
-	ret
+    mov        eax,[esp+4]                                        ;; get the parameter
+    push    eax                                                ;; push it on the stack
+    popfd                                                    ;; and pop off the flags register
+    ret

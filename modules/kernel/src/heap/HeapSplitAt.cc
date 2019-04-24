@@ -42,42 +42,42 @@
 //    -----------------------------------
 KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize)
 {
-	KHeapHeader_t *newHdr, *oldHdr;
-	KHeapFooter_t *newFtr, *oldFtr;
-	size_t newSize;
+    KHeapHeader_t *newHdr, *oldHdr;
+    KHeapFooter_t *newFtr, *oldFtr;
+    size_t newSize;
 
-	if (!entry) HeapError("NULL entry in HeapSplitAt()", "");
-	HeapValidateHdr(entry->block, "HeapSplitAt()");
-	HeapValidatePtr("HeapSplitAt()");
+    if (!entry) HeapError("NULL entry in HeapSplitAt()", "");
+    HeapValidateHdr(entry->block, "HeapSplitAt()");
+    HeapValidatePtr("HeapSplitAt()");
 
-	// initialize the working variables
-	oldHdr = entry->block;
-	oldFtr = (KHeapFooter_t *)((byte_t *)oldHdr + oldHdr->size - sizeof(KHeapFooter_t));
-	newHdr = (KHeapHeader_t *)((byte_t *)oldHdr + adjustToSize);
-	newFtr = (KHeapFooter_t *)((byte_t *)newHdr - sizeof(KHeapFooter_t));
-	newSize = oldHdr->size - adjustToSize;
+    // initialize the working variables
+    oldHdr = entry->block;
+    oldFtr = (KHeapFooter_t *)((byte_t *)oldHdr + oldHdr->size - sizeof(KHeapFooter_t));
+    newHdr = (KHeapHeader_t *)((byte_t *)oldHdr + adjustToSize);
+    newFtr = (KHeapFooter_t *)((byte_t *)newHdr - sizeof(KHeapFooter_t));
+    newSize = oldHdr->size - adjustToSize;
 
-	HeapReleaseEntry(entry);		// release entry; will replace with back half
+    HeapReleaseEntry(entry);        // release entry; will replace with back half
 
-	// size the allocated block properly
-	oldHdr->size = adjustToSize;
-	oldHdr->_magicUnion.isHole = 0;
-	newFtr->hdr = oldHdr;
-	newFtr->_magicUnion.magicHole = oldHdr->_magicUnion.magicHole;
+    // size the allocated block properly
+    oldHdr->size = adjustToSize;
+    oldHdr->_magicUnion.isHole = 0;
+    newFtr->hdr = oldHdr;
+    newFtr->_magicUnion.magicHole = oldHdr->_magicUnion.magicHole;
 
-	// create the new hole and add it to the list
-	newHdr->_magicUnion.magicHole = HEAP_MAGIC;
-	newHdr->_magicUnion.isHole = 1;
-	newHdr->size = newSize;
-	oldFtr->_magicUnion.magicHole = newHdr->_magicUnion.magicHole;
-	oldFtr->hdr = newHdr;
+    // create the new hole and add it to the list
+    newHdr->_magicUnion.magicHole = HEAP_MAGIC;
+    newHdr->_magicUnion.isHole = 1;
+    newHdr->size = newSize;
+    oldFtr->_magicUnion.magicHole = newHdr->_magicUnion.magicHole;
+    oldFtr->hdr = newHdr;
 
-	(void)HeapNewListEntry(newHdr, 1);
+    (void)HeapNewListEntry(newHdr, 1);
 
-	// make sure we didn't make a mess
-	HeapValidateHdr(oldHdr, "HeapSplitAt [oldHdr]");
-	HeapValidateHdr(newHdr, "HeapSplitAt [newHdr]");
+    // make sure we didn't make a mess
+    HeapValidateHdr(oldHdr, "HeapSplitAt [oldHdr]");
+    HeapValidateHdr(newHdr, "HeapSplitAt [newHdr]");
 
-	// return the header to the allocated block
-	return oldHdr;
+    // return the header to the allocated block
+    return oldHdr;
 }

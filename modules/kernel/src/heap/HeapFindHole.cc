@@ -38,45 +38,45 @@
 //    -------------------------------------------
 OrderedList_t *HeapFindHole(size_t adjustedSize, bool align)
 {
-	OrderedList_t *wrk = NULL;
-	size_t wrkSize;
+    OrderedList_t *wrk = NULL;
+    size_t wrkSize;
 
-	// First determine the right starting point for searching.
-	if (adjustedSize < 512) wrk = kHeap->heapMemory;
-	if (adjustedSize >= 512 && adjustedSize < 1024) wrk = kHeap->heap512;
-	if (adjustedSize >= 1024 && adjustedSize < 4096) wrk = kHeap->heap1K;
-	if (adjustedSize >= 4096 && adjustedSize < 16384) wrk = kHeap->heap4K;
-	if (adjustedSize >= 16384) wrk = kHeap->heap16K;
+    // First determine the right starting point for searching.
+    if (adjustedSize < 512) wrk = kHeap->heapMemory;
+    if (adjustedSize >= 512 && adjustedSize < 1024) wrk = kHeap->heap512;
+    if (adjustedSize >= 1024 && adjustedSize < 4096) wrk = kHeap->heap1K;
+    if (adjustedSize >= 4096 && adjustedSize < 16384) wrk = kHeap->heap4K;
+    if (adjustedSize >= 16384) wrk = kHeap->heap16K;
 
-	// in theory, wrk is now optimized for a faster search for the right size
-	while (wrk) {	// while we have something to work with...
-		if (wrk->size < adjustedSize) {
-			wrk = wrk->next;
-			continue;
-		}
+    // in theory, wrk is now optimized for a faster search for the right size
+    while (wrk) {    // while we have something to work with...
+        if (wrk->size < adjustedSize) {
+            wrk = wrk->next;
+            continue;
+        }
 
-		// first entry of sufficient size and we are not aligning; use it
-		if (wrk->size >= adjustedSize && !align) return wrk;
+        // first entry of sufficient size and we are not aligning; use it
+        if (wrk->size >= adjustedSize && !align) return wrk;
 
-		// at this point, guaranteed to be looking for an aligned block
-		// find the real block location; now, calculate the new block size
-		wrkSize = wrk->size - (HeapCalcPageAdjustment(wrk) - (archsize_t)wrk->block);
+        // at this point, guaranteed to be looking for an aligned block
+        // find the real block location; now, calculate the new block size
+        wrkSize = wrk->size - (HeapCalcPageAdjustment(wrk) - (archsize_t)wrk->block);
 
-		// check if we have overrun the block
-		if (wrkSize <= 0) {
-			wrk = wrk->next;
-			continue;
-		}
+        // check if we have overrun the block
+        if (wrkSize <= 0) {
+            wrk = wrk->next;
+            continue;
+        }
 
-		// wrkSize now has the available memory for the block after adjusting
-		// for page alignment; remember we pulled the size of the header out
-		// check for a fit
-		if (wrkSize >= adjustedSize - sizeof(KHeapHeader_t)) return wrk;
+        // wrkSize now has the available memory for the block after adjusting
+        // for page alignment; remember we pulled the size of the header out
+        // check for a fit
+        if (wrkSize >= adjustedSize - sizeof(KHeapHeader_t)) return wrk;
 
-		// not big enough yet, move on
-		wrk = wrk->next;
-	}
+        // not big enough yet, move on
+        wrk = wrk->next;
+    }
 
-	// no memory to allocate
-	return 0;
+    // no memory to allocate
+    return 0;
 }

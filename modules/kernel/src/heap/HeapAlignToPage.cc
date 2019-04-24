@@ -57,62 +57,62 @@
 //    --------------------------------
 OrderedList_t *HeapAlignToPage(OrderedList_t *entry)
 {
-	KHeapHeader_t *newHdr, *oldHdr;
-	KHeapFooter_t *newFtr, *oldFtr;
-	size_t leftSize, rightSize;
-	OrderedList_t *ret;
+    KHeapHeader_t *newHdr, *oldHdr;
+    KHeapFooter_t *newFtr, *oldFtr;
+    size_t leftSize, rightSize;
+    OrderedList_t *ret;
 
-	if (!entry) HeapError("NULL entry in HeapAlignToPage()", "");
-	HeapValidateHdr(entry->block, "HeapAlignToPage()");
+    if (!entry) HeapError("NULL entry in HeapAlignToPage()", "");
+    HeapValidateHdr(entry->block, "HeapAlignToPage()");
 
-	// initialize the working variables
-	oldHdr = entry->block;
-	newHdr = (KHeapHeader_t *)(HeapCalcPageAdjustment(entry));
-	newFtr = (KHeapFooter_t *)((char *)newHdr - sizeof(KHeapFooter_t));
-	oldFtr = (KHeapFooter_t *)((char *)oldHdr + oldHdr->size - sizeof(KHeapFooter_t));
-	leftSize = (char *)newFtr - (char *)oldHdr + sizeof(KHeapFooter_t);
-	rightSize = (char *)oldFtr - (char *)newHdr + sizeof(KHeapFooter_t);
+    // initialize the working variables
+    oldHdr = entry->block;
+    newHdr = (KHeapHeader_t *)(HeapCalcPageAdjustment(entry));
+    newFtr = (KHeapFooter_t *)((char *)newHdr - sizeof(KHeapFooter_t));
+    oldFtr = (KHeapFooter_t *)((char *)oldHdr + oldHdr->size - sizeof(KHeapFooter_t));
+    leftSize = (char *)newFtr - (char *)oldHdr + sizeof(KHeapFooter_t);
+    rightSize = (char *)oldFtr - (char *)newHdr + sizeof(KHeapFooter_t);
 
-	HeapReleaseEntry(entry);			// will have better one(s) later
+    HeapReleaseEntry(entry);            // will have better one(s) later
 
-	// size the left block properly
-	if (leftSize < MIN_HOLE_SIZE) {
-		KHeapHeader_t *wrkHdr;
+    // size the left block properly
+    if (leftSize < MIN_HOLE_SIZE) {
+        KHeapHeader_t *wrkHdr;
 
-		wrkHdr = ((KHeapFooter_t *)((byte_t *)oldHdr - sizeof(KHeapFooter_t )))->hdr;
+        wrkHdr = ((KHeapFooter_t *)((byte_t *)oldHdr - sizeof(KHeapFooter_t )))->hdr;
 
-		if ((byte_t *)wrkHdr >= kHeap->strAddr) {
-			KHeapFooter_t sav;
-			KHeapFooter_t *tmp = (KHeapFooter_t *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter_t));
+        if ((byte_t *)wrkHdr >= kHeap->strAddr) {
+            KHeapFooter_t sav;
+            KHeapFooter_t *tmp = (KHeapFooter_t *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter_t));
 
-			sav = *tmp;
-			wrkHdr->size += leftSize;
+            sav = *tmp;
+            wrkHdr->size += leftSize;
 
-			tmp = (KHeapFooter_t *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter_t));
-			*tmp = sav;
-			HeapValidateHdr(wrkHdr, "Work Header in HeapAlignToPage()");
-		}
-		oldHdr = 0;
-	} else {
-		oldHdr->_magicUnion.magicHole = HEAP_MAGIC;
-		oldHdr->_magicUnion.isHole = 1;
-		oldHdr->size = leftSize;
-		newFtr->hdr = oldHdr;
-		newFtr->_magicUnion.magicHole = oldHdr->_magicUnion.magicHole;
+            tmp = (KHeapFooter_t *)((char *)wrkHdr + wrkHdr->size - sizeof(KHeapFooter_t));
+            *tmp = sav;
+            HeapValidateHdr(wrkHdr, "Work Header in HeapAlignToPage()");
+        }
+        oldHdr = 0;
+    } else {
+        oldHdr->_magicUnion.magicHole = HEAP_MAGIC;
+        oldHdr->_magicUnion.isHole = 1;
+        oldHdr->size = leftSize;
+        newFtr->hdr = oldHdr;
+        newFtr->_magicUnion.magicHole = oldHdr->_magicUnion.magicHole;
 
-		(void)HeapNewListEntry(oldHdr, 1);
-		HeapValidateHdr(oldHdr, "Old Header in HeapAlignToPage() else");
-	}
+        (void)HeapNewListEntry(oldHdr, 1);
+        HeapValidateHdr(oldHdr, "Old Header in HeapAlignToPage() else");
+    }
 
-	// size the right block properly
-	newHdr->_magicUnion.magicHole = HEAP_MAGIC;
-	newHdr->_magicUnion.isHole = 1;
-	newHdr->size = rightSize;
-	oldFtr->hdr = newHdr;
-	oldFtr->_magicUnion.magicHole = newHdr->_magicUnion.magicHole;
+    // size the right block properly
+    newHdr->_magicUnion.magicHole = HEAP_MAGIC;
+    newHdr->_magicUnion.isHole = 1;
+    newHdr->size = rightSize;
+    oldFtr->hdr = newHdr;
+    oldFtr->_magicUnion.magicHole = newHdr->_magicUnion.magicHole;
 
-	ret = HeapNewListEntry(newHdr, 1);
-	if (oldHdr) HeapValidateHdr(oldHdr, "Old Header in HeapAlignToPage() at return");
-	HeapValidateHdr(newHdr, "New Header in HeapAlignToPage() at return");
-	return ret;
+    ret = HeapNewListEntry(newHdr, 1);
+    if (oldHdr) HeapValidateHdr(oldHdr, "Old Header in HeapAlignToPage() at return");
+    HeapValidateHdr(newHdr, "New Header in HeapAlignToPage() at return");
+    return ret;
 }

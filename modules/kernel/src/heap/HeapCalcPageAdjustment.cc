@@ -31,14 +31,14 @@
 //    --------------------------------------------------
 size_t HeapCalcPageAdjustment(OrderedList_t *entry)
 {
-	archsize_t wrkPtr;
+    archsize_t wrkPtr;
 
-	wrkPtr = (archsize_t)entry->block + sizeof(KHeapHeader_t);
+    wrkPtr = (archsize_t)entry->block + sizeof(KHeapHeader_t);
 
-	// if not a page aligned block, align it
-	if (wrkPtr & 0x00000fff) {
-		wrkPtr = (wrkPtr & 0xfffff000) + 0x1000; //! next page
-	}
+    // if not a page aligned block, align it
+    if (wrkPtr & 0x00000fff) {
+        wrkPtr = (wrkPtr & 0xfffff000) + 0x1000; //! next page
+    }
 
-	return wrkPtr - sizeof(KHeapHeader_t);
+    return wrkPtr - sizeof(KHeapHeader_t);
 }

@@ -36,13 +36,13 @@ void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
 {
     if (num > 255) return;
 
-    kprintf("..  installing IDT for %x at %x:%p\n", num, sel, base);
+//    kprintf("..  installing IDT for %x at %x:%p\n", num, sel, base);
 
-	idtEntries[num].baseLow = (uint16_t)(base & 0xffff);
-	idtEntries[num].baseHigh = (uint16_t)((base >> 16) & 0xffff);
+    idtEntries[num].baseLow = (uint16_t)(base & 0xffff);
+    idtEntries[num].baseHigh = (uint16_t)((base >> 16) & 0xffff);
 
-	idtEntries[num].sel = sel;
-	idtEntries[num].always0 = 0;
-	idtEntries[num].flags = flags | 0x60;	// -- extra bits used for ring 3
+    idtEntries[num].sel = sel;
+    idtEntries[num].always0 = 0;
+    idtEntries[num].flags = flags | 0x60;    // -- extra bits used for ring 3
 }
 

@@ -1,39 +1,34 @@
 //===================================================================================================================
 //
-//  IsrUnregister.cc -- Unregister an ISR Handler
+//  PlatformInit.cc -- Handle the initialization for the pc platform
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Complete the platform initialization.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Jul-06  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
 #include "printf.h"
-#include "interrupt.h"
+#include "platform.h"
+#include "pic.h"
 
 
 //
-// -- Remove an ISR handler from the handlers table
-//    ---------------------------------------------
-void IsrUnregister(uint8_t interrupt)
+// -- Complete the platform initialization
+//    ------------------------------------
+void PlatformInit(void)
 {
-    archsize_t flags = DisableInterrupts();
-
-    if (isrHandlers[interrupt] == NULL_ISR) {
-        kprintf("When unregistering interrupt %d, no handler is registered\n", interrupt);
-    } else {
-        isrHandlers[interrupt] = NULL_ISR;
-    }
-
-    RestoreInterrupts(flags);
+    UpdateKprintfPort();
+    PicPick();
 }
+

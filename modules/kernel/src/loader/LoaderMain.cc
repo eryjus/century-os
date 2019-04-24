@@ -25,13 +25,14 @@
 #include "cpu.h"
 #include "heap.h"
 #include "fb.h"
+#include "platform.h"
 
 
 //
 // -- called from assembly language...
 //    --------------------------------
 __CENTURY_FUNC__ void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
-__CENTURY_FUNC__ void UpdateKprintfPort(void);
+
 
 __CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
 
@@ -48,7 +49,7 @@ __CENTURY_FUNC__ void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, arc
     MmuInit();
     HeapInit();
     PmmInit();
-    UpdateKprintfPort();
+    PlatformInit();
 
 
     // -- Theoretically, after this point, there should be very little architecture-dependent code

@@ -37,20 +37,20 @@ global  SpinlockClear
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
 section .text
-cpu		586
+cpu        586
 
 
 ;;
 ;; -- Perform the compare and exchange
 ;;    --------------------------------
 SpinlockClear:
-		push		ebp						;; save the stack frame
-		mov			ebp,esp					;; create a new frame
-		push	    ebx				        ;; save the ebx register
+        push        ebp                        ;; save the stack frame
+        mov            ebp,esp                    ;; create a new frame
+        push        ebx                        ;; save the ebx register
 
-		mov		    ebx,[ebp+8]	            ;; get the address of the spinlock struct (note: offset is 0)
-       	mov		    dword [ebx],0	        ;; set the value to 0 -- notice the LOCK prefix
+        mov            ebx,[ebp+8]                ;; get the address of the spinlock struct (note: offset is 0)
+           mov            dword [ebx],0            ;; set the value to 0 -- notice the LOCK prefix
 
-		pop		    ebx				        ;; restore the ebx register
-		pop			ebp						;; restore stack frame
-		ret
+        pop            ebx                        ;; restore the ebx register
+        pop            ebp                        ;; restore stack frame
+        ret

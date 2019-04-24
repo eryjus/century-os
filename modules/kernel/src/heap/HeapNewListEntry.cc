@@ -30,26 +30,26 @@
 //    ------------------------------------
 OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add)
 {
-	int i;
-	OrderedList_t *ret;
-	extern OrderedList_t fixedList[ORDERED_LIST_STATIC];
+    int i;
+    OrderedList_t *ret;
+    extern OrderedList_t fixedList[ORDERED_LIST_STATIC];
 
-	// Assume the hdr to be good; entry does not pass test
-	for (i = 0; i < ORDERED_LIST_STATIC; i ++) {
-		if (!fixedList[i].block) {
-			ret = &fixedList[i];
-			ret->block = hdr;
-			ret->size = hdr->size;
-			ret->next = ret->prev = 0;
-			hdr->entry = ret;
+    // Assume the hdr to be good; entry does not pass test
+    for (i = 0; i < ORDERED_LIST_STATIC; i ++) {
+        if (!fixedList[i].block) {
+            ret = &fixedList[i];
+            ret->block = hdr;
+            ret->size = hdr->size;
+            ret->next = ret->prev = 0;
+            hdr->entry = ret;
 
-			if (add) HeapAddToList(ret);
+            if (add) HeapAddToList(ret);
 
-			HeapValidateHdr(hdr, "Created HeapNewListEntry()");
-			return ret;
-		}
-	}
+            HeapValidateHdr(hdr, "Created HeapNewListEntry()");
+            return ret;
+        }
+    }
 
-	HeapError("Unable to allocate a free OrderedList entry", "");
-	return 0;
+    HeapError("Unable to allocate a free OrderedList entry", "");
+    return 0;
 }

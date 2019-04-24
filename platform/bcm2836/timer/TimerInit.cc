@@ -47,11 +47,12 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     WRITE_CNTP_CVAL(0xffffffffffffffff);            // set the cval to its limit just to be in control
     dev->reloadValue = 1000000 / frequency;
 
-    PicInit(dev->pic);                              // now, init the pic first
+    PicInit(dev->pic, "PIC");                              // now, init the pic first
     WRITE_CNTP_TVAL(dev->reloadValue);
     WRITE_CNTP_CTL(1);                              // -- enable the timer
 
     dev->factor = READ_CNTFRQ() / 1000000.0;
-    PicEnableIrq(dev->pic, IRQ_ARM_TIMER);
+    PicUnmaskIrq(dev->pic, IRQ_ARM_TIMER);
+    kprintf("Timer Initialized\n");
 }
 

@@ -54,22 +54,22 @@
 // -- This macro determines the address of the parent of a member structure.
 //    Usage: FIND_PARENT(list->next, Process, global);
 //    ----------------------------------------------------------------------
-#define FIND_PARENT(ptr,type,member) ({									\
-		const typeof(((type *)0x00000000)->member) *__mptr = (ptr);		\
-		(type *)((char *)__mptr - MEMBER_OFFSET(type,member));  })
+#define FIND_PARENT(ptr,type,member) ({                                    \
+        const typeof(((type *)0x00000000)->member) *__mptr = (ptr);        \
+        (type *)((char *)__mptr - MEMBER_OFFSET(type,member));  })
 
 
 //
 // -- This is the header of the list.
 //    -------------------------------
 typedef struct ListHead_t {
-	typedef struct List_t {
-		struct List_t *prev;
-		struct List_t *next;
-	} List_t;
+    typedef struct List_t {
+        struct List_t *prev;
+        struct List_t *next;
+    } List_t;
 
-	List_t list;
-	Spinlock_t lock;            // -- this or a "bigger" lock must be obtained to change the list contents
+    List_t list;
+    Spinlock_t lock;            // -- this or a "bigger" lock must be obtained to change the list contents
     size_t count;               // -- this is available for use by software; not used by `lists.h`
 } ListHead_t;
 
@@ -90,7 +90,7 @@ inline void ListInit(ListHead_t::List_t * const list) { list->next = list->prev 
 // -- Low-level function to add a node to a list
 //    ------------------------------------------
 inline void __list_add(ListHead_t::List_t * const nw, ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
-	nx->prev = nw; nw->next = nx; nw->prev = pv; pv->next = nw;
+    nx->prev = nw; nw->next = nx; nw->prev = pv; pv->next = nw;
 }
 
 
@@ -98,7 +98,7 @@ inline void __list_add(ListHead_t::List_t * const nw, ListHead_t::List_t * const
 // -- Low-level function to delete a node from a list
 //    -----------------------------------------------
 inline void __list_del(ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
-	nx->prev = pv; pv->next = nx;
+    nx->prev = pv; pv->next = nx;
 }
 
 
@@ -106,7 +106,7 @@ inline void __list_del(ListHead_t::List_t * const pv, ListHead_t::List_t * const
 // -- Add a new node to a list (which is right ahead of the head)
 //    -----------------------------------------------------------
 inline void ListAdd(ListHead_t * const head, ListHead_t::List_t * const nw) {
-	__list_add(nw, &head->list, head->list.next);
+    __list_add(nw, &head->list, head->list.next);
 }
 
 
@@ -114,7 +114,7 @@ inline void ListAdd(ListHead_t * const head, ListHead_t::List_t * const nw) {
 // -- Add a new node to a list (which will be right behind the tail)
 //    --------------------------------------------------------------
 inline void ListAddTail(ListHead_t * const head, ListHead_t::List_t * const nw) {
-	__list_add(nw, head->list.prev, &head->list);
+    __list_add(nw, head->list.prev, &head->list);
 }
 
 
@@ -122,7 +122,7 @@ inline void ListAddTail(ListHead_t * const head, ListHead_t::List_t * const nw) 
 // -- Delete a node from a list (and clear the node's pointers to NULL)
 //    -----------------------------------------------------------------
 inline void ListRemove(ListHead_t::List_t * const entry) {
-	__list_del(entry->prev, entry->next); entry->next = entry->prev = 0;
+    __list_del(entry->prev, entry->next); entry->next = entry->prev = 0;
 }
 
 
@@ -130,7 +130,7 @@ inline void ListRemove(ListHead_t::List_t * const entry) {
 // -- Delete a node from a list (and and initialize the node to be properly empty)
 //    ----------------------------------------------------------------------------
 inline void ListRemoveInit(ListHead_t::List_t * const entry) {
-	__list_del(entry->prev, entry->next); ListInit(entry);
+    __list_del(entry->prev, entry->next); ListInit(entry);
 }
 
 
@@ -138,7 +138,7 @@ inline void ListRemoveInit(ListHead_t::List_t * const entry) {
 // -- Is this list empty or not?  Notice that both the address and the contents are constant
 //    --------------------------------------------------------------------------------------
 inline bool IsListEmpty(const ListHead_t * const head) {
-	return (head->list.next == &head->list);
+    return (head->list.next == &head->list);
 }
 
 
@@ -146,7 +146,7 @@ inline bool IsListEmpty(const ListHead_t * const head) {
 // -- Is this entry last in the list?  Notice that both the address and the contents are constant
 //    -------------------------------------------------------------------------------------------
 inline bool IsLastInList(const ListHead_t * const head, const ListHead_t::List_t * const entry) {
-	return entry->next == &head->list;
+    return entry->next == &head->list;
 }
 
 
@@ -154,7 +154,7 @@ inline bool IsLastInList(const ListHead_t * const head, const ListHead_t::List_t
 // -- Move an entry from one list to another (in front of the head)
 //    -------------------------------------------------------------
 inline void ListMove(ListHead_t * const head, ListHead_t::List_t * const entry) {
-	__list_del(entry->prev, entry->next); ListAdd(head, entry);
+    __list_del(entry->prev, entry->next); ListAdd(head, entry);
 }
 
 
@@ -162,7 +162,7 @@ inline void ListMove(ListHead_t * const head, ListHead_t::List_t * const entry) 
 // -- Move an entry from one list to another (after the tail)
 //    -------------------------------------------------------
 inline void ListMoveTail(ListHead_t * const head, ListHead_t::List_t * const entry) {
-	__list_del(entry->prev, entry->next); ListAddTail(head, entry);
+    __list_del(entry->prev, entry->next); ListAddTail(head, entry);
 }
 
 

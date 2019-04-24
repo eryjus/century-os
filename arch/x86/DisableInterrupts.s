@@ -24,21 +24,21 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-	global DisableInterrupts
+    global DisableInterrupts
 
 
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
 section .text
-cpu		586
+cpu        586
 
 
 ;;
 ;; -- DisableInterrupts() -- Disable interrupts for the x86 family and return the eflags register (32-bit)
 ;;    ----------------------------------------------------------------------------------------------------
 DisableInterrupts:
-	pushfd					                                ;; push the flags into the stack
-	pop		eax				                                ;; restore the flags for return to caller
-	cli						                                ;; clear the interrupts flag
-	ret
+    pushfd                                                    ;; push the flags into the stack
+    pop        eax                                                ;; restore the flags for return to caller
+    cli                                                        ;; clear the interrupts flag
+    ret

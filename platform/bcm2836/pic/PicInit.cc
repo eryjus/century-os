@@ -17,6 +17,7 @@
 
 #include "cpu.h"
 #include "interrupt.h"
+#include "heap.h"
 #include "printf.h"
 #include "timer.h"
 
@@ -24,16 +25,20 @@
 //
 // -- Initialize the pic
 //    ------------------
-void _PicInit(PicDevice_t *dev)
+void _PicInit(PicDevice_t *dev, const char *name)
 {
     if (!dev) return;
+    Bcm2835Pic_t *picData = (Bcm2835Pic_t *)dev->device.deviceData;
 
-    PicBase_t base1 = dev->base1;
-    PicBase_t base2 = dev->base2;
+    picData->picLoc = PIC;
+    picData->timerLoc = TIMER;
+
+    PicBase_t base1 = picData->picLoc;
+    PicBase_t base2 = picData->timerLoc;
 
     // -- for good measure, disable the FIQ
     MmioWrite(base1 + INT_FIQCTL, 0x0);
-    MmioWrite(base2 + TIMER_LOCAL_CONTROL, 0x00000000);                     // ensure the local timer is disabled
+    MmioWrite(base2 + TIMER_LOCAL_CONTROL, 0x00000000);         // ensure the local timer is disabled
 
     // -- Disable all IRQs -- write to clear, anything that is high will be pulled low
     MmioWrite(base1 + INT_IRQDIS0, 0xffffffff);

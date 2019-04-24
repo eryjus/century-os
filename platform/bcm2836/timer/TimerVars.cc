@@ -25,7 +25,7 @@
 //    ----------------------------------------------------------------------------------------------------------
 __krndata TimerDevice_t timerControl = {
     .base = TIMER,
-    .pic = &picControl,
+    .pic = &picBcm2835,
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
     .TimerEoi = _TimerEoi,

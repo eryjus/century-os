@@ -57,16 +57,16 @@
 //    --------------------------------------
 void HeapReleaseEntry(OrderedList_t *entry)
 {
-	if (!entry) HeapError("NULL entry in HeapReleaseEntry()", "");
-	HeapValidateHdr(entry->block, "HeapReleaseEntry()");
+    if (!entry) HeapError("NULL entry in HeapReleaseEntry()", "");
+    HeapValidateHdr(entry->block, "HeapReleaseEntry()");
 
-	// verify removed from list and remove if necessary
-	if (entry->next || entry->prev || entry->block->entry) {
-		HeapRemoveFromList(entry);
-	}
+    // verify removed from list and remove if necessary
+    if (entry->next || entry->prev || entry->block->entry) {
+        HeapRemoveFromList(entry);
+    }
 
-	// clear out the data
-	entry->block->entry = 0;
-	entry->block = 0;
-	entry->size = 0;
+    // clear out the data
+    entry->block->entry = 0;
+    entry->block = 0;
+    entry->size = 0;
 }

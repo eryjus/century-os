@@ -28,7 +28,7 @@ void _PicEoi(PicDevice_t *dev, int irq)
 {
     if (!dev) return;
 
-    if (irq >= 8) outb(dev->base2 + PIC_SLAVE_COMMAND, 0x20);
-    outb(dev->base1 + PIC_MASTER_COMMAND, 0x20);
+    if (irq >= 8) outb(PIC2 + PIC_SLAVE_COMMAND, 0x20);
+    outb(PIC1 + PIC_MASTER_COMMAND, 0x20);
 }
 

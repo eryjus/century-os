@@ -27,6 +27,12 @@ typedef archsize_t PicBase_t;
 
 
 //
+// -- These are the possible pic drivers for the computer
+//    ---------------------------------------------------
+extern struct PicDevice_t picBcm2835;
+
+
+//
 // -- BCM2835 defines IRQs 0-63, plus a handfull of additional IRQs.  These additional ones are being placed
 //    starting at IRQ64 and up.
 //    ------------------------------------------------------------------------------------------------------
@@ -38,6 +44,26 @@ typedef archsize_t PicBase_t;
 #define IRQ_GPU1_HALTED     69
 #define IRQ_ILLEGAL_ACCESS1 70
 #define IRQ_ILLEGAL_ACCESS0 71
+
+
+//
+// -- Define the pic data we need to keep track of
+//    --------------------------------------------
+typedef struct Bcm2835Pic_t {
+    GenericDevice_t base;
+    PicBase_t picLoc;
+    archsize_t timerLoc;
+} Bcm2835Pic_t;
+
+
+//
+// -- Here are the function prototypes that the operation functions need to conform to
+//    --------------------------------------------------------------------------------
+extern void _PicInit(PicDevice_t *dev, const char *name);
+extern void _PicUnmaskIrq(PicDevice_t *dev, int irq);
+extern void _PicMaskIrq(PicDevice_t *dev, int irq);
+extern void _PicEoi(PicDevice_t *dev, int irq);
+extern int _PicDetermineIrq(PicDevice_t *dev);
 
 
 //
@@ -316,6 +342,5 @@ typedef archsize_t PicBase_t;
 #define INTDIS0IRQDOORB0    (1<<2)                      // ARM Doorbell 0 Disable
 #define INTDIS0IRQMAIL      (1<<1)                      // ARM Mailbox IRQ Disable
 #define INTDIS0IRQTIMER     (1<<0)                      // ARM Timer IRQ Disable
-
 
 

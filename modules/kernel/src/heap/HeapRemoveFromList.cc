@@ -66,31 +66,31 @@
 //    -------------------------------------
 void HeapRemoveFromList(OrderedList_t *entry)
 {
-	if (!entry) HeapError("NULL entry in HeapRemoveFromList()", "");
-	HeapValidateHdr(entry->block, "HeapRemoveFromList()");
+    if (!entry) HeapError("NULL entry in HeapRemoveFromList()", "");
+    HeapValidateHdr(entry->block, "HeapRemoveFromList()");
 
-	if (kHeap->heapMemory == entry) {
-		kHeap->heapMemory = kHeap->heapMemory->next;
-	}
+    if (kHeap->heapMemory == entry) {
+        kHeap->heapMemory = kHeap->heapMemory->next;
+    }
 
-	if (kHeap->heap512 == entry) {
-		kHeap->heap512 = kHeap->heap512->next;
-	}
+    if (kHeap->heap512 == entry) {
+        kHeap->heap512 = kHeap->heap512->next;
+    }
 
-	if (kHeap->heap1K == entry) {
-		kHeap->heap1K = kHeap->heap1K->next;
-	}
+    if (kHeap->heap1K == entry) {
+        kHeap->heap1K = kHeap->heap1K->next;
+    }
 
-	if (kHeap->heap4K == entry) {
-		kHeap->heap4K = kHeap->heap4K->next;
-	}
+    if (kHeap->heap4K == entry) {
+        kHeap->heap4K = kHeap->heap4K->next;
+    }
 
-	if (kHeap->heap16K == entry) {
-		kHeap->heap16K = kHeap->heap16K->next;
-	}
+    if (kHeap->heap16K == entry) {
+        kHeap->heap16K = kHeap->heap16K->next;
+    }
 
-	if (entry->next) entry->next->prev = entry->prev;
-	if (entry->prev) entry->prev->next = entry->next;
+    if (entry->next) entry->next->prev = entry->prev;
+    if (entry->prev) entry->prev->next = entry->next;
 
-	entry->next = entry->prev = 0;
+    entry->next = entry->prev = 0;
 }
