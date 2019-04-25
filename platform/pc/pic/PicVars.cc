@@ -24,6 +24,7 @@
 //    ----------------------------------------------------------------------------------------------------------
 __krndata PicDevice_t pic8259 = {
     .PicInit = _PicInit,
+    .PicRegisterHandler = _PicRegisterHandler,
     .PicMaskIrq = _PicMaskIrq,
     .PicUnmaskIrq = _PicUnmaskIrq,
     .PicEoi = _PicEoi,

@@ -26,14 +26,14 @@
 //
 // -- Disable an IRQ by masking it
 //    ----------------------------
-void __krntext _ApicMaskIrq(PicDevice_t *dev, int irq)
+void __krntext _ApicMaskIrq(PicDevice_t *dev, Irq_t irq)
 {
     if (!dev) return;
     if (irq < 0 || irq > 23) return;
 
     ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
     archsize_t addr = data->ioapicBase;
-    int reg = IOREDTBL0 + (2 * irq);
+    archsize_t reg = ApicRedir(data, irq);
 
     IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) | (1<<16));
 }

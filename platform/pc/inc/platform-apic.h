@@ -30,6 +30,7 @@ typedef struct ApicDeviceData_t {
     DeviceData_t work;
     archsize_t ioapicBase;
     archsize_t localApicBase;
+    archsize_t redirTableEntry[IRQ_LAST];
 } ApicDeviceData_t;
 
 
@@ -222,10 +223,16 @@ enum {
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
 __CENTURY_FUNC__ void _ApicInit(PicDevice_t *dev, const char *name);
-__CENTURY_FUNC__ isrFunc_t _ApicRegisterHandler(PicDevice_t *, int, int, isrFunc_t);
-__CENTURY_FUNC__ void _ApicUnmaskIrq(PicDevice_t *dev, int irq);
-__CENTURY_FUNC__ void _ApicMaskIrq(PicDevice_t *dev, int irq);
-__CENTURY_FUNC__ void _ApicEoi(PicDevice_t *dev, int irq);
+__CENTURY_FUNC__ isrFunc_t _ApicRegisterHandler(PicDevice_t *, Irq_t, int, isrFunc_t);
+__CENTURY_FUNC__ void _ApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
+__CENTURY_FUNC__ void _ApicMaskIrq(PicDevice_t *dev, Irq_t irq);
+__CENTURY_FUNC__ void _ApicEoi(PicDevice_t *dev, Irq_t irq);
+
+
+//
+// -- A helper function for translating an IRQ to a redir table entry
+//    ---------------------------------------------------------------
+inline archsize_t ApicRedir(ApicDeviceData_t *data, Irq_t irq) { return data->redirTableEntry[irq]; }
 
 
 //

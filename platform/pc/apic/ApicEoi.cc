@@ -24,7 +24,7 @@
 //
 // -- End of interrupt signal
 //    -----------------------
-void _ApicEoi(PicDevice_t *dev, int irq)
+void _ApicEoi(PicDevice_t *dev, Irq_t irq)
 {
     if (!dev) return;
     if (irq < 0 || irq > 23) return;

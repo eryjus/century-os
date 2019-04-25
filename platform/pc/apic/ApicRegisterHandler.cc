@@ -26,7 +26,7 @@
 //
 // -- Register an IRQ handler
 //    -----------------------
-isrFunc_t __krntext _ApicRegisterHandler(PicDevice_t *dev, int irq, int vector, isrFunc_t handler)
+isrFunc_t __krntext _ApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
 {
     if (!dev) return (isrFunc_t)-1;
     if (!handler) return (isrFunc_t)-1;
@@ -48,8 +48,10 @@ isrFunc_t __krntext _ApicRegisterHandler(PicDevice_t *dev, int irq, int vector, 
     redir.dest = 0;         // apic id 0 for now
 
     ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
-    IOAPIC_WRITE(data->ioapicBase, IOREDTBL0 + (irq * 2), redir.reg0);
-    IOAPIC_WRITE(data->ioapicBase, IOREDTBL0 + (irq * 2) + 1, redir.reg1);
+    archsize_t reg = ApicRedir(data, irq);
+
+    IOAPIC_WRITE(data->ioapicBase, reg, redir.reg0);
+    IOAPIC_WRITE(data->ioapicBase, reg + 1, redir.reg1);
 
     isrFunc_t rv = IsrRegister(vector, handler);
     PicUnmaskIrq(dev, irq);

@@ -23,11 +23,12 @@
 //
 // -- Disable the PIC from passing along an IRQ (some call it masking)
 //    ----------------------------------------------------------------
-void _PicMaskIrq(PicDevice_t *dev, int irq)
+void _PicMaskIrq(PicDevice_t *dev, Irq_t i)
 {
     if (!dev) return;
-    if (irq < 0 || irq > 15) return;
+    if (i < 0 || i > 15) return;
 
+    int irq = (int)i;
     uint16_t port;
 
     if (irq < 8) {

@@ -1285,5 +1285,21 @@ Time for a commit.
 
 ---
 
+### 2019-Apr-24
 
+I have a bit of clean-up to do for the IO APIC.  In particular, IRQ0 is connected to table slot 2.  I think I have 2 options here:
+1. Define an enum specific to the IRQ number I am looking for and set the value of that enum to be meaningful to the driver -- this will require that both the 8259 PIC and the IO APIC have similar defines.
+2. Create mapping to translate from the IRQ number to the Table Slot.
+
+I'm really not sure what the best thing to do here is....  I'm going to have to think about this a bit.
+
+In the end, I decided to crate a map and an `Irq_t` typedef depending on the arch.
+
+Double checking the 8259 PIC, I am getting an invalid opcode, jumping to 0.
+
+I have that cleaned up -- the 8259 PIC driver did not have a function to register a handler.  With that it works still and so does the IO APIC code.
+
+Time for another commit.
+
+---
 

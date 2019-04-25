@@ -23,12 +23,13 @@
 //
 // -- Enable the PIC to pass along an IRQ (some call it unmasking)
 //    ------------------------------------------------------------
-void _PicUnmaskIrq(PicDevice_t *dev, int irq)
+void _PicUnmaskIrq(PicDevice_t *dev, Irq_t i)
 {
     if (!dev) return;
-    if (irq < 0 || irq > 15) return;
+    if (i < 0 || i > 15) return;
 
     uint16_t port;
+    int irq = (int)i;
 
     if (irq < 8) {
         port = PIC1 + PIC_MASTER_DATA;

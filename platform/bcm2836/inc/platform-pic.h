@@ -24,7 +24,7 @@
 // -- on x86, this is the type we use to refer to the pic port
 //    --------------------------------------------------------
 typedef archsize_t PicBase_t;
-
+typedef int Irq_t;
 
 //
 // -- These are the possible pic drivers for the computer
@@ -60,9 +60,9 @@ typedef struct Bcm2835Pic_t {
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
 extern void _PicInit(PicDevice_t *dev, const char *name);
-extern void _PicUnmaskIrq(PicDevice_t *dev, int irq);
-extern void _PicMaskIrq(PicDevice_t *dev, int irq);
-extern void _PicEoi(PicDevice_t *dev, int irq);
+extern void _PicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
+extern void _PicMaskIrq(PicDevice_t *dev, Irq_t irq);
+extern void _PicEoi(PicDevice_t *dev, Irq_t irq);
 extern int _PicDetermineIrq(PicDevice_t *dev);
 
 

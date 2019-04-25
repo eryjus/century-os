@@ -22,6 +22,10 @@
 #include "types.h"
 #include "hardware.h"
 
+
+//
+// -- A forward declaration
+//    ---------------------
 struct PicDevice_t;
 
 
@@ -44,10 +48,10 @@ typedef struct PicDevice_t {
     GenericDevice_t device;
 
     void (*PicInit)(PicDevice_t *, const char *);
-    isrFunc_t (*PicRegisterHandler)(PicDevice_t *, int, int, isrFunc_t);
-    void (*PicMaskIrq)(PicDevice_t *, int);
-    void (*PicUnmaskIrq)(PicDevice_t *, int);
-    void (*PicEoi)(PicDevice_t *, int);
+    isrFunc_t (*PicRegisterHandler)(PicDevice_t *, Irq_t, int, isrFunc_t);
+    void (*PicMaskIrq)(PicDevice_t *, Irq_t);
+    void (*PicUnmaskIrq)(PicDevice_t *, Irq_t);
+    void (*PicEoi)(PicDevice_t *, Irq_t);
     int (*PicDetermineIrq)(PicDevice_t *);
 } PicDevice_t;
 
@@ -64,11 +68,11 @@ extern PicDevice_t *picControl;
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    ------------------------------------------------------------------------------------------------------
 inline void PicInit(PicDevice_t *dev, const char *name) { dev->PicInit(dev, name); }
-inline isrFunc_t PicRegisterHandler(PicDevice_t *dev, int irq, int vector, isrFunc_t handler) {
+inline isrFunc_t PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler) {
                     return dev->PicRegisterHandler(dev, irq, vector, handler); }
-inline void PicUnmaskIrq(PicDevice_t *dev, int irq) { dev->PicUnmaskIrq(dev, irq); }
-inline void PicMaskIrq(PicDevice_t *dev, int irq) { dev->PicMaskIrq(dev, irq); }
-inline void PicEoi(PicDevice_t *dev, int irq) { dev->PicEoi(dev, irq); }
+inline void PicUnmaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicUnmaskIrq(dev, irq); }
+inline void PicMaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicMaskIrq(dev, irq); }
+inline void PicEoi(PicDevice_t *dev, Irq_t irq) { dev->PicEoi(dev, irq); }
 inline archsize_t PicDetermineIrq(PicDevice_t *dev) { return dev->PicDetermineIrq(dev); }
 
 
@@ -76,6 +80,7 @@ inline archsize_t PicDetermineIrq(PicDevice_t *dev) { return dev->PicDetermineIr
 // -- Pick the correct PIC given what we have available
 //    -------------------------------------------------
 __CENTURY_FUNC__ PicDevice_t *PicPick(void);
+
 
 #endif
 

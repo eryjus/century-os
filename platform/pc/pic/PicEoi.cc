@@ -24,7 +24,7 @@
 //
 // -- Issue an EOI for the timer
 //    --------------------------
-void _PicEoi(PicDevice_t *dev, int irq)
+void _PicEoi(PicDevice_t *dev, Irq_t irq)
 {
     if (!dev) return;
 

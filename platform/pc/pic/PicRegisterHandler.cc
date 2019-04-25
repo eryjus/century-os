@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ApicUnmaskIrq.cc -- Unmask an IRQ so that it is effectively enabled
+//  PicRegisterHandler.cc -- Register a handler to take care of an IRQ
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,7 +10,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-20  Initial   0.4.1   ADCL  Initial version
+//  2019-Apr-24  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -24,17 +24,24 @@
 
 
 //
-// -- Enable an IRQ by unmasking it
-//    -----------------------------
-void __krntext _ApicUnmaskIrq(PicDevice_t *dev, Irq_t irq)
+// -- Register an IRQ handler
+//    -----------------------
+isrFunc_t __krntext _PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
 {
-    if (!dev) return;
-    if (irq < 0 || irq > 23) return;
+    if (!dev) return (isrFunc_t)-1;
+    if (!handler) return (isrFunc_t)-1;
+    if (irq < 0 || irq > 15) return (isrFunc_t)-1;
+    if (vector < 0 || vector > 255) return (isrFunc_t)-1;
 
-    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
-    archsize_t addr = data->ioapicBase;
-    archsize_t reg = ApicRedir(data, irq);
+    kprintf("Processing an audited request to map irq %x to vector %x\n", irq, vector);
 
-    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) & ~(1<<16));
+    PicMaskIrq(dev, irq);
+    isrFunc_t rv = IsrRegister(vector, handler);
+    PicUnmaskIrq(dev, irq);
+
+    kprintf(".. Request complete\n");
+
+    return rv;
 }
+
 

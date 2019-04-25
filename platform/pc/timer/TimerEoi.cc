@@ -26,6 +26,6 @@
 void _TimerEoi(TimerDevice_t *dev)
 {
     if (!dev) return;
-    PicEoi(dev->pic, 0x00);
+    PicEoi(dev->pic, IRQ0);
 }
 
