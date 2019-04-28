@@ -23,7 +23,7 @@
 //
 // -- on x86, this is the type we use to refer to the timer port
 //    ----------------------------------------------------------
-typedef uint16_t TimerBase_t;
+typedef archsize_t TimerBase_t;
 
 
 //
@@ -40,3 +40,9 @@ typedef uint16_t TimerBase_t;
 #define TIMER_CHAN_2    0x02
 #define TIMER_COMMAND   0x03
 
+
+//
+// -- This is the timer device structures
+//    -----------------------------------
+extern TimerDevice_t lapicTimerControl;
+extern TimerDevice_t timer8259Control;

@@ -22,8 +22,12 @@
 
 #include "types.h"
 #include "spinlock.h"
+#include "loader.h"
 #include "heap.h"
 #include "pmm.h"
+
+
+__krndata bool pmmInitialized = false;
 
 
 //
@@ -31,6 +35,11 @@
 //    ------------------------------
 __CENTURY_FUNC__ frame_t __krntext PmmAllocateFrame(void)
 {
+    if (!pmmInitialized) {
+        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
+        return NextEarlyFrame();
+    }
+
     frame_t rv = 0;         // assume we will not find anything
 
 
@@ -45,7 +54,10 @@ __CENTURY_FUNC__ frame_t __krntext PmmAllocateFrame(void)
     // -- check the scrub queue for a frame to allocate
     //    --------------------------------------------------------------------------------------------------
     rv = _PmmDoRemoveFrame(&pmm.scrubStack, true);
-    if (rv != 0) return rv;
+    if (rv != 0) {
+        PmmScrubFrame(rv);          // -- it needs to be scrubbed
+        return rv;
+    }
 
 
     //

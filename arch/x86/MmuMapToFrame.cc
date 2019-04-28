@@ -27,6 +27,8 @@
 #include "mmu.h"
 
 
+#define DEBUG_MMU 0
+
 //
 // -- Map a page to a frame
 //    ---------------------
@@ -54,6 +56,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     if (!pde->p) {
         frame_t fr = PmmAllocateFrame();
+//        kprintf("MMU: Creating a new page table at frame %p\n", fr);
         MmuClearFrame(fr);
         pde->frame = fr;
         pde->rw = 1;
@@ -70,8 +73,10 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     // -- finally we can map the page to the frame as requested
     pte->frame = frame;
-    pte->rw = 1;
-    pte->us = 1;
+    pte->rw = (flags & PG_WRT?1:0);
+    pte->us = (flags & PG_KRN?1:0);
+    pte->pcd = (flags & PG_DEVICE?1:0);
+    pte->pwt = (flags & PG_DEVICE?1:0);
     pte->p = 1;
 }
 

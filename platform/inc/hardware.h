@@ -45,25 +45,25 @@
 //
 // -- Write to a Memory Mapped I/O Register
 //    -------------------------------------
-#define MmioWrite(regLocation,data) (*(volatile archsize_t *)(regLocation) = (data))
+#define MmioWrite(regLocation,data) (*((volatile archsize_t *)(regLocation)) = (data))
 
 
 //
 // -- Write to a 64-bit Memory Mapped I/O Register
 //    --------------------------------------------
-#define MmioWrite64(regLocation,data) (*(volatile uint64_t *)(regLocation) = (data))
+#define MmioWrite64(regLocation,data) (*((volatile uint64_t *)(regLocation)) = (data))
 
 
 //
 // -- Read from a Memory Mapped I/O Register
 //    --------------------------------------
-#define MmioRead(regLocation) (*(volatile archsize_t *)(regLocation))
+#define MmioRead(regLocation) (*((volatile archsize_t *)(regLocation)))
 
 
 //
 // -- Read from a 64-bit Memory Mapped I/O Register
 //    ---------------------------------------------
-#define MmioRead64(regLocation) (*(volatile uint64_t *)(regLocation))
+#define MmioRead64(regLocation) (*((volatile uint64_t *)(regLocation)))
 
 
 //

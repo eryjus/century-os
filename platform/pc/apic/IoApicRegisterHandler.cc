@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ApicRegisterHandler.cc -- Register a handler to take care of an IRQ
+//  IoApicRegisterHandler.cc -- Register a handler to take care of an IRQ
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -26,7 +26,7 @@
 //
 // -- Register an IRQ handler
 //    -----------------------
-isrFunc_t __krntext _ApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
+isrFunc_t __krntext _IoApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
 {
     if (!dev) return (isrFunc_t)-1;
     if (!handler) return (isrFunc_t)-1;
@@ -47,8 +47,8 @@ isrFunc_t __krntext _ApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector
     redir.intMask = 1;      // leave this masked!!
     redir.dest = 0;         // apic id 0 for now
 
-    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
-    archsize_t reg = ApicRedir(data, irq);
+    IoApicDeviceData_t *data = (IoApicDeviceData_t *)dev->device.deviceData;
+    archsize_t reg = IoApicRedir(data, irq);
 
     IOAPIC_WRITE(data->ioapicBase, reg, redir.reg0);
     IOAPIC_WRITE(data->ioapicBase, reg + 1, redir.reg1);

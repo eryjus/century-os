@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  TimerCurrentCount.cc -- Get the current count from the timer
+//  IoApicUnmaskIrq.cc -- Unmask an IRQ so that it is effectively enabled
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,25 +10,31 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-19  Initial   0.3.2   ADCL  Initial version
+//  2019-Apr-20  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "timer.h"
+#include "cpu.h"
+#include "hw-disc.h"
+#include "mmu.h"
+#include "interrupt.h"
+#include "pic.h"
+
 
 //
-// -- This is the number of ticks since boot
-//    --------------------------------------
-uint64_t microsSinceBoot = 0;
-
-
-//
-// -- Get the number of micros since boot
-//    -----------------------------------
-uint64_t _TimerCurrentCount(TimerDevice_t *dev)
+// -- Enable an IRQ by unmasking it
+//    -----------------------------
+void __krntext _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq)
 {
-    return microsSinceBoot;
+    if (!dev) return;
+    if (irq < 0 || irq > 23) return;
+
+    IoApicDeviceData_t *data = (IoApicDeviceData_t *)dev->device.deviceData;
+    archsize_t addr = data->ioapicBase;
+    archsize_t reg = IoApicRedir(data, irq);
+
+    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) & ~(1<<16));
 }
 

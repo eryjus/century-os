@@ -25,6 +25,9 @@
 #include "types.h"
 
 
+struct TimerDevice_t;
+
+
 //
 // -- get the platform-specific definitions
 //    -------------------------------------
@@ -56,7 +59,7 @@ typedef struct TimerDevice_t {
 // -- The global timer control structure holding pointers to all the proper functions.  Before we reference this
 //    global variable, we are already in the kernel.  There is no need for a loader version of this device.
 //    ----------------------------------------------------------------------------------------------------------
-extern TimerDevice_t timerControl;
+extern TimerDevice_t *timerControl;
 
 
 //
@@ -77,6 +80,12 @@ __CENTURY_FUNC__ void _TimerInit(TimerDevice_t *dev, uint32_t freq);
 __CENTURY_FUNC__ void _TimerEoi(TimerDevice_t *dev);
 __CENTURY_FUNC__ void _TimerPlatformTick(TimerDevice_t *dev);
 __CENTURY_FUNC__ uint64_t _TimerCurrentCount(TimerDevice_t *dev);
+
+
+//
+// -- Pick the correct Timer given what we have available
+//    ---------------------------------------------------
+__CENTURY_FUNC__ TimerDevice_t *TimerPick(void);
 
 
 #endif

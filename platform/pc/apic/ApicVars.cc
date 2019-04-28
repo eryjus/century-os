@@ -16,13 +16,14 @@
 
 
 #include "types.h"
+#include "timer.h"
 #include "pic.h"
 
 
 //
 // -- This is the structure for the data needed by this driver
 //    --------------------------------------------------------
-__krndata ApicDeviceData_t apicData = {
+__krndata IoApicDeviceData_t ioapicData = {
     .redirTableEntry = {
         IOREDTBL2,      // IRQ0
         IOREDTBL1,      // IRQ1
@@ -54,16 +55,28 @@ __krndata ApicDeviceData_t apicData = {
 
 
 //
-// -- This is the device description that is used to output data to the serial port during loader initialization
-//    ----------------------------------------------------------------------------------------------------------
-__krndata PicDevice_t apicDriver = {
+// -- This is the device description for the IO APIC
+//    ----------------------------------------------
+__krndata PicDevice_t ioapicDriver = {
     .device = {
         .name = {'a', 'p', 'i', 'c', '\0'},
-        .deviceData = (DeviceData_t)&apicData,
+        .deviceData = (DeviceData_t)&ioapicData,
     },
-    .PicInit = _ApicInit,
-    .PicRegisterHandler = _ApicRegisterHandler,
-    .PicMaskIrq = _ApicMaskIrq,
-    .PicUnmaskIrq = _ApicUnmaskIrq,
-    .PicEoi = _ApicEoi,
+    .PicInit = _IoApicInit,
+    .PicRegisterHandler = _IoApicRegisterHandler,
+    .PicMaskIrq = _IoApicMaskIrq,
+    .PicUnmaskIrq = _IoApicUnmaskIrq,
+    .PicEoi = _IoApicEoi,
+};
+
+
+//
+// -- This is the device description for the local apic timer
+//    -------------------------------------------------------
+__krndata TimerDevice_t lapicTimerControl = {
+    .TimerCallBack = TimerCallBack,
+    .TimerInit = _LApicInit,
+    .TimerEoi = _LApicEoi,
+    .TimerPlatformTick = _TimerPlatformTick,
+    .TimerCurrentCount = _TimerCurrentCount,
 };

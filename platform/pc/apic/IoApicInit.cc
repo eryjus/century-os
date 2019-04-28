@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ApicInit.cc -- Initialize the IO APIC
+//  IoApicInit.cc -- Initialize the IO APIC
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -25,7 +25,7 @@
 //
 // -- Initialize the IO APIC
 //    ----------------------
-void _ApicInit(PicDevice_t *dev, const char *name)
+void _IoApicInit(PicDevice_t *dev, const char *name)
 {
     int count = GetIoapicCount();
 
@@ -42,7 +42,7 @@ void _ApicInit(PicDevice_t *dev, const char *name)
     outb(0x21, 0xff);               // Disable all IRQs
 
 
-    ApicDeviceData_t *data = (ApicDeviceData_t*)dev->device.deviceData;
+    IoApicDeviceData_t *data = (IoApicDeviceData_t*)dev->device.deviceData;
 
     for (int i = 0; i < count; i ++) {
         archsize_t addr = GetIoapicAddr(i);

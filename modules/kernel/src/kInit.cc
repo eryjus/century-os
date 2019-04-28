@@ -151,7 +151,7 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
-    TimerInit(&timerControl, 1000);
+    TimerInit(timerControl, 1000);
     EnableInterrupts();
 
     //
@@ -216,7 +216,7 @@ void kInit(void)
         kprintf("F (pid = %x) timer = %p : %p\n", F->pid, (uint32_t)(F->timeUsed >> 32), (uint32_t)F->timeUsed);
         kprintf("G (pid = %x) timer = %p : %p\n", G->pid, (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
 
-        kprintf("Low 32-bit ticks is %x\n", (uint32_t)TimerCurrentCount(&timerControl));
+        kprintf("Low 32-bit ticks is %x\n", (uint32_t)TimerCurrentCount(timerControl));
         kprintf("Next wake time is %x\n", (uint32_t)scheduler.nextWake);
 
         ProcessListRemove(C);       // make sure C is not on a ready queue

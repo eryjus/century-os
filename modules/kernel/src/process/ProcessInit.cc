@@ -55,5 +55,5 @@ void __krntext ProcessInit(void)
     CLEAN_SCHEDULER();
     CLEAN_PROCESS(scheduler.currentProcess);
 
-    lastTimer = TimerCurrentCount(&timerControl);
+    lastTimer = TimerCurrentCount(timerControl);
 }

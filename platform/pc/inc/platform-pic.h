@@ -65,7 +65,7 @@ typedef enum {
 // -- These are the possible pic drivers for the computer
 //    ---------------------------------------------------
 extern struct PicDevice_t pic8259;
-extern struct PicDevice_t apicDriver;
+extern struct PicDevice_t ioapicDriver;
 
 //
 // -- This is the base location of the timer on x86

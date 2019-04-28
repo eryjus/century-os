@@ -56,14 +56,15 @@
 //    ------------------
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
+//    kprintf("@");
     ProcessEnterPostpone();
 
-    if (timerControl.TimerPlatformTick) TimerPlatformTick(&timerControl);
+    if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
 
     //
     // -- here we look for any sleeping tasks to wake
     //    -------------------------------------------
-    uint64_t now = TimerCurrentCount(&timerControl);
+    uint64_t now = TimerCurrentCount(timerControl);
     if (now >= scheduler.nextWake && IsListEmpty(&scheduler.listSleeping) == false) {
         uint64_t newWake = (uint64_t)-1;
 
@@ -89,7 +90,6 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
             list = next;
         }
 
-//         kprintf("Updating nextWake to be %p : %p\n", (uint32_t)(newWake >> 32), (uint32_t)newWake);
         scheduler.nextWake = newWake;
     }
 
@@ -102,6 +102,6 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
         if (scheduler.currentProcess->quantumLeft <= 0) ProcessSchedule();
     }
 
-    TimerEoi(&timerControl);
+    TimerEoi(timerControl);
     ProcessExitPostpone();
 }

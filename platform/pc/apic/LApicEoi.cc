@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ApicInit.cc -- Perform an EOI on the Local APIC
+//  LApicEoi.cc -- Signal End of Interrupt to the Local APIC
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,24 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-19  Initial   0.4.1   ADCL  Initial version
+//  2019-Apr-26  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
+#include "interrupt.h"
 #include "mmu.h"
+#include "cpu.h"
 #include "pic.h"
 
 
 //
-// -- End of interrupt signal
-//    -----------------------
-void _ApicEoi(PicDevice_t *dev, Irq_t irq)
+// -- Signal EOI to the Local APIC
+//    ----------------------------
+void __krntext _LApicEoi(TimerDevice_t *dev)
 {
     if (!dev) return;
-    if (irq < 0 || irq > 23) return;
 
-    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
-    MmioWrite(data->localApicBase + LAPIC_EOI, 0);
+    MmioWrite(dev->base + LAPIC_EOI, 0);        // all there needs to be is a write to the register
 }
-

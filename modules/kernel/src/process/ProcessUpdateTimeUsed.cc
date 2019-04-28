@@ -38,7 +38,7 @@ __krndata uint64_t cpuIdleTime = 0;
 //    ---------------------------------------------------------------------------
 void __krntext ProcessUpdateTimeUsed(void)
 {
-    uint64_t now = TimerCurrentCount(&timerControl);
+    uint64_t now = TimerCurrentCount(timerControl);
     uint64_t elapsed = now - lastTimer;
     lastTimer = now;
 

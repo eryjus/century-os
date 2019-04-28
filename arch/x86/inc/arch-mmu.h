@@ -61,5 +61,5 @@ inline PageEntry_t *MmuGetPTEntry(archsize_t addr) { return &MmuGetPTAddress(add
 
 
 extern "C" void InvalidatePage(archsize_t addr);
-
+extern "C" void __krntext MmuDumpTables(archsize_t addr);
 

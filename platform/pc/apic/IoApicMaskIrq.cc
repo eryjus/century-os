@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ApicUnmaskIrq.cc -- Unmask an IRQ so that it is effectively enabled
+//  IoApicMaskIrq.cc -- Mask an IRQ so that it is effectively disabled
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -24,17 +24,17 @@
 
 
 //
-// -- Enable an IRQ by unmasking it
-//    -----------------------------
-void __krntext _ApicUnmaskIrq(PicDevice_t *dev, Irq_t irq)
+// -- Disable an IRQ by masking it
+//    ----------------------------
+void __krntext _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq)
 {
     if (!dev) return;
     if (irq < 0 || irq > 23) return;
 
-    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
+    IoApicDeviceData_t *data = (IoApicDeviceData_t *)dev->device.deviceData;
     archsize_t addr = data->ioapicBase;
-    archsize_t reg = ApicRedir(data, irq);
+    archsize_t reg = IoApicRedir(data, irq);
 
-    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) & ~(1<<16));
+    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) | (1<<16));
 }
 

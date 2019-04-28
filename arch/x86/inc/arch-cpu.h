@@ -259,16 +259,17 @@ static inline void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32
 //
 // -- Model Specific Registers
 //    ------------------------
-#define RDMSR(r)        ({ uint32_t _lo, _hi;                                                           \
-                            __asm volatile("rdmsr\n"                                                    \
-                                    : "=a"(_lo),"=d"(_hi) : "c"(r));                                    \
-                            (((uint64_t)_hi) << 32) | _lo;                                              \
-                        })
-#define WRMSR(r,v)      ({ uint32_t _lo = (uint32_t)(v & 0xffffffff);                                   \
-                            uint32_t _hi = (uint32_t)(v >> 32);                                         \
-                            __asm volatile("wrmsr\n"                                                    \
-                                    : : "c"(r),"a"(_lo),"d"(_hi));                                      \
-                        })
+static inline uint64_t RDMSR(uint32_t r) {
+    uint32_t _lo, _hi;
+    __asm volatile("rdmsr\n" : "=a"(_lo),"=d"(_hi) : "c"(r) : "%ebx");
+    return (((uint64_t)_hi) << 32) | _lo;
+}
+
+static inline void WRMSR(uint32_t r, uint64_t v) {
+    uint32_t _lo = (uint32_t)(v & 0xffffffff);
+    uint32_t _hi = (uint32_t)(v >> 32);
+    __asm volatile("wrmsr\n" : : "c"(r),"a"(_lo),"d"(_hi));
+}
 
 
 //

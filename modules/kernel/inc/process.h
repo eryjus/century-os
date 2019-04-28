@@ -257,7 +257,7 @@ __CENTURY_FUNC__ void ProcessListRemove(Process_t *proc);
 // -- Micro-Sleep this number of micro-seconds
 //    ----------------------------------------
 __CENTURY_FUNC__ inline void ProcessMicroSleep(uint64_t micros) {
-    ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + micros);
+    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
 }
 
 
@@ -265,7 +265,7 @@ __CENTURY_FUNC__ inline void ProcessMicroSleep(uint64_t micros) {
 // -- Milli-Sleep this number of milli-seconds
 //    ----------------------------------------
 __CENTURY_FUNC__ inline void ProcessMilliSleep(uint64_t ms) {
-    ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + (ms * 1000));
+    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
 }
 
 
@@ -273,7 +273,7 @@ __CENTURY_FUNC__ inline void ProcessMilliSleep(uint64_t ms) {
 // -- Sleep this number of seconds
 //    ----------------------------
 __CENTURY_FUNC__ inline void ProcessSleep(uint64_t secs) {
-    ProcessMicroSleepUntil(TimerCurrentCount(&timerControl) + (secs * 1000000));
+    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
 }
 
 

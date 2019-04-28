@@ -26,7 +26,7 @@ void __krntext ProcessMicroSleepUntil(uint64_t when)
 {
     ProcessEnterPostpone();
 
-    if (when < TimerCurrentCount(&timerControl)) {
+    if (when < TimerCurrentCount(timerControl)) {
         ProcessExitPostpone();
         return;
     }

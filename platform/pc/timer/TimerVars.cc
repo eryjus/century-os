@@ -21,9 +21,9 @@
 
 
 //
-// -- This is the device description that is used to output data to the serial port during loader initialization
-//    ----------------------------------------------------------------------------------------------------------
-__krndata TimerDevice_t timerControl = {
+// -- This is the device description for the PIT
+//    ------------------------------------------
+__krndata TimerDevice_t timer8259Control = {
     .base = TIMER,
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
@@ -32,3 +32,8 @@ __krndata TimerDevice_t timerControl = {
     .TimerCurrentCount = _TimerCurrentCount,
 };
 
+
+//
+// -- This is the timer controller we use for this runtime
+//    ----------------------------------------------------
+__krndata TimerDevice_t *timerControl = &timer8259Control;

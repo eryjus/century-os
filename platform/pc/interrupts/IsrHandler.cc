@@ -39,6 +39,6 @@ void IsrHandler(isrRegs_t regs)
         isrFunc_t handler = isrHandlers[regs.intno];
         handler(&regs);
     } else {
-        kprintf("Unhandled Interrupt #0x%02.2x (%d)\n", regs.intno, regs.intno);
+        kprintf("Unhandled Interrupt #%x\n", regs.intno);
     }
 }

@@ -1303,3 +1303,223 @@ Time for another commit.
 
 ---
 
+OK, now is the time to get the Local APIC timer up and running.  This effort is going to require a calibration step.  I do not want to have to pause the boot for a full second, so I will be taking say a quarter of a second and calibrating off that.
+
+Squirrel!! -- I wonder if I can set up a virtualbox to boot my CD image....  It crashes like real hardware.  Gonna table that for now.
+
+OK, to set up the timer.
+
+The first thing is to decide where to put the timer code.  It is technically part of the APIC architecture (split architecture), so I will include it in that folder.  However, that means some renaming for clarification.
+
+OK, as I get into the spurious handler, I an realizing that there is no IRQ for this vector -- just a vector.  Well, that's easy -- we just do not go through the PIC to register the handler.
+
+---
+
+### 2019-Apr-26
+
+I started today making sure I was linking with the proper libgcc for the x86-pc target as well.  I needed this for the 64-bit division I was doing for the Local APIC Timer init.  I had the tools already built out for rpi2b; I just needed to copy them for this target.
+
+Now, I just need to fill in the additional missing functions.  I also need to change my interface so I am using the mapped address, not the provided one.
+
+---
+
+Well, I ran the code and it worked the first time.  There is no way my code is being executed.
+
+I was right, and after a quick fix on how the decision is made, I am getting the following:
+
+```
+Local APIC Init!
+Explicit request to map virtual address 0 refused.
+```
+
+So, I am trying to map to virtual address 0....
+
+That is cleaned up, but still no IRQ firing.
+
+---
+
+OK, let's think about this....  The programs run, meaning I am not getting any fault.  So, nothing is catestrophically wrong.  The beginning of my test code also swaps tasks, so I did not have an impact there.  So, I am strictly dealing with a timer problem.
+
+There are only 2 reasons for a problem at the top of mind: either A) the timer is not firing; or, B) the IRQ is not being ended properly to let additional IRQs fire.
+
+Well, this is easy to measure -- just add the good ol' `kprintf(".");` back in and see if I get an interrupt in the beginning.  And, it looks like I am not getting the IRQ to fire, not even once.
+
+Checking the current value of the timer, I can see that it is not moving:
+
+```
+Local APIC Init!
+The value coming from MSR `0x1b` is: 0xfee00000
+The address of the target location is: 0xf8000000
+So, the calculated clock divider is 0x00041378
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+Current timer count: 0xf000ff53
+```
+
+So the timer is not timing.  Now, it had to be counting down at one point -- I was able to get a delta in the timer to calibrate it.
+
+Or was I??
+
+```
+Prior to calibration, the timer count is 0xf000ff53
+So, the calculated clock divider is 0x00041378
+Current timer count: 0xf000ff53
+```
+
+The timer is not running.  So, I have the address mapped, is that something I should not be doing?  I am going to go back to the hardware address and see what happens.
+
+Reading the actual hardware address has no effect.  So, my only conclusion is that the timer is not enabled properly.
+
+---
+
+### 2019-Apr-27
+
+I got a late start today.  But I captured an execution log from QEMU.  I am seeing the following:
+
+```
+IN:
+0x00101b64:  b9 1b 00 00 00           movl     $0x1b, %ecx
+0x00101b69:  0f 32                    rdmsr
+0x00101b6b:  80 cc 08                 orb      $8, %ah
+0x00101b6e:  0f 30                    wrmsr
+0x00101b70:  c7 83 e0 00 00 00 ff ff  movl     $0xffffffff, 0xe0(%ebx)
+
+[snip]
+
+EAX=00000007 EBX=00000000 ECX=000bfbde EDX=3fff8000
+ESI=80007128 EDI=fee00000 EBP=8009d000 ESP=ff800fa4
+EIP=00101b64 EFL=00200096 [--S-AP-] CPL=0 II=0 A20=1 SMM=0 HLT=0
+ES =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+CS =0008 00000000 ffffffff 00cf9a00 DPL=0 CS32 [-R-]
+SS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+DS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+FS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+GS =0010 00000000 ffffffff 00cf9300 DPL=0 DS   [-WA]
+LDT=0000 00000000 0000ffff 00008200 DPL=0 LDT
+TR =004b ff401080 000fffff 000fe900 DPL=3 TSS32-avl
+GDT=     003fd000 0000007f
+IDT=     003fd800 000007ff
+CR0=e0000011 CR2=00000000 CR3=003fe000 CR4=00000010
+DR0=00000000 DR1=00000000 DR2=00000000 DR3=00000000
+DR6=ffff0ff0 DR7=00000400
+CCS=0000000c CCD=ff800f90 CCO=ADDL
+EFER=0000000000000000
+```
+
+This tells me that `ebx` is set to 0 and somehow is expected to be magically updated to some value I need.  Or it really tells me that it is being clobbered when it should not.
+
+Ultimately, I think the problem is going to be in my `RDMSR()`/`WRMSR()` macro implementations.  I think I am going to take a look at `lk` to see what that looks like.
+
+`lk` sets these as inline functions rather than macros....  Hmmm...  Interestingly enough, that's also how I implemented `CPUID()` -- as a static inline.  So, it looks like I will be making a change, since `CPUID()` does not clobber my registers.
+
+Well, I made the change, but there is no effect on the executing code.  The timer still does not start.
+
+Now, the MMU tables are located in this address space.  What addresses are impacted?  I think I better double check that....  Actually, interestingly enough, if I do not map the page for the Local APIC, I DO NOT get a page fault.  This means I really am updating a table somewhere and not the actual APIC.
+
+Actually, the MMU addresses start at `0xffc00000` and the Local APIC addresses are at `0xfee00000`.  I am not conflicting.  So, that theory is out the window.
+
+So, I think it is time to write some deep debugging code to confirm what I think is happening really is.
+
+---
+
+OK, I think I have something here...  This line of code:
+
+```C
+kprintf("Base is %p whereas LAPIC_MMIO is %p\n", base, LAPIC_MMIO);
+```
+
+... is resulting in this debugging line:
+
+```
+Base is 0x00000000 whereas LAPIC_MMIO is 0xf8000000
+```
+
+... and the culprit is this line:
+
+
+```C
+typedef uint16_t TimerBase_t;
+```
+
+Correcting that definition, I am now getting `0` values, and the spurious interrupt vector is not being updated:
+
+```
+.. Before setting the spurious interrupt at 0xf80000f0, the value is 0x00000000
+.. After setting the spurious interrupt at 0xf80000f0, the value is 0x00000000
+```
+
+Now, however, I can force a proper page fault by not mapping the address.
+
+Now, I am recalling that device memory like this cannot be cacheable.  I need to look at that as well to see if I have a problem in the MMU mapping.  I was not disabling cache, but I have corrected that.
+
+---
+
+Hmmm....
+
+```
+Request to overwrite frame for page 0xfee00000 refused; use MmuUnmapPage() first
+```
+
+Now, what could be there???  Tomorrow....
+
+---
+
+### 2019-Apr-28
+
+Well that page does not appear to be explicitly mapped.  What have I done???
+
+OK, now I'm even more confused!!!
+
+```
+MmuDumpTables: Walking the page tables for address 0xfee00000
+Level  Tabl-Addr   Index       Next Frame  us  rw  pr
+-----  ----------  ----------  ----------  --  --  --
+PD     0xfffff000  0x000003fb  0x00000400   1   1   1
+PT     0xffffb000  0x00000200  0x000fee00   0   0   1
+Base is 0xfee00000 whereas LAPIC_MMIO is 0xfee00000
+The value coming from MSR `0x1b` is: 0xfee00900
+The address of the target location is: 0xfee00000
+The updated value fpr MSR `0x1b` is: 0xfee00900
+Mapping address 0xfee00000 to frame 0x000fee00
+Request to overwrite frame for page 0xfee00000 refused; use MmuUnmapPage() first
+.. Before setting the spurious interrupt at 0xfee000f0, the value is 0x000001ff
+.. After setting the spurious interrupt at 0xfee000f0, the value is 0x00000127
+.. The LAPIC error register is: 0x00000000
+Prior to calibration, the timer count is 0x00000000
+During calibration, the timer count is 0xffffff94
+So, the calculated clock divider is 0x00000222
+Current timer count: 0x00000050
+Current timer count: 0x00000016
+Current timer count: 0x00000166
+Current timer count: 0x000001b9
+Current timer count: 0x0000013f
+Current timer count: 0x00000177
+Current timer count: 0x00000185
+Current timer count: 0x00000105
+Current timer count: 0x000000d8
+Current timer count: 0x00000132
+```
+
+The page mapped somehow, but after adding this code just to look at the results, it is working!
+
+Sticking with the Page Tables, I see that the frame for the PT is `0x400` -- this is the first frame that would be allocated after the PMM got control.
+
+OK, it looks like I am calling the PMM to allocate a frame before it get initialized.  I need to trap that condition and be sure.  I might be able to call NextEarlyFrame() if it is not initialized.
+
+There we go....  I am mapping the Local APIC frame in the IOAPIC code, which is why I am having a problem.  Now, I was able to find and clean up a PMM bug, so that is good.  But hte IOAPIC code will need take into account what I need to do to relocate the Local APIC.  Come to think of it, I will probably need to relocate the IOAPIC as well.
+
+On I side note, I do now have a failsafe compiled into the code where if I try to allocate frames into the kernel space, I will end up with a kernel panic.  One way I can help that is by moving the framebuffer mapping to after `PmmInit()`.
+
+I think for the moment, I will keep the IOAPIC and Local APIC where they are now.  I will create a Redmine to address this [in the future](http://eryjus.ddns.net:3000/issues/410).
+
+And with that, the Local APIC timer works and is generating IRQs.  And, I did not break my rpi2b code.
+
+With the APIC timer now working, it is time to button up this version.
+

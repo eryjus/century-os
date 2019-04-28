@@ -23,7 +23,7 @@
 //
 // -- This is the device description that is used to output data to the serial port during loader initialization
 //    ----------------------------------------------------------------------------------------------------------
-__krndata TimerDevice_t timerControl = {
+__krndata TimerDevice_t _timerControl = {
     .base = TIMER,
     .pic = &picBcm2835,
     .TimerCallBack = TimerCallBack,
@@ -33,3 +33,8 @@ __krndata TimerDevice_t timerControl = {
     .TimerCurrentCount = _TimerCurrentCount,
 };
 
+
+//
+// -- This is the pointer to the structure we will really use
+//    -------------------------------------------------------
+__krndata TimerDevice_t *timerControl = &_timerControl;

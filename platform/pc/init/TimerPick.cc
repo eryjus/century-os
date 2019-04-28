@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ApicMaskIrq.cc -- Mask an IRQ so that it is effectively disabled
+//  TimerPick.cc -- Make a decision on which Timer will be used
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,31 +10,30 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-20  Initial   0.4.1   ADCL  Initial version
+//  2019-Apr-26  Initial   0.4.1   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
 #include "hw-disc.h"
-#include "mmu.h"
-#include "interrupt.h"
-#include "pic.h"
+#include "printf.h"
+#include "platform.h"
+#include "timer.h"
 
 
 //
-// -- Disable an IRQ by masking it
-//    ----------------------------
-void __krntext _ApicMaskIrq(PicDevice_t *dev, Irq_t irq)
+// -- pick the timer device we will use
+//    ---------------------------------
+__krntext TimerDevice_t *TimerPick(void)
 {
-    if (!dev) return;
-    if (irq < 0 || irq > 23) return;
+    kprintf("Picking a timer to use...\n");
 
-    ApicDeviceData_t *data = (ApicDeviceData_t *)dev->device.deviceData;
-    archsize_t addr = data->ioapicBase;
-    archsize_t reg = ApicRedir(data, irq);
+    if (GetLocalApicCount() > 0) timerControl = &lapicTimerControl;
+    else timerControl = &timer8259Control;
 
-    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) | (1<<16));
+    // -- initialized in kInit();
+
+    return timerControl;
 }
 

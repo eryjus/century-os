@@ -21,17 +21,18 @@
 
 
 #include "types.h"
+#include "timer.h"
 
 
 //
 // -- This is the data structure where we will store the values we need to manage the PIC
 //    -----------------------------------------------------------------------------------
-typedef struct ApicDeviceData_t {
+typedef struct IoApicDeviceData_t {
     DeviceData_t work;
     archsize_t ioapicBase;
     archsize_t localApicBase;
     archsize_t redirTableEntry[IRQ_LAST];
-} ApicDeviceData_t;
+} IoApicDeviceData_t;
 
 
 //
@@ -112,12 +113,21 @@ typedef struct ApicDeviceData_t {
 #define LAPIC_IRR_6         (0x260)
 #define LAPIC_IRR_7         (0x270)
 #define LAPIC_ESR           (0x280)
+#define LAPIC_LVT_TMR       (0x320)
+#define LAPIC_THERMAL       (0x330)
+#define LAPIC_LVT_PERF      (0x340)
+#define LAPIC_LVT_LINT0     (0x350)
+#define LAPIC_LVT_LINT1     (0x360)
+#define LAPIC_LVT_ERR       (0x370)
+#define LAPIC_TMRINITCNT    (0x380)
+#define LAPIC_TMRCURRCNT    (0x390)
+#define LAPIC_TMRDIV        (0x3e0)
 
 
 //
 // -- The location in virtual memory for the LAPIC
 //    --------------------------------------------
-#define LAPIC_MMIO          0xf8000000
+#define LAPIC_MMIO          (0xfee00000)
 
 
 //
@@ -222,17 +232,26 @@ enum {
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-__CENTURY_FUNC__ void _ApicInit(PicDevice_t *dev, const char *name);
-__CENTURY_FUNC__ isrFunc_t _ApicRegisterHandler(PicDevice_t *, Irq_t, int, isrFunc_t);
-__CENTURY_FUNC__ void _ApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _ApicMaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _ApicEoi(PicDevice_t *dev, Irq_t irq);
+__CENTURY_FUNC__ void _IoApicInit(PicDevice_t *dev, const char *name);
+__CENTURY_FUNC__ isrFunc_t _IoApicRegisterHandler(PicDevice_t *, Irq_t, int, isrFunc_t);
+__CENTURY_FUNC__ void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
+__CENTURY_FUNC__ void _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq);
+__CENTURY_FUNC__ void _IoApicEoi(PicDevice_t *dev, Irq_t irq);
 
 
 //
 // -- A helper function for translating an IRQ to a redir table entry
 //    ---------------------------------------------------------------
-inline archsize_t ApicRedir(ApicDeviceData_t *data, Irq_t irq) { return data->redirTableEntry[irq]; }
+inline archsize_t IoApicRedir(IoApicDeviceData_t *data, Irq_t irq) { return data->redirTableEntry[irq]; }
+
+
+//
+// -- Local APIC Timer functions
+//    --------------------------
+__CENTURY_FUNC__ void _LApicInit(TimerDevice_t *dev, uint32_t frequency);
+__CENTURY_FUNC__ void _LApicEoi(TimerDevice_t *dev);
+__CENTURY_FUNC__ void _LApicPlatformTick(TimerDevice_t *dev);
+__CENTURY_FUNC__ uint64_t _LApicCurrentCount(TimerDevice_t *dev);
 
 
 //
