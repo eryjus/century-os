@@ -46,6 +46,7 @@
 #include "ipc.h"
 #include "pmm.h"
 #include "serial.h"
+#include "atomic.h"
 
 
 //
@@ -153,6 +154,16 @@ void kInit(void)
     ProcessInit();
     TimerInit(timerControl, 1000);
     EnableInterrupts();
+
+
+    AtomicInt_t atomicInt = ATOMIC_INT_INIT(10);
+    kprintf("Atomic Int = %x\n", AtomicRead(&atomicInt));
+    AtomicAdd(&atomicInt, 10);
+    kprintf("... %x\n", AtomicRead(&atomicInt));
+
+
+    while(1) {}
+
 
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
