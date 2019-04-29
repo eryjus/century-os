@@ -85,3 +85,13 @@ So, the next step is going to be to replace the details of the implementation of
 
 ---
 
+I have been able to do the replacement of the guts of `Spinlock_t`.  This was relatively painless.  Since the API did not change, the core was simple enough to replace.
+
+I am going to run this overnight to see what happens -- both x86 and rpi2b....
+
+---
+
+### 2019-Apr-29
+
+Well, I was able to run the kernel on both targets overnight.  10 hours of continuous execution with no crash.  I think I can commit my code and wrap up this version.
+

@@ -21,7 +21,7 @@
 
 
 #include "types.h"
-#include "printf.h"
+#include "atomic.h"
 #include "cpu.h"
 
 
@@ -41,7 +41,7 @@
 // -- This is the spinlock structure which notes who holds the lock
 //    -------------------------------------------------------------
 typedef struct Spinlock_t {
-    archsize_t locked;
+    AtomicInt_t lock;
     struct Process_t *lockHolder;
 } Spinlock_t;
 
@@ -54,39 +54,33 @@ extern Spinlock_t lockCounterLock;
 
 
 //
-// -- This is an atomic function to lock a spinlock
-//    ---------------------------------------------
-__CENTURY_FUNC__ archsize_t SpinlockAtomicLock(Spinlock_t *lock, archsize_t expected, archsize_t newVal);
-
-
-//
-// -- This is an atomic function to unlock a spinlock
-//    -----------------------------------------------
-__CENTURY_FUNC__ void SpinlockClear(Spinlock_t *lock);
-
-
-//
 // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
 //    ---------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ void SpinlockLock(Spinlock_t *lock);
+__CENTURY_FUNC__ inline void SpinlockLock(Spinlock_t *lock) {
+        while (AtomicSet(&lock->lock, 1) != 0) { }       // -- This is a busy wait
+//        lock->lockHolder = scheduler.currentProcess;
+}
 
 
 //
 // -- This inline function will unlock a spinlock, clearing the lock holder
 //    ---------------------------------------------------------------------
-__CENTURY_FUNC__ void SpinlockUnlock(Spinlock_t *lock);
+__CENTURY_FUNC__ inline void SpinlockUnlock(Spinlock_t *lock) {
+//    if (lock->lockHolder != scheduler.currentProcess) return;
+    AtomicSet(&lock->lock, 0);
+}
 
 
 //
 // -- This inline function returns the PID of the lock holder
 //    -------------------------------------------------------
-//__CENTURY_FUNC__ inline struct Process_t *SpinLockGetHolder(Spinlock_t *lock) { return lock->lockHolder; }
+__CENTURY_FUNC__ inline struct Process_t *SpinLockGetHolder(Spinlock_t *lock) { return lock->lockHolder; }
 
 
 //
 // -- This inline function will determine if a spinlock is locked
 //    -----------------------------------------------------------
-__CENTURY_FUNC__ inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->locked; }
+__CENTURY_FUNC__ inline bool SpinlockIsLocked(Spinlock_t *lock) { return AtomicRead(&lock->lock) == 1; }
 
 
 //
@@ -117,7 +111,6 @@ extern Spinlock_t mmuStackInitLock;
 // -- This macro will invalidate the cache for a Spinlock, forcing it the be re-read from memory
 //    ------------------------------------------------------------------------------------------
 #define INVALIDATE_SPINLOCK(lock) INVALIDATE_CACHE(lock, sizeof(Spinlock_t))
-
 
 
 #endif

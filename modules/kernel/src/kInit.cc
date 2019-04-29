@@ -162,9 +162,6 @@ void kInit(void)
     kprintf("... %x\n", AtomicRead(&atomicInt));
 
 
-    while(1) {}
-
-
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
     //             Includes hardware discovery and initialization
