@@ -123,6 +123,7 @@ typedef struct Process_t {
     uint64_t timeUsed;                  // This is the relative amount of CPU used
     uint64_t wakeAtMicros;              // Wake this process at or after this micros since boot
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
+    int pendingErrno;                   // this is the pending error number for a blocked process
 } Process_t;
 
 

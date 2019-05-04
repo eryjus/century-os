@@ -20,6 +20,8 @@ CFLAGS += -I $(WS)/modules/kernel/inc
 CFLAGS += -I $(WS)/arch/$(ARCH)/inc
 CFLAGS += -I $(WS)/platform/inc
 CFLAGS += -I $(WS)/platform/$(PLAT)/inc
+CFLAGS += -I $(WS)/include
+CFLAGS += -D__CENTURY_KERNEL__
 
 AFLAGS += -I $(WS)/modules/kernel/inc
 NFLAGS += -I$(WS)/modules/kernel/inc/
@@ -38,6 +40,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 : foreach  $(WS)/modules/kernel/src/loader/*.cc             |> !cc |>
 : foreach  $(WS)/modules/kernel/src/pmm/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/process/*.cc            |> !cc |>
+: foreach  $(WS)/modules/kernel/src/semaphore/*.cc          |> !cc |>
 : foreach  $(WS)/modules/kernel/src/spinlock/*.cc           |> !cc |>
 : foreach  $(WS)/modules/kernel/src/syscall/*.cc            |> !cc |>
 : foreach  $(WS)/modules/kernel/src/timer/*.cc              |> !cc |>

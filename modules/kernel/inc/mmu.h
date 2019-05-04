@@ -71,6 +71,12 @@ void MmuClearFrame(frame_t frame);
 
 
 //
+// -- Check of the address is mapped
+//    ------------------------------
+__CENTURY_FUNC__ bool MmuIsMapped(archsize_t addr);
+
+
+//
 // -- Complete the initialization of the MMU
 //    --------------------------------------
 void MmuInit(void);
@@ -80,6 +86,17 @@ void MmuInit(void);
 // -- Create a new set of paging tables for a new process
 //    ---------------------------------------------------
 __CENTURY_FUNC__ frame_t MmuNewVirtualSpace(frame_t stack);
+
+
+//
+// -- Check a structure to see if it is fully mapped
+//    ----------------------------------------------
+#define IS_MAPPED(a,z) ({                                                                                   \
+        bool __rv = false;                                                                                  \
+        for (archsize_t __va = ((archsize_t)a) >> 12; __va <= (((archsize_t)a) + z) >> 12; a ++) {  \
+            __rv = __rv && MmuIsMapped(__va << 12);                                                         \
+        }                                                                                                   \
+        __rv; })
 
 
 #endif

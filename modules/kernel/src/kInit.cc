@@ -43,10 +43,10 @@
 #include "heap.h"
 #include "process.h"
 #include "timer.h"
-#include "ipc.h"
 #include "pmm.h"
 #include "serial.h"
 #include "atomic.h"
+#include "semaphore.h"
 
 
 //
@@ -152,6 +152,7 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
+    SemaphoreInit();
     TimerInit(timerControl, 1000);
     EnableInterrupts();
 
