@@ -115,4 +115,50 @@ I think the best staring point is going to be to encapsulate the entire semaphor
 
 I was able to get `SemaphoreControl()` completely written, so it is time to commit this code (and switch laptops).
 
+---
+
+OK, I am moved over, but the cross compilers are not working.  It looks like I am going to be forced to rebuild them.
+
+---
+
+### 2019-May-04
+
+May the fourth be with you!
+
+OK, I have the tools chain built.  It is not perfect, so I am going to have to clean it up and do it again -- several of the filesystem attributes for the toolchain were not set right.  However, I am able to do a `make toolchain` and end up with a all the different tools I need prepared.  There are a few things missing and I will end up testing this on a clean VM in the coming weeks....
+
+I believe that there are some optimizations that I can do with the `SemaphoreCommand()` function -- particularly when managing the undo list.  In short, I really need to create an API for that which will allow me to update it if I come across a better method to update it.
+
+---
+
+I am now into the `semop()` work.  This will be a bit more complicated.  It will have to be implemented in 2 parts -- part 1 will get the lock on the semaphore set and check to see if all the operations can be done, returning the proper return value if it is not possible.  Part 2 will actually complete the actions and will block if not all the conditions are met and will check all the conditions again when the process unblocks.
+
+The key attribute here it that all of these actions are to be done atomically -- it's an all or nothing update -- and all the conditions need to be met at the same time.
+
+I think I am going to need a lower-level function to iterate the semaphore operations list... with a flag to indicate if we execute the changes or not.  We would execute this function once to check (with the lock held) if everything is good, and if it is all good excxcute the function call again (without releaing the lock) to actually execute the changes.  If we are not able to execute them all, then we release the lock and return with the reason why.
+
+When I boil this down, there are really only 3 conditions that can happen:
+1. We are able to execute all the operations and we do not block, so we execute the operations and return.
+1. We are able to execute all the operations but we will block, so we execute none of them so we queue and block.
+1. We are not able to execute all the operations or would block and the `IPC_NOWAIT` flag is set, so we return with proper error code.
+
+Now, this is also going to bring up a point -- when a process blocks, we need to put it on the blocked list, which is different than the list of processes waiting for something to happen.  I have been using `Process_t.stsQueue` to hold this info, but that is not going to work.  I am going to need to come up with another structure to hold this data, likely with a pointer to the `Process_t` structure.  I am also going to have to mimic the scheduler functions by postponing the scheduling until all this work is completed.
+
+---
+
+### 2019-May-05
+
+Work in a top-down design pattern, I was able to get the bulk of `SempahoreOperations()` and the `SemIterateOps()`.  There are several functions that are called but have not been defined.  These are:
+* `SemBlock()` -- This function will create entries on the proper wait lists and add them to the proper semaphores.  It will not actually block the running process.
+* `SemReadyWaiting()` -- This function will ready all processes in the list waiting for 0 or for the `semval` to increase.  A parameter will determine which to wake.  This function will need to be close the a scheduler function -- Postponing a Reschedule until all the work is complete.
+* `SemCreateUndo()` -- This function will find and update an undo element or create one if needed and inserting it into the list.
+
+To get started, I need to put together a structure to hold the processes that are waiting on a Semaphore.  Well, more generic for an IPC I think.
+
+---
+
+I think I have my kernel semaphore implementation complete.  I need to figure out how to test it, but it other than a few variances so far, I have a POSIX compliant semaphore implementation.
+
+Time to commit.
+
 

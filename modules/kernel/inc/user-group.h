@@ -25,7 +25,9 @@
 //
 // -- This is a quick macro to check for permissions -- currently everyone has all permissions
 //    ----------------------------------------------------------------------------------------
-#define UidHasPermission(...)       (true)
+#define HasReadPermission(...)       (true)
+#define HasWritePermission(...)      (true)
+#define IsCreatorOwner(...)          (true)
 
 
 //

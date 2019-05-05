@@ -64,6 +64,8 @@ void __krntext ProcessReady(Process_t *proc)
         break;
     }
 
+    proc->status = PROC_READY;
+
     CLEAN_PROCESS(proc);
 }
 

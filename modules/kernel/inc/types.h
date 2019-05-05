@@ -63,6 +63,14 @@
 #endif
 
 
+//
+// -- some basic macros to help with coding
+//    -------------------------------------
+#define ABS(x)      ((x)>=0?(x):-(x))
+#define MIN(x,y)    ((x)<=(y)?(x):(y))
+#define MAX(x,y)    ((x)>=(y)?(x):(y))
+
+
 /* adapted from http: *research.microsoft.com/... */
 typedef char *  va_list;
 #define _INTSIZEOF(n)   ((sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1))

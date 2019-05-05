@@ -117,6 +117,14 @@ init: tuprules.inc
 
 
 ##
+## -- Rebuild the toolchain is requested
+##    ----------------------------------
+.PHONY: toolchain
+toolchain:
+	cd util && ./toolchain.sh
+
+
+##
 ## -- we need to know the current base folder
 ##    ---------------------------------------
 tuprules.inc: Makefile

@@ -47,6 +47,16 @@ extern int semmni;
 
 
 //
+// -- These are the values that can be passed into the semaphore operations iterator for what to do
+//    ---------------------------------------------------------------------------------------------
+enum {
+    SEM_ITER_CHECK,
+    SEM_ITER_EXEC,
+    SEM_ITER_BLOCK,
+};
+
+
+//
 // -- Semaphore Control System Function
 //    ---------------------------------
 __CENTURY_FUNC__ int SemaphoreControl(int semid, int semnum, int cmd, ...);
@@ -65,6 +75,12 @@ __CENTURY_FUNC__ int SemaphoreOperations(int semid, struct sembuf *sops, size_t 
 
 
 //
+// -- Reset the undo list for a semaphore or semaphore set
+//    ----------------------------------------------------
+__CENTURY_FUNC__ void SemUndoReset(int semid, key_t key, int semnum);
+
+
+//
 // -- The Semaphore Initialization function
 //    -------------------------------------
 __CENTURY_FUNC__ void SemaphoreInit(void);
@@ -79,6 +95,15 @@ typedef struct Semaphore_t {
     ListHead_t waitN;
     ListHead_t waitZ;
 } Semaphore_t;
+
+
+//
+// -- This is a structure to hold the processes that need to be woken up
+//    ------------------------------------------------------------------
+typedef struct SemWaiting_t {
+    ListHead_t::List_t list;
+    Process_t *proc;
+} SemWaiting_t;
 
 
 //
@@ -134,6 +159,54 @@ union semun {
 // -- this is the global semaphore structure, encapsulating all system semaphores
 //    ---------------------------------------------------------------------------
 extern SemaphoreAll_t semaphoreAll;
+
+
+//
+// -- Get the IPC Stat information
+//    ----------------------------
+__CENTURY_FUNC__ int SemIpcStat(SemaphoreSet_t *set, struct semid_ds *buf);
+
+
+//
+// -- Set the IPC Status information
+//    ------------------------------
+__CENTURY_FUNC__ int SemIpcSet(SemaphoreSet_t *set, struct semid_ds *buf);
+
+
+//
+// -- Remove a semaphore set
+//    ----------------------
+__CENTURY_FUNC__ int SemRemove(SemaphoreSet_t *set, int semid);
+
+
+//
+// -- Remove a semaphore set
+//    ----------------------
+__CENTURY_FUNC__ int SemGetAll(SemaphoreSet_t *set, unsigned short *array);
+
+
+//
+// -- Iterate all the operations
+//    --------------------------
+__CENTURY_FUNC__ int SemIterateOps(int semid, SemaphoreSet_t *set, struct sembuf *sops, size_t nsops, int oper);
+
+
+//
+// -- Set the current process to be blocked on the semaphores
+//    -------------------------------------------------------
+__CENTURY_FUNC__ void SemBlock(Semaphore_t *sem, bool zeroWait);
+
+
+//
+// -- Ready the processes waiting for a Semaphore
+//    -------------------------------------------
+__CENTURY_FUNC__ void SemReadyWaiting(ListHead_t *list);
+
+
+//
+// -- Ready the processes waiting for a Semaphore
+//    -------------------------------------------
+__CENTURY_FUNC__ void SemCreateUndo(int semid, key_t key, int semnum, int undo);
 
 
 #endif
