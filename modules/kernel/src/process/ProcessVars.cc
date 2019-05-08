@@ -27,8 +27,7 @@ __krndata Scheduler_t scheduler = {
     false,                  // processChangePending
     0,                      // nextPID
     0xffffffffffffffff,     // nextWake
-    0,                      // schedulerLocksHeld
-    {0},                    // schedulerLock
+    {0},                    // schedulerLocksHeld
     {{&scheduler.queueOS.list, &scheduler.queueOS.list}, {0}, 0},                   // the os ready queue
     {{&scheduler.queueHigh.list, &scheduler.queueHigh.list}, {0}, 0},               // the high ready queue
     {{&scheduler.queueNormal.list, &scheduler.queueNormal.list}, {0}, 0},           // the normal ready queue

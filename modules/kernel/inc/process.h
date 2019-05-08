@@ -70,6 +70,7 @@
 #include "lists.h"
 #include "cpu.h"
 #include "timer.h"
+#include "atomic.h"
 #include "spinlock.h"
 
 
@@ -138,8 +139,7 @@ typedef struct Scheduler_t {
     volatile uint64_t nextWake;             // the next tick-since-boot when a process needs to wake up
 
     // -- This is a critical field controlled by its lock
-    volatile int schedulerLocksHeld;        // the depth of the locks
-    Spinlock_t schedulerLock;               // lock must be held to change the above field
+    AtomicInt_t schedulerLockCount;         // the depth of the locks
 
     // -- and the different lists a process might be on, locks in each list will be used
     QueueHead_t queueOS;                    // this is the queue for the OS tasks -- if it can run it does

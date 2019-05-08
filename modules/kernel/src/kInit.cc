@@ -58,62 +58,37 @@ void PmmStart(Module_t *);
 
 Process_t *A;
 Process_t *B;
-Process_t *C;
-Process_t *D;
-Process_t *E;
-Process_t *F;
-Process_t *G;
+
+int semid;
 
 
+void StartA(void)
+{
+//    struct sembuf inc = {0, 1, 0};
+//    struct sembuf zero = {0, 0, 0};
+
+    kprintf("Starting A\n");
+
+    while (1) {
+//        SemaphoreOperations(semid, &inc, 1);
+        kprintf("A");
+//        SemaphoreOperations(semid, &zero, 1);
+    }
+}
 
 void StartB(void)
 {
+//    struct sembuf dec = {0, -1, 0};
+//    struct sembuf zero = {0, 0, 0};
+
+    kprintf("Starting B\n");
+
     while (1) {
+//        SemaphoreOperations(semid, &zero, 1);
         kprintf("B");
-        ProcessSleep(1);        // sleep 1 second
+//        SemaphoreOperations(semid, &dec, 1);
     }
 }
-
-void StartC(void)
-{
-    while (1) {
-        kprintf("C");
-//        ProcessSleep(3);
-        ProcessBlock(PROC_MSGW);
-    }
-}
-
-void StartD(void)
-{
-    while (1) {
-        kprintf("D");
-        ProcessMilliSleep(250);     // sleep 250 ms
-    }
-}
-
-void StartE(void)
-{
-    while (1) {
-        kprintf("E");
-        ProcessMicroSleep(1);       // 1 micro-second -- probably will not actually stop
-    }
-}
-
-void StartF(void)
-{
-    while (1) {
-        kprintf("F");
-        ProcessMilliSleep(5);
-    }
-}
-
-void StartG(void)
-{
-    while (1) {
-        kprintf("G");
-    }
-}
-
 
 //
 // -- This is the main entry point for the kernel, starting with initialization
@@ -142,11 +117,6 @@ void kInit(void)
     FrameBufferPutS("The RSDT is located at ");  FrameBufferPutHex(RSDT); FrameBufferDrawChar('\n');
 #undef RSDT
 
-    kprintf("The offset of scheduler.currentProcess is %x (%x)\n", offsetof(Scheduler_t, currentProcess), sizeof(scheduler.currentProcess));
-    kprintf("The offset of scheduler.processChangePending is %x (%x)\n", offsetof(Scheduler_t, processChangePending), sizeof(scheduler.processChangePending));
-    kprintf("The offset of scheduler.nextPID is %x (%x)\n", offsetof(Scheduler_t, nextPID), sizeof(scheduler.nextPID));
-    kprintf("The offset of scheduler.nextWake is %x (%x)\n", offsetof(Scheduler_t, nextWake), sizeof(scheduler.nextWake));
-    kprintf("The offset of scheduler.schedulerLocksHeld is %x (%x)\n", offsetof(Scheduler_t, schedulerLocksHeld), sizeof(scheduler.schedulerLocksHeld));
 
     //
     // -- Phase 2: Required OS Structure Initialization
@@ -155,12 +125,6 @@ void kInit(void)
     SemaphoreInit();
     TimerInit(timerControl, 1000);
     EnableInterrupts();
-
-
-    AtomicInt_t atomicInt = ATOMIC_INT_INIT(10);
-    kprintf("Atomic Int = %x\n", AtomicRead(&atomicInt));
-    AtomicAdd(&atomicInt, 10);
-    kprintf("... %x\n", AtomicRead(&atomicInt));
 
 
     //
@@ -205,34 +169,19 @@ void kInit(void)
 //    SetProcPriority(currentProcess, PTY_IDLE);
 //    BREAKPOINT;
 
+    semid = SemaphoreGet(IPC_PRIVATE, 1, 0);
+    if (semid < 0) {
+        kprintf("SemaphoreGet() returned -%x\n", -semid);
+        HaltCpu();
+    } else kprintf("SemaphoreGet() offered semid %x\n", semid);
 
-    A = scheduler.currentProcess;
-    B = ProcessCreate(StartB);
-    C = ProcessCreate(StartC);
-    D = ProcessCreate(StartD);
-    E = ProcessCreate(StartE);
-    F = ProcessCreate(StartF);
-    G = ProcessCreate(StartG);
+    A = ProcessCreate(StartA);
+//    B = ProcessCreate(StartB);
 
 
     while (1) {
-        kprintf("\n");
-        kprintf("A (pid = %x) timer = %p : %p\n", A->pid, (uint32_t)(A->timeUsed >> 32), (uint32_t)A->timeUsed);
-        kprintf("B (pid = %x) timer = %p : %p\n", B->pid, (uint32_t)(B->timeUsed >> 32), (uint32_t)B->timeUsed);
-        kprintf("C (pid = %x) timer = %p : %p\n", C->pid, (uint32_t)(C->timeUsed >> 32), (uint32_t)C->timeUsed);
-        kprintf("D (pid = %x) timer = %p : %p\n", D->pid, (uint32_t)(D->timeUsed >> 32), (uint32_t)D->timeUsed);
-        kprintf("E (pid = %x) timer = %p : %p\n", E->pid, (uint32_t)(E->timeUsed >> 32), (uint32_t)E->timeUsed);
-        kprintf("F (pid = %x) timer = %p : %p\n", F->pid, (uint32_t)(F->timeUsed >> 32), (uint32_t)F->timeUsed);
-        kprintf("G (pid = %x) timer = %p : %p\n", G->pid, (uint32_t)(G->timeUsed >> 32), (uint32_t)G->timeUsed);
-
-        kprintf("Low 32-bit ticks is %x\n", (uint32_t)TimerCurrentCount(timerControl));
-        kprintf("Next wake time is %x\n", (uint32_t)scheduler.nextWake);
-
-        ProcessListRemove(C);       // make sure C is not on a ready queue
-        ProcessUnblock(C);
-
-        kprintf("A");
-        ProcessSleep(5);
+        kprintf(".(%p)", (uint32_t)TimerCurrentCount(timerControl));
+        HaltCpu();
     }
 
 

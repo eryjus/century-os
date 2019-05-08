@@ -27,19 +27,14 @@
 //    ----------------------------------------
 void __krntext ProcessExitPostpone(void)
 {
-    SPIN_BLOCK(scheduler.schedulerLock) {
-        scheduler.schedulerLocksHeld --;
-        SpinlockUnlock(&scheduler.schedulerLock);
-    }
-
-    // -- interrupts are still disabled here
-    if (scheduler.schedulerLocksHeld == 0) {
+    if (AtomicDecAndTest(&scheduler.schedulerLockCount)) {
+        kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
         if (scheduler.processChangePending != 0) {
             scheduler.processChangePending = 0;           // need to clear this to actually perform a change
             ProcessSchedule();
         }
 
         CLEAN_SCHEDULER();
-    }
+    } else kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
 }
 

@@ -161,4 +161,103 @@ I think I have my kernel semaphore implementation complete.  I need to figure ou
 
 Time to commit.
 
+---
+
+POSIX states about semaphores:
+
+> A minimum synchronization primitive to serve as a basis for more complex synchronization mechanisms to be defined by the application program.
+
+This means that there is no required mutex implementation required by POSIX.  I just need to figure out how to test and then this will be done.
+
+---
+
+OK, so thinking about this, I am not going to implement mutexes -- I will leave that as an exercise for application space.  Therefore, a status of MTXW is not relevant.  I may need to change the process status to `PROC_IPCW` for waiting for some IPC element.
+
+As for testing, I really am not feeling it today.  I am having to force myself to do it.  I think the first test is going to be to whittle things down to `ProcessA` and `ProcessB` and set up an up/down scenario where `A` will increase a semaphore to 1, write an 'A', and wait for 0; and `B` will write a 'B', decrease the same semaphore to 0, and wait for 1.  This way, I should have synchronized A's and B's across the screen.
+
+---
+
+OK, so I have nothing that is swapping properly.  I get a few interrupts and then I am never getting to process A.  So, I certainly need to get to the bottom of that....
+
+I am getting timer interrupts regularly because the `kInit()` task is continuing.  However, I am not getting timer IRQs since the `TimerCallBack()` function is not getting control.  I actually get 2 of them and the nothing.  Perhaps I am getting spurious IRQs?  No, that does not appear to be it.
+
+The next thing to look at is whether I am issuing an EOI for every IRQ.  This is working right as well....
+
+```
+@;@;@;@;@;@;Semapho@;@;reGet() offered semid 0x0
+@;@;............
+```
+
+So, the `'@'` characters are a timer IRQ and the `';'` characters are the EOI; the `'.'` characters are the `kInit()` loop.  All of a sudden the IRQs are no longer firing and only the `kInit()` loop has control.  But something is waking up the CPU.
+
+I have been able to determine I am not making it into `ProcessSchedule()`....
+
+So, I am wondering if my problem is that I am not issuing an EOI in `ProcessStart()`.  I believe I had a change in condition where before I was voluntarily relinquishing control for the first task swap and now I am expecting the timer interrupt to handle this for me.  This test did not pan out either.
+
+So....  The timer is firing a few times and then quitting.  I think I am going to have to put this through the qemu logs and see what I can come up with....  Not tonight.
+
+---
+
+### 2019-May-06
+
+I am having trouble with swapping tasks again -- and more than likely with issuing a proper EOI.  At any rate, my scheduler seems exceptionally fragile.
+
+Before I can do anything with the semaphores, I really need to get this all worked out.  Properly.
+
+So, there are effectively 2 methods for a changing tasks.  These are:
+1. Blocking via a function call
+1. Preemption via timer IRQ
+
+From the perspective of a process, there are 4 states to consider:
+1. Starting a process
+1. Blocking by function call
+1. Preemption by timer IRQ
+1. Terminating normally
+
+Finally there are both entry and exit paths that need to be considered -- especially related to enabling interrupts and issuing EOI.
+
+However, let's start with getting the timer working properly again.  I have all the code in the `TimerCallBack()` function commented out -- so we should get some interrupts without any task changing.  The timer is not working properly.
+
+OK, I was able to narrow my problem down to `ProcessCreate()`.  And in this, it appears to be related to the `ProcessEnterPostpone()` and `ProcessExitPostpone()` function pair.  Actually those 2 functions really need to be updated to use the `AtomicInt_t` type.
+
+I will have to take some of this on tomorrow.
+
+---
+
+### 2019-May-07
+
+First order of business today is to take a look at the Process Enter and Postpose functions -- cleaning up the lock with an `AtomicInt_t`.
+
+---
+
+Hmmmm... maybe the timer is not getting reloaded -- acting like a one-shot?
+
+OK, so, with this line of code:
+
+```C
+kprintf(".(%p)", (uint32_t)TimerCurrentCount(timerControl));
+```
+
+I am getting the following output:
+
+```
+.(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000).(0x00000000)
+```
+
+This tells me that I am not getting the timer reset properly -- and the timer is acting more like a one-shot than a periodic timer.
+
+How about rpi2b?
+
+---
+
+OMG!!!  Finally!
+
+Well, I have the same behavior on rpi as well.
+
+Assuming that this worked in v0.4.2, the only material change here is the addition of `pendingErrNo` to the `Process_t` structure.  Other than that, the toolchains were rebuilt.
+
+I'm going to test this on my old laptop, so I need an interim commit.
+
+
+
 

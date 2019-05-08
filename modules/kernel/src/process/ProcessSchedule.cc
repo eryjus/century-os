@@ -44,16 +44,18 @@ static Process_t *ProcessNext(void)
 //    -----------------------------------------------------------------------------------------------------
 void __krntext ProcessSchedule(void)
 {
+    kprintf("/");
     Process_t *next = NULL;
     ProcessUpdateTimeUsed();
 
-    if (scheduler.schedulerLocksHeld != 0) {
+    if (AtomicRead(&scheduler.schedulerLockCount) != 0) {
         scheduler.processChangePending = true;
         return;
     }
 
     next = ProcessNext();
     if (next != NULL) {
+        kprintf("*");
         ProcessListRemove(next);
         CLEAN_PROCESS(next);
 
@@ -73,6 +75,7 @@ void __krntext ProcessSchedule(void)
         scheduler.currentProcess = NULL;                  // nothing is running!
 
         do {
+            kprintf("?");
             // -- -- temporarily enable interrupts for the timer to fire
             CLEAN_SCHEDULER();
             EnableInterrupts();

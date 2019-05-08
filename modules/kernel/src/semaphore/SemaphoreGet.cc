@@ -6,8 +6,16 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Posix variance:
-//  Posix specifies that a maximum SEMMNS total system-wide semaphores can be created across all set.  This value
+//  There are 3 sets (well, 3 1/2) of conditions that need to be managed to determine what to do:
+//  1) key ?= IPC_PRIVATE
+//  2) key is found?
+//  3) semflg ?&= IPC_CREAT
+//     3a) semflg ?&= IPC_EXCL
+//
+//  This means I will need 8 conditionals to cover all cases (which special extra ones for IPC_EXCL)
+//
+//  POSIX variance:
+//  POSIX specifies that a maximum SEMMNS total system-wide semaphores can be created across all set.  This value
 //  is not implemented in the system at this time -- it exists but is not checked, effectively making
 //  SEMMNS > SEMMSL * SEMMNI.
 //
@@ -28,6 +36,7 @@
 #include "heap.h"
 #include "cpu.h"
 #include "errno.h"
+#include "printf.h"
 #include "semaphore.h"
 
 
@@ -75,7 +84,8 @@ int __krntext SemaphoreGet(key_t key, int nsems, int semflg)
         int rv;
 
         // -- figure out if we have an empty slot and an existing key
-        for (i = 0; i < semmni && empty == -1 && found == -1; i ++) {
+        for (i = 0; i < semmni; i ++) {
+            if (found >= 0 && empty >= 0) break;
             if (semaphoreAll.semaphoreSets[i] == NULL) {
                 if (empty == -1) empty = i;
             } else if (semaphoreAll.semaphoreSets[i]->key == key) {
@@ -83,62 +93,45 @@ int __krntext SemaphoreGet(key_t key, int nsems, int semflg)
             }
         }
 
+        bool create = (semflg & IPC_CREAT) != 0;
+        bool priv = (key == IPC_PRIVATE);
 
-        rv = found;
+
+        //
+        // -- decypher what we want to do
+        //    ---------------------------
+        if (priv) {
+            rv = empty;
+        } else {
+            if (found >= 0) {
+                if (create) {
+                    if (semflg & IPC_EXCL) rv = -EEXIST;
+                    else rv = found;
+                } else {
+                    rv = found;
+                }
+            } else {
+                if (create) {
+                    rv = empty;
+                } else {
+                    rv = -ENOENT;
+                }
+            }
+        }
 
 
         //
-        // -- Retrieving an existing semaphore
-        //    --------------------------------
-        if (semflg == 0 && key != IPC_PRIVATE && found != -1) goto exit;
-
-        //
-        // -- Is this a private Semaphore or are we creating one
-        //    --------------------------------------------------
-        if (key == IPC_PRIVATE || (found == -1 && (semflg & IPC_CREAT))) {
-            if (empty == -1) {
-                rv = -ENOSPC;
-                goto exit;
-            }
-
-            if (nsems == 0) {       // cannot be 0 if we are creating...
-                rv = -EINVAL;
-                goto exit;
-            }
-
+        // -- the final checks
+        //    ----------------
+        if (rv == found && found >= 0 && nsems > semaphoreAll.semaphoreSets[i]->numSem) rv = -EINVAL;
+        else if (rv == empty && empty < 0) rv = -ENOSPC;
+        else if (rv >= 0) {
             SemaphoreSet_t *set = NewSemSet(key, nsems, semflg);
             semaphoreAll.semaphoreSets[empty] = set;
 
             if (set == NULL) rv = -ENOMEM;
             else rv = empty;
 
-            goto exit;
-        }
-
-
-        //
-        // -- Check if exists and IPC_CREAT and IPC_EXCL are both specified
-        //    -------------------------------------------------------------
-        if ((semflg & (IPC_CREAT | IPC_EXCL)) && found != -1) {
-            rv = -EEXIST;
-            goto exit;
-        }
-
-
-        //
-        // -- no sem but did not specify create
-        //    ---------------------------------
-        if (found == -1 && (semflg & IPC_CREAT) == 0) {
-            rv = -ENOENT;
-            goto exit;
-        }
-
-
-        //
-        // -- check that the existing sem set has the right size
-        //    --------------------------------------------------
-        if (found != -1 && semaphoreAll.semaphoreSets[found]->numSem < nsems) {
-            rv = -EINVAL;
             goto exit;
         }
 

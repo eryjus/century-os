@@ -18,6 +18,7 @@
 #include "types.h"
 #include "interrupt.h"
 #include "mmu.h"
+#include "printf.h"
 #include "cpu.h"
 #include "pic.h"
 
@@ -28,6 +29,8 @@
 void __krntext _LApicEoi(TimerDevice_t *dev)
 {
     if (!dev) return;
+    kprintf(";");
+    MmuDumpTables(dev->base + LAPIC_EOI);
 
     MmioWrite(dev->base + LAPIC_EOI, 0);        // all there needs to be is a write to the register
 }

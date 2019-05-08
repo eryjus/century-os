@@ -50,7 +50,7 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
         Ioapicver_t apicver;
         Ioapicredtbl_t apicredir;
 
-        MmuMapToFrame(addr, addr>>12, PG_DEVICE);
+        MmuMapToFrame(addr, addr>>12, PG_DEVICE | PG_KRN | PG_WRT);
 
         apicid.reg = IOAPIC_READ(addr,IOAPICID);
         apicver.reg = IOAPIC_READ(addr, IOAPICVER);
@@ -70,5 +70,5 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
     }
 
     data->localApicBase = RDMSR(0x1b) & 0xfffff000;
-    MmuMapToFrame(data->localApicBase, data->localApicBase>>12, PG_DEVICE);
+    MmuMapToFrame(data->localApicBase, data->localApicBase>>12, PG_DEVICE | PG_KRN | PG_WRT);
 }

@@ -17,6 +17,7 @@
 
 #include "types.h"
 #include "interrupt.h"
+#include "printf.h"
 #include "mmu.h"
 #include "cpu.h"
 #include "pic.h"
@@ -27,7 +28,7 @@
 //    --------------------------------
 static void __krntext LApicSpurious(isrRegs_t *regs)
 {
-    // this does very little
+    kprintf("!");
 }
 
 

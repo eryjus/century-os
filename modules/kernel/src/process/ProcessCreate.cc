@@ -57,11 +57,13 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
+    kprintf("ProcessCreate() -- readying the process...\n");
     ProcessEnterPostpone();
     rv->status = PROC_READY;
     CLEAN_PROCESS(rv);
     ProcessReady(rv);
     ProcessExitPostpone();
+    kprintf("ProcessCreate() -- postpone exited...\n");
 
 
     return rv;

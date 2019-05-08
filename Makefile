@@ -219,7 +219,7 @@ run-x86-pc: x86-pc
 ##    -----------------------
 .PHONY: bochs-x86-pc
 bochs-x86-pc: x86-pc
-	bochs -f .bochsrc -q
+	bochs-debugger -f .bochsrc -q
 
 
 ##

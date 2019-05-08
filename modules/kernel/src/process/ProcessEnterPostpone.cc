@@ -28,12 +28,8 @@
 void __krntext ProcessEnterPostpone(void)
 {
     DisableInterrupts();
-
-    SPIN_BLOCK(scheduler.schedulerLock) {
-        scheduler.schedulerLocksHeld ++;
-        SpinlockUnlock(&scheduler.schedulerLock);
-    }
-
+    AtomicInc(&scheduler.schedulerLockCount);
+    kprintf("^(%x)", AtomicRead(&scheduler.schedulerLockCount));
     CLEAN_SCHEDULER();
 }
 
