@@ -58,7 +58,6 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
     kprintf("@");
     ProcessEnterPostpone();
-#if 0
 
     if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
 
@@ -99,11 +98,8 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     // -- adjust the quantum and see if it is time to change tasks
     //    --------------------------------------------------------
     if (scheduler.currentProcess != NULL) {
-        kprintf("-");
-        scheduler.currentProcess->quantumLeft --;
-        if (scheduler.currentProcess->quantumLeft <= 0) ProcessSchedule();
+        if (AtomicDec(&scheduler.currentProcess->quantumLeft) <= 0) ProcessSchedule();
     }
-#endif
 
     TimerEoi(timerControl);
     ProcessExitPostpone();

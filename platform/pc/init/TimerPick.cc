@@ -30,7 +30,7 @@ __krntext TimerDevice_t *TimerPick(void)
     kprintf("Picking a timer to use...\n");
 
     if (GetLocalApicCount() > 0) timerControl = &lapicTimerControl;
-    else timerControl = &timer8259Control;
+    else timerControl = &timer8253Control;
 
     // -- initialized in kInit();
 

@@ -64,29 +64,27 @@ int semid;
 
 void StartA(void)
 {
-//    struct sembuf inc = {0, 1, 0};
-//    struct sembuf zero = {0, 0, 0};
+    struct sembuf inc = {0, 2, IPC_NOWAIT};
+    struct sembuf zero = {0, 0, 0};
 
     kprintf("Starting A\n");
 
     while (1) {
-//        SemaphoreOperations(semid, &inc, 1);
+        while (SemaphoreOperations(semid, &inc, 1) < 0) { kprintf("a"); }
         kprintf("A");
-//        SemaphoreOperations(semid, &zero, 1);
+        SemaphoreOperations(semid, &zero, 1);
     }
 }
 
 void StartB(void)
 {
-//    struct sembuf dec = {0, -1, 0};
-//    struct sembuf zero = {0, 0, 0};
+    struct sembuf dec = {0, -1, IPC_NOWAIT};
 
     kprintf("Starting B\n");
 
     while (1) {
-//        SemaphoreOperations(semid, &zero, 1);
+        while (SemaphoreOperations(semid, &dec, 1) < 0) { kprintf("b"); }
         kprintf("B");
-//        SemaphoreOperations(semid, &dec, 1);
     }
 }
 
@@ -124,6 +122,7 @@ void kInit(void)
     ProcessInit();
     SemaphoreInit();
     TimerInit(timerControl, 1000);
+    kprintf("Enabling interrupts now\n");
     EnableInterrupts();
 
 
@@ -169,6 +168,8 @@ void kInit(void)
 //    SetProcPriority(currentProcess, PTY_IDLE);
 //    BREAKPOINT;
 
+
+#if 0
     semid = SemaphoreGet(IPC_PRIVATE, 1, 0);
     if (semid < 0) {
         kprintf("SemaphoreGet() returned -%x\n", -semid);
@@ -176,11 +177,13 @@ void kInit(void)
     } else kprintf("SemaphoreGet() offered semid %x\n", semid);
 
     A = ProcessCreate(StartA);
-//    B = ProcessCreate(StartB);
+    B = ProcessCreate(StartB);
 
+    scheduler.currentProcess->priority = PTY_LOW;
+#endif
 
     while (1) {
-        kprintf(".(%p)", (uint32_t)TimerCurrentCount(timerControl));
+        kprintf(".");
         HaltCpu();
     }
 

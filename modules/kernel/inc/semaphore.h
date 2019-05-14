@@ -209,4 +209,23 @@ __CENTURY_FUNC__ void SemReadyWaiting(ListHead_t *list);
 __CENTURY_FUNC__ void SemCreateUndo(int semid, key_t key, int semnum, int undo);
 
 
+//
+// -- Handle the operation 0 on a semaphore
+//    -------------------------------------
+__CENTURY_FUNC__ int SemZero(struct sembuf *op, Semaphore_t *sem, struct ipc_perm *perm, int oper);
+
+
+//
+// -- Handle a semaphore increase
+//    ---------------------------
+__CENTURY_FUNC__ int SemUp(struct sembuf *op, Semaphore_t *sem, struct ipc_perm *perm,
+        int semid, key_t key, int oper);
+
+
+//
+// -- Handle a semaphore decrease
+//    ---------------------------
+__CENTURY_FUNC__ int SemDown(struct sembuf *op, Semaphore_t *sem, struct ipc_perm *perm,
+        int semid, key_t key, int oper);
+
 #endif

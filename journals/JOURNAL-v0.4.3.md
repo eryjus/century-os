@@ -258,6 +258,268 @@ Assuming that this worked in v0.4.2, the only material change here is the additi
 
 I'm going to test this on my old laptop, so I need an interim commit.
 
+OK, I have the same behavior on the old laptop on the current version...  but I also know it works on version 0.4.2.  So, I definitely broke something.
 
+OK, maybe I'm missing a `volatile` keyword for the `schedulerLockCount` member...  but I had that problem before I made the change....
 
+---
+
+One more test reveals I have the same problem with v0.4.2 and it really is a preemption problem.  So, I need to be able to get to the bottom of that first.
+
+In Bochs, I am getting a double fault:
+
+```
+So, the calculated clock divider is 0x000000b5
+?
+Double Fault
+EAX: 0x00101ab0  EBX: 0x00000000  ECX: 0x80004750
+EDX: 0x00000020  ESI: 0x00103100  EDI: 0x003fd800
+EBP: 0x00000000  ESP: 0xff800fc0  SS: 0x10
+EIP: 0x00000008  EFLAGS: 0x800b6000
+CS: 0x200292  DS: 0x10  ES: 0x10  FS: 0x10  GS: 0x10
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x003fe000
+Trap: 0x8  Error: 0x80004ba4
+```
+
+The `EIP` is interesting to be sure.  But the error code is odd as well.  `0x80004ba4` happens to be a good instruction address right after `EnableInterrupts()` in `kInit()`.  In addition, the `'?'` character indicates that I am servicing an interrupt of some sort.
+
+A stack analysis is in order here:
+
+```
+<bochs:6> x /64 0xff800f4c
+[bochs]:
+0x00000000ff800f4c <bogus+       0>:    0x80001b74      0x80007e10      0x00000008      0x80004ba4
+0x00000000ff800f5c <bogus+      16>:    0x003fe000      0x00103100      0x003fd800      0x00000000
+0x00000000ff800f6c <bogus+      32>:    0x80001ba9      0xff800f90      0x8000840d      0xffffb000
+0x00000000ff800f7c <bogus+      48>:    0x00000200      0x0000002f      0xff800fbc      0x000000b5
+0x00000000ff800f8c <bogus+      64>:    0x80001aa0      0x00000010      0x00000010      0x00000010
+0x00000000ff800f9c <bogus+      80>:    0x00000010      0x00000010      0x003fe000      0x00000000
+0x00000000ff800fac <bogus+      96>:    0xe0000011      0x003fd800      0x00103100      0x00000000
+0x00000000ff800fbc <bogus+     112>:    0xff800fc0      0x00000000      0x00000020      0x80004750
+0x00000000ff800fcc <bogus+     128>:    0x00101ab0      0x00000008      0x00000000      0x80004ba4
+0x00000000ff800fdc <bogus+     144>:    0x00000008      0x00200292      0x800b6000      0x000003e8
+0x00000000ff800fec <bogus+     160>:    0x00000000      0x00000000      0x00000000      0x00000000
+0x00000000ff800ffc <bogus+     176>:    0x00ee0000
+```
+
+| Address  | Contents | Commentary |
+|:--------:|:--------:|:-----------|
+| ff800ffc | 00ee0000 | |
+| ff800ff8 | 00000000 | |
+| ff800ff4 | 00000000 | |
+| ff800ff0 | 00000000 | |
+| ff800fec | 00000000 | |
+| ff800fe8 | 000003e8 | |
+| ff800fe4 | 800b6000 | |
+| ff800fe0 | 00200292 | |
+| ff800fdc | 00000008 | |
+| ff800fd8 | 80004ba4 | |
+| ff800fd4 | 00000000 | |
+| ff800fd0 | 00000008 | |
+| ff800fcc | 00101ab0 | |
+| ff800fc8 | 80004750 | |
+| ff800fc4 | 00000020 | |
+| ff800fc0 | 00000000 | |
+| ff800fbc | ff800fc0 | |
+| ff800fb8 | 00000000 | |
+| ff800fb4 | 00103100 | |
+| ff800fb0 | 003fd800 | |
+| ff800fac | e0000011 | |
+| ff800fa8 | 00000000 | |
+| ff800fa4 | 003fe000 | |
+| ff800fa0 | 00000010 | |
+| ff800f9c | 00000010 | |
+| ff800f98 | 00000010 | |
+| ff800f94 | 00000010 | |
+| ff800f90 | 00000010 | |
+| ff800f8c | 80001aa0 | |
+| ff800f88 | 000000b5 | |
+| ff800f84 | ff800fbc | |
+| ff800f80 | 0000002f | |
+| ff800f7c | 00000200 | |
+| ff800f78 | ffffb000 | |
+| ff800f74 | 8000840d | |
+| ff800f70 | ff800f90 | |
+| ff800f6c | 80001ba9 | |
+| ff800f68 | 00000000 | |
+| ff800f64 | 003fd800 | |
+| ff800f60 | 00103100 | |
+| ff800f5c | 003fe000 | |
+| ff800f58 | 80004ba4 | |
+| ff800f54 | 00000008 | This is expected to be a pointer to an IsrReg_t structure |
+| ff800f50 | 80007e10 | Pointer in .rodata |
+| ff800f4c | 80001b74 | Return point after calling Halt(), which will never happen |
+
+---
+
+### 2019-May-08
+
+Continuation of the stack analysis:
+
+| Address  | Contents | Commentary |
+|:--------:|:--------:|:-----------|
+| ff800ffc | 00ee0000 | |
+| ff800ff8 | 00000000 | |
+| ff800ff4 | 00000000 | |
+| ff800ff0 | 00000000 | |
+| ff800fec | 00000000 | |
+| ff800fe8 | 000003e8 | |
+| ff800fe4 | 800b6000 | |
+| ff800fe0 | 00200292 | |
+| ff800fdc | 00000008 | CS: |
+| ff800fd8 | 80004ba4 | EIP: This is the address after calling `EnableInterrupts()` from `kInit()` |
+| ff800fd4 | 00000000 | Error Code |
+| ff800fd0 | 00000008 | Int Number -- double fault |
+| ff800fcc | 00101ab0 | EAX: |
+| ff800fc8 | 80004750 | ECX: |
+| ff800fc4 | 00000020 | EDX: |
+| ff800fc0 | 00000000 | EBX: |
+| ff800fbc | ff800fc0 | ESP: |
+| ff800fb8 | 00000000 | EBP: |
+| ff800fb4 | 00103100 | ESI: |
+| ff800fb0 | 003fd800 | EDI: |
+| ff800fac | e0000011 | CR0: |
+| ff800fa8 | 00000000 | CR2: |
+| ff800fa4 | 003fe000 | CR3: |
+| ff800fa0 | 00000010 | DS: |
+| ff800f9c | 00000010 | ES: |
+| ff800f98 | 00000010 | FS: |
+| ff800f94 | 00000010 | GS: |
+| ff800f90 | 00000010 | SS: |
+| ff800f8c | 80001aa0 | `IsrCommonStub` return after call to `IsrHandler()` |
+| ff800f88 | 000000b5 | sub 0x18; |
+| ff800f84 | ff800fbc | sub 0x18; |
+| ff800f80 | 0000002f | sub 0x18; |
+| ff800f7c | 00000200 | sub 0x18; add 0x10; sub 0x0c; |
+| ff800f78 | ffffb000 | sub 0x18; add 0x10; sub 0x0c; |
+| ff800f74 | 8000840d | sub 0x18; add 0x10; sub 0x0c; |
+| ff800f70 | ff800f90 | push 0x80007e3c; add 0x10; push EDX == `isrRegs_t` pointer |
+| ff800f6c | 80001ba9 | return from `IsrHandler()` call assume to Isr08... |
+| ff800f68 | 00000000 | IsrDumpState() |
+| ff800f64 | 003fd800 | IsrDumpState() |
+| ff800f60 | 00103100 | IsrDumpState() |
+| ff800f5c | 003fe000 | IsrDumpState() |
+| ff800f58 | 80004ba4 | IsrDumpState() -- last line output |
+| ff800f54 | 00000008 | IsrDumpState() -- last line output |
+| ff800f50 | 80007e10 | Pointer in .rodata (a 0-byte string?) |
+| ff800f4c | 80001b74 | Return point after calling Halt(), which will never happen |
+
+---
+
+### 2019-May-09
+
+Ok..  Double Fault not ending in a triple fault.
+
+According to the Intel Guide, there are only a few conbinations that can end in a #DF.  First of all, the first fault needs to be a Contributory Exception class (0, 10, 11, 12, 13) or a Page Fault (14).  And then the second fault must be Contributory (or in the case of a Page Fault, also another Page Fault).
+
+So, the things I need to look at for the triggering even are:
+* #DE -- Divide Error (0)
+* #TS -- Invalid TSS (10)
+* #NP -- Segment Not Present (11)
+* #SS -- Stack Fault (12)
+* #GP -- General Protection (13)
+* #PF -- Page Fault (14)
+
+From Bochs, I am able to determine I am getting an interrupt and then somewhere in handling that interrupt I am having a problem.
+
+I think what I need to do is to create an specific interrupt to dump the system state for debugging purposes -- maybe a special-purpose Panic software interrupt.  This would be the Century-OS version of a BSOD, but I would dump to the serial port for now.
+
+Could it be that my ready queue implementation is not being properly initialized??
+
+---
+
+Well, it turns out my `xadd` functions return the *previous* value, which I neglected to remember in my atomic int implementation.
+
+---
+
+### 2019-May-10
+
+Today (and tomorrow), I will be working on getting the semaphores working properly.  At the same time, I am very convinced that the scheduler is still very fragile and needs to be shored up.  I will take that on at the end of this debugging effort.
+
+---
+
+### 2019-May-11
+
+I have been able to debug the basis of the semaphores....  I want to get a few more tests in before I wrap this up.
+
+---
+
+So, with that all (well, I believe all) sorted out, my scheduling code is still exceptionally fragile.  I need to get that sorted out, and I am going to take that on now.
+
+There are a few things I can observe depending on the when I run the code:
+* On Bochs, I end with a double fault (but not a triple)
+* On real hardware, I end with a triple fault (but I cannot get logs because I do not have a cable)
+* On QEMU, the timer stops firing (or never really fires to begin with)
+
+(Trying to get a qemu log is near impossible -- it ran for 30 minutes, created a 10GB log, and had not even gotten to Grub yet.)
+
+So, I need to focus on the Double Fault first, since that has the best toolset for the situation and probably the most damning error.
+
+---
+
+### 2019-May-12
+
+I am working on that double fault....  My goal is to find the root cause of the fault.  Some things as I test:
+
+* If I disable the additional processes (only the timer firing, no task changes), I still get the #DF.
+* If I then return to the PIT, I end up with an interrupt 0x0f...??
+* If I then also change the PIC to be the 8259 PIC, it works.
+* And then if I return to the Local APIC for the timer, it also works.
+* So, the problem appears to be in my IOACPIC implementation.
+
+---
+
+Hmmm....  is this right??  It looks like I am not incrementing the address pooperly.
+
+```
+00172985639d[IOAPIC] IOAPIC: write aligned addr=fec00000, data=00000000
+00172985640d[IOAPIC] IOAPIC: read aligned addr=0x0000fec00010
+00172985641d[IOAPIC] IOAPIC: write aligned addr=fec00000, data=00000001
+00172985643d[IOAPIC] IOAPIC: read aligned addr=0x0000fec00010
+00173091828d[IOAPIC] IOAPIC: write aligned addr=fec00000, data=00000010
+00173091829d[IOAPIC] IOAPIC: read aligned addr=0x0000fec00010
+00173091830d[IOAPIC] IOAPIC: write aligned addr=fec00000, data=00000011
+00173091831d[IOAPIC] IOAPIC: read aligned addr=0x0000fec00010
+00173147977d[IOAPIC] IOAPIC: write aligned addr=fec00000, data=00000010
+00173147978d[IOAPIC] IOAPIC: read aligned addr=0x0000fec00010
+00173147979d[IOAPIC] IOAPIC: write aligned addr=fec00000, data=00000011
+```
+
+---
+
+Reviewing the document, I think I have the redirection table set incorrectly -- which is what is causing the double fault.
+
+I need to review this to determine why this is not working properly.
+
+---
+
+I was able to determine that the IOAPIC was not being programmed properly for the timer (I was actually skipping that step).  But, fixing that had no effect on the behavior.
+
+---
+
+So, it looks like my IRQ translaction implementation is not quite right.  There are differences in what entry/location is used relative to any given IRQ.  This is what I need to clean up.  In short, I need to go through both PIC implementations and make sure I have a proper translation from the IRQ number to the location proper to each implementation.
+
+---
+
+I posted this question to `freenode#osdev`:
+
+> I am having a problem with the APIC.  When I route the LAPIC timer through the 8259 PIC, things work; when I route wither the 8253 PIT or the LAPIC timer through the IOAPIC, I get a double fault (but not a triple).  When I do not enable interrupts things obviously do not fault.  As best as I can figure, I have something wrong in the code that sets up the redirection table, but damned if I cannot figure it out.  Any suggestions on what to look at?
+
+---
+
+### 2019-May-13
+
+I figured it out.  The 8259 was not remapped and something was sneaking through.  Not exactualy sure what on Bochs...  Now, I have Bochs working perfectly.
+
+QEMU on the other hand works for a short time and then I get burried in timer interrupts -- almost like the EOI was not received or I am getting spurrious interrupts to the timer IRQ.  Actually, QEMU is working right as well -- the timer frequency is a bit high for that emulator.
+
+---
+
+### 2019-May-14
+
+OK, to clean this all up, I need to set some additional interrupt handlers.  I have moved the PIC to a range way out of the way, but there is a risk still of something sneaking through, and while I have the IRQs mapped out of the way there is no handler to take the load just in case.  I need to pull that together.  Which is now complete -- any IRQ from the 8259 will hit interrupts 240-255 and will be treated as a spurious interrupt.  There is room for improvement here -- to remove the individual entry points, but for now it will work since I do not yet have a better solution for that arm arch.
+
+---
+
+I think this wraps up this version, and it's time for a commit.
 

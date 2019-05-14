@@ -43,6 +43,6 @@ void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
 
     idtEntries[num].sel = sel;
     idtEntries[num].always0 = 0;
-    idtEntries[num].flags = flags | 0x60;    // -- extra bits used for ring 3
+    idtEntries[num].flags = flags;
 }
 

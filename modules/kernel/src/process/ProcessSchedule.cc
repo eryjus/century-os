@@ -44,18 +44,20 @@ static Process_t *ProcessNext(void)
 //    -----------------------------------------------------------------------------------------------------
 void __krntext ProcessSchedule(void)
 {
-    kprintf("/");
+//    kprintf("/(%x)", AtomicRead(&scheduler.schedulerLockCount));
     Process_t *next = NULL;
     ProcessUpdateTimeUsed();
 
     if (AtomicRead(&scheduler.schedulerLockCount) != 0) {
         scheduler.processChangePending = true;
+//        kprintf(" Pending... ");
         return;
     }
 
+//    kprintf(" Scheduling... ");
     next = ProcessNext();
     if (next != NULL) {
-        kprintf("*");
+//        kprintf("*");
         ProcessListRemove(next);
         CLEAN_PROCESS(next);
 
@@ -68,14 +70,14 @@ void __krntext ProcessSchedule(void)
         ProcessSwitch(next);
     } else if (scheduler.currentProcess->status == PROC_RUNNING) {
         // -- Do nothing; the current process can continue; reset quantum
-        scheduler.currentProcess->quantumLeft += scheduler.currentProcess->priority;
+        AtomicAdd(&scheduler.currentProcess->quantumLeft, scheduler.currentProcess->priority);
     } else {
         // -- No tasks available; so we go into idle mode
         Process_t *save = scheduler.currentProcess;       // we will save this process for later
         scheduler.currentProcess = NULL;                  // nothing is running!
 
         do {
-            kprintf("?");
+//            kprintf("?");
             // -- -- temporarily enable interrupts for the timer to fire
             CLEAN_SCHEDULER();
             EnableInterrupts();

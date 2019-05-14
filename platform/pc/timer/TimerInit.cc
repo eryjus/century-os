@@ -53,12 +53,9 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     uint8_t h = (uint8_t)((divisor >> 8) & 0xff);
 
     PicRegisterHandler(dev->pic, IRQ0, 32, dev->TimerCallBack);
-//    IsrRegister(32, dev->TimerCallBack);  TODO: duplicate this for the 8259 PIC
 
     outb(port + TIMER_COMMAND, 0x36);
     outb(port + TIMER_CHAN_0, l);
     outb(port + TIMER_CHAN_0, h);
-
-    PicUnmaskIrq(dev->pic, IRQ0);
 }
 

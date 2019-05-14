@@ -36,7 +36,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     rv->policy = POLICY_0;
     rv->priority = PTY_OS;
     rv->status = PROC_INIT;
-    rv->quantumLeft = PTY_OS;
+    AtomicSet(&rv->quantumLeft, PTY_OS);
     rv->timeUsed = 0;
     ListInit(&rv->stsQueue);
 
@@ -57,13 +57,11 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
-    kprintf("ProcessCreate() -- readying the process...\n");
-    ProcessEnterPostpone();
+//    ProcessEnterPostpone();
     rv->status = PROC_READY;
     CLEAN_PROCESS(rv);
     ProcessReady(rv);
-    ProcessExitPostpone();
-    kprintf("ProcessCreate() -- postpone exited...\n");
+//    ProcessExitPostpone();
 
 
     return rv;

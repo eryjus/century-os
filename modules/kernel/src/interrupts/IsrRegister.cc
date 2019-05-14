@@ -31,6 +31,7 @@
 //    ------------------------------------------------
 isrFunc_t IsrRegister(uint8_t interrupt, isrFunc_t func)
 {
+    kprintf("Request to map vector %x to function at %p\n", interrupt, func);
     archsize_t flags = DisableInterrupts();
     isrFunc_t rv = isrHandlers[interrupt];
 

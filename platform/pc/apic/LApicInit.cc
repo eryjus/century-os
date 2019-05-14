@@ -146,7 +146,7 @@ void __ldrtext _LApicInit(TimerDevice_t *dev, uint32_t freq)
     kprintf("So, the calculated clock divider is %p\n", (uint32_t)factor);
 
     // -- This will also unmask IRQ0 with the PIC, so nothing else should be needed
-    IsrRegister(32, dev->TimerCallBack);
+    PicRegisterHandler(dev->pic, IRQ0, 32, dev->TimerCallBack);
 
     //
     // -- Now, program the Timer

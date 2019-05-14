@@ -45,4 +45,4 @@ typedef archsize_t TimerBase_t;
 // -- This is the timer device structures
 //    -----------------------------------
 extern TimerDevice_t lapicTimerControl;
-extern TimerDevice_t timer8259Control;
+extern TimerDevice_t timer8253Control;

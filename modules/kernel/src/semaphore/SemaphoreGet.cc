@@ -96,6 +96,8 @@ int __krntext SemaphoreGet(key_t key, int nsems, int semflg)
         bool create = (semflg & IPC_CREAT) != 0;
         bool priv = (key == IPC_PRIVATE);
 
+        kprintf("found: %x; empty: %x\n", found, empty);
+
 
         //
         // -- decypher what we want to do

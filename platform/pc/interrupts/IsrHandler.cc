@@ -35,7 +35,6 @@ isrFunc_t isrHandlers[256] = {NULL_ISR};
 //    --------------------------------------------
 void IsrHandler(isrRegs_t regs)
 {
-    kprintf("?");
     if (isrHandlers[regs.intno] != NULL) {
         isrFunc_t handler = isrHandlers[regs.intno];
         handler(&regs);

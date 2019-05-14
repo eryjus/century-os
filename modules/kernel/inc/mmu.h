@@ -92,9 +92,9 @@ __CENTURY_FUNC__ frame_t MmuNewVirtualSpace(frame_t stack);
 // -- Check a structure to see if it is fully mapped
 //    ----------------------------------------------
 #define IS_MAPPED(a,z) ({                                                                                   \
-        bool __rv = false;                                                                                  \
-        for (archsize_t __va = ((archsize_t)a) >> 12; __va <= (((archsize_t)a) + z) >> 12; a ++) {  \
-            __rv = __rv && MmuIsMapped(__va << 12);                                                         \
+        bool __rv = true;                                                                                   \
+        for (archsize_t __va = ((archsize_t)a) & ~0x0fff; __va <= (((archsize_t)a) + z); __va += 1024) {    \
+            __rv = __rv && MmuIsMapped(__va);                                                               \
         }                                                                                                   \
         __rv; })
 

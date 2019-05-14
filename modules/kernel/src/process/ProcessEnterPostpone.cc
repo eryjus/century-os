@@ -27,9 +27,10 @@
 //    ----------------------------------------
 void __krntext ProcessEnterPostpone(void)
 {
+//    kprintf(" Enter... ");
     DisableInterrupts();
     AtomicInc(&scheduler.schedulerLockCount);
-    kprintf("^(%x)", AtomicRead(&scheduler.schedulerLockCount));
+//    kprintf("^(%x)", AtomicRead(&scheduler.schedulerLockCount));
     CLEAN_SCHEDULER();
 }
 

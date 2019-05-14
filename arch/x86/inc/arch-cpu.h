@@ -234,6 +234,12 @@ inline void HaltCpu(void) { __asm("hlt"); }
 
 
 //
+// -- Panic the kernel, dumping the register state
+//    --------------------------------------------
+inline void Panic(void) { __asm("int3"); }
+
+
+//
 // -- cache maintenance functions
 //    ---------------------------
 #if defined(ENABLE_CACHE) && ENABLE_CACHE == 1

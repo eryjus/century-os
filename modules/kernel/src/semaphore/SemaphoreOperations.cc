@@ -59,6 +59,12 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
 
 
     //
+    // -- assume no pending error
+    //    -----------------------
+    scheduler.currentProcess->pendingErrno = 0;
+
+
+    //
     // -- loop indefinitely until we can return
     //    -------------------------------------
     while (true) {
@@ -89,18 +95,22 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
                 //
                 // -- pre-check the ops (returns <0 on error; 0 on success; 1 to block)
                 //    -----------------------------------------------------------------
+                kprintf(".. Checking returns: ");
                 int res = SemIterateOps(semid, set, sops, nsops, SEM_ITER_CHECK);
 
                 if (res < 0) {
+                    kprintf("error\n");
                     SPIN_RLS(set->lock);
                     return res;
                 } else if (res == 0) {
+                    kprintf("exec\n");
                     ProcessEnterPostpone();                                      // -- do not reschedule with the lock held
                     res = SemIterateOps(semid, set, sops, nsops, SEM_ITER_EXEC);        // -- better be 0!!
                     SPIN_RLS(set->lock);
                     ProcessExitPostpone();
                     return (res>0?-EUNDEF:res);
                 } else {
+                    kprintf("block\n");
                     SemIterateOps(semid, set, sops, nsops, SEM_ITER_BLOCK);
                     SPIN_RLS(set->lock);
                     ProcessBlock(PROC_SEMW);

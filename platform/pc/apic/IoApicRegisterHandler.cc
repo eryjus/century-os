@@ -42,16 +42,22 @@ isrFunc_t __krntext _IoApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vect
     redir.intvec = vector;
     redir.delmod = DELMODE_FIXED;
     redir.destmod = 0;      // physical cpu delivery
-    redir.intpol = 0;       // active high
+    redir.intpol = 1;       // active low
     redir.triggerMode = 1;  // level triggered
     redir.intMask = 1;      // leave this masked!!
-    redir.dest = 0;         // apic id 0 for now
+    redir.dest = 0;         // apic id 1 for now
 
     IoApicDeviceData_t *data = (IoApicDeviceData_t *)dev->device.deviceData;
     archsize_t reg = IoApicRedir(data, irq);
 
+    kprintf(".. the table register offset is %x\n", reg);
+    kprintf(".. Expect to write %p and %p to the APIC registers\n", redir.reg0, redir.reg1);
+
     IOAPIC_WRITE(data->ioapicBase, reg, redir.reg0);
     IOAPIC_WRITE(data->ioapicBase, reg + 1, redir.reg1);
+
+    kprintf(".. the values of the APIC registers are now %p and %p\n", IOAPIC_READ(data->ioapicBase, reg),
+            IOAPIC_READ(data->ioapicBase, reg + 1));
 
     isrFunc_t rv = IsrRegister(vector, handler);
     PicUnmaskIrq(dev, irq);

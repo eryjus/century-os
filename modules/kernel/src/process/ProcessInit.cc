@@ -49,11 +49,14 @@ void __krntext ProcessInit(void)
     scheduler.currentProcess->policy = POLICY_0;
     scheduler.currentProcess->priority = PTY_OS;
     scheduler.currentProcess->status = PROC_RUNNING;
-    scheduler.currentProcess->quantumLeft = PTY_OS;
+    AtomicSet(&scheduler.currentProcess->quantumLeft, PTY_OS);
     scheduler.currentProcess->timeUsed = 0;
     ListInit(&scheduler.currentProcess->stsQueue);
     CLEAN_SCHEDULER();
     CLEAN_PROCESS(scheduler.currentProcess);
 
     lastTimer = TimerCurrentCount(timerControl);
+
+    kprintf("The address of the OS queue list is %p\n", &scheduler.queueOS.list);
+    kprintf(".. and its next pointer is %p\n", scheduler.queueOS.list.next);
 }

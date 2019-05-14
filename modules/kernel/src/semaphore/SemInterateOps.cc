@@ -51,38 +51,12 @@ int __krntext SemIterateOps(int semid, SemaphoreSet_t *set, struct sembuf *sops,
         if (oper == SEM_ITER_BLOCK) {
             SemBlock(&set->semSet[op->sem_num], op->sem_op == 0);
         } else if (op->sem_op < 0 && HasWritePermission(set->permissions)) {
-            int val = AtomicRead(&set->semSet[op->sem_num].semval);
-            if (val >= ABS(op->sem_op)) {
-                if (oper == SEM_ITER_EXEC) {
-                    if (AtomicSubAndTest(&set->semSet[op->sem_num].semval, op->sem_op)) {
-                        SemReadyWaiting(&set->semSet[op->sem_num].waitZ);
-                    }
-
-                    if ((op->sem_flg & SEM_UNDO) != 0) SemCreateUndo(semid, set->key, op->sem_num, -op->sem_op);
-                }
-            } else if (val < ABS(op->sem_op) && (op->sem_flg & IPC_NOWAIT) != 0) {
-                return -EAGAIN;
-            } else if (val < ABS(op->sem_op) && (op->sem_flg & IPC_NOWAIT) == 0) {
-                return 1;
-            }
-        } else if (op->sem_op > 0 && HasWritePermission(set->permissions)) {
-            int val = AtomicRead(&set->semSet[op->sem_num].semval);
-            if (val != 0 && (op->sem_flg & IPC_NOWAIT) != 0) return 1;
-            else if (val != 0 && (op->sem_flg & IPC_NOWAIT) == 0) {
-                if (oper == SEM_ITER_EXEC) {
-                    AtomicAdd(&set->semSet[op->sem_num].semval, op->sem_op);
-                    if ((op->sem_flg & SEM_UNDO) != 0) SemCreateUndo(semid, set->key, op->sem_num, -op->sem_op);
-                    SemReadyWaiting(&set->semSet[op->sem_num].waitN);
-                }
-            }
-        } else if (op->sem_op == 0 && HasReadPermission(set->permissions)) {
-            int val = AtomicRead(&set->semSet[op->sem_num].semval);
-            if (val != 0 && (op->sem_flg & IPC_NOWAIT) != 0) return -EAGAIN;
-            else if (val != 0 && (op->sem_flg & IPC_NOWAIT) == 0) {
-                if (oper == SEM_ITER_EXEC) return 1;
-                else return -EAGAIN;
-            }
-        } else return -EACCES;
+            return SemDown(op, &set->semSet[op->sem_num], &set->permissions, semid, set->key, oper);
+        } else if (op->sem_op > 0) {
+            return SemUp(op, &set->semSet[op->sem_num], &set->permissions, semid, set->key, oper);
+        } else {    // sem_op == 0
+            return SemZero(op, &set->semSet[op->sem_num], &set->permissions, oper);
+        }
     }
 
 

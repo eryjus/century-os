@@ -116,7 +116,7 @@ typedef struct Process_t {
     archsize_t virtAddrSpace;           // This is the process top level page table
     ProcStatus_t status;                // This is the process status
     ProcPriority_t priority;            // This is the process priority
-    int quantumLeft;                    // This is the quantum remaining for the process (may be more than priority)
+    volatile AtomicInt_t quantumLeft;   // This is the quantum remaining for the process (may be more than priority)
     PID_t pid;                          // This is the PID of this process
     archsize_t ssAddr;                  // This is the address of the process stack
     char *command;                      // The identifying command, includes the terminating null
@@ -139,7 +139,7 @@ typedef struct Scheduler_t {
     volatile uint64_t nextWake;             // the next tick-since-boot when a process needs to wake up
 
     // -- This is a critical field controlled by its lock
-    AtomicInt_t schedulerLockCount;         // the depth of the locks
+    volatile AtomicInt_t schedulerLockCount;         // the depth of the locks
 
     // -- and the different lists a process might be on, locks in each list will be used
     QueueHead_t queueOS;                    // this is the queue for the OS tasks -- if it can run it does

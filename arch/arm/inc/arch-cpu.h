@@ -129,6 +129,12 @@ inline void HaltCpu(void) { __asm("wfi"); }
 
 
 //
+// -- Panic the kernel, dumping the register state
+//    --------------------------------------------
+inline void Panic(void) { while (1) HaltCpu(); }
+
+
+//
 // -- Synchronization Barriers
 //    ------------------------
 #define DSB()              __asm volatile("dsb")

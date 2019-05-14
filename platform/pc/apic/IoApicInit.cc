@@ -17,9 +17,16 @@
 
 #include "types.h"
 #include "cpu.h"
+#include "interrupt.h"
 #include "hw-disc.h"
 #include "mmu.h"
 #include "pic.h"
+
+
+//
+// -- Handle a spurioius interrupt from the 8259 -- just in case
+//    ----------------------------------------------------------
+static void SpurriousPic(isrRegs_t *regs) { }
 
 
 //
@@ -35,11 +42,39 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
         count = MAX_IOAPIC;
     }
 
+
     //
-    // -- disable the 8259 PIC
-    //    --------------------
-    outb(0xa1, 0xff);               // Disable all IRQs
-    outb(0x21, 0xff);               // Disable all IRQs
+    // -- For some buggy implementations, remap the 8259 PIC to space out of the way
+    //    --------------------------------------------------------------------------
+    outb(PIC1 + PIC_MASTER_DATA, 0xff);            // Disable all IRQs
+    outb(PIC2 + PIC_SLAVE_DATA, 0xff);             // Disable all IRQs
+    outb(PIC1 + PIC_MASTER_COMMAND, 0x11);
+    outb(PIC2 + PIC_SLAVE_COMMAND, 0x11);
+    outb(PIC1 + PIC_MASTER_DATA, 0xf0);
+    outb(PIC2 + PIC_SLAVE_DATA, 0xf8);
+    outb(PIC1 + PIC_MASTER_DATA, 0x04);
+    outb(PIC2 + PIC_SLAVE_DATA, 0x02);
+    outb(PIC1 + PIC_MASTER_DATA, 0x01);
+    outb(PIC2 + PIC_SLAVE_DATA, 0x01);
+    outb(PIC1 + PIC_MASTER_DATA, 0xff);            // Disable all IRQs
+    outb(PIC2 + PIC_SLAVE_DATA, 0xff);             // Disable all IRQs
+
+    IsrRegister(240, SpurriousPic);
+    IsrRegister(241, SpurriousPic);
+    IsrRegister(242, SpurriousPic);
+    IsrRegister(243, SpurriousPic);
+    IsrRegister(244, SpurriousPic);
+    IsrRegister(245, SpurriousPic);
+    IsrRegister(246, SpurriousPic);
+    IsrRegister(247, SpurriousPic);
+    IsrRegister(248, SpurriousPic);
+    IsrRegister(249, SpurriousPic);
+    IsrRegister(250, SpurriousPic);
+    IsrRegister(251, SpurriousPic);
+    IsrRegister(252, SpurriousPic);
+    IsrRegister(253, SpurriousPic);
+    IsrRegister(254, SpurriousPic);
+    IsrRegister(255, SpurriousPic);
 
 
     IoApicDeviceData_t *data = (IoApicDeviceData_t*)dev->device.deviceData;
@@ -60,8 +95,8 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
         kprintf("  The APIC Version is %x; the max redir is %x\n", apicver.version, apicver.maxRedir);
 
         for (int j = 0; j <= apicver.maxRedir; j ++) {
-            apicredir.reg0 = IOAPIC_READ(addr, IOREDTBL0 + (i * 2));
-            apicredir.reg1 = IOAPIC_READ(addr, IOREDTBL0 + (i * 2) + 1);
+            apicredir.reg0 = IOAPIC_READ(addr, IOREDTBL0 + (j * 2));
+            apicredir.reg1 = IOAPIC_READ(addr, IOREDTBL0 + (j * 2) + 1);
 
             kprintf("  Redirection table entry %x: %p %p\n", j, apicredir.reg1, apicredir.reg0);
         }

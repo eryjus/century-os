@@ -23,7 +23,7 @@
 //
 // -- This is the device description for the PIT
 //    ------------------------------------------
-__krndata TimerDevice_t timer8259Control = {
+__krndata TimerDevice_t timer8253Control = {
     .base = TIMER,
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
@@ -36,4 +36,4 @@ __krndata TimerDevice_t timer8259Control = {
 //
 // -- This is the timer controller we use for this runtime
 //    ----------------------------------------------------
-__krndata TimerDevice_t *timerControl = &timer8259Control;
+__krndata TimerDevice_t *timerControl = &timer8253Control;

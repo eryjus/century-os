@@ -30,6 +30,7 @@
 ;;    ------------
 Halt:
     cli
+    xchg bx,bx
     hlt
     jmp         Halt
 

@@ -32,7 +32,6 @@ void __krntext ProcessStart(void)
     //
     // -- At this point, complete any initialization needed for a new task
     //    ----------------------------------------------------------------
-    kprintf("Starting a new process\n");
     EnableInterrupts();
 }
 

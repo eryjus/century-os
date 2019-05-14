@@ -27,14 +27,15 @@
 //    ----------------------------------------
 void __krntext ProcessExitPostpone(void)
 {
-    if (AtomicDecAndTest(&scheduler.schedulerLockCount)) {
-        kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
-        if (scheduler.processChangePending != 0) {
-            scheduler.processChangePending = 0;           // need to clear this to actually perform a change
+//    kprintf(" Exit... ");
+    if (AtomicDecAndTest0(&scheduler.schedulerLockCount) == true) {
+//        kprintf("V(%x)", AtomicRead(&scheduler.schedulerLockCount));
+        if (scheduler.processChangePending != false) {
+            scheduler.processChangePending = false;           // need to clear this to actually perform a change
             ProcessSchedule();
         }
 
         CLEAN_SCHEDULER();
-    } else kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
+    } // else kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
 }
 

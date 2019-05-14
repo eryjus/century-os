@@ -80,6 +80,31 @@ extern "C" {
     extern void irq13 (void);
     extern void irq14 (void);
     extern void irq15 (void);
+    extern void irq16 (void);
+    extern void irq17 (void);
+    extern void irq18 (void);
+    extern void irq19 (void);
+    extern void irq20 (void);
+    extern void irq21 (void);
+    extern void irq22 (void);
+    extern void irq23 (void);
+
+    extern void irq240(void);
+    extern void irq241(void);
+    extern void irq242(void);
+    extern void irq243(void);
+    extern void irq244(void);
+    extern void irq245(void);
+    extern void irq246(void);
+    extern void irq247(void);
+    extern void irq248(void);
+    extern void irq249(void);
+    extern void irq250(void);
+    extern void irq251(void);
+    extern void irq252(void);
+    extern void irq253(void);
+    extern void irq254(void);
+    extern void irq255(void);
 }
 
 
@@ -146,8 +171,34 @@ void __ldrtext ExceptionInit(void)
     IdtSetGate(45, (uint32_t)irq13, 0x08, 0x8e);
     IdtSetGate(46, (uint32_t)irq14, 0x08, 0x8e);
     IdtSetGate(47, (uint32_t)irq15, 0x08, 0x8e);
+    IdtSetGate(48, (uint32_t)irq16, 0x08, 0x8e);
+    IdtSetGate(49, (uint32_t)irq17, 0x08, 0x8e);
+    IdtSetGate(50, (uint32_t)irq18, 0x08, 0x8e);
+    IdtSetGate(51, (uint32_t)irq19, 0x08, 0x8e);
+    IdtSetGate(52, (uint32_t)irq20, 0x08, 0x8e);
+    IdtSetGate(53, (uint32_t)irq21, 0x08, 0x8e);
+    IdtSetGate(54, (uint32_t)irq22, 0x08, 0x8e);
+    IdtSetGate(55, (uint32_t)irq23, 0x08, 0x8e);
 
-    IdtSetGate(100, (uint32_t)isr100, 0x0b, 0x8e);
+    IdtSetGate(100, (uint32_t)isr100, 0x0b, 0x8e|0x60);     // available from user space
+
+    IdtSetGate(240, (uint32_t)irq240, 0x08, 0x8e);
+    IdtSetGate(241, (uint32_t)irq241, 0x08, 0x8e);
+    IdtSetGate(242, (uint32_t)irq242, 0x08, 0x8e);
+    IdtSetGate(243, (uint32_t)irq243, 0x08, 0x8e);
+    IdtSetGate(244, (uint32_t)irq244, 0x08, 0x8e);
+    IdtSetGate(245, (uint32_t)irq245, 0x08, 0x8e);
+    IdtSetGate(246, (uint32_t)irq246, 0x08, 0x8e);
+    IdtSetGate(247, (uint32_t)irq247, 0x08, 0x8e);
+    IdtSetGate(248, (uint32_t)irq248, 0x08, 0x8e);
+    IdtSetGate(249, (uint32_t)irq249, 0x08, 0x8e);
+    IdtSetGate(250, (uint32_t)irq250, 0x08, 0x8e);
+    IdtSetGate(251, (uint32_t)irq251, 0x08, 0x8e);
+    IdtSetGate(252, (uint32_t)irq252, 0x08, 0x8e);
+    IdtSetGate(253, (uint32_t)irq253, 0x08, 0x8e);
+    IdtSetGate(254, (uint32_t)irq254, 0x08, 0x8e);
+    IdtSetGate(255, (uint32_t)irq255, 0x08, 0x8e);
+
 
     // -- Register the individual ISR routines
     IsrRegister(0x00, IsrInt00);

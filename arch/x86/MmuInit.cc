@@ -54,7 +54,7 @@ void __ldrtext MmuInit(void)
 #if DEBUG_MMU == 1
         kprintf(".. Executing map of %p to %p\n", MMU_FRAMEBUFFER + off, fbAddr >> 12);
 #endif
-        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN);
+        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN | PG_WRT);
         off += 0x1000;
         fbAddr += 0x1000;
         fbSize --;
@@ -67,7 +67,7 @@ void __ldrtext MmuInit(void)
     //
     // -- Next up is the VBAR -- which needs to be mapped.  This one is rather trivial.
     //    -----------------------------------------------------------------------------
-    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr >> 12, PG_KRN);
+    MmuMapToFrame(EXCEPT_VECTOR_TABLE, intTableAddr >> 12, PG_KRN | PG_WRT);
 
 
     //
@@ -76,7 +76,7 @@ void __ldrtext MmuInit(void)
     //    ------------------------------------------------------------------------------------------------------
     archsize_t stackLoc = STACK_LOCATION;
     for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
-        MmuMapToFrame(stackLoc, PmmAllocateFrame(), PG_KRN);
+        MmuMapToFrame(stackLoc, PmmAllocateFrame(), PG_KRN | PG_WRT);
     }
 
 

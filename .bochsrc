@@ -40,8 +40,8 @@ clock: sync=none, time0=local, rtc_sync=0
 # no loader
 log: -
 logprefix: %t%e%d
-#debug: action=ignore, cpu0=report, pic=report
-debug: action=ignore, cpu0=report
+debug: action=ignore, cpu0=report, pic=report, apic0=report
+#debug: action=report
 #debug: action=ignore
 info: action=report
 error: action=report
@@ -51,7 +51,7 @@ mouse: type=ps2, enabled=0, toggle=ctrl+mbutton
 speaker: enabled=1, mode=system
 parport1: enabled=1, file=none
 parport2: enabled=0
-com1: enabled=1, mode=term, dev=/dev/pts/3
+com1: enabled=1, mode=term, dev=/dev/pts/2
 com2: enabled=0
 com3: enabled=0
 com4: enabled=0
