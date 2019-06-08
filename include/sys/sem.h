@@ -74,22 +74,28 @@
 
 
 //
-// -- pick up the type definition of `pic_t`
+// -- pick up the type definition of `pid_t`
 //    --------------------------------------
-#if __has_include("types.h")
-#   include "types.h"
-    typedef PID_t pid_t;
-#else
-#   warning "\"types.h\" is not available to be included; guessing on some types and sizes.  "\
-        "This may break the build."
-    typedef uint32_t pid_t;
+#ifndef __POSIX_PID_T__
+#   if __has_include("types.h")
+#       include "types.h"
+        typedef PID_t pid_t;
+#   else
+#       warning "\"types.h\" is not available to be included; guessing on some types and sizes.  "\
+            "This may break the build."
+        typedef uint32_t pid_t;
+#   endif
+#   define __POSIX_PID_T__
 #endif
 
 
 //
 // -- define the `time_t` type
 //    ------------------------
+#ifndef __POSIX_TIME_T__
 typedef uint32_t time_t;
+#   define __POSIX_TIME_T__
+#endif
 
 
 //
@@ -117,9 +123,9 @@ struct sembuf {
 //
 // -- These prototypes are required -- but these are not the kernel functions
 //    -----------------------------------------------------------------------
-int semctl(int semid, int semnum, int cmd, ...);
-int semget(key_t key, int nsems, int semflg);
-int semop(int semid, struct sembuf *sops, size_t nsops);
+extern int semctl(int semid, int semnum, int cmd, ...);
+extern int semget(key_t key, int nsems, int semflg);
+extern int semop(int semid, struct sembuf *sops, size_t nsops);
 #endif
 
 

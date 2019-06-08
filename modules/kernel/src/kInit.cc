@@ -47,6 +47,7 @@
 #include "serial.h"
 #include "atomic.h"
 #include "semaphore.h"
+#include "message.h"
 
 
 //
@@ -121,6 +122,7 @@ void kInit(void)
     //    ---------------------------------------------
     ProcessInit();
     SemaphoreInit();
+    MessageInit();
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();

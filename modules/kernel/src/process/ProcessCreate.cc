@@ -57,11 +57,11 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
-//    ProcessEnterPostpone();
+    ProcessEnterPostpone();
     rv->status = PROC_READY;
     CLEAN_PROCESS(rv);
     ProcessReady(rv);
-//    ProcessExitPostpone();
+    ProcessExitPostpone();
 
 
     return rv;

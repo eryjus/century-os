@@ -133,15 +133,12 @@ int __krntext SemaphoreGet(key_t key, int nsems, int semflg)
 
             if (set == NULL) rv = -ENOMEM;
             else rv = empty;
-
-            goto exit;
         }
 
 
         //
         // -- return the results
         //    ------------------
-exit:
         SPIN_RLS(semaphoreAll.globalLock);
         return rv;
     }

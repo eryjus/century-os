@@ -46,8 +46,10 @@ int __krntext SemRemove(SemaphoreSet_t *set, int semid)
         // -- wake up all the processes waiting for the count to increase
         //    -----------------------------------------------------------
         while (!IsListEmpty(&sem->waitN)) {
-            Process_t *proc = FIND_PARENT(sem->waitN.list.next, Process_t, stsQueue);
-            ListRemoveInit(sem->waitN.list.next);
+            SemWaiting_t *waiting = FIND_PARENT(sem->waitN.list.next, SemWaiting_t, list);
+            Process_t *proc = waiting->proc;
+            ListRemoveInit(&waiting->list);
+            FREE(waiting);
             proc->pendingErrno = -EIDRM;
             ProcessReady(proc);
         }
@@ -57,8 +59,10 @@ int __krntext SemRemove(SemaphoreSet_t *set, int semid)
         // -- wake up all the processes wayting for the count to reack zero
         //    -------------------------------------------------------------
         while (!IsListEmpty(&sem->waitZ)) {
-            Process_t *proc = FIND_PARENT(sem->waitZ.list.next, Process_t, stsQueue);
-            ListRemoveInit(sem->waitZ.list.next);
+            SemWaiting_t *waiting = FIND_PARENT(sem->waitZ.list.next, SemWaiting_t, list);
+            Process_t *proc = waiting->proc;
+            ListRemoveInit(&waiting->list);
+            FREE(waiting);
             proc->pendingErrno = -EIDRM;
             ProcessReady(proc);
         }
@@ -76,7 +80,7 @@ int __krntext SemRemove(SemaphoreSet_t *set, int semid)
 
             if (undo->semid == semid && undo->key == set->key) {
                 ListRemoveInit(&undo->list);
-                HeapFree(undo);
+                FREE(undo);
             }
         }
 

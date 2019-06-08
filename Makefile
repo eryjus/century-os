@@ -236,6 +236,6 @@ debug-x86-pc: x86-pc
 .PHONY: write-x86-pc
 write-x86-pc: x86-pc
 	sudo umount /dev/sdb1 || true
-	sudo dd bs=4M if=img/x86-pc.iso of=/dev/sdb
+#	sudo dd bs=4M if=img/x86-pc.iso of=/dev/sdb
 
 
