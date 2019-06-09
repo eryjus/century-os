@@ -20,7 +20,7 @@
 #include "pic.h"
 
 
-int _PicDetermineIrq(PicDevice_t *dev)
+int __krntext _PicDetermineIrq(PicDevice_t *dev)
 {
     if (!dev) return -1;
 

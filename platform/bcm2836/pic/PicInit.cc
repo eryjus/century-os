@@ -46,7 +46,8 @@ void _PicInit(PicDevice_t *dev, const char *name)
     MmioWrite(base1 + INT_IRQDIS2, 0xffffffff);
 
     // -- perform the per-core initialization
-    int core = 0;               // TODO: will need to get the core dynamically
+    int core = CpuNum();
     MmioWrite(base2 + TIMER_INTERRUPT_CONTROL + (core * 4), 0x00000002);    // select as IRQ for core 0
+    MmioWrite(base2 + MAILBOX_INTERRUPT_CONTROL + (core * 4), 0x0000000f);    // Select IRQ handling for the IPI
 }
 

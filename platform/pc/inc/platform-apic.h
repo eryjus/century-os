@@ -113,6 +113,8 @@ typedef struct IoApicDeviceData_t {
 #define LAPIC_IRR_6         (0x260)
 #define LAPIC_IRR_7         (0x270)
 #define LAPIC_ESR           (0x280)
+#define LAPIC_ICR_LO        (0x300)
+#define LAPIC_ICR_HI        (0x310)
 #define LAPIC_LVT_TMR       (0x320)
 #define LAPIC_THERMAL       (0x330)
 #define LAPIC_LVT_PERF      (0x340)
@@ -237,7 +239,7 @@ __CENTURY_FUNC__ isrFunc_t _IoApicRegisterHandler(PicDevice_t *, Irq_t, int, isr
 __CENTURY_FUNC__ void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _IoApicEoi(PicDevice_t *dev, Irq_t irq);
-
+__CENTURY_FUNC__ void _LApicBroadcastIpi(PicDevice_t *dev, int ipi);
 
 //
 // -- A helper function for translating an IRQ to a redir table entry

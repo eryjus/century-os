@@ -28,6 +28,8 @@
 void __ldrtext PlatformEarlyInit(void)
 {
     HwDiscovery();
+
+    cpus.cpuCount = 4;
 }
 
 

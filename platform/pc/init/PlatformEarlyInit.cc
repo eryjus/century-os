@@ -37,6 +37,8 @@ void __ldrtext PlatformEarlyInit(void)
         return;
     }
 
+    cpus.cpuCount = 0;
+
     AcpiReadRsdt(rsdp->rsdtAddress);
 
     kprintf("The APIC base address is at %p\n", READ_APIC_BASE());

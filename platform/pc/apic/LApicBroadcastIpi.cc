@@ -1,33 +1,39 @@
 //===================================================================================================================
 //
-//  PlatformInit.cc -- Handle the initialization for the rpi2b platform
+//  LApicBroadcastIpi.cc -- Broadcast an IPI to all CPUs
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Complete the platform initialization.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
+//  2019-Jun-08  Initial   0.4.5   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
 #include "printf.h"
-#include "cpu.h"
-#include "platform.h"
+#include "timer.h"
+#include "hardware.h"
+#include "pic.h"
+
+
+#define IPI_BASE    (128)
 
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
-void PlatformInit(void)
+// -- Broadcast an IPI to all CPUs (including myself)
+//    -----------------------------------------------
+void __krntext _LApicBroadcastIpi(PicDevice_t *dev, int ipi)
 {
-    UpdateKprintfPort();
-}
+    if (ipi < 0 || ipi > 31) return;
+    if (!dev) return;
 
+    uint32_t icr = (0b11<<18) | (1<<14) | ipi;
+
+    MmioWrite(LAPIC_ICR_HI, 0x00);
+    MmioWrite(LAPIC_ICR_LO, icr);
+}

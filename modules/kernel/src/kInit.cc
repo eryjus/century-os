@@ -208,3 +208,9 @@ void kInit(void)
 #endif
 }
 
+
+//
+// -- This is the structure with info about the cpus
+//    ----------------------------------------------
+Cpu_t cpus;
+

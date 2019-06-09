@@ -53,6 +53,7 @@ typedef struct PicDevice_t {
     void (*PicUnmaskIrq)(PicDevice_t *, Irq_t);
     void (*PicEoi)(PicDevice_t *, Irq_t);
     int (*PicDetermineIrq)(PicDevice_t *);
+    void (*PicBroadcastIpi)(PicDevice_t *, int);
 } PicDevice_t;
 
 
@@ -74,6 +75,7 @@ inline void PicUnmaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicUnmaskIrq(dev, i
 inline void PicMaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicMaskIrq(dev, irq); }
 inline void PicEoi(PicDevice_t *dev, Irq_t irq) { dev->PicEoi(dev, irq); }
 inline archsize_t PicDetermineIrq(PicDevice_t *dev) { return dev->PicDetermineIrq(dev); }
+inline void PicBroadcastIpi(PicDevice_t *dev, int ipi) { return dev->PicBroadcastIpi(dev, ipi); }
 
 
 //

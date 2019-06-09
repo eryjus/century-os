@@ -37,6 +37,7 @@ __krndata PicDevice_t picBcm2835 = {
     .PicMaskIrq = _PicMaskIrq,
     .PicUnmaskIrq = _PicUnmaskIrq,
     .PicDetermineIrq = _PicDetermineIrq,
+    .PicBroadcastIpi = _PicBroadcastIpi,
 };
 
 

@@ -1,33 +1,29 @@
 //===================================================================================================================
 //
-//  PlatformInit.cc -- Handle the initialization for the rpi2b platform
+//  CpuNum.cc -- Get the current CPU Number from the Local APIC
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Complete the platform initialization.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
+//  2019-Jun-07  Initial   0.4.5   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
-#include "printf.h"
 #include "cpu.h"
-#include "platform.h"
+#include "pic.h"
 
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
-void PlatformInit(void)
+// -- Get the CPU Number from the Local APIC
+//    --------------------------------------
+int __krntext CpuNum(void)
 {
-    UpdateKprintfPort();
+    return (MmioRead(LAPIC_MMIO + LAPIC_ID) >> 24) & 0xff;
 }
 

@@ -51,6 +51,7 @@ extern "C" uint64_t SysTimerCount(struct TimerDevice_t *);
 #define TIMER_LOCAL_CONTROL         0x34
 #define TIMER_WRITE_FLAGS           0x38
 #define TIMER_INTERRUPT_CONTROL     0x40
+#define MAILBOX_INTERRUPT_CONTROL   0x50
 #define TIMER_IRQ_SOURCE            0x60
 #define TIMER_FIQ_SOURCE            0x70
 

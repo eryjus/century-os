@@ -44,6 +44,7 @@ void __ldrtext AcpiReadMadt(archsize_t loc)
                 kprintf("...... Proc ID %x; APIC ID %x; %s\n", local->procId, local->apicId,
                         local->flags&1?"enabled":"disabled");
                 IncLocalApic();
+                cpus.cpuCount ++;
             }
 
             break;

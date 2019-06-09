@@ -1,33 +1,38 @@
 //===================================================================================================================
 //
-//  PlatformInit.cc -- Handle the initialization for the rpi2b platform
+//  PicBroadcastIpi.cc -- Broadcast an IPI to all CPUs
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Complete the platform initialization.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
+//  2019-Jun-08  Initial   0.4.5   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
 #include "printf.h"
-#include "cpu.h"
-#include "platform.h"
+#include "timer.h"
+#include "hardware.h"
+#include "pic.h"
+
+
+#define IPI_MAILBOX_BASE        (MMIO_VADDR + 0x01000080)
 
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
-void PlatformInit(void)
+// -- Broadcast an IPI to all CPUs (including myself)
+//    -----------------------------------------------
+void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
 {
-    UpdateKprintfPort();
-}
+    if (ipi < 0 || ipi > 31) return;
+    if (!dev) return;
 
+    for (int i = 0; i < cpus.cpuCount; i ++) {
+        MmioWrite(IPI_MAILBOX_BASE + (0x10 * i), (1<<ipi));
+    }
+}

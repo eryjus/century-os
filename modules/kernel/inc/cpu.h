@@ -87,6 +87,26 @@ void CpuGetCapabilities(void);
 
 
 //
+// -- Get the CPU number of the current process
+//    -----------------------------------------
+__CENTURY_FUNC__ int CpuNum(void);
+
+
+//
+// -- This structure defines all the data for all the cpus on the system
+//    ------------------------------------------------------------------
+typedef struct Cpu_t {
+    int cpuCount;
+} Cpu_t;
+
+
+//
+// -- This is used to control all the CPUs on the system
+//    --------------------------------------------------
+extern Cpu_t cpus;
+
+
+//
 // -- this is the location of the kernel stack
 //    ----------------------------------------
 #define STACK_LOCATION          0xff800000
