@@ -25,6 +25,7 @@
 //    ----------------------------------------------------------------------------------------------------------
 __ldrdata SerialDevice_t loaderSerial = {
     .base = LDR_SERIAL_BASE,
+    .lock = {0},
     .SerialOpen = _SerialOpen,                       // -- already in the __ldrtext section
     .SerialHasRoom = (bool (*)(SerialDevice_t *))PHYS_OF(_SerialHasRoom),        // -- in the kernel address space
     .SerialPutChar = (void (*)(SerialDevice_t *, uint8_t))PHYS_OF(_SerialPutChar),  // -- in the kernel address space
@@ -38,6 +39,7 @@ __ldrdata SerialDevice_t loaderSerial = {
 //    --------------------------------------------------------------------------------------------------------
 __krndata SerialDevice_t kernelSerial = {
     .base = KRN_SERIAL_BASE,
+    .lock = {0},
     .SerialHasRoom = _SerialHasRoom,
     .SerialPutChar = _SerialPutChar,
     .platformData = &kernelGpio,

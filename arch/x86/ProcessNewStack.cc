@@ -30,7 +30,7 @@ frame_t __krntext ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
     archsize_t *stack;
     frame_t rv = PmmAllocAlignedFrames(STACK_SIZE / FRAME_SIZE, 12);
 
-    SPIN_BLOCK(mmuStackInitLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(mmuStackInitLock) {
         MmuMapToFrame(MMU_STACK_INIT_VADDR, rv, PG_KRN | PG_WRT);
 
         stack = (archsize_t *)(MMU_STACK_INIT_VADDR + STACK_SIZE);
@@ -46,7 +46,7 @@ frame_t __krntext ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 
 
         MmuUnmapPage(MMU_STACK_INIT_VADDR);
-        SpinlockUnlock(&mmuStackInitLock);
+        SPINLOCK_RLS_RESTORE_INT(mmuStackInitLock, flags);
     }
 
 

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  LApicBroadcastIpi.cc -- Broadcast an IPI to all CPUs
+//  LApicBroadcastSipi.cc -- Broadcast a Startup IPI (SIPI) to all cores
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,7 +10,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Jun-08  Initial   0.4.5   ADCL  Initial version
+//  2019-Jun-16  Initial   0.4.6   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -22,14 +22,13 @@
 
 
 //
-// -- Broadcast an IPI to all CPUs (including myself)
+// -- Broadcast a SIPI to all CPUs (including myself)
 //    -----------------------------------------------
-void __krntext _LApicBroadcastIpi(PicDevice_t *dev, int ipi)
+void __ldrtext _LApicBroadcastSipi(PicDevice_t *dev)
 {
-    if (ipi < 0 || ipi > 31) return;
     if (!dev) return;
 
-    uint32_t icr = (0b11<<18) | (1<<14) | ipi;
+    uint32_t icr = (0b11<<18) | (1<<14) | (1<<0b101);
 
     MmioWrite(LAPIC_ICR_HI, 0x00);
     MmioWrite(LAPIC_ICR_LO, icr);

@@ -35,5 +35,6 @@ include $(WS)/modules/kernel/util/Tupfile.inc
 ##
 ## -- Some additional rules for this targets
 ##    --------------------------------------
+: foreach  $(WS)/platform/$(PLAT)/cores/*.cc                |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/gpio/*.cc                 |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/mailbox/*.cc              |> !cc |>

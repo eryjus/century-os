@@ -50,36 +50,36 @@ int __krntext MessageSend(int msqid, void *msgp, size_t msgsz, int msgflg)
     MessageQueue_t *queue;
     scheduler.currentProcess->pendingErrno = 0;
 
-    SPIN_BLOCK(messageAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(messageAll.globalLock) {
         queue = messageAll.queues[msqid];
-        SPIN_RLS(queue->lock);
+        SPINLOCK_RLS_RESTORE_INT(messageAll.globalLock, flags);
     }
 
     if (queue == NULL) return -EINVAL;
 
     while (true) {
-        SPIN_BLOCK(messageAll.globalLock) {
+        flags = SPINLOCK_BLOCK_NO_INT(messageAll.globalLock) {
             queue = messageAll.queues[msqid];
             if (queue == NULL) {
-                SPIN_RLS(queue->lock);
+                SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                 return -EIDRM;
             }
 
-            SPIN_BLOCK(queue->lock) {
-                SPIN_RLS(messageAll.globalLock);
+            SPINLOCK_BLOCK(queue->lock) {
+                SPINLOCK_RLS(messageAll.globalLock);
 
                 if (HasWritePermission(perm)) {
                     if (queue->msg_cbytes + msgsz > queue->msg_qbytes || queue->msg_count >= queue->msg_qbytes) {
                         // -- here, the queue is considered full
                         if ((msgflg & IPC_NOWAIT) != 0) {
-                            SPIN_RLS(queue->lock);
+                            SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                             return -EAGAIN;
                         } else {
                             MsgWaiting_t *ent = NEW(MsgWaiting_t);
                             ListInit(&ent->list);
                             ent->proc = scheduler.currentProcess;
                             ListAddTail(&queue->sendList, &ent->list);
-                            SPIN_RLS(queue->lock);
+                            SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                             ProcessBlock(PROC_MSGW);
 
                             // -- check for a pending error
@@ -100,10 +100,10 @@ int __krntext MessageSend(int msqid, void *msgp, size_t msgsz, int msgflg)
                         message->msgLen = msgsz;
                         if (msgsz > 0) kMemMove(message->mtext, msgUser->mtext, msgsz);
 
-                        SPIN_BLOCK(queue->msgList.lock) {
+                        SPINLOCK_BLOCK(queue->msgList.lock) {
                             ListAddTail(&queue->msgList, &message->list);
                             queue->msgList.count ++;
-                            SPIN_RLS(queue->msgList.lock);
+                            SPINLOCK_RLS(queue->msgList.lock);
                         }
 
                         queue->msg_count ++;
@@ -112,11 +112,11 @@ int __krntext MessageSend(int msqid, void *msgp, size_t msgsz, int msgflg)
                         queue->msg_stime = 0;       // TODO: implement date/time
 
                         MessageWakeAll(&queue->recvList);
-                        SPIN_RLS(queue->lock);
+                        SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                         return 0;
                     }
                 } else {
-                    SPIN_RLS(queue->lock);
+                    SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                     return -EACCES;
                 }
             }

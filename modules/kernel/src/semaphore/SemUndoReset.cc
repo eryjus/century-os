@@ -28,7 +28,7 @@
 //    -------------------------------------------------------------------------------------------
 void __krntext SemUndoReset(int semid, key_t key, int semnum)
 {
-    SPIN_BLOCK(semaphoreAll.undoList.lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(semaphoreAll.undoList.lock) {
         ListHead_t::List_t *wrk = semaphoreAll.undoList.list.next;
 
         while (wrk != &semaphoreAll.undoList.list) {
@@ -40,7 +40,7 @@ void __krntext SemUndoReset(int semid, key_t key, int semnum)
             }
         }
 
-        SPIN_RLS(semaphoreAll.undoList.lock);
+        SPINLOCK_RLS_RESTORE_INT(semaphoreAll.undoList.lock, flags);
     }
 }
 

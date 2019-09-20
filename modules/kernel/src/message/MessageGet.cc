@@ -28,7 +28,7 @@
 //    -------------------
 int __krntext MessageGet(key_t key, int msgflg)
 {
-    SPIN_BLOCK(messageAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(messageAll.globalLock) {
         int empty = -1;
         int found = (key == IPC_PRIVATE ? -2 : -1);
         int i;
@@ -101,7 +101,7 @@ int __krntext MessageGet(key_t key, int msgflg)
         //
         // -- return the results
         //    ------------------
-        SPIN_RLS(messageAll.globalLock);
+        SPINLOCK_RLS_RESTORE_INT(messageAll.globalLock, flags);
         return rv;
     }
 }

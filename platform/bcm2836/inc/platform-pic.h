@@ -345,3 +345,6 @@ __CENTURY_FUNC__ void _PicBroadcastIpi(PicDevice_t *dev, int ipi);
 #define INTDIS0IRQTIMER     (1<<0)                      // ARM Timer IRQ Disable
 
 
+#define IPI_MAILBOX_BASE        (MMIO_VADDR + 0x01000080)
+
+

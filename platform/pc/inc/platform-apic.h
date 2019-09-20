@@ -240,6 +240,8 @@ __CENTURY_FUNC__ void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _IoApicEoi(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _LApicBroadcastIpi(PicDevice_t *dev, int ipi);
+__CENTURY_FUNC__ void _LApicBroadcastInit(PicDevice_t *dev);
+__CENTURY_FUNC__ void _LApicBroadcastSipi(PicDevice_t *dev);
 
 //
 // -- A helper function for translating an IRQ to a redir table entry

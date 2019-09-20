@@ -77,7 +77,7 @@ int __krntext SemaphoreGet(key_t key, int nsems, int semflg)
 {
     if (nsems < 0 || nsems > semmsl) return -EINVAL;
 
-    SPIN_BLOCK(semaphoreAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT (semaphoreAll.globalLock) {
         int empty = -1;
         int found = (key == IPC_PRIVATE ? -2 : -1);
         int i;
@@ -139,7 +139,7 @@ int __krntext SemaphoreGet(key_t key, int nsems, int semflg)
         //
         // -- return the results
         //    ------------------
-        SPIN_RLS(semaphoreAll.globalLock);
+        SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
         return rv;
     }
 }

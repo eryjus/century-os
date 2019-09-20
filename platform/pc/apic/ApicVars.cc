@@ -68,6 +68,8 @@ __krndata PicDevice_t ioapicDriver = {
     .PicUnmaskIrq = _IoApicUnmaskIrq,
     .PicEoi = _IoApicEoi,
     .PicBroadcastIpi = _LApicBroadcastIpi,
+    .PicBroadcastInit = _LApicBroadcastInit,
+    .PicBroadcastSipi = _LApicBroadcastSipi,
 };
 
 

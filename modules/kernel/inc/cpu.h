@@ -93,6 +93,12 @@ __CENTURY_FUNC__ int CpuNum(void);
 
 
 //
+// -- Start any APs that need to be started
+//    -------------------------------------
+__CENTURY_FUNC__ void CoresStart(void);
+
+
+//
 // -- This structure defines all the data for all the cpus on the system
 //    ------------------------------------------------------------------
 typedef struct Cpu_t {

@@ -42,14 +42,14 @@ void __krntext SemCreateUndo(int semid, key_t key, int semnum, int semadj)
     PID_t pid = scheduler.currentProcess->pid;
     SemaphoreUndo_t *undo;
 
-    SPIN_BLOCK(semaphoreAll.undoList.lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(semaphoreAll.undoList.lock) {
         ListHead_t::List_t *wrk = semaphoreAll.undoList.list.next;
         while (wrk != &semaphoreAll.undoList.list) {
             undo = FIND_PARENT(wrk, SemaphoreUndo_t, list);
 
             if (undo->semid == semid && undo->key == key && undo->pid == pid && undo->semnum == semnum) {
                 undo->semadj += semadj;
-                SPIN_RLS(semaphoreAll.undoList.lock);
+                SPINLOCK_RLS_RESTORE_INT(semaphoreAll.undoList.lock, flags);
                 return;
             }
 
@@ -68,6 +68,6 @@ void __krntext SemCreateUndo(int semid, key_t key, int semnum, int semadj)
 
         ListAdd(&semaphoreAll.undoList, &undo->list);
 
-        SPIN_RLS(semaphoreAll.undoList.lock);
+        SPINLOCK_RLS_RESTORE_INT(semaphoreAll.undoList.lock, flags);
     }
 }

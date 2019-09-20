@@ -309,3 +309,8 @@ __CENTURY_FUNC__ int CheckCpuid(void);
 //    -----------------------------
 __CENTURY_FUNC__ void CollectCpuid(void);
 
+
+//
+// -- Dummy function to fake a FPU initialization
+//    -------------------------------------------
+#define FpuInit()   (void)0

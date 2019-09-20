@@ -38,7 +38,7 @@ __CENTURY_FUNC__ bool __krntext _PmmAddToStackNode(StackHead_t *stack, frame_t f
 {
     bool rv = true;     // -- assume we will be able to add it to an existing block
 
-    SPIN_BLOCK(stack->lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
         ListHead_t::List_t *wrk = stack->list.next;
         while (wrk != &stack->list) {
             PmmBlock_t *block = FIND_PARENT(wrk, PmmBlock_t, list);
@@ -66,7 +66,7 @@ __CENTURY_FUNC__ bool __krntext _PmmAddToStackNode(StackHead_t *stack, frame_t f
         rv = false;     // -- we were not able to add it; leave it to the calling function
 
 exit:
-        SpinlockUnlock(&stack->lock);
+        SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
     }
 
     return rv;

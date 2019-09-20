@@ -43,13 +43,10 @@ void HeapFree(void *mem)
     OrderedList_t *entry = 0;
     KHeapHeader_t *hdr;
     KHeapFooter_t *ftr;
-    archsize_t flags;
 
     if (!mem) return;
 
-    SPIN_BLOCK(heapLock) {
-        flags = DisableInterrupts();
-
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(heapLock) {
         hdr = (KHeapHeader_t *)((byte_t *)mem - sizeof(KHeapHeader_t));
         ftr = (KHeapFooter_t *)((byte_t *)hdr + hdr->size - sizeof(KHeapFooter_t));
         HeapValidateHdr(hdr, "Heap structures have been overrun by data!!");
@@ -76,9 +73,7 @@ void HeapFree(void *mem)
 
     exit:
         HeapCheckHealth();
-        RestoreInterrupts(flags);
-        SPIN_RLS(heapLock);
+        CLEAN_HEAP();
+        SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
     }
-
-    CLEAN_HEAP();
 }

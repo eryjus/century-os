@@ -25,19 +25,21 @@
 //    ---------------------------
 void __krntext ProcessReady(Process_t *proc)
 {
+    archsize_t flags;
+
     switch(proc->priority) {
     case PTY_OS:
-        SPIN_BLOCK(scheduler.queueOS.lock) {
+        flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueOS.lock) {
             Enqueue(&scheduler.queueOS, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueOS.lock);
+            SPINLOCK_RLS_RESTORE_INT(scheduler.queueOS.lock, flags);
         }
 
         break;
 
     case PTY_HIGH:
-        SPIN_BLOCK(scheduler.queueHigh.lock) {
+        flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueHigh.lock) {
             Enqueue(&scheduler.queueHigh, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueHigh.lock);
+            SPINLOCK_RLS_RESTORE_INT(scheduler.queueHigh.lock, flags);
         }
 
         break;
@@ -48,17 +50,17 @@ void __krntext ProcessReady(Process_t *proc)
         // ...  fall through
 
     case PTY_NORM:
-        SPIN_BLOCK(scheduler.queueNormal.lock) {
+        flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueNormal.lock) {
             Enqueue(&scheduler.queueNormal, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueNormal.lock);
+            SPINLOCK_RLS_RESTORE_INT(scheduler.queueNormal.lock, flags);
         }
 
         break;
 
     case PTY_LOW:
-        SPIN_BLOCK(scheduler.queueLow.lock) {
+        flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueLow.lock) {
             Enqueue(&scheduler.queueLow, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueLow.lock);
+            SPINLOCK_RLS_RESTORE_INT(scheduler.queueLow.lock, flags);
         }
 
         break;

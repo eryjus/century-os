@@ -30,9 +30,9 @@ void __krntext ProcessTerminate(Process_t *proc)
 
     ProcessListRemove(proc);
 
-    SPIN_BLOCK(scheduler.listTerminated.lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(scheduler.listTerminated.lock) {
         Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-        SpinlockUnlock(&scheduler.listTerminated.lock);
+        SPINLOCK_RLS_RESTORE_INT(scheduler.listTerminated.lock, flags);
     }
 
     if (proc == scheduler.currentProcess) ProcessBlock(PROC_TERM);

@@ -43,43 +43,43 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
 
     if (semid < 0 || semid >= semmni) return -EINVAL;
 
-    SPIN_BLOCK(semaphoreAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(semaphoreAll.globalLock) {
         SemaphoreSet_t *set = semaphoreAll.semaphoreSets[semid];
         if (set == NULL) {
-            SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
             return -EINVAL;
         }
 
         switch(cmd) {
         case IPC_STAT:      // -- get the current semaphore settings
-            SPIN_BLOCK(set->lock) {
-                SPIN_RLS(semaphoreAll.globalLock);          // release the bigger lock when we have a smaller one
+            SPINLOCK_BLOCK(set->lock) {
+                SPINLOCK_RLS(semaphoreAll.globalLock);          // release the bigger lock when we have a smaller one
                 rv = SemIpcStat(set, semun.buf);
-                SPIN_RLS(set->lock);
+                SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
             }
 
             return rv;
 
         case IPC_SET:       // -- set some new semaphore settings
-            SPIN_BLOCK(set->lock) {
-                SPIN_RLS(semaphoreAll.globalLock);          // release the bigger lock when we have a smaller one
+            SPINLOCK_BLOCK(set->lock) {
+                SPINLOCK_RLS(semaphoreAll.globalLock);          // release the bigger lock when we have a smaller one
                 rv = SemIpcSet(set, semun.buf);
-                SPIN_RLS(set->lock);
+                SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
             }
 
             return rv;
 
         case IPC_RMID:      // -- remove the semaphore set
-            SPIN_BLOCK(set->lock);      // use this to wait for all other locks to release; never released
+            SPINLOCK_BLOCK(set->lock);      // use this to wait for all other locks to release; never released
             semaphoreAll.semaphoreSets[semid] = NULL;
-            SPIN_RLS(semaphoreAll.globalLock);      // no one else can find this sem set now...
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);      // no one else can find this sem set now...
             return SemRemove(set, semid);
 
         case GETALL:        // get all the current counts -- atomically
-            SPIN_BLOCK(set->lock) {
-                SPIN_RLS(semaphoreAll.globalLock);          // release the bigger lock when we have a smaller one
+            SPINLOCK_BLOCK(set->lock) {
+                SPINLOCK_RLS(semaphoreAll.globalLock);          // release the bigger lock when we have a smaller one
                 rv = SemGetAll(set, semun.array);
-                SPIN_RLS(set->lock);
+                SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
             }
 
             return rv;
@@ -89,7 +89,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
             else if (semnum < 0 || semnum > set->numSem - 1) rv = -EINVAL;
             else rv = set->semSet[semnum].waitN.count;   // -- no need to get lower-level locks; this is quick
 
-            SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
             return rv;
 
         case GETPID:        // -- get the pid of the last process to update
@@ -97,7 +97,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
             else if (semnum < 0 || semnum > set->numSem - 1) rv = -EINVAL;
             else rv = set->semSet[semnum].semPid;
 
-            SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
             return rv;
 
         case GETVAL:        // -- get the value of the nth semaphore
@@ -105,20 +105,20 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
             else if (semnum < 0 || semnum > set->numSem - 1) rv = -EINVAL;
             else rv = AtomicRead(&set->semSet[semnum].semval);
 
-            SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
             return rv;
 
         case GETZCNT:       // -- get the waitZ count
             if (!HasReadPermission(set->permissions)) rv = -EACCES;
             else if (semnum < 0 || semnum > set->numSem - 1) rv = -EINVAL;
             else rv = set->semSet[semnum].waitZ.count;   // -- no need to get lower-level locks; this is quick
-            SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
             return rv;
 
         case SETALL:
             {
                 if (!HasReadPermission(0, 02)) {      // -- check write permissions
-                    SPIN_RLS(semaphoreAll.globalLock);
+                    SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
                     return -EACCES;
                 }
 
@@ -126,8 +126,8 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                 int val = semun.val;
 
                 ProcessEnterPostpone();                 // SemReadyWaiting might reschedule if we do not postpone
-                SPIN_BLOCK(set->lock) {
-                    SPIN_RLS(semaphoreAll.globalLock);
+                SPINLOCK_BLOCK(set->lock) {
+                    SPINLOCK_RLS(semaphoreAll.globalLock);
                     set->semCtime = 0;                  // TODO: set the time value
 
                     for (int i = 0; i < set->numSem; i ++) {
@@ -141,7 +141,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                         SemUndoReset(semid, set->key, -1);
                     }
 
-                    SPIN_RLS(set->lock);
+                    SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                 }
                 ProcessExitPostpone();
             }
@@ -151,12 +151,12 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
         case SETVAL:
             {
                 if (!HasReadPermission(0, 02)) {      // -- check write permissions
-                    SPIN_RLS(semaphoreAll.globalLock);
+                    SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
                     return -EACCES;
                 }
 
                 if (semnum < 0 || semnum > set->numSem - 1) {
-                    SPIN_RLS(semaphoreAll.globalLock);
+                    SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
                     return -EINVAL;
                 }
 
@@ -165,8 +165,8 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                 int prev;
 
                 ProcessEnterPostpone();                 // SemReadyWaiting might reschedule with the lock held
-                SPIN_BLOCK(set->lock) {
-                    SPIN_RLS(semaphoreAll.globalLock);
+                SPINLOCK_BLOCK(set->lock) {
+                    SPINLOCK_RLS(semaphoreAll.globalLock);
                     set->semCtime = 0;                  // TODO: set the time value
                     prev = AtomicRead(&sem->semval);
                     AtomicSet(&sem->semval, val);
@@ -176,7 +176,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                     else if (val > prev) SemReadyWaiting(&sem->waitN);
 
                     SemUndoReset(semid, set->key, semnum);
-                    SPIN_RLS(set->lock);
+                    SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                 }
                 ProcessExitPostpone();
             }
@@ -184,7 +184,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
             return 0;
 
         default:
-            SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
             return -EINVAL;
         }
     }

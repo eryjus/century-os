@@ -72,7 +72,7 @@ int __krntext SemRemove(SemaphoreSet_t *set, int semid)
     //
     // -- Now, remove all the undo entries from the undo list
     //    ---------------------------------------------------
-    SPIN_BLOCK(semaphoreAll.undoList.lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(semaphoreAll.undoList.lock) {
         ListHead_t::List_t *wrk = semaphoreAll.undoList.list.next;
         while (wrk != &semaphoreAll.undoList.list) {
             SemaphoreUndo_t *undo = FIND_PARENT(wrk, SemaphoreUndo_t, list);
@@ -84,7 +84,7 @@ int __krntext SemRemove(SemaphoreSet_t *set, int semid)
             }
         }
 
-        SPIN_RLS(semaphoreAll.undoList.lock);
+        SPINLOCK_RLS_RESTORE_INT(semaphoreAll.undoList.lock, flags);
     }
 
 

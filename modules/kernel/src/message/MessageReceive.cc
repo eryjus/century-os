@@ -50,23 +50,23 @@ int __krntext MessageReceive(int msqid, void *msgp, size_t msgsz, long msgtyp, i
     MessageQueue_t *queue;
     scheduler.currentProcess->pendingErrno = 0;
 
-    SPIN_BLOCK(messageAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(messageAll.globalLock) {
         queue = messageAll.queues[msqid];
-        SPIN_RLS(queue->lock);
+        SPINLOCK_RLS_RESTORE_INT(messageAll.globalLock, flags);
     }
 
     if (queue == NULL) return -EINVAL;
 
     while (true) {
-        SPIN_BLOCK(messageAll.globalLock) {
+        flags = SPINLOCK_BLOCK_NO_INT(messageAll.globalLock) {
             queue = messageAll.queues[msqid];
             if (queue == NULL) {
-                SPIN_RLS(queue->lock);
+                SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                 return -EIDRM;
             }
 
-            SPIN_BLOCK(queue->lock) {
-                SPIN_RLS(messageAll.globalLock);
+            SPINLOCK_BLOCK(queue->lock) {
+                SPINLOCK_RLS(messageAll.globalLock);
 
                 if (HasReadPermission(perm)) {
                     ListHead_t::List_t *wrk = queue->msgList.list.next;
@@ -93,7 +93,7 @@ int __krntext MessageReceive(int msqid, void *msgp, size_t msgsz, long msgtyp, i
 
                             FREE(msg);
                             MessageWakeAll(&queue->sendList);
-                            SPIN_RLS(queue->lock);
+                            SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                             return rv;
                         }
 
@@ -102,14 +102,14 @@ int __krntext MessageReceive(int msqid, void *msgp, size_t msgsz, long msgtyp, i
 
                     // -- if we get here, there are no messages to receive, so block
                     if ((msgflg & IPC_NOWAIT) != 0) {
-                        SPIN_RLS(queue->lock);
+                        SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                         return -EAGAIN;
                     } else {
                         MsgWaiting_t *ent = NEW(MsgWaiting_t);
                         ListInit(&ent->list);
                         ent->proc = scheduler.currentProcess;
                         ListAddTail(&queue->recvList, &ent->list);
-                        SPIN_RLS(queue->lock);
+                        SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                         ProcessBlock(PROC_MSGW);
 
                         // -- check for a pending error
@@ -122,7 +122,7 @@ int __krntext MessageReceive(int msqid, void *msgp, size_t msgsz, long msgtyp, i
                         continue;
                     }
                 } else {
-                    SPIN_RLS(queue->lock);
+                    SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
                     return -EACCES;
                 }
             }

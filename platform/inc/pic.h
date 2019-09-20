@@ -54,6 +54,8 @@ typedef struct PicDevice_t {
     void (*PicEoi)(PicDevice_t *, Irq_t);
     int (*PicDetermineIrq)(PicDevice_t *);
     void (*PicBroadcastIpi)(PicDevice_t *, int);
+    void (*PicBroadcastInit)(PicDevice_t *);
+    void (*PicBroadcastSipi)(PicDevice_t *);
 } PicDevice_t;
 
 

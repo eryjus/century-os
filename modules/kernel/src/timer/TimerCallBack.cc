@@ -48,6 +48,8 @@
 #include "cpu.h"
 #include "process.h"
 #include "interrupt.h"
+#include "serial.h"
+#include "hardware.h"
 #include "timer.h"
 
 
@@ -59,7 +61,7 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     kprintf("@");
     ProcessEnterPostpone();
 
-    if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
+    if (timerControl->TimerPlatformTick && CpuNum() == 0) TimerPlatformTick(timerControl);
 
     //
     // -- here we look for any sleeping tasks to wake
@@ -79,9 +81,9 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
             if (now >= wrk->wakeAtMicros) {
                 wrk->wakeAtMicros = 0;
 
-                SPIN_BLOCK(scheduler.listSleeping.lock) {
+                SPINLOCK_BLOCK(scheduler.listSleeping.lock) {       // interrupts already disabled
                     ListRemoveInit(&wrk->stsQueue);
-                    SpinlockUnlock(&scheduler.listSleeping.lock);
+                    SPINLOCK_RLS(scheduler.listSleeping.lock);
                 }
 
                 ProcessUnblock(wrk);

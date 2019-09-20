@@ -86,7 +86,21 @@ multiboot_header:
 @@    and r2 holds the value 0.
 @@    ------------------------------------------------------------------------------------------------
 entry:
-@@ -- Save off the MBI structure (which is safe now the the bss is cleared); lr gets clobbered next
+@@
+@@ -- figure out which CPU we are on; only CPU 0 continues after this
+@@
+@@    Note that this code is expected to be _ALWAYS_ executing on Core0.  This check is there just in case
+@@    something happens later down the road with a change/bug in `bootcode.bin`.  If this were to happen,
+@@    we will emulate the expected behavior of the firmware by holding the core in a holding pen until we
+@@    are ready to release it.
+@@    ----------------------------------------------------------------------------------------------------
+    mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
+    and     r3,r3,#0x3                  @@ Extract CPU ID bits
+    cmp     r3,#0
+    bne     entryApHold                 @@ if we’re not on CPU0 go to the holding pen
+
+@@ -- Save off the MBI structure
+save:
     ldr     r2,=mb1Data                 @@ get the address to put it in
     str     r1,[r2]                     @@ and save the address
 
@@ -130,19 +144,6 @@ cont:
     mcr     p15,0,r3,c1,c0,0            @@ write the SCTLR back with the caches enabled
 .endif
 
-
-@@
-@@ -- figure out which CPU we are on; only CPU 0 continues after this
-@@    ---------------------------------------------------------------
-    mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
-    and     r3,r3,#0x3                  @@ Extract CPU ID bits
-    cmp     r3,#0
-    beq     initialize                  @@ if we’re on CPU0 goto the start
-
-@@ -- all other cores will drop in to this loop - a low power mode infinite loop
-wait_loop:
-    wfe                                 @@ wait for event
-    b       wait_loop                   @@ go back and do it again
 
 @@ -- Clear out bss
 initialize:

@@ -48,14 +48,14 @@ void __krntext SemBlock(Semaphore_t *sem, bool zeroWait)
     waiting->proc = scheduler.currentProcess;
 
     if (zeroWait) {
-        SPIN_BLOCK(sem->waitZ.lock) {
+        archsize_t flags = SPINLOCK_BLOCK_NO_INT(sem->waitZ.lock) {
             ListAdd(&sem->waitZ, &waiting->list);
-            SPIN_RLS(sem->waitZ.lock);
+            SPINLOCK_RLS_RESTORE_INT(sem->waitZ.lock, flags);
         }
     } else {
-        SPIN_BLOCK(sem->waitN.lock) {
+        archsize_t flags = SPINLOCK_BLOCK_NO_INT(sem->waitN.lock) {
             ListAdd(&sem->waitN, &waiting->list);
-            SPIN_RLS(sem->waitN.lock);
+            SPINLOCK_RLS_RESTORE_INT(sem->waitN.lock, flags);
         }
     }
 }

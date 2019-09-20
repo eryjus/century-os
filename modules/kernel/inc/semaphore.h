@@ -22,6 +22,7 @@
 #include "sys/sem.h"
 #include "atomic.h"
 #include "spinlock.h"
+#include "process.h"
 #include "lists.h"
 
 

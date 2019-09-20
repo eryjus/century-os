@@ -44,7 +44,7 @@
 void __krntext SemReadyWaiting(ListHead_t *list)
 {
     ProcessEnterPostpone();
-    SPIN_BLOCK(list->lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(list->lock) {
         while (!IsListEmpty(list)) {
             SemWaiting_t *wait = FIND_PARENT(list->list.next, SemWaiting_t, list);
             ListRemoveInit(&wait->list);
@@ -59,7 +59,7 @@ void __krntext SemReadyWaiting(ListHead_t *list)
             FREE(wait);
         }
 
-        SPIN_RLS(list->lock);
+        SPINLOCK_RLS_RESTORE_INT(list->lock, flags);
     }
     ProcessExitPostpone();
 }

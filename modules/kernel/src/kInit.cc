@@ -89,6 +89,7 @@ void StartB(void)
     }
 }
 
+
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
@@ -126,6 +127,7 @@ void kInit(void)
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
+    CoresStart();
 
 
     //
@@ -184,9 +186,8 @@ void kInit(void)
     scheduler.currentProcess->priority = PTY_LOW;
 #endif
 
-    while (1) {
+    while (true) {
         kprintf(".");
-        HaltCpu();
     }
 
 

@@ -21,9 +21,6 @@
 #include "pic.h"
 
 
-#define IPI_MAILBOX_BASE        (MMIO_VADDR + 0x01000080)
-
-
 //
 // -- Broadcast an IPI to all CPUs (including myself)
 //    -----------------------------------------------

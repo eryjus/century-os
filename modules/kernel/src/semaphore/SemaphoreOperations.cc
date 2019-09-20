@@ -50,9 +50,9 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
     //
     // -- check that semid is actually valid
     //    ----------------------------------
-    SPIN_BLOCK(semaphoreAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(semaphoreAll.globalLock) {
         set = semaphoreAll.semaphoreSets[semid];
-        SPIN_RLS(semaphoreAll.globalLock);
+        SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
     }
 
     if (set == NULL) return -EINVAL;
@@ -78,7 +78,7 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
         }
 
 
-        SPIN_BLOCK(semaphoreAll.globalLock) {
+        flags = SPINLOCK_BLOCK_NO_INT(semaphoreAll.globalLock) {
             set = semaphoreAll.semaphoreSets[semid];
 
 
@@ -86,12 +86,12 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
             // -- Now check if the set was removed
             //    --------------------------------
             if (set == NULL) {
-                SPIN_RLS(semaphoreAll.globalLock);
+                SPINLOCK_RLS_RESTORE_INT(semaphoreAll.globalLock, flags);
                 return -EIDRM;          // -- at this point, it existed when we started but does not anymore
             }
 
-            SPIN_BLOCK(set->lock) {
-                SPIN_RLS(semaphoreAll.globalLock);
+            SPINLOCK_BLOCK(set->lock) {
+                SPINLOCK_RLS(semaphoreAll.globalLock);
                 //
                 // -- pre-check the ops (returns <0 on error; 0 on success; 1 to block)
                 //    -----------------------------------------------------------------
@@ -100,19 +100,19 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
 
                 if (res < 0) {
                     kprintf("error\n");
-                    SPIN_RLS(set->lock);
+                    SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                     return res;
                 } else if (res == 0) {
                     kprintf("exec\n");
                     ProcessEnterPostpone();                                      // -- do not reschedule with the lock held
                     res = SemIterateOps(semid, set, sops, nsops, SEM_ITER_EXEC);        // -- better be 0!!
-                    SPIN_RLS(set->lock);
+                    SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                     ProcessExitPostpone();
                     return (res>0?-EUNDEF:res);
                 } else {
                     kprintf("block\n");
                     SemIterateOps(semid, set, sops, nsops, SEM_ITER_BLOCK);
-                    SPIN_RLS(set->lock);
+                    SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                     ProcessBlock(PROC_SEMW);
                 }
             }

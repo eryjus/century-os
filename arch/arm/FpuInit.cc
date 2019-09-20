@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  EarlyInit.cc -- Handle the early initialization for the arm architecture
+//  FpuInit.cc -- Initialize the core to handle FPU instructions
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,7 +10,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-13  Initial   0.3.0   ADCL  Initial version
+//  2019-Jun-16  Initial   0.4.6   ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -24,15 +24,20 @@
 
 
 //
-// -- Perform the early initialization.  The goal here is to not have to worry about loader/kernel code once
-//    this is complete
-//    ------------------------------------------------------------------------------------------------------
-void __ldrtext EarlyInit(void)
+// -- Initialize the core to be able to use FPU instructions
+//    ------------------------------------------------------
+void __ldrtext FpuInit(void)
 {
-    SerialOpen(&loaderSerial);                   // initialize the serial port so we can output debug data
+    //
+    // -- prepare the FPU for accepting commands
+    //    --------------------------------------
+    archsize_t cpacr = READ_CPACR();
+    cpacr |= (0b11<<20);
+    cpacr |= (0b11<<22);
+    WRITE_CPACR(cpacr);
 
-    MmuEarlyInit();                 // Complete the MMU initialization for the loader
-
-    PlatformEarlyInit();
-    FpuInit();
+    //
+    // -- and enable the fpu
+    //    ------------------
+    WRITE_FPEXC(1<<30);
 }

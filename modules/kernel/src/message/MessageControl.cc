@@ -43,40 +43,41 @@ int __krntext MessageControl(int msqid, int cmd, struct msqid_ds *msqid_ds)
 
     if (msqid < 0 || msqid >= msgmni) return -EINVAL;
 
-    SPIN_BLOCK(messageAll.globalLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(messageAll.globalLock) {
         MessageQueue_t *queue = messageAll.queues[msqid];
         if (queue == NULL) {
-            SPIN_RLS(messageAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(messageAll.globalLock, flags);
             return -EINVAL;
         }
 
         switch(cmd) {
         case IPC_STAT:      // -- get the current message queue settings
-            SPIN_BLOCK(queue->lock) {
-                SPIN_RLS(messageAll.globalLock);          // release the bigger lock when we have a smaller one
+            SPINLOCK_BLOCK(queue->lock) {
+                SPINLOCK_RLS(messageAll.globalLock);          // release the bigger lock when we have a smaller one
                 rv = MsqIpcStat(queue, msqid_ds);
-                SPIN_RLS(queue->lock);
+                SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
             }
 
             return rv;
 
         case IPC_SET:       // -- set some new message queue settings
-            SPIN_BLOCK(queue->lock) {
-                SPIN_RLS(messageAll.globalLock);          // release the bigger lock when we have a smaller one
+            SPINLOCK_BLOCK(queue->lock) {
+                SPINLOCK_RLS(messageAll.globalLock);          // release the bigger lock when we have a smaller one
                 rv = MsqIpcSet(queue, msqid_ds);
-                SPIN_RLS(queue->lock);
+                SPINLOCK_RLS_RESTORE_INT(queue->lock, flags);
             }
 
             return rv;
 
         case IPC_RMID:      // -- remove the message queue
-            SPIN_BLOCK(queue->lock);      // use this to wait for all other locks to release; never released
+            SPINLOCK_BLOCK(queue->lock);      // use this to wait for all other locks to release
             messageAll.queues[msqid] = NULL;
-            SPIN_RLS(messageAll.globalLock);      // no one else can find this sem set now...
+            SPINLOCK_RLS(queue->lock);
+            SPINLOCK_RLS_RESTORE_INT(messageAll.globalLock, flags);      // no one else can find this sem set now...
             return MsqRemove(queue, msqid);
 
         default:
-            SPIN_RLS(messageAll.globalLock);
+            SPINLOCK_RLS_RESTORE_INT(messageAll.globalLock, flags);
             return -EINVAL;
         }
     }

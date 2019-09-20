@@ -24,23 +24,20 @@
 //    -----------------------------------------------------
 void __krntext ProcessMicroSleepUntil(uint64_t when)
 {
-    ProcessEnterPostpone();
+    if (when < TimerCurrentCount(timerControl)) return;
 
-    if (when < TimerCurrentCount(timerControl)) {
-        ProcessExitPostpone();
-        return;
-    }
+//    ProcessEnterPostpone();
 
     scheduler.currentProcess->wakeAtMicros = when;
     if (when < scheduler.nextWake) scheduler.nextWake = when;
 
-    SPIN_BLOCK(scheduler.listSleeping.lock) {
-        Enqueue(&scheduler.listSleeping, &scheduler.currentProcess->stsQueue);
-        SpinlockUnlock(&scheduler.listSleeping.lock);
-    }
+//    archsize_t flags = SPINLOCK_BLOCK_NO_INT(scheduler.listSleeping.lock) {
+//        Enqueue(&scheduler.listSleeping, &scheduler.currentProcess->stsQueue);
+//        SPINLOCK_RLS_RESTORE_INT(scheduler.listSleeping.lock, flags);
+//    }
 
     CLEAN_PROCESS(scheduler.currentProcess);
 
-    ProcessExitPostpone();
     ProcessBlock(PROC_DLYW);
+//    ProcessExitPostpone();
 }
