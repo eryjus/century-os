@@ -346,6 +346,25 @@ When I comment out `ProcessMilliSleep()`, I start getting the interrupts to fire
 
 I'm pretty sure I have something wrong with this implementation: https://wiki.osdev.org/Brendan%27s_Multi-tasking_Tutorial#Step_8:_Locking_Version_2
 
+---
 
+### 2019-Nov-25
 
+I have a mess on my hands.  I have scheduler problems for sure.  Plus I am no longer happy with my code base.  A serious clean up is needed here.  I just need to make a decision on what I want to do.  It's between starting over or pressing forward with this code (or starting a new base and start copying things in).  As it is, I already deleted a branch to fix the scheduler.
+
+---
+
+I have a lot of work already invested in this kernel.  I am not ready to cut all those losses yet.  So, here is what I am going to do: I am going to work on cleaning up the scheduler first.  I really need that to be rock solid before I move on to other things.  I am putting SMP on hold until I get that wrapped up.  I have a working scheduler from the [Scheduler Test](https://github.com/eryjus/scheduler) I was working on.  I should be able to port that in relatively easily -- just taking into account the differences in design.
+
+So, I need to understand what is working and what is not.  Right now the timer is firing and I am getting nothing else running.
+
+The one key takeaway I have from the [Scheduler Test](https://github.com/eryjus/scheduler) is [documented here](https://github.com/eryjus/scheduler/blob/master/JOURNAL.md#2019-nov-24): the process startup function needs to be careful about what released it executes.
+
+I was also looking at [dgos](https://github.com/doug65536/dgos/blob/86f017083f34fa7aef22811e39bbd207929d116b/kernel/lib/assert.h#L9) for inspiration.  I need to set up some asserts so that I can output better debug information -- relevant stuff, not just a bunch or stuff to look at.
+
+I also see that [dgos has several variables at the per-CPU level](https://github.com/doug65536/dgos/blob/6a9de3e23d85bd7582a971b56671b1a37fd78312/kernel/arch/x86_64/cpu/asm_constants.h#L5), all as [offsets from the the `gs` segment selector](https://github.com/doug65536/dgos/blob/49fbb798e2dbb445f610447e4101334911123b59/kernel/arch/x86_64/cpu/segrw.h#L4).
+
+It's been a while, so I also need to go through [Redmine](http://eryjus.ddns.net:3000/projects/century-os/issues).  I will be cleaning up some issues and adding several TODOs to work on as I identify what needs to happen.
+
+The one thing I need to take away from today's agony is that I really want to work on a clean-up effort and not a rewrite effort.
 
