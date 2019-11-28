@@ -104,10 +104,10 @@ int __krntext SemaphoreOperations(int semid, struct sembuf *sops, size_t nsops)
                     return res;
                 } else if (res == 0) {
                     kprintf("exec\n");
-                    ProcessEnterPostpone();                                      // -- do not reschedule with the lock held
+                    ProcessLockAndPostpone();                                      // -- do not reschedule with the lock held
                     res = SemIterateOps(semid, set, sops, nsops, SEM_ITER_EXEC);        // -- better be 0!!
                     SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
-                    ProcessExitPostpone();
+                    ProcessUnlockAndSchedule();
                     return (res>0?-EUNDEF:res);
                 } else {
                     kprintf("block\n");

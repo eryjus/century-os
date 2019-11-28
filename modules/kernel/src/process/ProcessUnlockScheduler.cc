@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessEnterPostpone.cc -- Enter a section where any schedule changes will be postponed.
+// ProcessUnlockScheduler.cc -- Unlock the scheduler after manipulation
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,7 +10,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
+//  2019-Nov-26  Initial   0.4.6a  ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -23,14 +23,14 @@
 
 
 //
-// -- increase the lock count on the scheduler
-//    ----------------------------------------
-void __krntext ProcessEnterPostpone(void)
+// -- Unlock the scheduler after changes
+//    ----------------------------------
+EXPORT KERNEL
+void ProcessUnlockScheduler(void)
 {
-//    kprintf(" Enter... ");
-    DisableInterrupts();
-    AtomicInc(&scheduler.schedulerLockCount);
-//    kprintf("^(%x)", AtomicRead(&scheduler.schedulerLockCount));
-    CLEAN_SCHEDULER();
+    if (AtomicDecAndTest0(&scheduler.schedulerLockCount)) {
+        SPINLOCK_RLS_RESTORE_INT(schedulerLock, scheduler.flags);
+    }
 }
+
 

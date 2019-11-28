@@ -43,7 +43,7 @@
 //    -------------------------------------------
 void __krntext SemReadyWaiting(ListHead_t *list)
 {
-    ProcessEnterPostpone();
+    ProcessLockAndPostpone();
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(list->lock) {
         while (!IsListEmpty(list)) {
             SemWaiting_t *wait = FIND_PARENT(list->list.next, SemWaiting_t, list);
@@ -61,6 +61,6 @@ void __krntext SemReadyWaiting(ListHead_t *list)
 
         SPINLOCK_RLS_RESTORE_INT(list->lock, flags);
     }
-    ProcessExitPostpone();
+    ProcessUnlockAndSchedule();
 }
 

@@ -27,11 +27,9 @@
 //
 // -- complete any new task initialization
 //    ------------------------------------
-void __krntext ProcessStart(void)
+EXPORT KERNEL
+void ProcessStart(void)
 {
-    //
-    // -- At this point, complete any initialization needed for a new task
-    //    ----------------------------------------------------------------
-    EnableInterrupts();
+    ProcessUnlockScheduler();
 }
 

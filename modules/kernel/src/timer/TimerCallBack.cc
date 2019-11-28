@@ -56,12 +56,14 @@
 //
 // -- Handle a timer IRQ
 //    ------------------
+EXPORT KERNEL
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
-    kprintf("@");
-    ProcessEnterPostpone();
+    TimerEoi(timerControl);     // take care of this while interrupts are disabled!
 
-    if (timerControl->TimerPlatformTick && CpuNum() == 0) TimerPlatformTick(timerControl);
+    ProcessLockAndPostpone();
+
+    if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
 
     //
     // -- here we look for any sleeping tasks to wake
@@ -80,13 +82,8 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
             Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
             if (now >= wrk->wakeAtMicros) {
                 wrk->wakeAtMicros = 0;
-
-                SPINLOCK_BLOCK(scheduler.listSleeping.lock) {       // interrupts already disabled
-                    ListRemoveInit(&wrk->stsQueue);
-                    SPINLOCK_RLS(scheduler.listSleeping.lock);
-                }
-
-                ProcessUnblock(wrk);
+                ListRemoveInit(&wrk->stsQueue);
+                ProcessDoUnblock(wrk);
             } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
 
             list = next;
@@ -103,6 +100,5 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
         if (AtomicDec(&scheduler.currentProcess->quantumLeft) <= 0) ProcessSchedule();
     }
 
-    TimerEoi(timerControl);
-    ProcessExitPostpone();
+    ProcessUnlockAndSchedule();
 }

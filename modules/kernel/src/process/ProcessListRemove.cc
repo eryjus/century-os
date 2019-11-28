@@ -24,11 +24,9 @@
 //
 // -- Remove the process from whatever list it is on, ensuring proper locking
 //    -----------------------------------------------------------------------
-void __krntext ProcessListRemove(Process_t *proc)
+EXPORT KERNEL
+void ProcessListRemove(Process_t *proc)
 {
-    archsize_t flags;
-
-
     // -- is it already not on a list?
     if (proc->stsQueue.next == &proc->stsQueue) return;
 
@@ -43,45 +41,25 @@ void __krntext ProcessListRemove(Process_t *proc)
         case PROC_MTXW:
         case PROC_SEMW:
         case PROC_TERM:
-            flags = SPINLOCK_BLOCK_NO_INT(scheduler.listBlocked.lock) {
-                ListRemoveInit(&proc->stsQueue);
-                SPINLOCK_RLS_RESTORE_INT(scheduler.listBlocked.lock, flags);
-            }
-
+            ListRemoveInit(&proc->stsQueue);
             break;
 
         case PROC_READY:
             switch (proc->priority) {
             case PTY_OS:
-                flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueOS.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SPINLOCK_RLS_RESTORE_INT(scheduler.queueOS.lock, flags);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
 
             case PTY_HIGH:
-                flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueHigh.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SPINLOCK_RLS_RESTORE_INT(scheduler.queueHigh.lock, flags);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
 
             case PTY_LOW:
-                flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueLow.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SPINLOCK_RLS_RESTORE_INT(scheduler.queueLow.lock, flags);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
 
             default:
-                flags = SPINLOCK_BLOCK_NO_INT(scheduler.queueNormal.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SPINLOCK_RLS_RESTORE_INT(scheduler.queueNormal.lock, flags);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
             }
 

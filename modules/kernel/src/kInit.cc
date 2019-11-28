@@ -65,27 +65,17 @@ int semid;
 
 void StartA(void)
 {
-    struct sembuf inc = {0, 2, IPC_NOWAIT};
-    struct sembuf zero = {0, 0, 0};
-
-    kprintf("Starting A\n");
-
-    while (1) {
-        while (SemaphoreOperations(semid, &inc, 1) < 0) { kprintf("a"); }
+    while (true) {
         kprintf("A");
-        SemaphoreOperations(semid, &zero, 1);
+        ProcessMilliSleep(500);
     }
 }
 
 void StartB(void)
 {
-    struct sembuf dec = {0, -1, IPC_NOWAIT};
-
-    kprintf("Starting B\n");
-
-    while (1) {
-        while (SemaphoreOperations(semid, &dec, 1) < 0) { kprintf("b"); }
+    while (true) {
         kprintf("B");
+        ProcessMilliSleep(250);
     }
 }
 
@@ -127,7 +117,10 @@ void kInit(void)
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
-    CoresStart();
+//    CoresStart();
+
+    A = ProcessCreate(StartA);
+    B = ProcessCreate(StartB);
 
 
     //
@@ -188,6 +181,7 @@ void kInit(void)
 
     while (true) {
         kprintf(".");
+        ProcessSleep(2);
     }
 
 

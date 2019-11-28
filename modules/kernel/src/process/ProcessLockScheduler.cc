@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessUpdateTimeUsed.cc -- Update the time used for the current process before changing
+// ProcessLockScheduler.cc -- Lock the scheduler for manipulation
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,7 +10,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
+//  2019-Nov-25  Initial   0.4.6a  ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -18,37 +18,21 @@
 #include "types.h"
 #include "lists.h"
 #include "timer.h"
+#include "spinlock.h"
 #include "process.h"
 
 
 //
-// -- This is the last timer value that was updated
+// -- Lock the scheduler in preparation for changes
 //    ---------------------------------------------
-EXPORT KERNEL_DATA
-uint64_t lastTimer = 0;
-
-
-//
-// -- This is the CPU idle time
-//    -------------------------
-EXPORT KERNEL_DATA
-uint64_t cpuIdleTime = 0;
-
-
-//
-// -- Get the current timer value and update the time used of the current process
-//    ---------------------------------------------------------------------------
 EXPORT KERNEL
-void ProcessUpdateTimeUsed(void)
+void ProcessLockScheduler(bool save)
 {
-    uint64_t now = TimerCurrentCount(timerControl);
-    uint64_t elapsed = now - lastTimer;
-    lastTimer = now;
-
-    if (scheduler.currentProcess == NULL) {
-        cpuIdleTime += elapsed;
-    } else {
-        scheduler.currentProcess->timeUsed += elapsed;
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(schedulerLock);
+    if (AtomicRead(&scheduler.schedulerLockCount) == 0) {
+        if (save) scheduler.flags = flags;
     }
+    AtomicInc(&scheduler.schedulerLockCount);
 }
+
 

@@ -34,7 +34,8 @@ extern archsize_t mmuLvl1Table;
 //
 // -- Initialize the process structures
 //    ---------------------------------
-void __krntext ProcessInit(void)
+EXPORT LOADER
+void ProcessInit(void)
 {
     extern uint64_t lastTimer;
 

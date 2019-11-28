@@ -22,22 +22,15 @@
 //
 // -- sleep until we get to the number of micros since boot
 //    -----------------------------------------------------
-void __krntext ProcessMicroSleepUntil(uint64_t when)
+EXPORT KERNEL
+void ProcessDoMicroSleepUntil(uint64_t when)
 {
     if (when < TimerCurrentCount(timerControl)) return;
-
-//    ProcessEnterPostpone();
 
     scheduler.currentProcess->wakeAtMicros = when;
     if (when < scheduler.nextWake) scheduler.nextWake = when;
 
-//    archsize_t flags = SPINLOCK_BLOCK_NO_INT(scheduler.listSleeping.lock) {
-//        Enqueue(&scheduler.listSleeping, &scheduler.currentProcess->stsQueue);
-//        SPINLOCK_RLS_RESTORE_INT(scheduler.listSleeping.lock, flags);
-//    }
+    Enqueue(&scheduler.listSleeping, &scheduler.currentProcess->stsQueue);
 
-    CLEAN_PROCESS(scheduler.currentProcess);
-
-    ProcessBlock(PROC_DLYW);
-//    ProcessExitPostpone();
+    ProcessDoBlock(PROC_DLYW);
 }

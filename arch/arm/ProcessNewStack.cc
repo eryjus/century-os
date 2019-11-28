@@ -25,7 +25,8 @@
 //
 // -- build the stack needed to start a new process
 //    ---------------------------------------------
-frame_t __krntext ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
+EXPORT KERNEL
+frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 {
     archsize_t *stack;
     frame_t rv = PmmAllocAlignedFrames(STACK_SIZE / FRAME_SIZE, 12);
@@ -66,3 +67,4 @@ frame_t __krntext ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 
     return rv;
 }
+

@@ -50,6 +50,18 @@
 #define __krndata       __attribute__((section(".data")))
 
 
+#define EXPORT          __attribute__((visibility("default")))
+#define HIDDEN          __attribute__((visibility("hidden")))
+
+#define KERNEL          __attribute__((section(".text")))
+#define KERNEL_DATA     __attribute__((section(".data")))
+
+
+#define LOADER          __attribute__((section(".ldrtext")))
+#define LOADER_DATA     __attribute__((section(".ldrdata")))
+#define LOADER_BSS      __attribute__((section(".ldrbss")))
+
+
 //
 // -- Define UNUSED, based on which parser we are using
 //    -------------------------------------------------

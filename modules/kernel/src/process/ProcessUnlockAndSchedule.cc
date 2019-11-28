@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessExitPostpone.cc -- Exit a postponed schedule block and take care of any pending schedule changes
+// ProcessUnlockAndSchedule.cc -- Exit a postponed schedule block and take care of any pending schedule changes
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -25,17 +25,16 @@
 //
 // -- decrease the lock count on the scheduler
 //    ----------------------------------------
-void __krntext ProcessExitPostpone(void)
+EXPORT KERNEL
+void ProcessUnlockAndSchedule(void)
 {
-//    kprintf(" Exit... ");
-    if (AtomicDecAndTest0(&scheduler.schedulerLockCount) == true) {
-//        kprintf("V(%x)", AtomicRead(&scheduler.schedulerLockCount));
+    if (AtomicDecAndTest0(&scheduler.postponeCount) == true) {
         if (scheduler.processChangePending != false) {
             scheduler.processChangePending = false;           // need to clear this to actually perform a change
             ProcessSchedule();
         }
+    }
 
-        CLEAN_SCHEDULER();
-    } // else kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
+    ProcessUnlockScheduler();
 }
 

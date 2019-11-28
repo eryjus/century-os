@@ -368,3 +368,162 @@ It's been a while, so I also need to go through [Redmine](http://eryjus.ddns.net
 
 The one thing I need to take away from today's agony is that I really want to work on a clean-up effort and not a rewrite effort.
 
+## Version 0.4.6a
+
+OK, so in this version, I am going to work on getting the scheduler code ported from [Scheduler Test](https://github.com/eryjus/scheduler) into this code.  When I do this, I should be able to get processes to run again.
+
+### 2019-Nov-26
+
+Today I worked on redoing all the scheduler/process code to more closely align with the tests I wrote.  It is not perfect yet and I have some debugging to do.  Something, I believe, is enabling interrupts when it shouldn't.  I am right now working on stripping a log to try to track that down.
+
+---
+
+Turns out all my thoughts were correct...  I was enabling interrupts in `ProcessUnlockScheduler()` rather than releasing the spinlock.  The code is working now -- well, more generally.
+
+---
+
+### 2019-Nov-27
+
+I have been thinking about this.  The only real feature I have in the kernel that is (supposedly) fully vetted is the scheduler.  The rest is semaphores (which cannot be tested without getting the scheduler working), mutexes (which cannot be tested without getting the scheduler working), and initialization.  It may be a bit of a mess structure-wise, but that is working.  Yeah, I have some memory management stuff, but that is all working.
+
+So, I really should be able to drop all the fuss here and work on the scheduler.  This is going to mean working similar tests to what I did with the [Scheduler Test](https://github.com/eryjus/scheduler).  However, all-in-all, this is not as bad as I was worried about: ignore the other stuff and get the scheduler working.
+
+So, with that out of the way, I now have this problem:
+
+```
+Enabling interrupts now
+Request to overwrite frame for page 0xff801000 refused; use MmuUnmapPage() first
+```
+
+I believe that this is happening when I create a new process (a problem I did not have before I tried to add a new process).
+
+This I was able to track down to having SMP enabled when I was not ready for it yet.  So, for the moment I turned that back off at the `qemu` command line.
+
+This now, lets me properly focus on creating a process.
+
+---
+
+So this works properly when there is no actual spinlock.  We can pretend to lock multiple times with no real impact.  However, in this case `ProcessCreate()` which locks the scheduler and then calls `ProcessReady()` to lock the scheduler again.  But this process already holds the lock and the lock is not available.  And, therefore, I have a problem.
+
+There may be several possible solutions here:
+* Create locking and non-locking versions of the key functions and call the proper one based on the locks already held
+* Update my spinlock code to capture a depth and lock holder and then update the locks to populate the structures properly
+* More I have not considered
+
+One thing that I do want to be able to do is have a process that gets CPU that is waiting for a lock to be released is to be able to donate its unused quantum to the lock holder.  This would be so that in theory the lock holder would be able to complete what it needs to do and release the lock faster (in particular when the lock holder is at a lower priority than that of the lock desirer).  In particular when SMP is involved (since a single CPU should never have that state).
+
+So, it looks like I will be updating my spinlock code to capture the current `Process_t` and count the lock depth.  This may bite me when I get to multi-threading....   Hmmmm... what does Linux do?  It only keeps track of owner and CPU when the debug flags are set.
+
+... debating....
+
+Actually, I have come to the conclusion that having a "depth" on a spinlock is actually not proper and I need to go the other way: create locking and non-locking version of the critical functions and make sure I am calling the correct one.  Each of the non-locking functions will be in the form `ProcessDoXxx()` while the locking form will be in the form `ProcessXxx()`.  This should make it easier to keep them straight.  Additionally, the `ProcessXxx()` form should be able to be implemented as a macro, lightening the needs of the stack and function calls.  If real functions are needed, I will keep them in the same source file, a departure from the 1-function-per-file sceme I have been working on so far.  However, this should be easier to keep straight this way so I am not having a problem with it.
+
+---
+
+With that done, my processes are never seeing the light of the CPU.  On top of that, the kernel is only running for a short period of time.
+
+So, in `ProcessSchedule()`, with this block of code:
+
+```C++
+    if (AtomicRead(&scheduler.schedulerLockCount) != 0) {
+        scheduler.processChangePending = true;
+        kprintf("x");
+        return;
+    }
+
+    kprintf("+");
+```
+
+... I am never seeing a `'+'` character emitted:
+
+```
+Enabling interrupts now
+@@@@@@@the new process stack is located at 0@@@@@@@@@@@@@@@xf@f801000 (frame 0x00000401)
+@@@@@@@@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xxthe@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx new process @xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xxstack is located@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx at 0xff80@xx2000 (frame 0x00000402)
+x@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx@xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx@xx@xx@xx@xx@xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx.xx
+```
+
+This means that my `schedulerLockCount` is never making it to 0, or I have a problem with my `Atomic` implementation.
+
+I was looking at `schedulerLockCount` rather than `postponeCount`...  grr....
+
+Now, with that change, I am still not getting a process change.
+
+---
+
+### 2019-Nov-28
+
+Last night as I was headed to bed, I realized that `ProcessSwitch()` was not coded correctly.  So I fixed that up this morning and I have the tasks at least cooperatively scheduling.  This is much better!
+
+Now, sleeping appears to still be a problem.
+
+This I found interesting:
+
+```C++
+        do {
+            // -- -- temporarily unlock the scheduler and enable interrupts for the timer to fire
+            ProcessUnlockScheduler();
+            EnableInterrupts();
+            HaltCpu();
+            DisableInterrupts();
+            ProcessLockScheduler(false);     // make sure that this does not overwrite the process's flags
+            next = ProcessNext();
+        } while (next == NULL);
+```
+
+This is the code for when no process is available to run.  The CPU will eventually be able to go into a deeper and deeper sleep mode.  However, I needed to properly unlock the scheduler to allow the timer to fire and get that same lock.  At the same time I had to force-enable interrupts and then force-disable interrupts.
+
+What is more important here is that because I am forcefully changing the state of interrupts here, I also needed to take care that I did not actually change the state of the flags stored in the scheduler structure.  I guess technically I could have left out the calls to `EnableInterrupts()` and `DisableInterrupts()`, but I like the extra readability that this gives.  If I before concerned with performance later, I can tune this for sure.
+
+I have now made some changes that need to be brought over to the RPi.
+
+---
+
+OK, for RPi, I had to work on cleaning up the architecture-specific `ProcessSwitch()` function.  That was a real mess and I'm not sure just how that worked to be honest.  That said, I have processes switching now, but the kernel locks after about a second..., and the sleep functions are not working properly -- I am just getting round-robin scheduling with no delays between letters being output:
+
+> .AB.AB.AB.AB.AB.AB.AB.
+
+I walked through `ProcessSwitch()` again and everything looks good to me.  So, I need to consider other things.  For example, am I getting the correct timer value and do I have another recursive lock to deal with?  I'm going to start with the timer....
+
+* `TimerCallBack()` uses `TimerCurrentCount()` to determine the current timer value.
+* `TimerCurrentCount()` uses the device-specific `dev->TimerCurrentCount()` function.
+* For the bcm2836, this function is `_TimerCurrentCount()`.
+* The `_TimerCurrentCount()` function is a common function across all platforms, and reads `microsSinceBoot`.
+* `microsSinceBoot` is updated only from `_TimerPlatformTick()` function.
+* This function is called from the device-specific `dev->TimerPlatformTick()` function.
+
+So, in short, this should be working.
+
+---
+
+I did track this down to the code in `TimerCallBack()` that searches the list of sleeping tasks to see what is available to run next.  It gets caught in an infinite loop.  And it looks like the actual list head has been removed from the list -- the last process somehow points to the first one rather than the list head structure.
+
+I'm starting to wonder if the wrong process is being added to the ready queue on a process change....  It would explain processes getting CPU when they are waiting and the ready queue being out of sync.
+
+And when I comment out the call to `ProcessDoReady()` from `ProcessSwitch()`, I get the same behavior.  So, I am on the right track I think, but I'm looking in the wrong place.
+
+So, I need to go back and redo my tests.  In particular, I need to look at `ProcessBlock()`.
+
+This works for the x86-pc target but does not for the rpi2b target. Hmmm....
+
+OK, I have been able to work this down to the fact that `ProcessSwitch()` is not calling `ProcessDoReady()` when it should.
+
+And with those changes, at least the rpi2b and x86-pc targets are consistent -- and they both appear to be working properly.
+
+---
+
+OK, finally, I need to get this to work on real x86 hardware.  Currently, it will boot and I am getting some garbage to the serial port, i.e. lots of stuff like this:
+
+> ����������p��������
+
+and then a triple fault.
+
+Let me commit this point and I will work on the baud mismatch.
+
+---
+
+
+
+
+
+

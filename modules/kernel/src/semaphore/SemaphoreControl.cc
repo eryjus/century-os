@@ -125,7 +125,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                 Semaphore_t *sem = &set->semSet[semnum];
                 int val = semun.val;
 
-                ProcessEnterPostpone();                 // SemReadyWaiting might reschedule if we do not postpone
+                ProcessLockAndPostpone();                 // SemReadyWaiting might reschedule if we do not postpone
                 SPINLOCK_BLOCK(set->lock) {
                     SPINLOCK_RLS(semaphoreAll.globalLock);
                     set->semCtime = 0;                  // TODO: set the time value
@@ -143,7 +143,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
 
                     SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                 }
-                ProcessExitPostpone();
+                ProcessUnlockAndSchedule();
             }
 
             return 0;
@@ -164,7 +164,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                 int val = semun.val;
                 int prev;
 
-                ProcessEnterPostpone();                 // SemReadyWaiting might reschedule with the lock held
+                ProcessLockAndPostpone();                 // SemReadyWaiting might reschedule with the lock held
                 SPINLOCK_BLOCK(set->lock) {
                     SPINLOCK_RLS(semaphoreAll.globalLock);
                     set->semCtime = 0;                  // TODO: set the time value
@@ -178,7 +178,7 @@ int __krntext SemaphoreControl(int semid, int semnum, int cmd, union semun semun
                     SemUndoReset(semid, set->key, semnum);
                     SPINLOCK_RLS_RESTORE_INT(set->lock, flags);
                 }
-                ProcessExitPostpone();
+                ProcessUnlockAndSchedule();
             }
 
             return 0;

@@ -25,7 +25,8 @@
 //
 // -- build the stack needed to start a new process
 //    ---------------------------------------------
-frame_t __krntext ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
+EXPORT KERNEL
+frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 {
     archsize_t *stack;
     frame_t rv = PmmAllocAlignedFrames(STACK_SIZE / FRAME_SIZE, 12);
@@ -52,7 +53,7 @@ frame_t __krntext ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 
     proc->topOfStack = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + (STACK_LOCATION + STACK_SIZE * proc->pid);
     MmuMapToFrame((STACK_LOCATION + STACK_SIZE * proc->pid), rv, PG_KRN | PG_WRT);
-//    kprintf("the new process stack is located at %p (frame %p)\n", (STACK_LOCATION + STACK_SIZE * proc->pid), rv);
+    kprintf("the new process stack is located at %p (frame %p)\n", (STACK_LOCATION + STACK_SIZE * proc->pid), rv);
 
 
     return rv;

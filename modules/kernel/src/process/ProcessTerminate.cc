@@ -24,22 +24,17 @@
 //
 // -- Terminate a task
 //    ----------------
-void __krntext ProcessTerminate(Process_t *proc)
+EXPORT KERNEL void ProcessTerminate(Process_t *proc)
 {
-    ProcessEnterPostpone();
+    ProcessLockAndPostpone();
 
     ProcessListRemove(proc);
 
-    archsize_t flags = SPINLOCK_BLOCK_NO_INT(scheduler.listTerminated.lock) {
-        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
-        SPINLOCK_RLS_RESTORE_INT(scheduler.listTerminated.lock, flags);
-    }
+    Enqueue(&scheduler.listTerminated, &proc->stsQueue);
 
-    if (proc == scheduler.currentProcess) ProcessBlock(PROC_TERM);
+    if (proc == scheduler.currentProcess) ProcessDoBlock(PROC_TERM);
     else proc->status = PROC_TERM;
 
-    CLEAN_PROCESS(proc);
-
-    ProcessExitPostpone();
+    ProcessUnlockAndSchedule();
 }
 

@@ -25,13 +25,14 @@
 //
 // -- Create a new process and get it ready to be scheduled
 //    -----------------------------------------------------
+EXPORT KERNEL
 Process_t *ProcessCreate(void (*startingAddr)(void))
 {
     extern archsize_t mmuLvl1Table;
 
     Process_t *rv = NEW(Process_t);
 
-    rv->pid = scheduler.nextPID ++;           // -- this is the butler process ID
+    rv->pid = scheduler.nextPID ++;
     rv->command = NULL;
     rv->policy = POLICY_0;
     rv->priority = PTY_OS;
@@ -57,12 +58,10 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Put this process on the queue to execute
     //    ----------------------------------------
-    ProcessEnterPostpone();
+    ProcessLockAndPostpone();
     rv->status = PROC_READY;
-    CLEAN_PROCESS(rv);
-    ProcessReady(rv);
-    ProcessExitPostpone();
-
+    ProcessDoReady(rv);
+    ProcessUnlockAndSchedule();
 
     return rv;
 }

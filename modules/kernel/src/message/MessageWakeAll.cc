@@ -29,7 +29,7 @@
 //    -------------------------------------------------------------------------------------
 int __krntext MessageWakeAll(ListHead_t *list)
 {
-    ProcessEnterPostpone();
+    ProcessLockAndPostpone();
 
     ListHead_t::List_t *wrk = list->list.next;
 
@@ -42,6 +42,6 @@ int __krntext MessageWakeAll(ListHead_t *list)
         wrk = nxt;
     }
 
-    ProcessExitPostpone();
+    ProcessUnlockAndSchedule();
     return 0;
 }
