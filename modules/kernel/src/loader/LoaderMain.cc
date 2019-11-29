@@ -59,7 +59,7 @@ __CENTURY_FUNC__ void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, arc
     kprintf("Initialization Complete\n");
     FrameBufferPutS("Initialization Complete\n");
 
-    kprintf("Jumping to the kernel, located at address %p\n", kInit);
+    kprintf("Jumping to the kernel, located at address %p, with stack %p\n", kInit, STACK_LOCATION);
     JumpKernel(kInit, STACK_LOCATION + STACK_SIZE);
 
     while (1) {}

@@ -39,7 +39,7 @@ bool __ldrtext AcpiReadRsdt(archsize_t loc)
 
     for (uint32_t i = 0; i < entries; i ++) {
         kprintf("The address for entry %x is %p\n", i, rsdt->entry[i]);
-        AcpiGetTableSig(rsdt->entry[i]);
+        if (rsdt->entry[i]) AcpiGetTableSig(rsdt->entry[i]);
     }
 
     return true;

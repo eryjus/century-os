@@ -16,6 +16,7 @@
 
 
 #include "printf.h"
+#include "mmu.h"
 #include "hardware.h"
 
 
@@ -24,6 +25,12 @@
 //    ------------------------------------------------------------------
 uint32_t __ldrtext AcpiGetTableSig(archsize_t loc)
 {
+    kprintf("Checking ACPI table at %p\n", loc);
+    if (!MmuIsMapped(loc) || loc == 0) {
+        kprintf("... not mapped: skipping!\n");
+        return 0;
+    }
+
     uint32_t rv = *((uint32_t *)loc);
 
     if (!AcpiCheckTable(loc, rv)) return 0;

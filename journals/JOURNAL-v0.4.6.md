@@ -522,8 +522,92 @@ Let me commit this point and I will work on the baud mismatch.
 
 ---
 
+OK, a quick check reveals I am setting the serial port to 38400 baud:
+
+```C++
+    outb(base + SERIAL_INTERRUPT_ENABLE, 0x00); // Disable all interrupts
+    outb(base + SERIAL_LINE_CONTROL, 0x80);     // Enable DLAB (set baud rate divisor)
+    outb(base + SERIAL_DIVISOR_LSB, 0x03);      // Set divisor to 3 (lo byte) 38400 baud
+    outb(base + SERIAL_DIVISOR_MSB, 0x00);      //                  (hi byte)
+    outb(base + SERIAL_LINE_CONTROL, 0x03);     // 8 bits, no parity, one stop bit
+    outb(base + SERIAL_FIFO_CONTROL, 0xC7);     // Enable FIFO, clear them, with 14-byte threshold
+    outb(base + SERIAL_MODEM_CONTROL, 0x0B);    // IRQs enabled, RTS/DSR set
+```
+
+This is what I need to clean up.  It should be easy enough to fix by changing the divisor to 1 (38400 * 3 == 115200).  So, I need to figure out if this is just as simple as changing the `SERIAL_DIVISOR_LSB` to 1.  A quick test says yes, that is it.  Plus I confirmed that this had no impact on the QEMU emulator.
+
+---
+
+So, now for the triple fault....  I believe that this is related to parsing the ACPI tables and one of the table addresses is not mapped in the MMU.
+
+OK, so I have narrowed it down to a difference between the RSDT (which is available from the emulator) and the XSDT (which is what is presented on real hardware).  This boiled down to a difference between `uint32_t` and `uint64_t`....  Damned copy-and-paste!
+
+So, now, I am getting to the point where I jump to the kernel.  And then I triple fault again.  This is probably also going to come down the the MMU -- but probably the frame buffer.
+
+A quick test confirms that I am actually making it to the kernel.  However, the first thing that is done is a `kprintf()` call and that is failing.  Now, that may be the stack, to let's see if I can test that.  I can do that with a call to `DisableInterrupts()`:
+
+```C++
+void kInit(void)
+{
+DisableInterrupts();
+while (true) {}
+```
+
+And this test failed.  This means I have a stack problem.
+
+This now makes me wonder if the real MMU hardware will check the memory location before pushing values.
+
+However, since the first thing that is done is to create 12 bytes of room, I doubt that is the case:
+
+```
+80005db0 <kInit>:
+80005db0:       83 ec 0c                sub    $0xc,%esp
+80005db3:       e8 98 a3 ff ff          call   80000150 <DisableInterrupts>
+80005db8:       eb fe                   jmp    80005db8 <kInit+0x8>
+```
+
+So, I now will check for the mapping before I jump.
+
+On real hardware, I have the following results:
+
+```
+MmuDumpTables: Walking the page tables for address 0xff800000
+Level  Tabl-Addr   Index       Next Frame  us  rw  pr
+-----  ----------  ----------  ----------  --  --  --
+PD     0xfffff000  0x000003fe  0x00000000   0   0   0
+```
+
+... and on QEMU I have:
+
+```
+MmuDumpTables: Walking the page tables for address 0xff800000
+Level  Tabl-Addr   Index       Next Frame  us  rw  pr
+-----  ----------  ----------  ----------  --  --  --
+PD     0xfffff000  0x000003fe  0x000003f7   1   1   1
+PT     0xffffe000  0x00000000  0x000003f8   1   1   1
+```
+
+So, what the heck is this?
+
+---
+
+### 2019-Nov-29
+
+So, my triple fault problem boiled down to the CPU count ending up being 0, and therefore a stack for that CPU was never created.  With no stack, no stack operations could be done or it would end in a triple fualt.
+
+Now, my IBM T61 laptop boots all the way to the point where it is waiting for a Timer interrupt, which never comes.
+
+smh....
 
 
+```C++
+__ldrtext PicDevice_t *PicPick(void)
+{
+    if (GetIoapicCount > 0) picControl = &ioapicDriver;
+    else picControl = &pic8259;                         // -- fall back in the 8259 PIC
+```
 
+Missing the parenthesis for a functtion call to `GetIoapicCount()`.
 
+And with that change, I am now officially running on real x86 hardware with the same results as the emulator!
 
