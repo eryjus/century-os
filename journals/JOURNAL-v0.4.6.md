@@ -611,3 +611,22 @@ Missing the parenthesis for a functtion call to `GetIoapicCount()`.
 
 And with that change, I am now officially running on real x86 hardware with the same results as the emulator!
 
+## Version 0.4.6b
+
+So, here I continue my cleanup.  And the major purpose of this version is to get a working `assert` macro -- and something I can disable when I am preparing release code.  This should also allow me to start removing much of my `kprintf()` debugging code.
+
+Ha!!  This is going to drive me to implement `'%d'` in my `kprintf` implementaiton.
+
+---
+
+OK, that done, I am going to go back to retrofit the Scheduler code to use `assert`s.
+
+Now, with that, the scheduler has a rather big dependency on Spinlock code.  So, I feel like a minute or 2 to clean up spinlocks will be good as well.
+
+Also, since the heap code is good (I believe), I am going to set up some debugging flags so that I can turn on/off some of the checks as needed.
+
+I think I need to commit this code.
+
+---
+
+

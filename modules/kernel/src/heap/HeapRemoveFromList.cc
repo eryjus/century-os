@@ -66,7 +66,7 @@
 //    -------------------------------------
 void HeapRemoveFromList(OrderedList_t *entry)
 {
-    if (!entry) HeapError("NULL entry in HeapRemoveFromList()", "");
+    if (!assert(entry != NULL)) HeapError("NULL entry in HeapRemoveFromList()", "");
     HeapValidateHdr(entry->block, "HeapRemoveFromList()");
 
     if (kHeap->heapMemory == entry) {

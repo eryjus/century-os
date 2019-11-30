@@ -25,6 +25,9 @@
 EXPORT KERNEL
 void ProcessDoMicroSleepUntil(uint64_t when)
 {
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "Calling `ProcessDoMicroSleepUntil()` without the proper lock");
+
     if (when < TimerCurrentCount(timerControl)) return;
 
     scheduler.currentProcess->wakeAtMicros = when;

@@ -33,6 +33,8 @@ size_t HeapCalcPageAdjustment(OrderedList_t *entry)
 {
     archsize_t wrkPtr;
 
+    assert(entry != NULL);
+
     wrkPtr = (archsize_t)entry->block + sizeof(KHeapHeader_t);
 
     // if not a page aligned block, align it

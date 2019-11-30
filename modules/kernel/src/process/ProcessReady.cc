@@ -26,7 +26,11 @@
 EXPORT KERNEL
 void ProcessDoReady(Process_t *proc)
 {
+    if (!assert(proc != NULL)) return;
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoReady()` without the proper lock");
+
     proc->status = PROC_READY;
+
     switch(proc->priority) {
     case PTY_OS:
         Enqueue(&scheduler.queueOS, &proc->stsQueue);

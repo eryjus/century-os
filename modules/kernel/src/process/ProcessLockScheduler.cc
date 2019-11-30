@@ -29,9 +29,11 @@ EXPORT KERNEL
 void ProcessLockScheduler(bool save)
 {
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(schedulerLock);
+
     if (AtomicRead(&scheduler.schedulerLockCount) == 0) {
         if (save) scheduler.flags = flags;
     }
+
     AtomicInc(&scheduler.schedulerLockCount);
 }
 

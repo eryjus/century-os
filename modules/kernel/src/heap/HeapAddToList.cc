@@ -32,7 +32,7 @@ void HeapAddToList(OrderedList_t *entry)
     OrderedList_t *wrk, *sav = 0;
     size_t size;
 
-    if (!entry) HeapError("NULL entry in HeapAddToList()", "");
+    if (!assert(entry != NULL)) HeapError("NULL entry in HeapAddToList()", "");
     HeapValidateHdr(entry->block, "HeapAddToList()");
     // cannot validate heap ptrs as may be empty
 

@@ -26,10 +26,10 @@
 //    ----------------
 EXPORT KERNEL void ProcessTerminate(Process_t *proc)
 {
+    if (!assert(proc != NULL)) return;
+
     ProcessLockAndPostpone();
-
     ProcessListRemove(proc);
-
     Enqueue(&scheduler.listTerminated, &proc->stsQueue);
 
     if (proc == scheduler.currentProcess) ProcessDoBlock(PROC_TERM);

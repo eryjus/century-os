@@ -57,7 +57,7 @@
 //    --------------------------------------
 void HeapReleaseEntry(OrderedList_t *entry)
 {
-    if (!entry) HeapError("NULL entry in HeapReleaseEntry()", "");
+    if (!assert(entry != NULL)) HeapError("NULL entry in HeapReleaseEntry()", "");
     HeapValidateHdr(entry->block, "HeapReleaseEntry()");
 
     // verify removed from list and remove if necessary

@@ -62,7 +62,7 @@ OrderedList_t *HeapAlignToPage(OrderedList_t *entry)
     size_t leftSize, rightSize;
     OrderedList_t *ret;
 
-    if (!entry) HeapError("NULL entry in HeapAlignToPage()", "");
+    if (!assert(entry != 0)) HeapError("NULL entry in HeapAlignToPage()", "");
     HeapValidateHdr(entry->block, "HeapAlignToPage()");
 
     // initialize the working variables

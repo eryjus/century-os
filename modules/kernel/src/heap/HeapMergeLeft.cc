@@ -34,7 +34,7 @@ OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr)
     KHeapHeader_t *leftHdr = NULL;
     KHeapFooter_t *thisFtr = NULL;
 
-    if (!hdr) HeapError("Bad Header passed into HeapMergeLeft()", "");
+    if (!assert(hdr != NULL)) HeapError("Bad Header passed into HeapMergeLeft()", "");
 
     thisFtr = (KHeapFooter_t *)((char *)hdr + hdr->size - sizeof(KHeapFooter_t));
     leftFtr = (KHeapFooter_t *)((char *)hdr - sizeof(KHeapFooter_t));

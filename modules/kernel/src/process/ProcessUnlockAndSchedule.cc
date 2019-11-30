@@ -28,6 +28,8 @@
 EXPORT KERNEL
 void ProcessUnlockAndSchedule(void)
 {
+    assert_msg(AtomicRead(&scheduler.postponeCount) > 0, "postponeCount out if sync");
+
     if (AtomicDecAndTest0(&scheduler.postponeCount) == true) {
         if (scheduler.processChangePending != false) {
             scheduler.processChangePending = false;           // need to clear this to actually perform a change

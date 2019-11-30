@@ -136,27 +136,53 @@ int kprintf(const char *fmt, ...)
             // fall through
 
         case 'x':
-            val = va_arg(args, archsize_t);
-            SerialPutS(toPort, "0x");
-            printed += 2;
+            {
+                val = va_arg(args, archsize_t);
+                SerialPutS(toPort, "0x");
+                printed += 2;
 
-            bool allZero = true;
+                bool allZero = true;
 
-            for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
-                int ch = (val >> j) & 0x0f;
-                if (ch != 0) allZero = false;
-                if (!allZero || flags & ZEROPAD) {
-                    SerialPutChar(toPort, dig[ch]);
+                for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
+                    int ch = (val >> j) & 0x0f;
+                    if (ch != 0) allZero = false;
+                    if (!allZero || flags & ZEROPAD) {
+                        SerialPutChar(toPort, dig[ch]);
+                        printed ++;
+                    }
+                }
+
+                if (allZero && !(flags & ZEROPAD)) {
+                    SerialPutChar(toPort, '0');
                     printed ++;
                 }
+
+                break;
             }
 
-            if (allZero && !(flags & ZEROPAD)) {
-                SerialPutChar(toPort, '0');
-                printed ++;
-            }
+        case 'd':
+            {
+                val = va_arg(args, archsize_t);
+                char buf[30];
+                int i = 0;
 
-            break;
+                if (val == 0) {
+                    SerialPutChar(toPort, '0');
+                    printed ++;
+                } else {
+                    while (val) {
+                        buf[i ++] = (val % 10) + '0';
+                        val /= 10;
+                    }
+
+                    while (--i >= 0) {
+                        SerialPutChar(toPort, buf[i]);
+                        printed ++;
+                    }
+                }
+
+                break;
+            }
         }
     }
 

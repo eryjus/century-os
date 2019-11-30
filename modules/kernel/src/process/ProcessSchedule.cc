@@ -46,6 +46,9 @@ Process_t *ProcessNext(void)
 EXPORT KERNEL
 void ProcessSchedule(void)
 {
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "Calling `ProcessSchedule()` without holding the proper lock");
+
     Process_t *next = NULL;
     ProcessUpdateTimeUsed();
 

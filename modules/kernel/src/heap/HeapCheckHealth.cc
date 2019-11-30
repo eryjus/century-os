@@ -23,6 +23,8 @@
 #include "heap.h"
 
 
+#if DEBUG_HEAP == 1
+
 //
 // -- Execute some sanity checks on the overall heap structures
 //    ---------------------------------------------------------
@@ -84,3 +86,7 @@ void HeapCheckHealth(void)
     if (!numCorrupt) return;
     else while (1);
 }
+
+
+#endif
+
