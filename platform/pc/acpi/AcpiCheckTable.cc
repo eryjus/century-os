@@ -16,6 +16,7 @@
 
 
 #include "printf.h"
+#include "mmu.h"
 #include "hardware.h"
 
 
@@ -35,7 +36,13 @@ bool __ldrtext AcpiCheckTable(archsize_t locn, uint32_t sig)
 
     size = *((uint32_t *)(locn + 4));
     kprintf(".. Checking %x bytes of the table\n", size);
-    for (uint32_t i = 0; i < size; i ++) checksum += table[i];
+    for (uint32_t i = 0; i < size; i ++) {
+        archsize_t loc = (archsize_t)(&table[i]);
+        if (!MmuIsMapped(loc)) {
+            MmuMapToFrame(loc, loc >> 12, PG_KRN);
+        }
+        checksum += table[i];
+    }
 
     return (checksum & 0xff) == 0;
 }
