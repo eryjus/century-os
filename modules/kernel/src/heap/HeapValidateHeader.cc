@@ -26,6 +26,9 @@
 #include "heap.h"
 
 
+#if DEBUG_HEAP == 1
+
+
 //
 // -- Validate a heap header block to ensure it has not been overrun
 //    --------------------------------------------------------------
@@ -67,3 +70,6 @@ void HeapValidateHdr(KHeapHeader_t *hdr, const char *from)
         HeapError(from, "Header/Entry size mismatch");
     }
 }
+
+
+#endif

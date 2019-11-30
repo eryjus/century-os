@@ -22,7 +22,7 @@
 //===================================================================================================================
 
 
-#ifndef __TYPES_H__
+#pragma once
 #define __TYPES_H__
 
 
@@ -31,6 +31,19 @@
 //    --------------------------------------------------------------------
 #include <stdint.h>
 #include <stddef.h>
+
+
+//
+// -- manage the release compiler flag
+//    --------------------------------
+#if !defined(RELEASE)
+#   define RELEASE 0
+#else
+#   if RELEASE > 1
+#       undef RELEASE
+#       define RELEASE 1
+#   endif
+#endif
 
 
 //
@@ -52,6 +65,7 @@
 
 #define EXPORT          __attribute__((visibility("default")))
 #define HIDDEN          __attribute__((visibility("hidden")))
+#define EXTERN          extern
 
 #define KERNEL          __attribute__((section(".text")))
 #define KERNEL_DATA     __attribute__((section(".data")))
@@ -92,6 +106,13 @@ typedef char *  va_list;
 
 
 //
+// -- Some compiler hints
+//    -------------------
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
+
+//
 // -- Some compile-time assertions to help with size checking!
 //    --------------------------------------------------------
 /* Note we need the 2 concats below because arguments to ##
@@ -100,6 +121,21 @@ typedef char *  va_list;
 #define ASSERT_CONCAT_(a, b) a##b
 #define ASSERT_CONCAT(a, b) ASSERT_CONCAT_(a, b)
 #define ct_assert(e) enum { ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) }
+
+
+//
+// -- Some additional runtime assertion checking; purposefully set up for use in conditions
+//    -------------------------------------------------------------------------------------
+extern "C" EXPORT KERNEL
+bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
+
+#if RELEASE == 1
+#   define assert(e) true
+#   define assert_msg(e,m) true
+#else
+#   define assert(e) (likely((e)) ? true : AssertFailure(#e, NULL, __FILE__, __LINE__))
+#   define assert_msg(e,m) (likely((e)) ? true : AssertFailure(#e, (m), __FILE__, __LINE__))
+#endif
 
 
 //
@@ -165,5 +201,3 @@ const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
 //    ----------------
 extern isrFunc_t isrHandlers[256];
 
-
-#endif

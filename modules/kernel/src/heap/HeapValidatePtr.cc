@@ -26,6 +26,9 @@
 #include "heap.h"
 
 
+#if DEBUG_HEAP == 1
+
+
 //
 // -- Check the heap structure
 //    ------------------------
@@ -39,3 +42,6 @@ void HeapValidatePtr(const char *from)
 
     HeapValidateHdr(kHeap->heapMemory->block, from);
 }
+
+
+#endif

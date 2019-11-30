@@ -28,6 +28,8 @@
 EXPORT KERNEL
 void ProcessUnlockScheduler(void)
 {
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "schedulerLockCount out if sync");
+
     if (AtomicDecAndTest0(&scheduler.schedulerLockCount)) {
         SPINLOCK_RLS_RESTORE_INT(schedulerLock, scheduler.flags);
     }

@@ -22,7 +22,8 @@
 //
 // -- Do nothing on a timer tick
 //    --------------------------
-void __krntext _TimerPlatformTick(UNUSED(TimerDevice_t *dev))
+EXPORT KERNEL
+void _TimerPlatformTick(UNUSED(TimerDevice_t *dev))
 {
     extern uint64_t microsSinceBoot;
 

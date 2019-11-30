@@ -27,6 +27,9 @@
 EXPORT KERNEL
 void ProcessListRemove(Process_t *proc)
 {
+    if (!assert(proc != NULL)) return;
+
+
     // -- is it already not on a list?
     if (proc->stsQueue.next == &proc->stsQueue) return;
 

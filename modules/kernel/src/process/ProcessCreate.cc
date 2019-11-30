@@ -31,6 +31,9 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     extern archsize_t mmuLvl1Table;
 
     Process_t *rv = NEW(Process_t);
+    if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
+        HaltCpu();
+    }
 
     rv->pid = scheduler.nextPID ++;
     rv->command = NULL;

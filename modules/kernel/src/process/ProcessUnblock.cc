@@ -26,6 +26,10 @@
 EXPORT KERNEL
 void ProcessDoUnblock(Process_t *proc)
 {
+    if (!assert(proc != NULL)) return;
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "Calling `ProcessDoUnblock()` without holding the proper lock");
+
     proc->status = PROC_READY;
     ProcessDoReady(proc);
 }

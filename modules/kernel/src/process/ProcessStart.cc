@@ -30,6 +30,9 @@
 EXPORT KERNEL
 void ProcessStart(void)
 {
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "`ProcessStart()` is executing for a new process without holding the proper lock");
+
     ProcessUnlockScheduler();
 }
 
