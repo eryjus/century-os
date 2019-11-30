@@ -629,4 +629,21 @@ I think I need to commit this code.
 
 ---
 
+## Version 0.4.6c
+
+Before I can get to SMP properly, I need to be able to get the ACPI structure read on my hardware.  The problem here is that the ACPI tables are split across multiple MMU pages.  So, I will need to temporarily identity map and later unmap these pages.
+
+That was relatively easy to do just by checking if the memory was mapped and mapping it if not.  I also took some time to clean up some of the loader stuff (not all of it).
+
+So..., what else should I debug while I am at it?
+
+I know it has been some time, but I have this feeling that I went through all these v0.4.x versions without really understanding what I was doing and really how to debug it all.  I probably need to go back to the beginning and redo some of this work and related testing.  Some I will not be able to do until I have SMP up and running properly.  But, some I really need to get done now.
+
+So, I think the first thing to do is to make sure I am really using the IOAPIC.  Which is true.
+
+This, then, leaved the Posix IPC synchronization primitives to debug.  Before I get into that, I think I want to commit this code.
+
+
+
+
 

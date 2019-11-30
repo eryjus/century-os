@@ -15,9 +15,7 @@
 //===================================================================================================================
 
 
-#ifndef __LOADER_H__
-#define __LOADER_H__
-
+#pragma once
 
 #include "cpu.h"
 
@@ -25,21 +23,21 @@
 //
 // -- these 2 variable are provided by the linker
 //    -------------------------------------------
-extern archsize_t phys_loc;
-extern archsize_t kern_loc;
-extern uint8_t *_loaderEnd;
-extern uint8_t *_loaderStart;
-extern frame_t pmmEarlyFrame;
-extern frame_t pmmEarlyFrameSave;
-extern archsize_t mmuLvl1Table;
-extern frame_t intTableAddr;
+EXTERN archsize_t phys_loc;
+EXTERN archsize_t kern_loc;
+EXTERN uint8_t *_loaderEnd;
+EXTERN uint8_t *_loaderStart;
+EXTERN frame_t pmmEarlyFrame;
+EXTERN frame_t pmmEarlyFrameSave;
+EXTERN archsize_t mmuLvl1Table;
+EXTERN frame_t intTableAddr;
 
 
 //
 // -- This is a call to kMemSetB
 //    --------------------------
 typedef void (*kMemSetB_t)(void *buf, uint8_t wrd, size_t cnt);
-extern kMemSetB_t lMemSetB;
+EXTERN kMemSetB_t lMemSetB;
 
 
 //
@@ -59,27 +57,37 @@ extern kMemSetB_t lMemSetB;
 
 
 //
-// -- This is the function that will allocate a frame during early initialization (< 4MB)
-//    -----------------------------------------------------------------------------------
-__CENTURY_FUNC__ frame_t NextEarlyFrame(void);
-
-//
-// -- function to initialize the loader functions
-//    -------------------------------------------
-__CENTURY_FUNC__ void LoaderFunctionInit(void);
+// -- Function prototypes
+//    -------------------
+extern "C" {
 
 
-//
-// -- Early Initialization function to handle this initialization by architecture
-//    ---------------------------------------------------------------------------
-__CENTURY_FUNC__ void EarlyInit(void);
+    //
+    // -- This is the function that will allocate a frame during early initialization (< 4MB)
+    //    -----------------------------------------------------------------------------------
+    EXPORT LOADER frame_t NextEarlyFrame(void);
+
+    //
+    // -- function to initialize the loader functions
+    //    -------------------------------------------
+    EXPORT LOADER void LoaderFunctionInit(void);
 
 
-//
-// -- Perform the MMU Early Initialization so that we can use the whole kernel source no matter where it is located
-//    -------------------------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ void MmuEarlyInit(void);
+    //
+    // -- Early Initialization function to handle this initialization by architecture
+    //    ---------------------------------------------------------------------------
+    EXPORT LOADER void EarlyInit(void);
 
 
+    //
+    // -- Perform the MMU Early Initialization so that we can use the whole kernel
+    //    source no matter where it is located
+    //    ------------------------------------------------------------------------
+    EXPORT LOADER void MmuEarlyInit(void);
 
-#endif
+
+    //
+    // -- This is the loader main entry point
+    //    -----------------------------------
+    EXPORT LOADER void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2);
+}

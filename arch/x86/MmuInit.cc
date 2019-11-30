@@ -75,6 +75,7 @@ void __ldrtext MmuInit(void)
     //    and will need to clean up and return from this function and getting that right is risky).
     //    ------------------------------------------------------------------------------------------------------
     if (cpus.cpuCount == 0) cpus.cpuCount = 1;
+    if (!assert_msg(cpus.cpuCount == 1, "Only Single CPU supported at this time")) cpus.cpuCount = 1;
     archsize_t stackLoc = STACK_LOCATION;
     for (int j = 0; j < cpus.cpuCount; j ++) {
         for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {

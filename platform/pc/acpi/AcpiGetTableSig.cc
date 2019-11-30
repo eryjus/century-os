@@ -23,9 +23,14 @@
 //
 // -- get the table signature (and check its valid); return 0 if invalid
 //    ------------------------------------------------------------------
-uint32_t __ldrtext AcpiGetTableSig(archsize_t loc)
+EXPORT LOADER
+uint32_t AcpiGetTableSig(archsize_t loc)
 {
     kprintf("Checking ACPI table at %p\n", loc);
+    if (!MmuIsMapped(loc)) {
+        MmuMapToFrame(loc, loc >> 12, PG_KRN);
+    }
+
     if (!MmuIsMapped(loc) || loc == 0) {
         kprintf("... not mapped: skipping!\n");
         return 0;

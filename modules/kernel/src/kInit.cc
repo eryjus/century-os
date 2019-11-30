@@ -83,6 +83,7 @@ void StartB(void)
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
+EXPORT KERNEL
 void kInit(void)
 {
     //

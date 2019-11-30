@@ -31,5 +31,9 @@ void PlatformInit(void)
     UpdateKprintfPort();
     PicPick();
     TimerPick();
+
+    if (!assert_msg(timerControl == &lapicTimerControl, "LAPIC timer required")) {
+        cpus.cpuCount = 1;
+    }
 }
 
