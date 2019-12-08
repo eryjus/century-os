@@ -986,4 +986,16 @@ I also spend some time documenting the target [GDT](http://eryjus.ddns.net:3000/
 
 But, I think it is time to commit this code.
 
+---
+
+## Version 0.4.6e
+
+OK, so I think the final bit here is going to be to get the newly started processes into the scheduler (self-terminating the jobs) and to get all the rest of the cores started.  I also believe I have a goal for v0.5.0: clean up and better organize the kernel as it is so far.
+
+---
+
+This ended up being a quick change.
+
+This also completes my SMP work.  From here, I will commit this code and merge it all the way back to `master` and clean up my mess.
+
 

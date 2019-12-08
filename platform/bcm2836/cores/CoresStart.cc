@@ -12,8 +12,9 @@ extern "C" void entryAp(void);
 
 __CENTURY_FUNC__ void CoresStart(void)
 {
-    // -- start core 1
-    kprintf("Starting core with message to %p\n", IPI_MAILBOX_BASE + 0x0c + (0x10 * 1));
-    MmioWrite(IPI_MAILBOX_BASE + 0x0c + (0x10 * 1), (uint32_t)entryAp);
-    SEV();
+    for (int i = 1; i < cpus.cpusDiscovered; i ++) {
+        kprintf("Starting core with message to %p\n", IPI_MAILBOX_BASE + 0x0c + (0x10 * i));
+        MmioWrite(IPI_MAILBOX_BASE + 0x0c + (0x10 * i), (uint32_t)entryAp);
+        SEV();
+    }
 }

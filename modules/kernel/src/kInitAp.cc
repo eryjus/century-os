@@ -4,6 +4,8 @@
 #include "cpu.h"
 #include "loader.h"
 #include "timer.h"
+#include "process.h"
+#include "heap.h"
 #include "serial.h"
 
 
@@ -27,8 +29,21 @@ void kInitAp(void)
 
     kprintf("CPU %x running\n", CpuNum());
 
-    while (true) {
-        kprintf("*");
-        for (volatile int i = 0; i < 10000; i ++) {}
-    }
+    Process_t *proc = NEW(Process_t);
+    assert(proc != NULL);
+
+    proc->pid = scheduler.nextPID ++;
+    proc->command = NULL;
+    proc->policy = POLICY_0;
+    proc->priority = PTY_OS;
+    proc->status = PROC_INIT;
+    AtomicSet(&proc->quantumLeft, PTY_OS);
+    proc->timeUsed = 0;
+    ListInit(&proc->stsQueue);
+    proc->ssAddr = 0;
+
+    // -- Now we immediately self-terminate to give the scheduler to something else
+    ProcessTerminate(proc);
+
+    while (true) {}
 }
