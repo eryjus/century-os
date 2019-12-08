@@ -29,6 +29,8 @@ __CENTURY_FUNC__ void CoresStart(void)
     *((uint32_t *)(&trampoline[14])) = intTableAddr;
     *((uint32_t *)(&trampoline[20])) = intTableAddr + 0x800;
 
-    picControl->PicBroadcastInit(picControl, 1);
-    picControl->PicBroadcastSipi(picControl, 1, (archsize_t)trampoline);
+    for (int i = 1; i < cpus.cpusDiscovered; i ++) {
+        picControl->PicBroadcastInit(picControl, i);
+        picControl->PicBroadcastSipi(picControl, i, (archsize_t)trampoline);
+    }
 }
