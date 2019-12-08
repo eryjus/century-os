@@ -20,6 +20,7 @@
 
 #include "types.h"
 #include "serial.h"
+#include "spinlock.h"
 #include "printf.h"
 
 
@@ -28,6 +29,12 @@
 //    kernel version of the serial port in mapped address space.
 //    ---------------------------------------------------------------------------------------------------
 SerialDevice_t *toPort = &loaderSerial;
+
+
+//
+// -- This is the spinlock that is used to ensure that only one process can output to the serial port at a time
+//    ---------------------------------------------------------------------------------------------------------
+Spinlock_t kprintfLock = {0};
 
 
 //
@@ -66,127 +73,131 @@ __CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
 //    ------------------------------------------------------------
 int kprintf(const char *fmt, ...)
 {
-    int printed = 0;
-    const char *dig = digits;
-    archsize_t val;
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(kprintfLock) {
+        int printed = 0;
+        const char *dig = digits;
+        archsize_t val;
 
-    va_list args;
-    va_start(args, fmt);
+        va_list args;
+        va_start(args, fmt);
 
-    for ( ; *fmt; fmt ++) {
-        // -- for any character not a '%', just print the character
-        if (*fmt != '%') {
-            SerialPutChar(toPort, *fmt);
-            printed ++;
-            continue;
-        }
-
-        // -- we know the character is a '%' char at this point
-        fmt ++;
-        if (!*fmt) return printed;
-        int fmtDefn = 1;
-        int flags = 0;
-
-        // -- we need to check for the format modifiers, starting with zero-fill
-        if (*fmt == '0') {
-            flags |= ZEROPAD;
-            fmtDefn ++;
-            fmt ++;
-        }
-
-        // -- now, get to the bottom of a formatted value
-        switch (*fmt) {
-        default:
-            fmt -= fmtDefn;
-            // fall through
-
-        case '%':
-            SerialPutChar(toPort, '%');
-            printed ++;
-            continue;
-
-        case 's': {
-            char *s = va_arg(args, char *);
-            if (!s) s = (char *)"<NULL>";
-            while (*s) SerialPutChar(toPort, *s ++);
-            printed ++;
-            continue;
-        }
-
-        case 'P':
-            flags |= LARGE;
-            dig = upper_digits;
-            // fall through
-
-        case 'p':
-            val = va_arg(args, archsize_t);
-            SerialPutS(toPort, "0x");
-            printed += 2;
-
-            for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
-                SerialPutChar(toPort, dig[(val >> j) & 0x0f]);
+        for ( ; *fmt; fmt ++) {
+            // -- for any character not a '%', just print the character
+            if (*fmt != '%') {
+                SerialPutChar(toPort, *fmt);
                 printed ++;
+                continue;
             }
 
-            break;
+            // -- we know the character is a '%' char at this point
+            fmt ++;
+            if (!*fmt) goto exit;
+            int fmtDefn = 1;
+            int flags = 0;
 
-        case 'X':
-            flags |= LARGE;
-            dig = upper_digits;
-            // fall through
+            // -- we need to check for the format modifiers, starting with zero-fill
+            if (*fmt == '0') {
+                flags |= ZEROPAD;
+                fmtDefn ++;
+                fmt ++;
+            }
 
-        case 'x':
-            {
+            // -- now, get to the bottom of a formatted value
+            switch (*fmt) {
+            default:
+                fmt -= fmtDefn;
+                // fall through
+
+            case '%':
+                SerialPutChar(toPort, '%');
+                printed ++;
+                continue;
+
+            case 's': {
+                char *s = va_arg(args, char *);
+                if (!s) s = (char *)"<NULL>";
+                while (*s) SerialPutChar(toPort, *s ++);
+                printed ++;
+                continue;
+            }
+
+            case 'P':
+                flags |= LARGE;
+                dig = upper_digits;
+                // fall through
+
+            case 'p':
                 val = va_arg(args, archsize_t);
                 SerialPutS(toPort, "0x");
                 printed += 2;
 
-                bool allZero = true;
-
                 for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
-                    int ch = (val >> j) & 0x0f;
-                    if (ch != 0) allZero = false;
-                    if (!allZero || flags & ZEROPAD) {
-                        SerialPutChar(toPort, dig[ch]);
-                        printed ++;
-                    }
-                }
-
-                if (allZero && !(flags & ZEROPAD)) {
-                    SerialPutChar(toPort, '0');
+                    SerialPutChar(toPort, dig[(val >> j) & 0x0f]);
                     printed ++;
                 }
 
                 break;
-            }
 
-        case 'd':
-            {
-                val = va_arg(args, archsize_t);
-                char buf[30];
-                int i = 0;
+            case 'X':
+                flags |= LARGE;
+                dig = upper_digits;
+                // fall through
 
-                if (val == 0) {
-                    SerialPutChar(toPort, '0');
-                    printed ++;
-                } else {
-                    while (val) {
-                        buf[i ++] = (val % 10) + '0';
-                        val /= 10;
+            case 'x':
+                {
+                    val = va_arg(args, archsize_t);
+                    SerialPutS(toPort, "0x");
+                    printed += 2;
+
+                    bool allZero = true;
+
+                    for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
+                        int ch = (val >> j) & 0x0f;
+                        if (ch != 0) allZero = false;
+                        if (!allZero || flags & ZEROPAD) {
+                            SerialPutChar(toPort, dig[ch]);
+                            printed ++;
+                        }
                     }
 
-                    while (--i >= 0) {
-                        SerialPutChar(toPort, buf[i]);
+                    if (allZero && !(flags & ZEROPAD)) {
+                        SerialPutChar(toPort, '0');
                         printed ++;
                     }
+
+                    break;
                 }
 
-                break;
+            case 'd':
+                {
+                    val = va_arg(args, archsize_t);
+                    char buf[30];
+                    int i = 0;
+
+                    if (val == 0) {
+                        SerialPutChar(toPort, '0');
+                        printed ++;
+                    } else {
+                        while (val) {
+                            buf[i ++] = (val % 10) + '0';
+                            val /= 10;
+                        }
+
+                        while (--i >= 0) {
+                            SerialPutChar(toPort, buf[i]);
+                            printed ++;
+                        }
+                    }
+
+                    break;
+                }
             }
         }
+
+exit:
+        va_end(args);
+
+        SPINLOCK_RLS_RESTORE_INT(kprintfLock, flags);
+        return printed;
     }
-
-    va_end(args);
-
-    return printed;
 }

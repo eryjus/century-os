@@ -19,6 +19,7 @@
 #include "heap.h"
 #include "mmu.h"
 #include "pmm.h"
+#include "stacks.h"
 #include "process.h"
 
 
@@ -51,9 +52,11 @@ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
     }
 
 
-    proc->topOfStack = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + (STACK_LOCATION + STACK_SIZE * proc->pid);
-    MmuMapToFrame((STACK_LOCATION + STACK_SIZE * proc->pid), rv, PG_KRN | PG_WRT);
-    kprintf("the new process stack is located at %p (frame %p)\n", (STACK_LOCATION + STACK_SIZE * proc->pid), rv);
+    archsize_t stackLoc = StackFind();    // get a new stack
+    assert(stackLoc != 0);
+    proc->topOfStack = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
+    MmuMapToFrame(stackLoc, rv, PG_KRN | PG_WRT);
+    kprintf("the new process stack is located at %p (frame %p)\n", stackLoc, rv);
 
 
     return rv;

@@ -9,18 +9,26 @@
 
 bool bootAp = false;
 
-__CENTURY_FUNC__ void kInitAp(void);
+extern "C" {
+    EXPORT LOADER void kInitAp(void);
+}
 
-void __ldrtext kInitAp(void)
+
+//
+// -- This is AP Entry point.  While we have a shared temporary stack and need to get that
+//    -----------------------------------------------------------------------------------------------------
+extern "C" EXPORT KERNEL
+void kInitAp(void)
 {
-    cpus.cpuCount ++;
     FpuInit();
-
-    SerialPutChar(&kernelSerial, '*');
-    kprintf("CPU %x running\n", CpuNum());
 
     TimerInit(timerControl, 1000);
     EnableInterrupts();
 
-    while (true) {SerialPutChar(&kernelSerial, '*');}
+    kprintf("CPU %x running\n", CpuNum());
+
+    while (true) {
+        kprintf("*");
+        for (volatile int i = 0; i < 10000; i ++) {}
+    }
 }

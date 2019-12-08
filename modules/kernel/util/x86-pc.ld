@@ -98,6 +98,18 @@ SECTIONS {
     . = ALIGN(4096);
     _roEnd = .;
 
+    _smpStart = .;
+    /*
+     * -- This is the trampoline code for the APs
+     *    ---------------------------------------
+     */
+    .smp : {
+        *(.smptext)
+        *(.smpdata)
+    }
+    . = ALIGN(4096);
+    _smpEnd = .;
+
     /*
      * -- Include debugging information in loader memory
      *    ----------------------------------------------

@@ -126,8 +126,14 @@ typedef char *  va_list;
 //
 // -- Some additional runtime assertion checking; purposefully set up for use in conditions
 //    -------------------------------------------------------------------------------------
-extern "C" EXPORT KERNEL
-bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
+extern "C" {
+    EXPORT KERNEL
+    bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
+}
+
+#ifdef assert
+#   undef assert
+#endif
 
 #if RELEASE == 1
 #   define assert(e) true

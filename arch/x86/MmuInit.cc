@@ -26,6 +26,7 @@
 #include "types.h"
 #include "pmm.h"
 #include "interrupt.h"
+#include "stacks.h"
 #include "mmu.h"
 
 
@@ -74,10 +75,10 @@ void __ldrtext MmuInit(void)
     // -- the next order of business is to set up the stack (but do not yet change to it -- we are in a function
     //    and will need to clean up and return from this function and getting that right is risky).
     //    ------------------------------------------------------------------------------------------------------
-    if (cpus.cpuCount == 0) cpus.cpuCount = 1;
-    if (!assert_msg(cpus.cpuCount == 1, "Only Single CPU supported at this time")) cpus.cpuCount = 1;
     archsize_t stackLoc = STACK_LOCATION;
-    for (int j = 0; j < cpus.cpuCount; j ++) {
+    for (int j = 0; j < cpus.cpusDiscovered; j ++) {
+        StackAlloc(STACK_LOCATION + (j * STACK_SIZE));
+
         for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
             MmuMapToFrame(stackLoc, PmmAllocateFrame(), PG_KRN | PG_WRT);
         }

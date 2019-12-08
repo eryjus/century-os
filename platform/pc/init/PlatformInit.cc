@@ -33,7 +33,9 @@ void PlatformInit(void)
     TimerPick();
 
     if (!assert_msg(timerControl == &lapicTimerControl, "LAPIC timer required")) {
-        cpus.cpuCount = 1;
+        // -- fall back on a single CPU system
+        cpus.cpusDiscovered = 1;
+        cpus.cpusRunning = 1;
     }
 }
 

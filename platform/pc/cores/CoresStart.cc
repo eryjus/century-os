@@ -12,18 +12,23 @@ extern "C" void entryAp(void);
 
 __CENTURY_FUNC__ void CoresStart(void)
 {
-    cpus.cpuCount = 1;
-
     //
     // -- Load the trampoline code into the low 1MB of memory
     //    ---------------------------------------------------
-//    uint8_t *trampoline = (uint8_t *)0;             // in this case, we want address 0, not NULL;
+    uint8_t *trampoline = (uint8_t *)0x8000;        // for S&G, start at 32K
+    extern uint32_t intTableAddr;
+    extern uint8_t _smpStart[];
+    extern uint8_t _smpEnd[];
 
-    picControl->PicBroadcastInit(picControl);
-    picControl->PicBroadcastSipi(picControl);
-    picControl->PicBroadcastSipi(picControl);
+    kprintf("Copying the AP entry code to %p\n", trampoline);
+    kprintf("... start at %p\n", _smpStart);
+    kprintf("... length is %p\n", _smpEnd - _smpStart);
+    kMemMove(trampoline, _smpStart, _smpEnd - _smpStart);
 
-    ProcessMilliSleep(500);
+    // -- Patch up some memory locations
+    *((uint32_t *)(&trampoline[14])) = intTableAddr;
+    *((uint32_t *)(&trampoline[20])) = intTableAddr + 0x800;
 
-    kprintf("%x cores are now running\n", cpus.cpuCount);
+    picControl->PicBroadcastInit(picControl, 1);
+    picControl->PicBroadcastSipi(picControl, 1, (archsize_t)trampoline);
 }

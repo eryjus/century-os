@@ -102,7 +102,8 @@ __CENTURY_FUNC__ void CoresStart(void);
 // -- This structure defines all the data for all the cpus on the system
 //    ------------------------------------------------------------------
 typedef struct Cpu_t {
-    int cpuCount;
+    int cpusDiscovered;
+    int cpusRunning;
 } Cpu_t;
 
 

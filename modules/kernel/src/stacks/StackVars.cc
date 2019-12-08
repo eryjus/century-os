@@ -1,37 +1,34 @@
 //===================================================================================================================
 //
-//  PlatformEarlyInit.cc -- Handle the early initialization for the bcm2835 platform
+//  StackVars.cc -- Kernel Stack Cariables
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  This function is called after `MmuEarlyInit()`, so we expect to have access to kernel virtual memory addresses.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-05  Initial   0.4.1   ADCL  Initial version
+//  2019-Dec-01  Initial   0.4.6d  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "hardware.h"
-#include "hw-disc.h"
-#include "platform.h"
+#include "types.h"
+#include "stacks.h"
 
 
 //
-// -- Handle the early initialization for the pc platform
-//    ---------------------------------------------------
-void __ldrtext PlatformEarlyInit(void)
-{
-    HwDiscovery();
+// -- This will be the bitmat we will use to keep track of the stacks
+//    ---------------------------------------------------------------
+EXPORT KERNEL_DATA uint32_t stacks[STACK_COUNT] = {0};
 
-    // -- at some point, this will come from the DTB
-    cpus.cpusDiscovered = 4;
-}
+
+//
+// -- This is the lock that will protect the bitmap
+//    ---------------------------------------------
+EXPORT KERNEL_DATA Spinlock_t stackBitmapLock = {0};
 
 
 
