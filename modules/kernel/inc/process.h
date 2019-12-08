@@ -77,14 +77,14 @@
 //
 // -- This list is are the statuses available for a running process, indicating what queue it will be on.
 //    ---------------------------------------------------------------------------------------------------
-typedef enum { PROC_INIT,               // This is being created and is not on a queue yet
-        PROC_RUNNING,                   // This is currently running (See ProcessSwitch!)
-        PROC_READY,                     // This is ready to run (See ProcessSwitch!)
-        PROC_TERM,                      // This has ended
-        PROC_MTXW,                      // This is waiting for a Mutex lock and is on the waiting queue
-        PROC_SEMW,                      // This is waiting on a Semaphore and is on the waiting queue
-        PROC_DLYW,                      // This is waiting for a timed event and is on the waiting queue
-        PROC_MSGW,                      // This is waiting for a message to be delivered and in on the waiting queue
+typedef enum { PROC_INIT = 0,           // This is being created and is not on a queue yet
+        PROC_RUNNING = 1,               // This is currently running (See ProcessSwitch!)
+        PROC_READY = 2,                 // This is ready to run (See ProcessSwitch!)
+        PROC_TERM = 3,                  // This has ended
+        PROC_MTXW = 4,                  // This is waiting for a Mutex lock and is on the waiting queue
+        PROC_SEMW = 5,                  // This is waiting on a Semaphore and is on the waiting queue
+        PROC_DLYW = 6,                  // This is waiting for a timed event and is on the waiting queue
+        PROC_MSGW = 7,                  // This is waiting for a message to be delivered and in on the waiting queue
 } ProcStatus_t;
 
 
@@ -132,14 +132,20 @@ typedef struct Process_t {
 // -- This structure encapsulates the whole of the scheduler
 //    ------------------------------------------------------
 typedef struct Scheduler_t {
-    // -- These fields can only be changed after ProcessEnterPostpone(); SMP may change this
+    // -- These fields can only be changed after ProcessLockAndPostpone(); SMP may change this
     Process_t *currentProcess;              // the process that is currently executing on the cpu
-    volatile bool processChangePending;     // whether there is a change that is pending
     PID_t nextPID;                          // the next pid number to allocate
     volatile uint64_t nextWake;             // the next tick-since-boot when a process needs to wake up
 
+    // -- these fields will eventually be set up on a per-CPU basis
+    volatile bool processChangePending;     // whether there is a change that is pending
+    archsize_t flags;                       // the flags for the CPU when interrupts were disabled
+
     // -- This is a critical field controlled by its lock
-    volatile AtomicInt_t schedulerLockCount;         // the depth of the locks
+    volatile AtomicInt_t schedulerLockCount;// the depth of the locks
+    volatile AtomicInt_t postponeCount;     // the depth of the number of postpone requests
+
+
 
     // -- and the different lists a process might be on, locks in each list will be used
     QueueHead_t queueOS;                    // this is the queue for the OS tasks -- if it can run it does
@@ -156,127 +162,141 @@ typedef struct Scheduler_t {
 // -- And the scheduler object itself
 //    -------------------------------
 extern Scheduler_t scheduler;
+extern Spinlock_t schedulerLock;
 
 
 //
-// -- Initialize the process structures
-//    ---------------------------------
-__CENTURY_FUNC__ void ProcessInit(void);
+// -- Function Prototypes
+//    -------------------
+extern "C" {
 
 
-//
-// -- New task initialization tasks
-//    -----------------------------
-__CENTURY_FUNC__ void ProcessStart(void);
+    //
+    // -- Initialize the process structures
+    //    ---------------------------------
+    EXPORT LOADER void ProcessInit(void);
 
 
-//
-// -- Create a new process
-//    --------------------
-__CENTURY_FUNC__ Process_t *ProcessCreate(void (*startingAddr)(void));
+    //
+    // -- Scheduler locking, postponing, unlocking, and scheduling functions
+    //    ------------------------------------------------------------------
+    EXPORT KERNEL void ProcessUnlockScheduler(void);
+    EXPORT KERNEL void ProcessUnlockAndSchedule(void);
+    EXPORT KERNEL void ProcessLockScheduler(bool save = true);
+    EXPORT KERNEL inline void ProcessLockAndPostpone(void) {
+        ProcessLockScheduler();
+        AtomicInc(&scheduler.postponeCount);
+    }
 
 
-//
-// -- Switch to a new process
-//    -----------------------
-__CENTURY_FUNC__ void ProcessSwitch(Process_t *proc);
+    //
+    // -- Functions to block the current process
+    //    --------------------------------------
+    EXPORT KERNEL void ProcessDoBlock(ProcStatus_t reason);
+    EXPORT KERNEL inline void ProcessBlock(ProcStatus_t reason) {
+        ProcessLockAndPostpone();
+            ProcessDoBlock(reason);
+            ProcessUnlockAndSchedule();
+    }
 
 
-//
-// -- Create a new stack for a new process, and populate its contents
-//    ---------------------------------------------------------------
-__CENTURY_FUNC__ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
+    //
+    // -- New task initialization tasks
+    //    -----------------------------
+    EXPORT KERNEL void ProcessStart(void);
 
 
-//
-// -- Perform a scheduling exercise to determine the next process to run
-//    ------------------------------------------------------------------
-__CENTURY_FUNC__ void ProcessSchedule(void);
+    //
+    // -- Create a new process
+    //    --------------------
+    EXPORT KERNEL Process_t *ProcessCreate(void (*startingAddr)(void));
 
 
-//
-// -- Place a process on the correct ready queue
-//    ------------------------------------------
-__CENTURY_FUNC__ void ProcessReady(Process_t *proc);
+    //
+    // -- Switch to a new process
+    //    -----------------------
+    EXPORT KERNEL void ProcessSwitch(Process_t *proc);
 
 
-//
-// -- Block a process
-//    ---------------
-__CENTURY_FUNC__ void ProcessBlock(ProcStatus_t reason);
+    //
+    // -- Create a new stack for a new process, and populate its contents
+    //    ---------------------------------------------------------------
+    EXPORT KERNEL frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
 
 
-//
-// -- Unblock a process
-//    -----------------
-__CENTURY_FUNC__ void ProcessUnblock(Process_t *proc);
+    //
+    // -- Perform a scheduling exercise to determine the next process to run
+    //    ------------------------------------------------------------------
+    EXPORT KERNEL void ProcessSchedule(void);
 
 
-//
-// -- Update the time used for a process
-//    ----------------------------------
-__CENTURY_FUNC__ void ProcessUpdateTimeUsed(void);
+    //
+    // -- Place a process on the correct ready queue
+    //    ------------------------------------------
+    EXPORT KERNEL void ProcessDoReady(Process_t *proc);
+    EXPORT KERNEL inline void ProcessReady(Process_t *proc) {
+        ProcessLockAndPostpone();
+        ProcessDoReady(proc);
+        ProcessUnlockAndSchedule();
+    }
 
 
-//
-// -- Sleep until the we reach the number of micro-seconds since boot
-//    ---------------------------------------------------------------
-__CENTURY_FUNC__ void ProcessMicroSleepUntil(uint64_t when);
+    //
+    // -- Unblock a process
+    //    -----------------
+    EXPORT KERNEL void ProcessDoUnblock(Process_t *proc);
+    EXPORT KERNEL inline void ProcessUnblock(Process_t *proc) {
+        ProcessLockAndPostpone();
+        ProcessDoUnblock(proc);
+        ProcessUnlockAndSchedule();
+    }
 
 
-//
-// -- Terminate a task
-//    ----------------
-__CENTURY_FUNC__ void ProcessTerminate(Process_t *proc);
+    //
+    // -- Update the time used for a process
+    //    ----------------------------------
+    EXPORT KERNEL void ProcessUpdateTimeUsed(void);
 
 
-//
-// -- Elect to end the current task
-//    -----------------------------
-__CENTURY_FUNC__ inline void ProcessEnd(void) { ProcessTerminate(scheduler.currentProcess); }
+    //
+    // -- Sleep until the we reach the number of micro-seconds since boot
+    //    ---------------------------------------------------------------
+    EXPORT KERNEL void ProcessDoMicroSleepUntil(uint64_t when);
+    EXPORT KERNEL inline void ProcessMicroSleepUntil(uint64_t when) {
+        ProcessLockAndPostpone();
+        ProcessDoMicroSleepUntil(when);
+        ProcessUnlockAndSchedule();
+    }
+    EXPORT KERNEL inline void ProcessMicroSleep(uint64_t micros) {
+        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
+    }
+    EXPORT KERNEL inline void ProcessMilliSleep(uint64_t ms) {
+        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
+    }
+    EXPORT KERNEL inline void ProcessSleep(uint64_t secs) {
+        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
+    }
 
 
-//
-// -- Lock the scheduler for a critical section
-//    -----------------------------------------
-__CENTURY_FUNC__ void ProcessEnterPostpone(void);
+    //
+    // -- Terminate a task
+    //    ----------------
+    EXPORT KERNEL void ProcessTerminate(Process_t *proc);
 
 
-//
-// -- Unlock the scheduler after a critical section
-//    ---------------------------------------------
-__CENTURY_FUNC__ void ProcessExitPostpone(void);
+    //
+    // -- Elect to end the current task
+    //    -----------------------------
+    EXPORT KERNEL inline void ProcessEnd(void) { ProcessTerminate(scheduler.currentProcess); }
 
 
-//
-// -- remove the process for its list, if it is on one
-//    ------------------------------------------------
-__CENTURY_FUNC__ void ProcessListRemove(Process_t *proc);
+    //
+    // -- remove the process for its list, if it is on one
+    //    ------------------------------------------------
+    EXPORT KERNEL void ProcessListRemove(Process_t *proc);
 
 
-//
-// -- Micro-Sleep this number of micro-seconds
-//    ----------------------------------------
-__CENTURY_FUNC__ inline void ProcessMicroSleep(uint64_t micros) {
-    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
 }
-
-
-//
-// -- Milli-Sleep this number of milli-seconds
-//    ----------------------------------------
-__CENTURY_FUNC__ inline void ProcessMilliSleep(uint64_t ms) {
-    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
-}
-
-
-//
-// -- Sleep this number of seconds
-//    ----------------------------
-__CENTURY_FUNC__ inline void ProcessSleep(uint64_t secs) {
-    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
-}
-
 
 //
 // -- For the scheduler structure, clean the cache pushing the changes to ram

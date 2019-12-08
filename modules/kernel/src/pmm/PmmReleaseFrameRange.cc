@@ -37,12 +37,14 @@ __CENTURY_FUNC__ void __krntext PmmReleaseFrameRange(const frame_t frame, const 
     block->frame = frame;
     block->count = count;
 
-    SPIN_BLOCK(pmm.scrubStack.lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubStack.lock) {
         Push(&pmm.scrubStack, &block->list);
         pmm.scrubStack.count += block->count;
-        SpinlockUnlock(&pmm.scrubStack.lock);
+
+        CLEAN_PMM();
+
+        SPINLOCK_RLS_RESTORE_INT(pmm.scrubStack.lock, flags);
     }
 
-    CLEAN_PMM();
     CLEAN_PMM_BLOCK(block);
 }

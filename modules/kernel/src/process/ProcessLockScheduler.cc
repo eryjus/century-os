@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessExitPostpone.cc -- Exit a postponed schedule block and take care of any pending schedule changes
+// ProcessLockScheduler.cc -- Lock the scheduler for manipulation
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,7 +10,7 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-18  Initial   0.3.2   ADCL  Initial version
+//  2019-Nov-25  Initial   0.4.6a  ADCL  Initial version
 //
 //===================================================================================================================
 
@@ -23,19 +23,18 @@
 
 
 //
-// -- decrease the lock count on the scheduler
-//    ----------------------------------------
-void __krntext ProcessExitPostpone(void)
+// -- Lock the scheduler in preparation for changes
+//    ---------------------------------------------
+EXPORT KERNEL
+void ProcessLockScheduler(bool save)
 {
-//    kprintf(" Exit... ");
-    if (AtomicDecAndTest0(&scheduler.schedulerLockCount) == true) {
-//        kprintf("V(%x)", AtomicRead(&scheduler.schedulerLockCount));
-        if (scheduler.processChangePending != false) {
-            scheduler.processChangePending = false;           // need to clear this to actually perform a change
-            ProcessSchedule();
-        }
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(schedulerLock);
 
-        CLEAN_SCHEDULER();
-    } // else kprintf("v(%x)", AtomicRead(&scheduler.schedulerLockCount));
+    if (AtomicRead(&scheduler.schedulerLockCount) == 0) {
+        if (save) scheduler.flags = flags;
+    }
+
+    AtomicInc(&scheduler.schedulerLockCount);
 }
+
 

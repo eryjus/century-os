@@ -47,6 +47,8 @@
 ;; -- Some global variables that are referenced
 ;;    -----------------------------------------
     extern  scheduler
+    extern  ProcessDoReady
+    extern  ProcessUpdateTimeUsed
 
 
 ;;
@@ -63,8 +65,9 @@ PROC_QUANTUM_LEFT       EQU     16
 ;; -- some local equates for accessing the structure offsets
 ;;    ------------------------------------------------------
 SCH_CURRENT_PROCESS     EQU     0
-SCH_CHG_PENDING         EQU     4
-SCH_LOCKS_HELD          EQU     0x14
+SCH_CHG_PENDING         EQU     0x10
+SCH_LOCK_COUNT          EQU     0x18
+SCH_POSTPONE_COUNT      EQU     0x1c
 
 
 ;;
@@ -88,7 +91,7 @@ ProcessSwitch:
 ;;
 ;; -- before we do too much, do we need to postpone?
 ;;    ----------------------------------------------
-        cmp     dword [scheduler+SCH_LOCKS_HELD],0
+        cmp     dword [scheduler+SCH_POSTPONE_COUNT],0
         je      .cont
 
         mov     dword [scheduler+SCH_CHG_PENDING],1
@@ -107,13 +110,18 @@ ProcessSwitch:
 ;;
 ;; -- Get the current task structure
 ;;    ------------------------------
-        mov     esi,[scheduler+SCH_CURRENT_PROCESS]        ;; get the address of the current process
+        mov     esi,[scheduler+SCH_CURRENT_PROCESS]         ;; get the address of the current process
 
-        cmp     dword [esi+PROC_STATUS],PROC_STS_RUNNING      ;; is this the current running process
+        cmp     dword [esi+PROC_STATUS],PROC_STS_RUNNING    ;; is this the current running process
         jne     .saveStack
-        mov     dword [esi+PROC_STATUS],PROC_STS_READY    ;; make the status read to run
+
+        push    esi                                         ;; make the process ready
+        call    ProcessDoReady
+        add     esp,4
 
 .saveStack:
+        call    ProcessUpdateTimeUsed
+
         mov     [esi+PROC_TOP_OF_STACK],esp ;; save the top of the current stack
 
 

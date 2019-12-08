@@ -34,6 +34,8 @@ OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add)
     OrderedList_t *ret;
     extern OrderedList_t fixedList[ORDERED_LIST_STATIC];
 
+    assert(hdr != NULL);
+
     // Assume the hdr to be good; entry does not pass test
     for (i = 0; i < ORDERED_LIST_STATIC; i ++) {
         if (!fixedList[i].block) {

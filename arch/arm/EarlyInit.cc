@@ -34,17 +34,5 @@ void __ldrtext EarlyInit(void)
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
 
     PlatformEarlyInit();
-
-    //
-    // -- prepare the FPU for accepting commands
-    //    --------------------------------------
-    archsize_t cpacr = READ_CPACR();
-    cpacr |= (0b11<<20);
-    cpacr |= (0b11<<22);
-    WRITE_CPACR(cpacr);
-
-    //
-    // -- and enable the fpu
-    //    ------------------
-    WRITE_FPEXC(1<<30);
+    FpuInit();
 }

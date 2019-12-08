@@ -21,9 +21,6 @@
 #include "pic.h"
 
 
-#define IPI_MAILBOX_BASE        (MMIO_VADDR + 0x01000080)
-
-
 //
 // -- Broadcast an IPI to all CPUs (including myself)
 //    -----------------------------------------------
@@ -32,7 +29,7 @@ void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
     if (ipi < 0 || ipi > 31) return;
     if (!dev) return;
 
-    for (int i = 0; i < cpus.cpuCount; i ++) {
+    for (int i = 0; i < 1; i ++) {
         MmioWrite(IPI_MAILBOX_BASE + (0x10 * i), (1<<ipi));
     }
 }

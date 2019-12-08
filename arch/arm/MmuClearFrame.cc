@@ -42,7 +42,7 @@ void MmuClearFrame(frame_t frame)
 #if DEBUG_MMU == 1
     kprintf("Attempting to update data for TTL2 entry at %p\n", ttl2Entry);
 #endif
-    SPIN_BLOCK(frameClearLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(frameClearLock) {
 #if DEBUG_MMU == 1
         kprintf("Lock obtained\n");
 #endif
@@ -93,7 +93,7 @@ void MmuClearFrame(frame_t frame)
 
         kMemSetB((void *)MMU_CLEAR_FRAME, 0, FRAME_SIZE);
         MmuUnmapPage(MMU_CLEAR_FRAME);
-        SpinlockUnlock(&frameClearLock);
+        SPINLOCK_RLS_RESTORE_INT(frameClearLock, flags);
     }
 }
 

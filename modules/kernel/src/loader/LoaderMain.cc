@@ -17,6 +17,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "loader.h"
 #include "hw-disc.h"
 #include "pmm.h"
@@ -31,22 +32,26 @@
 //
 // -- called from assembly language...
 //    --------------------------------
-__CENTURY_FUNC__ void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
+extern "C" EXPORT LOADER
+void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
 
+extern "C" EXPORT LOADER
+void SerialEarlyPutChar(uint8_t);
 
-__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
+extern "C" EXPORT KERNEL
+void kInit(void);
+
 
 //
 // -- The actual loader main function
 //    -------------------------------
-__CENTURY_FUNC__ void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+EXPORT LOADER
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
-    extern void kInit(void);
-
     LoaderFunctionInit();               // go and initialize all the function locations
     EarlyInit();
     FrameBufferInit();
-    MmuInit();
+    MmuInit();                          // after this call, all kernel memory can be accessed
     HeapInit();
     PmmInit();
     PlatformInit();
@@ -55,13 +60,12 @@ __CENTURY_FUNC__ void __ldrtext LoaderMain(archsize_t arg0, archsize_t arg1, arc
     // -- Theoretically, after this point, there should be very little architecture-dependent code
     FrameBufferClear();
     FrameBufferPutS("Welcome to Century-OS\n");
-
-    kprintf("Initialization Complete\n");
-    FrameBufferPutS("Initialization Complete\n");
-
-    kprintf("Jumping to the kernel, located at address %p\n", kInit);
+    kprintf("Jumping to %p (%smapped) with stack %p (%smapped)\n", kInit, (MmuIsMapped((archsize_t)kInit)?"":"not "),
+            STACK_LOCATION, (MmuIsMapped(STACK_LOCATION)?"":"not "));
     JumpKernel(kInit, STACK_LOCATION + STACK_SIZE);
 
+    // -- if we ever get here, we have some big problems!
+    assert_msg(false, "Returned from kInit() back to LoaderMain()!!!");
     while (1) {}
 }
 

@@ -58,10 +58,10 @@ static frame_t __krntext PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, fr
         block->count -= blk->count;
 
         // -- finally push this block back onto the stack
-        SPIN_BLOCK(stack->lock) {
+        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
             Push(stack, &blk->list);
             stack->count += blk->count;
-            SpinlockUnlock(&stack->lock);
+            SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
         }
     }
 
@@ -73,10 +73,10 @@ static frame_t __krntext PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, fr
         block->count -= count;
 
         // -- finally push this block back onto the stack
-        SPIN_BLOCK(stack->lock) {
+        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
             Push(stack, &block->list);
             stack->count += block->count;
-            SpinlockUnlock(&stack->lock);
+            SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
         }
     } else FREE(block);
 
@@ -110,7 +110,7 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoAllocAlignedFrames(StackHead_t *stack, 
             // -- we now have a candidate.  At this point we need to check our work by acquiring the spinlock
             //    and double checking our work under lock conditions.
             //    -------------------------------------------------------------------------------------------
-            SPIN_BLOCK(stack->lock) {
+            archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
                 block = FIND_PARENT(wrk, PmmBlock_t, list);
                 end = block->frame + block->count - 1;
 
@@ -118,14 +118,14 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoAllocAlignedFrames(StackHead_t *stack, 
                     // -- OK, we do have a good block, remove it so we can work with it
                     ListRemoveInit(wrk);
                     stack->count -= block->count;
-                    SpinlockUnlock(&stack->lock);
                     CLEAN_PMM_BLOCK(block);
                     CLEAN_PMM();
+                    SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
                     return PmmSplitBlock(stack, block, (block->frame + frameBits) & ~frameBits, count);
                 }
 
                 // -- it did not work out; release the lock and loop again (do we start over?)
-                SpinlockUnlock(&stack->lock);
+                SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
             }
         }
 

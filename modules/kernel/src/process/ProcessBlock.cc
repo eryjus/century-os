@@ -14,6 +14,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2019-Mar-22  Initial   0.3.2   ADCL  Initial version
+//  2019-Nov-27  Initial   0.4.6   ADCL  Reformat for a single spinlock lock
 //
 //===================================================================================================================
 
@@ -26,12 +27,14 @@
 //
 // -- Block the current process
 //    -------------------------
-void __krntext ProcessBlock(ProcStatus_t reason)
+EXPORT KERNEL
+void ProcessDoBlock(ProcStatus_t reason)
 {
-    ProcessEnterPostpone();
+    if (!assert(reason >= PROC_INIT && reason <= PROC_MSGW)) return;
+    if (!assert(scheduler.currentProcess != 0)) return;
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoBlock()` without the proper lock");
+
     scheduler.currentProcess->status = reason;
     scheduler.currentProcess->pendingErrno = 0;
     ProcessSchedule();
-    ProcessExitPostpone();
 }
-

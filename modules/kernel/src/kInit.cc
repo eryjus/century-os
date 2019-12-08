@@ -46,8 +46,6 @@
 #include "pmm.h"
 #include "serial.h"
 #include "atomic.h"
-#include "semaphore.h"
-#include "message.h"
 
 
 //
@@ -65,33 +63,25 @@ int semid;
 
 void StartA(void)
 {
-    struct sembuf inc = {0, 2, IPC_NOWAIT};
-    struct sembuf zero = {0, 0, 0};
-
-    kprintf("Starting A\n");
-
-    while (1) {
-        while (SemaphoreOperations(semid, &inc, 1) < 0) { kprintf("a"); }
+    while (true) {
         kprintf("A");
-        SemaphoreOperations(semid, &zero, 1);
+        ProcessMilliSleep(500);
     }
 }
 
 void StartB(void)
 {
-    struct sembuf dec = {0, -1, IPC_NOWAIT};
-
-    kprintf("Starting B\n");
-
-    while (1) {
-        while (SemaphoreOperations(semid, &dec, 1) < 0) { kprintf("b"); }
+    while (true) {
         kprintf("B");
+        ProcessMilliSleep(250);
     }
 }
+
 
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
+EXPORT KERNEL
 void kInit(void)
 {
     //
@@ -121,11 +111,13 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
-    SemaphoreInit();
-    MessageInit();
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
+    CoresStart();
+
+    A = ProcessCreate(StartA);
+    B = ProcessCreate(StartB);
 
 
     //
@@ -184,9 +176,9 @@ void kInit(void)
     scheduler.currentProcess->priority = PTY_LOW;
 #endif
 
-    while (1) {
+    while (true) {
         kprintf(".");
-        HaltCpu();
+        ProcessSleep(2);
     }
 
 
@@ -212,5 +204,8 @@ void kInit(void)
 //
 // -- This is the structure with info about the cpus
 //    ----------------------------------------------
-Cpu_t cpus;
+Cpu_t cpus = {
+    .cpusDiscovered = 0,
+    .cpusRunning = 1,
+};
 

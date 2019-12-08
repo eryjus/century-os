@@ -27,78 +27,101 @@
 
 //
 // -- This macro basically disappears because but helps to delineate the block that requires the lock
+//
+//    Block Usage:
+//    ------------
+//
+//    Spinlock lock = {0};
+//    SPINLOCK_BLOCK(lock) {
+//        // Do some important stuff here...
+//        SPINLOCK_RLS(lock);
+//    }
+//
+//    Note that in this context, the trailing ';' is required.
 //    -----------------------------------------------------------------------------------------------
-#define SPIN_BLOCK(lock)        SpinlockLock(&(lock));
+#define SPINLOCK_BLOCK(lock)        SpinLock(&(lock));
 
 
 //
 // -- This marco only exists so I do not need to type an '&' with each unlock
 //    -----------------------------------------------------------------------
-#define SPIN_RLS(lock)          SpinlockUnlock(&(lock))
+#define SPINLOCK_RLS(lock)          SpinUnlock(&(lock))
+
+
+//
+// -- This macro exists to help with code readaibility -- get a lock and save interrupts
+//
+//    Block Usage:
+//    ------------
+//
+//    Spinlock lock = {0};
+//    archsize_t flags = SPINLOCK_BLOCK_NO_INT(lock) {
+//        // Do some important stuff here...
+//        SPINLOCK_RLS_RESTORE_INT(lock);
+//    }
+//
+//    Note that in this context, the trailing ';' is required.
+//    ----------------------------------------------------------------------------------
+#define SPINLOCK_BLOCK_NO_INT(lock) ({                              \
+            archsize_t flags = DisableInterrupts();                 \
+            SpinLock(&(lock));                                      \
+            flags;                                                  \
+        });
+
+
+//
+// -- This macro exists to help with code readaibility -- restore interrupts and release lock
+//    ---------------------------------------------------------------------------------------
+#define SPINLOCK_RLS_RESTORE_INT(lock,f) do {                       \
+            SpinUnlock(&(lock));                                    \
+            RestoreInterrupts(f);                                   \
+        } while (false)
+
 
 
 //
 // -- This is the spinlock structure which notes who holds the lock
 //    -------------------------------------------------------------
 typedef struct Spinlock_t {
-    AtomicInt_t lock;
-    struct Process_t *lockHolder;
+    int lock;
 } Spinlock_t;
 
 
 //
-// -- This is a count of the number of locks that are currently held and its lock
-//    ---------------------------------------------------------------------------
-extern int locksHeld;
-extern Spinlock_t lockCounterLock;
+// -- Function prototypes
+//    -------------------
+extern "C" {
 
 
-//
-// -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
-//    ---------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ inline void SpinlockLock(Spinlock_t *lock) {
-        while (AtomicSet(&lock->lock, 1) != 0) { }       // -- This is a busy wait
-//        lock->lockHolder = scheduler.currentProcess;
+    //
+    // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
+    //    ---------------------------------------------------------------------------------------------
+    EXPORT KERNEL void SpinLock(Spinlock_t *lock);
+
+
+    //
+    // -- This inline function will unlock a spinlock, clearing the lock holder
+    //    ---------------------------------------------------------------------
+    EXPORT KERNEL void SpinUnlock(Spinlock_t *lock);
+
+
+    //
+    // -- This inline function will determine if a spinlock is locked
+    //    -----------------------------------------------------------
+    EXPORT KERNEL inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->lock == 1; }
 }
-
-
-//
-// -- This inline function will unlock a spinlock, clearing the lock holder
-//    ---------------------------------------------------------------------
-__CENTURY_FUNC__ inline void SpinlockUnlock(Spinlock_t *lock) {
-//    if (lock->lockHolder != scheduler.currentProcess) return;
-    AtomicSet(&lock->lock, 0);
-}
-
-
-//
-// -- This inline function returns the PID of the lock holder
-//    -------------------------------------------------------
-__CENTURY_FUNC__ inline struct Process_t *SpinLockGetHolder(Spinlock_t *lock) { return lock->lockHolder; }
-
-
-//
-// -- This inline function will determine if a spinlock is locked
-//    -----------------------------------------------------------
-__CENTURY_FUNC__ inline bool SpinlockIsLocked(Spinlock_t *lock) { return AtomicRead(&lock->lock) == 1; }
-
-
-//
-// -- This is the spinlock for the temporary page for frame population ahead of putting it to a process
-//    -------------------------------------------------------------------------------------------------
-extern Spinlock_t lockTempPage;
 
 
 //
 // -- This is the lock that controls access to the address space for initializing the table
 //    -------------------------------------------------------------------------------------
-extern Spinlock_t mmuTableInitLock;
+EXTERN KERNEL_DATA Spinlock_t mmuTableInitLock;
 
 
 //
 // -- This is the lock that controls access to the address space for initializing the table
 //    -------------------------------------------------------------------------------------
-extern Spinlock_t mmuStackInitLock;
+EXTERN KERNEL_DATA Spinlock_t mmuStackInitLock;
 
 
 //

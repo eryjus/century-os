@@ -35,11 +35,12 @@ bool __ldrtext AcpiReadXsdt(archsize_t loc)
     }
 
     XSDT_t *xsdt = (XSDT_t *)loc;
-    uint32_t entries = (xsdt->length - ACPI_HDR_SIZE) / sizeof(uint32_t);
+    uint32_t entries = (xsdt->length - ACPI_HDR_SIZE) / sizeof(uint64_t);
+    kprintf("... checking %x entries\n", entries);
 
     for (uint32_t i = 0; i < entries; i ++) {
         kprintf("The address for entry %x is %p\n", i, xsdt->entry[i]);
-        AcpiGetTableSig(xsdt->entry[i]);
+        if (xsdt->entry[i]) AcpiGetTableSig(xsdt->entry[i]);
     }
 
     return true;

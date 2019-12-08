@@ -56,8 +56,7 @@
 //===================================================================================================================
 
 
-#ifndef __HEAP_H__
-#define __HEAP_H__
+#pragma once
 
 
 #include "types.h"
@@ -65,15 +64,34 @@
 
 
 //
+// -- Set DEBUG_HEAP to 1 to enable debugging
+//    ---------------------------------------
+#if RELEASE == 1
+#   if defined(DEBUG_HEAP)
+#       undef DEBUG_HEAP
+#   endif
+#endif
+
+#if !defined(DEBUG_HEAP)
+#   define DEBUG_HEAP 0
+#else
+#   if DEBUG_HEAP != 0
+#       undef DEBUG_HEAP
+#       define DEBUG_HEAP 1
+#   endif
+#endif
+
+
+//
 // -- Define some quick macros to help with managing the heap
 //    -------------------------------------------------------
 #define HEAP_SMALLEST           32
-#define HEAP_MAGIC                ((uint32_t)0xBAB6BADC)
-#define HEAP_CHECK(x)            (((x) & 0xfffffffe) == HEAP_MAGIC)
-#define MIN_HOLE_SIZE            (sizeof(KHeapHeader_t) + sizeof(KHeapHeader_t) + HEAP_SMALLEST)
+#define HEAP_MAGIC              ((uint32_t)0xBAB6BADC)
+#define HEAP_CHECK(x)           (((x) & 0xfffffffe) == HEAP_MAGIC)
+#define MIN_HOLE_SIZE           (sizeof(KHeapHeader_t) + sizeof(KHeapHeader_t) + HEAP_SMALLEST)
 
-#define HEAP_MIN_SIZE            0x00010000
-#define ORDERED_LIST_STATIC        (1024)
+#define HEAP_MIN_SIZE           0x00010000
+#define ORDERED_LIST_STATIC     (1024)
 
 
 //
@@ -88,14 +106,14 @@ struct OrderedList_t;
 typedef struct KHeapHeader_t {
     union {
         struct {
-            uint32_t isHole : 1;                // == 1 if this is a hole (not used)
-            uint32_t magic : 31;                // magic number (BAB6 BADC when bit 0 is forced to 0)
+            uint32_t isHole : 1;               // == 1 if this is a hole (not used)
+            uint32_t magic : 31;               // magic number (BAB6 BADC when bit 0 is forced to 0)
         };
-        uint32_t magicHole;                        // this is the aggregate of the bit fields
+        uint32_t magicHole;                    // this is the aggregate of the bit fields
     } _magicUnion;
 
-    struct OrderedList_t *entry;                    // pointer to the OrderedList entry if hole; NULL if allocated
-    size_t size;                                // this size includes the size of the header and footer
+    struct OrderedList_t *entry;               // pointer to the OrderedList entry if hole; NULL if allocated
+    size_t size;                               // this size includes the size of the header and footer
 } __attribute__((packed)) KHeapHeader_t;
 
 
@@ -105,13 +123,13 @@ typedef struct KHeapHeader_t {
 typedef struct KHeapFooter_t {
     union {
         struct {
-            uint32_t isHole : 1;                // the field is the header is the one used
-            uint32_t magic : 31;                // magic number (0xBAB6_BADC when bit 0 is forced to 0)
+            uint32_t isHole : 1;               // the field is the header is the one used
+            uint32_t magic : 31;               // magic number (0xBAB6_BADC when bit 0 is forced to 0)
         };
-        uint32_t magicHole;                        // this is the aggregate of the bit fields
+        uint32_t magicHole;                    // this is the aggregate of the bit fields
     } _magicUnion;
 
-    KHeapHeader_t *hdr;                            // pointer back to the header
+    KHeapHeader_t *hdr;                        // pointer back to the header
 } __attribute__((packed)) KHeapFooter_t;
 
 
@@ -125,10 +143,10 @@ typedef int (*cmpFunc)(KHeapHeader_t *, KHeapHeader_t *);
 // -- The heap is implemented as an ordered list for a bet-fit implementation
 //    -----------------------------------------------------------------------
 typedef struct OrderedList_t {
-    KHeapHeader_t *block;                        // pointer to the block of heap memory
-    size_t size;                                // the size of the memory pointed to
-    struct OrderedList_t *prev;                    // pointer to the previous entry
-    struct OrderedList_t *next;                    // pointer to the next entry
+    KHeapHeader_t *block;                      // pointer to the block of heap memory
+    size_t size;                               // the size of the memory pointed to
+    struct OrderedList_t *prev;                // pointer to the previous entry
+    struct OrderedList_t *next;                // pointer to the next entry
 } OrderedList_t;
 
 
@@ -136,130 +154,150 @@ typedef struct OrderedList_t {
 // -- This is the heap control structure, maintianing the heap integrity
 //    ------------------------------------------------------------------
 typedef struct KHeap_t {
-    OrderedList_t *heapMemory;                    // the start of all heap memory lists < 512 bytes
-    OrderedList_t *heap512;                        // the start of heap memory >= 512 bytes
-    OrderedList_t *heap1K;                        // the start of heap memory >= 1K bytes
-    OrderedList_t *heap4K;                        // the start of heap memory >= 4K bytes
-    OrderedList_t *heap16K;                        // the start of heap memory >= 16K bytes
-    byte_t *strAddr;                            // the start address of the heap
-    byte_t *endAddr;                            // the ending address of the heap
-    byte_t *maxAddr;                            // the max address to which the heap can grow
+    OrderedList_t *heapMemory;                 // the start of all heap memory lists < 512 bytes
+    OrderedList_t *heap512;                    // the start of heap memory >= 512 bytes
+    OrderedList_t *heap1K;                     // the start of heap memory >= 1K bytes
+    OrderedList_t *heap4K;                     // the start of heap memory >= 4K bytes
+    OrderedList_t *heap16K;                    // the start of heap memory >= 16K bytes
+    byte_t *strAddr;                           // the start address of the heap
+    byte_t *endAddr;                           // the ending address of the heap
+    byte_t *maxAddr;                           // the max address to which the heap can grow
 } KHeap_t;
 
 
 //
 // -- Global heap variable
 //    --------------------
-extern KHeap_t *kHeap;
+EXTERN KERNEL_DATA KHeap_t *kHeap;
 
 
 //
-// -- Add an entry of available memory to the ordered list of free memory by size
-//    ---------------------------------------------------------------------------
-void HeapAddToList(OrderedList_t *entry);
-
-
-//
-// -- Align an ordered list free memory block to a page boundary, creating a free block ahead of the aligned block
-//    ------------------------------------------------------------------------------------------------------------
-OrderedList_t *HeapAlignToPage(OrderedList_t *entry);
-
-
-//
-// -- Allocate  memory from the heap
-//    ------------------------------
-void *HeapAlloc(size_t size, bool align);
-
-
-//
-// -- Calculate how to adjust a block to align it to the frame
-//    --------------------------------------------------------
-size_t HeapCalcPageAdjustment(OrderedList_t *entry);
-
-
-//
-// -- Debugging function to monitor the health of the heap
-//    ----------------------------------------------------
-void HeapCheckHealth(void);
-
-
-//
-// -- Panic error function when the heap has a problem
-//    ------------------------------------------------
-void __attribute__((noreturn)) HeapError(const char *from, const char *desc);
-
-
-//
-// -- Find a hole of the appropriate size (best fit method)
-//    -----------------------------------------------------
-OrderedList_t *HeapFindHole(size_t adjustedSize, bool align);
-
-
-//
-// -- Free a block of memory
-//    ----------------------
-void HeapFree(void *mem);
-
-
-//
-// -- Initialize the Heap
+// -- Function prototypes
 //    -------------------
-void HeapInit(void);
+extern "C" {
 
 
-//
-// -- Insert a newly freed block into the ordered list
-//    ------------------------------------------------
-OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add);
+    //
+    // -- Add an entry of available memory to the ordered list of free memory by size
+    //    ---------------------------------------------------------------------------
+    EXPORT KERNEL void HeapAddToList(OrderedList_t *entry);
 
 
-//
-// -- Merge a free block with a free block on the immediate left if it is really free
-//    -------------------------------------------------------------------------------
-OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr);
+    //
+    // -- Align an ordered list free memory block to a page boundary,
+    //    creating a free block ahead of the aligned block
+    //    -----------------------------------------------------------
+    EXPORT KERNEL OrderedList_t *HeapAlignToPage(OrderedList_t *entry);
 
 
-//
-// -- Merge a free block with a free block on the immediate right if it is really free
-//    --------------------------------------------------------------------------------
-OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr);
+    //
+    // -- Allocate  memory from the heap
+    //    ------------------------------
+    EXPORT KERNEL void *HeapAlloc(size_t size, bool align);
 
 
-//
-// -- Release a entry from the ordered list
-//    -------------------------------------
-void HeapReleaseEntry(OrderedList_t *entry);
+    //
+    // -- Calculate how to adjust a block to align it to the frame
+    //    --------------------------------------------------------
+    EXPORT KERNEL size_t HeapCalcPageAdjustment(OrderedList_t *entry);
 
 
-//
-// -- Remove an entry from the list
-//    -----------------------------
-void HeapRemoveFromList(OrderedList_t *entry);
+    //
+    // -- Find a hole of the appropriate size (best fit method)
+    //    -----------------------------------------------------
+    EXPORT KERNEL OrderedList_t *HeapFindHole(size_t adjustedSize, bool align);
 
 
-//
-// -- Split a block into 2 blocks, creating ordered list entries for each
-//    -------------------------------------------------------------------
-KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize);
+    //
+    // -- Free a block of memory
+    //    ----------------------
+    EXPORT KERNEL void HeapFree(void *mem);
 
 
-//
-// -- Debugging functions to validate the header of a block
-//    -----------------------------------------------------
-void HeapValidateHdr(KHeapHeader_t *hdr, const char *from);
+    //
+    // -- Initialize the Heap
+    //    -------------------
+    EXPORT KERNEL void HeapInit(void);
 
 
-//
-// -- Debugging function to validate the heap structure itself
-//    --------------------------------------------------------
-void HeapValidatePtr(const char *from);
+    //
+    // -- Insert a newly freed block into the ordered list
+    //    ------------------------------------------------
+    EXPORT KERNEL OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add);
+
+
+    //
+    // -- Merge a free block with a free block on the immediate left if it is really free
+    //    -------------------------------------------------------------------------------
+    EXPORT KERNEL OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr);
+
+
+    //
+    // -- Merge a free block with a free block on the immediate right if it is really free
+    //    --------------------------------------------------------------------------------
+    EXPORT KERNEL OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr);
+
+
+    //
+    // -- Release a entry from the ordered list
+    //    -------------------------------------
+    EXPORT KERNEL void HeapReleaseEntry(OrderedList_t *entry);
+
+
+    //
+    // -- Remove an entry from the list
+    //    -----------------------------
+    EXPORT KERNEL void HeapRemoveFromList(OrderedList_t *entry);
+
+
+    //
+    // -- Split a block into 2 blocks, creating ordered list entries for each
+    //    -------------------------------------------------------------------
+    EXPORT KERNEL KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize);
+
+
+    //
+    // -- Debugging functions to validate the header of a block
+    //    -----------------------------------------------------
+#if DEBUG_HEAP == 1
+    EXPORT KERNEL void HeapValidateHdr(KHeapHeader_t *hdr, const char *from);
+#else
+#   define HeapValidateHdr(h,f)     (void)0
+#endif
+
+
+    //
+    // -- Debugging function to validate the heap structure itself
+    //    --------------------------------------------------------
+#if DEBUG_HEAP == 1
+    EXPORT KERNEL void HeapValidatePtr(const char *from);
+#else
+#   define HeapValidatePtr(f)       (void)0
+#endif
+}
+
+
+    //
+    // -- Debugging function to monitor the health of the heap
+    //    ----------------------------------------------------
+#if DEBUG_HEAP == 1
+    EXPORT KERNEL void HeapCheckHealth(void);
+#else
+#   define HeapCheckHealth()        (void)0
+#endif
+
+
+    //
+    // -- Panic error function when the heap has a problem
+    //    ------------------------------------------------
+    EXPORT KERNEL void __attribute__((noreturn)) HeapError(const char *from, const char *desc);
 
 
 //
 // -- A quick macro to make coding easier and more readable
 //    -----------------------------------------------------
-#define NEW(tp) (tp *)HeapAlloc(sizeof(tp), false)
-#define FREE(ptr)     HeapFree(ptr)
+#define NEW(tp)         ((tp *)HeapAlloc(sizeof(tp), false))
+#define FREE(ptr)       HeapFree(ptr)
 
 
 //
@@ -275,5 +313,3 @@ void HeapValidatePtr(const char *from);
 #define CLEAN_ENTRY(ent)                CLEAN_CACHE(ent, sizeof(OrderedList_t))
 #define INVALIDATE_ENTRY(ent)           INVALIDATE_CACHE(ent, sizeof(OrderedList_t))
 
-
-#endif

@@ -40,63 +40,74 @@ typedef struct AtomicInt_t {
 
 
 //
-// -- Set an AtomicInt_t to a value, returning the previous value
-//    -----------------------------------------------------------
-__CENTURY_FUNC__ int32_t AtomicSet(volatile AtomicInt_t *a, int32_t v);
+// -- Function Prototypes
+//    -------------------
+extern "C" {
 
 
-//
-// -- Add a value to an AtomicInt_t, returning the *previous* value
-//    -------------------------------------------------------------
-__CENTURY_FUNC__ int32_t AtomicAdd(volatile AtomicInt_t *a, int32_t v);
+    //
+    // -- Set an AtomicInt_t to a value, returning the previous value
+    //    -----------------------------------------------------------
+    EXPORT KERNEL int32_t AtomicSet(volatile AtomicInt_t *a, int32_t v);
 
 
-//
-// -- Subtract a value from an AtomicInt_t, returning the previous value
-//    ------------------------------------------------------------------
-static inline int32_t AtomicSub(volatile AtomicInt_t *a, int32_t v) { return AtomicAdd(a, -v); }
+    //
+    // -- Add a value to an AtomicInt_t, returning the *previous* value
+    //    -------------------------------------------------------------
+    EXPORT KERNEL int32_t AtomicAdd(volatile AtomicInt_t *a, int32_t v);
 
 
-//
-// -- This function will read an integer atomically (which happens without any special work)
-//    --------------------------------------------------------------------------------------
-static inline int32_t AtomicRead(volatile AtomicInt_t *a) { return a->counter; }
+    //
+    // -- Subtract a value from an AtomicInt_t, returning the previous value
+    //    ------------------------------------------------------------------
+    EXPORT KERNEL inline int32_t AtomicSub(volatile AtomicInt_t *a, int32_t v) { return AtomicAdd(a, -v); }
 
 
-//
-// -- This function will increment a value for an atomic interger, returning the previous value
-//    -----------------------------------------------------------------------------------------
-static inline int32_t AtomicInc(volatile AtomicInt_t *a) { return AtomicAdd(a, 1); }
+    //
+    // -- This function will read an integer atomically (which happens without any special work)
+    //    --------------------------------------------------------------------------------------
+    EXPORT KERNEL inline int32_t AtomicRead(volatile AtomicInt_t *a) { return a->counter; }
 
 
-//
-// -- This function will decrement a value for an atomic integer, returning the previous value
-//    ----------------------------------------------------------------------------------------
-static inline int32_t AtomicDec(volatile AtomicInt_t *a) { return AtomicAdd(a, -1); }
+    //
+    // -- This function will increment a value for an atomic interger, returning the previous value
+    //    -----------------------------------------------------------------------------------------
+    EXPORT KERNEL inline int32_t AtomicInc(volatile AtomicInt_t *a) { return AtomicAdd(a, 1); }
 
 
-//
-// -- This function will atomically add and test if the result is 0
-//    -------------------------------------------------------------
-static inline bool AtomicAddAndNegative(volatile AtomicInt_t *a, int32_t v) { return ((AtomicAdd(a, v) + v) < 0); }
+    //
+    // -- This function will decrement a value for an atomic integer, returning the previous value
+    //    ----------------------------------------------------------------------------------------
+    EXPORT KERNEL inline int32_t AtomicDec(volatile AtomicInt_t *a) { return AtomicAdd(a, -1); }
 
 
-//
-// -- This function will atomically subtract and test if the result is 0
-//    ------------------------------------------------------------------
-static inline bool AtomicSubAndTest0(volatile AtomicInt_t *a, int32_t v) { return ((AtomicAdd(a, -v) - v) == 0); }
+    //
+    // -- This function will atomically add and test if the result is 0
+    //    -------------------------------------------------------------
+    EXPORT KERNEL inline bool AtomicAddAndNegative(volatile AtomicInt_t *a, int32_t v) {
+        return ((AtomicAdd(a, v) + v) < 0);
+    }
 
 
-//
-// -- This function will atomically increment and test if the result is 0
-//    -------------------------------------------------------------------
-static inline bool AtomicIncAndTest0(volatile AtomicInt_t *a) { return ((AtomicAdd(a, 1) + 1) == 0); }
+    //
+    // -- This function will atomically subtract and test if the result is 0
+    //    ------------------------------------------------------------------
+    EXPORT KERNEL inline bool AtomicSubAndTest0(volatile AtomicInt_t *a, int32_t v) {
+        return ((AtomicAdd(a, -v) - v) == 0);
+    }
 
 
-//
-// -- This function will atomically decrement and test if the result is 0
-//    -------------------------------------------------------------------
-static inline bool AtomicDecAndTest0(volatile AtomicInt_t *a) { return ((AtomicAdd(a, -1) - 1) == 0); }
+    //
+    // -- This function will atomically increment and test if the result is 0
+    //    -------------------------------------------------------------------
+    EXPORT KERNEL inline bool AtomicIncAndTest0(volatile AtomicInt_t *a) { return ((AtomicAdd(a, 1) + 1) == 0); }
+
+
+    //
+    // -- This function will atomically decrement and test if the result is 0
+    //    -------------------------------------------------------------------
+    EXPORT KERNEL inline bool AtomicDecAndTest0(volatile AtomicInt_t *a) { return ((AtomicAdd(a, -1) - 1) == 0); }
+}
 
 
 #endif

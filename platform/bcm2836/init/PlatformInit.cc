@@ -29,5 +29,6 @@
 void PlatformInit(void)
 {
     UpdateKprintfPort();
+    kprintf("Serial port updated\n");
 }
 

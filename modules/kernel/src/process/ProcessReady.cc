@@ -23,23 +23,21 @@
 //
 // -- Make a process ready to run
 //    ---------------------------
-void __krntext ProcessReady(Process_t *proc)
+EXPORT KERNEL
+void ProcessDoReady(Process_t *proc)
 {
+    if (!assert(proc != NULL)) return;
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoReady()` without the proper lock");
+
+    proc->status = PROC_READY;
+
     switch(proc->priority) {
     case PTY_OS:
-        SPIN_BLOCK(scheduler.queueOS.lock) {
-            Enqueue(&scheduler.queueOS, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueOS.lock);
-        }
-
+        Enqueue(&scheduler.queueOS, &proc->stsQueue);
         break;
 
     case PTY_HIGH:
-        SPIN_BLOCK(scheduler.queueHigh.lock) {
-            Enqueue(&scheduler.queueHigh, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueHigh.lock);
-        }
-
+        Enqueue(&scheduler.queueHigh, &proc->stsQueue);
         break;
 
     default:
@@ -48,22 +46,12 @@ void __krntext ProcessReady(Process_t *proc)
         // ...  fall through
 
     case PTY_NORM:
-        SPIN_BLOCK(scheduler.queueNormal.lock) {
-            Enqueue(&scheduler.queueNormal, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueNormal.lock);
-        }
-
+        Enqueue(&scheduler.queueNormal, &proc->stsQueue);
         break;
 
     case PTY_LOW:
-        SPIN_BLOCK(scheduler.queueLow.lock) {
-            Enqueue(&scheduler.queueLow, &proc->stsQueue);
-            SpinlockUnlock(&scheduler.queueLow.lock);
-        }
-
+        Enqueue(&scheduler.queueLow, &proc->stsQueue);
         break;
     }
-
-    CLEAN_PROCESS(proc);
 }
 

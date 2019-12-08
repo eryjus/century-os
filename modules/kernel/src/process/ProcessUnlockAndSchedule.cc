@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-// ProcessEnterPostpone.cc -- Enter a section where any schedule changes will be postponed.
+// ProcessUnlockAndSchedule.cc -- Exit a postponed schedule block and take care of any pending schedule changes
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -23,14 +23,20 @@
 
 
 //
-// -- increase the lock count on the scheduler
+// -- decrease the lock count on the scheduler
 //    ----------------------------------------
-void __krntext ProcessEnterPostpone(void)
+EXPORT KERNEL
+void ProcessUnlockAndSchedule(void)
 {
-//    kprintf(" Enter... ");
-    DisableInterrupts();
-    AtomicInc(&scheduler.schedulerLockCount);
-//    kprintf("^(%x)", AtomicRead(&scheduler.schedulerLockCount));
-    CLEAN_SCHEDULER();
+    assert_msg(AtomicRead(&scheduler.postponeCount) > 0, "postponeCount out if sync");
+
+    if (AtomicDecAndTest0(&scheduler.postponeCount) == true) {
+        if (scheduler.processChangePending != false) {
+            scheduler.processChangePending = false;           // need to clear this to actually perform a change
+            ProcessSchedule();
+        }
+    }
+
+    ProcessUnlockScheduler();
 }
 

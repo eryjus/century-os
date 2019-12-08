@@ -63,7 +63,10 @@ KHeap_t *kHeap = &_heap;
 //    ------------------------------
 void HeapInit(void)
 {
+#if DEBUG_HEAP == 1
     kprintf("Start heap initialization\n");
+#endif
+
     archsize_t vAddr = heapStart;
     archsize_t vLimit = vAddr + INITIAL_HEAP;
 
@@ -74,17 +77,14 @@ void HeapInit(void)
     // -- Set up the heap structure and list of open blocks
     KHeapFooter_t *tmpFtr;
 
-    kprintf(".. initializing the fixed list to 0x00\n");
     kMemSetB(fixedList, 0, sizeof(fixedList));
 
     // -- Build the first free block which is all allocated
-    kprintf(".. initializing the fixedList[0]\n");
     fixedList[0].block = (KHeapHeader_t *)heapStart;
     fixedList[0].next = 0;
     fixedList[0].prev = 0;
     fixedList[0].size = INITIAL_HEAP;
 
-    kprintf(".. setting heap limits\n");
     _heap.strAddr = (byte_t *)heapStart;
     _heap.endAddr = ((byte_t *)_heap.strAddr) + fixedList[0].size;
     _heap.maxAddr = (byte_t *)FRAME_BUFFER_VADDR;
@@ -92,13 +92,11 @@ void HeapInit(void)
     _heap.heapMemory = _heap.heap512 = _heap.heap1K =
             _heap.heap4K = _heap.heap16K = &fixedList[0];
 
-    kprintf(".. setting the first block header\n");
     fixedList[0].block->_magicUnion.magicHole = HEAP_MAGIC;
     fixedList[0].block->_magicUnion.isHole = 1;
     fixedList[0].block->size = fixedList[0].size;
     fixedList[0].block->entry = &fixedList[0];
 
-    kprintf(".. setting the first block footer\n");
     tmpFtr = (KHeapFooter_t *)(((char *)fixedList[0].block) +
             fixedList[0].size - sizeof(KHeapFooter_t));
     tmpFtr->_magicUnion.magicHole = fixedList[0].block->_magicUnion.magicHole;
@@ -107,8 +105,10 @@ void HeapInit(void)
     fixedListUsed = 1;
     kHeap = &_heap;
 
+#if DEBUG_HEAP == 1
     kprintf("Heap Created\n");
     kprintf("  Heap Start Location: %p\n", kHeap->strAddr);
     kprintf("  Current Heap Size..: %p\n", fixedList[0].size);
     kprintf("  Heap End Location..: %p\n", kHeap->endAddr);
+#endif
 }

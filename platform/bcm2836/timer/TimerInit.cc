@@ -31,8 +31,11 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
 {
     if (!dev) return;
 
-    IsrRegister(65, dev->TimerCallBack);
-    kprintf("IsrHandler registered\n");
+    if (CpuNum() == 0) {
+        IsrRegister(65, dev->TimerCallBack);
+        dev->factor = READ_CNTFRQ() / 1000000.0;
+        kprintf("IsrHandler registered\n");
+    }
 
     if (READ_CNTFRQ() == 0) {
         kprintf("PANIC: Unable to determine the clock frequency (read as 0)\n");
@@ -51,7 +54,6 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     WRITE_CNTP_TVAL(dev->reloadValue);
     WRITE_CNTP_CTL(1);                              // -- enable the timer
 
-    dev->factor = READ_CNTFRQ() / 1000000.0;
     PicUnmaskIrq(dev->pic, IRQ_ARM_TIMER);
     kprintf("Timer Initialized\n");
 }

@@ -29,7 +29,8 @@ void __ldrtext PlatformEarlyInit(void)
 {
     HwDiscovery();
 
-    cpus.cpuCount = 4;
+    // -- at some point, this will come from the DTB
+    cpus.cpusDiscovered = 4;
 }
 
 

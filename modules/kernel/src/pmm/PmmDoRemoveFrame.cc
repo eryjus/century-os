@@ -32,7 +32,7 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoRemoveFrame(StackHead_t *stack, bool sc
     frame_t rv = 0;         // assume we will not find anything
     PmmBlock_t *block;
 
-    SPIN_BLOCK(stack->lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
         if (!IsListEmpty(stack)) {
             block = FIND_PARENT(stack->list.next, PmmBlock_t, list);
             rv = block->frame;
@@ -52,7 +52,7 @@ __CENTURY_FUNC__ frame_t __krntext _PmmDoRemoveFrame(StackHead_t *stack, bool sc
             if (scrub) PmmScrubFrame(rv);
         }
 
-        SpinlockUnlock(&stack->lock);
+        SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
     }
 
     CLEAN_PMM();

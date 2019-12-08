@@ -23,15 +23,14 @@
 //
 // -- Block the current process
 //    -------------------------
-void __krntext ProcessUnblock(Process_t *proc)
+EXPORT KERNEL
+void ProcessDoUnblock(Process_t *proc)
 {
-    ProcessEnterPostpone();
+    if (!assert(proc != NULL)) return;
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "Calling `ProcessDoUnblock()` without holding the proper lock");
 
     proc->status = PROC_READY;
-    CLEAN_PROCESS(proc);
-
-    ProcessReady(proc);
-
-    ProcessExitPostpone();
+    ProcessDoReady(proc);
 }
 

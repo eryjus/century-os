@@ -34,12 +34,15 @@ extern archsize_t mmuLvl1Table;
 //
 // -- Initialize the process structures
 //    ---------------------------------
-void __krntext ProcessInit(void)
+EXPORT LOADER
+void ProcessInit(void)
 {
     extern uint64_t lastTimer;
 
-    kprintf("ProcessInit(): mmuLvl1Table = %p\n", mmuLvl1Table);
     scheduler.currentProcess = NEW(Process_t);
+    if (!assert_msg(scheduler.currentProcess != NULL, "Unable to allocate Current Process structure")) {
+        HaltCpu();
+    }
 
     scheduler.currentProcess->topOfStack = 0;
     scheduler.currentProcess->virtAddrSpace = mmuLvl1Table;
@@ -56,7 +59,4 @@ void __krntext ProcessInit(void)
     CLEAN_PROCESS(scheduler.currentProcess);
 
     lastTimer = TimerCurrentCount(timerControl);
-
-    kprintf("The address of the OS queue list is %p\n", &scheduler.queueOS.list);
-    kprintf(".. and its next pointer is %p\n", scheduler.queueOS.list.next);
 }

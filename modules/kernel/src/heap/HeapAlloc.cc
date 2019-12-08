@@ -54,8 +54,7 @@ Spinlock_t heapLock = {0};
 //    -------------------------------------
 void *HeapAlloc(size_t size, bool align)
 {
-    SPIN_BLOCK(heapLock) {
-        archsize_t flags = DisableInterrupts();
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(heapLock) {
         size_t adjustedSize;
         OrderedList_t *entry;
         KHeapHeader_t *hdr;
@@ -74,8 +73,7 @@ void *HeapAlloc(size_t size, bool align)
         // -- are we out of memory?
         if (!entry) {
             HeapCheckHealth();
-            RestoreInterrupts(flags);
-            SPIN_RLS(heapLock);
+            SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
 
             return 0;
         }
@@ -89,8 +87,7 @@ void *HeapAlloc(size_t size, bool align)
 
             if (!entry) {
                 HeapCheckHealth();
-                RestoreInterrupts(flags);
-                SPIN_RLS(heapLock);
+                SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
 
                 return 0;
             }
@@ -110,9 +107,8 @@ void *HeapAlloc(size_t size, bool align)
             ftr->_magicUnion.isHole = 0;
             HeapValidateHdr(hdr, "Resulting Header before return (good size)");
             HeapCheckHealth();
-            RestoreInterrupts(flags);
-            SPIN_RLS(heapLock);
             CLEAN_HEAP();
+            SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
 
             return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
         }
@@ -122,9 +118,8 @@ void *HeapAlloc(size_t size, bool align)
         HeapValidatePtr("HeapAlloc()");
         HeapValidateHdr(hdr, "Resulting Header before return (big size)");
         HeapCheckHealth();
-        RestoreInterrupts(flags);
-        SPIN_RLS(heapLock);
         CLEAN_HEAP();
+        SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
 
         return (void *)((byte_t *)hdr + sizeof(KHeapHeader_t));
     }

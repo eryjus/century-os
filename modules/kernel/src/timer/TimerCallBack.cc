@@ -48,16 +48,20 @@
 #include "cpu.h"
 #include "process.h"
 #include "interrupt.h"
+#include "serial.h"
+#include "hardware.h"
 #include "timer.h"
 
 
 //
 // -- Handle a timer IRQ
 //    ------------------
+EXPORT KERNEL
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
-    kprintf("@");
-    ProcessEnterPostpone();
+    TimerEoi(timerControl);     // take care of this while interrupts are disabled!
+
+    ProcessLockAndPostpone();
 
     if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
 
@@ -78,13 +82,8 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
             Process_t *wrk = FIND_PARENT(list, Process_t, stsQueue);
             if (now >= wrk->wakeAtMicros) {
                 wrk->wakeAtMicros = 0;
-
-                SPIN_BLOCK(scheduler.listSleeping.lock) {
-                    ListRemoveInit(&wrk->stsQueue);
-                    SpinlockUnlock(&scheduler.listSleeping.lock);
-                }
-
-                ProcessUnblock(wrk);
+                ListRemoveInit(&wrk->stsQueue);
+                ProcessDoUnblock(wrk);
             } else if (wrk->wakeAtMicros < newWake) newWake = wrk->wakeAtMicros;
 
             list = next;
@@ -101,6 +100,5 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
         if (AtomicDec(&scheduler.currentProcess->quantumLeft) <= 0) ProcessSchedule();
     }
 
-    TimerEoi(timerControl);
-    ProcessExitPostpone();
+    ProcessUnlockAndSchedule();
 }

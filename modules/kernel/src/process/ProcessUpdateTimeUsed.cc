@@ -24,19 +24,22 @@
 //
 // -- This is the last timer value that was updated
 //    ---------------------------------------------
-__krndata uint64_t lastTimer = 0;
+EXPORT KERNEL_DATA
+uint64_t lastTimer = 0;
 
 
 //
 // -- This is the CPU idle time
 //    -------------------------
-__krndata uint64_t cpuIdleTime = 0;
+EXPORT KERNEL_DATA
+uint64_t cpuIdleTime = 0;
 
 
 //
 // -- Get the current timer value and update the time used of the current process
 //    ---------------------------------------------------------------------------
-void __krntext ProcessUpdateTimeUsed(void)
+EXPORT KERNEL
+void ProcessUpdateTimeUsed(void)
 {
     uint64_t now = TimerCurrentCount(timerControl);
     uint64_t elapsed = now - lastTimer;
@@ -47,6 +50,5 @@ void __krntext ProcessUpdateTimeUsed(void)
     } else {
         scheduler.currentProcess->timeUsed += elapsed;
     }
-    CLEAN_PROCESS(scheduler.currentProcess);
 }
 

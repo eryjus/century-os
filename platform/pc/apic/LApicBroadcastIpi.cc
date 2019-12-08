@@ -21,9 +21,6 @@
 #include "pic.h"
 
 
-#define IPI_BASE    (128)
-
-
 //
 // -- Broadcast an IPI to all CPUs (including myself)
 //    -----------------------------------------------

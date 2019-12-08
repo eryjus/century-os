@@ -46,7 +46,7 @@ KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize)
     KHeapFooter_t *newFtr, *oldFtr;
     size_t newSize;
 
-    if (!entry) HeapError("NULL entry in HeapSplitAt()", "");
+    if (!assert(entry != NULL)) HeapError("NULL entry in HeapSplitAt()", "");
     HeapValidateHdr(entry->block, "HeapSplitAt()");
     HeapValidatePtr("HeapSplitAt()");
 

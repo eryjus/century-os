@@ -24,6 +24,7 @@
 
 
 #include "types.h"
+#include "spinlock.h"
 
 
 //
@@ -45,6 +46,7 @@
 //    --------------------------------------------------------------------------------------------------------
 typedef struct SerialDevice_t {
     SerialBase_t base;
+    Spinlock_t lock;
 
     void (*SerialOpen)(struct SerialDevice_t *);
     bool (*SerialHasChar)(struct SerialDevice_t *);

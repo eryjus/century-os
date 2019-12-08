@@ -24,10 +24,12 @@
 //    ----------------------------
 __krndata Scheduler_t scheduler = {
     NULL,                   // currentProcess
-    false,                  // processChangePending
     0,                      // nextPID
     0xffffffffffffffff,     // nextWake
-    {0},                    // schedulerLocksHeld
+    false,                  // processChangePending
+    0,                      // flags
+    {0},                    // schedulerLockCount
+    {0},                    // postponeCount
     {{&scheduler.queueOS.list, &scheduler.queueOS.list}, {0}, 0},                   // the os ready queue
     {{&scheduler.queueHigh.list, &scheduler.queueHigh.list}, {0}, 0},               // the high ready queue
     {{&scheduler.queueNormal.list, &scheduler.queueNormal.list}, {0}, 0},           // the normal ready queue
@@ -38,3 +40,4 @@ __krndata Scheduler_t scheduler = {
 };
 
 
+Spinlock_t schedulerLock = {0};

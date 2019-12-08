@@ -33,7 +33,7 @@ PicDevice_t *picControl = &pic8259;
 //    ----------------------------------------------------------------
 __ldrtext PicDevice_t *PicPick(void)
 {
-    if (GetIoapicCount > 0) picControl = &ioapicDriver;
+    if (GetIoapicCount() > 0) picControl = &ioapicDriver;
     else picControl = &pic8259;                         // -- fall back in the 8259 PIC
 
 

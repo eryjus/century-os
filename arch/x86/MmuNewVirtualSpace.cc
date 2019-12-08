@@ -30,7 +30,7 @@ frame_t __krntext MmuNewVirtualSpace(frame_t stack)
 
     MmuClearFrame(rv);
 
-    SPIN_BLOCK(mmuTableInitLock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(mmuTableInitLock) {
         MmuMapToFrame(MMU_NEW_TABLE_INIT, rv, PG_KRN | PG_WRT);
         PageEntry_t *tgtPD = (PageEntry_t *)MMU_NEW_TABLE_INIT;
         PageEntry_t *srcPD = (PageEntry_t *)PAGE_DIR_VADDR;
@@ -38,7 +38,7 @@ frame_t __krntext MmuNewVirtualSpace(frame_t stack)
         for (int i = 512; i < 1024; i ++) tgtPD[i] = srcPD[i];
 
         MmuUnmapPage(MMU_NEW_TABLE_INIT);
-        SpinlockUnlock(&mmuTableInitLock);
+        SPINLOCK_RLS_RESTORE_INT(mmuTableInitLock, flags);
     }
 
     return rv;

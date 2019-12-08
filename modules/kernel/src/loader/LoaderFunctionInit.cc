@@ -35,7 +35,8 @@ extern FunctionPtr_t const init_start[], init_end[];
 //
 // -- Perform this function initialization
 //    ------------------------------------
-void __ldrtext LoaderFunctionInit(void)
+EXPORT LOADER
+void LoaderFunctionInit(void)
 {
     FunctionPtr_t *wrk = (FunctionPtr_t *)init_start;
 
@@ -44,6 +45,6 @@ void __ldrtext LoaderFunctionInit(void)
         wrk ++;
     }
 
-    lMemSetB = (kMemSetB_t)PHYS_OF(kMemSetB);
+    lMemSetB = (kMemSetB_t)PHYS_OF(kMemSetB);       // a carefully crafted function that is relocatable
 }
 

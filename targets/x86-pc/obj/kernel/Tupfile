@@ -32,5 +32,6 @@ include $(WS)/modules/kernel/util/Tupfile.inc
 ##    --------------------------------------------
 : foreach  $(WS)/platform/$(PLAT)/acpi/*.cc                 |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/apic/*.cc                 |> !cc |>
+: foreach  $(WS)/platform/$(PLAT)/cores/*.cc                |> !cc |>
 : foreach  $(WS)/platform/$(PLAT)/interrupts/*.cc           |> !cc |>
 

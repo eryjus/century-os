@@ -31,7 +31,7 @@ void __ldrtext _SerialOpen(SerialDevice_t *dev)
 
     outb(base + SERIAL_INTERRUPT_ENABLE, 0x00); // Disable all interrupts
     outb(base + SERIAL_LINE_CONTROL, 0x80);     // Enable DLAB (set baud rate divisor)
-    outb(base + SERIAL_DIVISOR_LSB, 0x03);      // Set divisor to 3 (lo byte) 38400 baud
+    outb(base + SERIAL_DIVISOR_LSB, 0x01);      // Set divisor to 1 (lo byte) 115200 baud
     outb(base + SERIAL_DIVISOR_MSB, 0x00);      //                  (hi byte)
     outb(base + SERIAL_LINE_CONTROL, 0x03);     // 8 bits, no parity, one stop bit
     outb(base + SERIAL_FIFO_CONTROL, 0xC7);     // Enable FIFO, clear them, with 14-byte threshold

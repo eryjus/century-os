@@ -23,7 +23,8 @@
 //
 // -- Find the next process to give the CPU to
 //    ----------------------------------------
-static Process_t *ProcessNext(void)
+HIDDEN KERNEL
+Process_t *ProcessNext(void)
 {
     if (IsListEmpty(&scheduler.queueOS) == false) {
         return FIND_PARENT(scheduler.queueOS.list.next, Process_t, stsQueue);
@@ -42,61 +43,50 @@ static Process_t *ProcessNext(void)
 //
 // -- pick the next process to execute and execute it; ProcessLockScheduler() must be called before calling
 //    -----------------------------------------------------------------------------------------------------
-void __krntext ProcessSchedule(void)
+EXPORT KERNEL
+void ProcessSchedule(void)
 {
-//    kprintf("/(%x)", AtomicRead(&scheduler.schedulerLockCount));
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
+            "Calling `ProcessSchedule()` without holding the proper lock");
+
     Process_t *next = NULL;
     ProcessUpdateTimeUsed();
 
-    if (AtomicRead(&scheduler.schedulerLockCount) != 0) {
+    if (AtomicRead(&scheduler.postponeCount) != 0) {
         scheduler.processChangePending = true;
-//        kprintf(" Pending... ");
         return;
     }
 
-//    kprintf(" Scheduling... ");
     next = ProcessNext();
     if (next != NULL) {
-//        kprintf("*");
         ProcessListRemove(next);
-        CLEAN_PROCESS(next);
-
-        if (scheduler.currentProcess->status == PROC_RUNNING) {
-            ProcessReady(scheduler.currentProcess);
-        }
-
-        CLEAN_SCHEDULER();
-
         ProcessSwitch(next);
     } else if (scheduler.currentProcess->status == PROC_RUNNING) {
         // -- Do nothing; the current process can continue; reset quantum
         AtomicAdd(&scheduler.currentProcess->quantumLeft, scheduler.currentProcess->priority);
+        return;
     } else {
         // -- No tasks available; so we go into idle mode
         Process_t *save = scheduler.currentProcess;       // we will save this process for later
         scheduler.currentProcess = NULL;                  // nothing is running!
 
         do {
-//            kprintf("?");
-            // -- -- temporarily enable interrupts for the timer to fire
-            CLEAN_SCHEDULER();
+            // -- -- temporarily unlock the scheduler and enable interrupts for the timer to fire
+            ProcessUnlockScheduler();
             EnableInterrupts();
             HaltCpu();
             DisableInterrupts();
+            ProcessLockScheduler(false);     // make sure that this does not overwrite the process's flags
             next = ProcessNext();
         } while (next == NULL);
-
+        ProcessListRemove(next);
 
         // -- restore the current Process and change if needed
         ProcessUpdateTimeUsed();
         scheduler.currentProcess = save;
-        ProcessListRemove(next);
+        AtomicSet(&next->quantumLeft, next->priority);
 
-        CLEAN_PROCESS(next);
-        CLEAN_SCHEDULER();
         if (next != scheduler.currentProcess) ProcessSwitch(next);
     }
-
-    CLEAN_SCHEDULER();
 }
 

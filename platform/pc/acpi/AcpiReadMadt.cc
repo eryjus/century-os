@@ -40,11 +40,12 @@ void __ldrtext AcpiReadMadt(archsize_t loc)
         case MADT_PROCESSOR_LOCAL_APIC:
             {
                 MadtLocalApic_t *local = (MadtLocalApic_t *)wrk;
-                kprintf(".... MADT_PROCESSOR_LOCAL_APIC\n");
-                kprintf("...... Proc ID %x; APIC ID %x; %s\n", local->procId, local->apicId,
-                        local->flags&1?"enabled":"disabled");
+                cpus.cpusDiscovered ++;
                 IncLocalApic();
-                cpus.cpuCount ++;
+
+                kprintf(".... MADT_PROCESSOR_LOCAL_APIC\n");
+                kprintf("...... Proc ID %x; APIC ID %x; %s (%d found so far)\n", local->procId, local->apicId,
+                        local->flags&1?"enabled":"disabled", cpus.cpusDiscovered);
             }
 
             break;

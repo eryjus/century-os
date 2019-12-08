@@ -24,12 +24,17 @@
 //
 // -- Remove the process from whatever list it is on, ensuring proper locking
 //    -----------------------------------------------------------------------
-void __krntext ProcessListRemove(Process_t *proc)
+EXPORT KERNEL
+void ProcessListRemove(Process_t *proc)
 {
+    if (!assert(proc != NULL)) return;
+
+
     // -- is it already not on a list?
     if (proc->stsQueue.next == &proc->stsQueue) return;
 
-        //
+
+    //
     // -- Is this process on a queue?
     //    ---------------------------
     if (proc->status != PROC_RUNNING) {
@@ -39,45 +44,25 @@ void __krntext ProcessListRemove(Process_t *proc)
         case PROC_MTXW:
         case PROC_SEMW:
         case PROC_TERM:
-            SPIN_BLOCK(scheduler.listBlocked.lock) {
-                ListRemoveInit(&proc->stsQueue);
-                SpinlockUnlock(&scheduler.listBlocked.lock);
-            }
-
+            ListRemoveInit(&proc->stsQueue);
             break;
 
         case PROC_READY:
             switch (proc->priority) {
             case PTY_OS:
-                SPIN_BLOCK(scheduler.queueOS.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SpinlockUnlock(&scheduler.queueOS.lock);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
 
             case PTY_HIGH:
-                SPIN_BLOCK(scheduler.queueHigh.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SpinlockUnlock(&scheduler.queueHigh.lock);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
 
             case PTY_LOW:
-                SPIN_BLOCK(scheduler.queueLow.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SpinlockUnlock(&scheduler.queueLow.lock);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
 
             default:
-                SPIN_BLOCK(scheduler.queueNormal.lock) {
-                    ListRemoveInit(&proc->stsQueue);
-                    SpinlockUnlock(&scheduler.queueNormal.lock);
-                }
-
+                ListRemoveInit(&proc->stsQueue);
                 break;
             }
 

@@ -17,6 +17,7 @@
 
 
 #include "hardware.h"
+#include "spinlock.h"
 #include "serial.h"
 
 
@@ -28,7 +29,10 @@ void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
     if (!dev) return;
     if (ch == '\n') dev->SerialPutChar(dev, '\r');
 
-    while (!dev->SerialHasRoom(dev)) {}
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(dev->lock) {
+        while (!dev->SerialHasRoom(dev)) {}
 
-    outb(dev->base + SERIAL_DATA, ch);
+        outb(dev->base + SERIAL_DATA, ch);
+        SPINLOCK_RLS_RESTORE_INT(dev->lock, flags);
+    }
 }

@@ -86,7 +86,21 @@ multiboot_header:
 @@    and r2 holds the value 0.
 @@    ------------------------------------------------------------------------------------------------
 entry:
-@@ -- Save off the MBI structure (which is safe now the the bss is cleared); lr gets clobbered next
+@@
+@@ -- figure out which CPU we are on; only CPU 0 continues after this
+@@
+@@    Note that this code is expected to be _ALWAYS_ executing on Core0.  This check is there just in case
+@@    something happens later down the road with a change/bug in `bootcode.bin`.  If this were to happen,
+@@    we will emulate the expected behavior of the firmware by holding the core in a holding pen until we
+@@    are ready to release it.
+@@    ----------------------------------------------------------------------------------------------------
+    mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
+    and     r3,r3,#0x3                  @@ Extract CPU ID bits
+    cmp     r3,#0
+    bne     entryApHold                 @@ if we’re not on CPU0 go to the holding pen
+
+@@ -- Save off the MBI structure
+save:
     ldr     r2,=mb1Data                 @@ get the address to put it in
     str     r1,[r2]                     @@ and save the address
 
@@ -130,19 +144,6 @@ cont:
     mcr     p15,0,r3,c1,c0,0            @@ write the SCTLR back with the caches enabled
 .endif
 
-
-@@
-@@ -- figure out which CPU we are on; only CPU 0 continues after this
-@@    ---------------------------------------------------------------
-    mrc     p15,0,r3,c0,c0,5            @@ Read Multiprocessor Affinity Register
-    and     r3,r3,#0x3                  @@ Extract CPU ID bits
-    cmp     r3,#0
-    beq     initialize                  @@ if we’re on CPU0 goto the start
-
-@@ -- all other cores will drop in to this loop - a low power mode infinite loop
-wait_loop:
-    wfe                                 @@ wait for event
-    b       wait_loop                   @@ go back and do it again
 
 @@ -- Clear out bss
 initialize:
@@ -254,56 +255,6 @@ bssLoop:
 @@    above.
 @@    ----------------------------------------------------------------------------------------------------------
 
-.if 0
-@@ -- clear out r0 for address 0x00000000
-    mov     r0,#0                       @@ we want address 0
-
-@@ -- prepare the bit-coded jump instruction
-    movw    r1,#0xf018                  @@ and fill in the bottom 2 bytes
-    movt    r1,#0xe59f                  @@ this is the bitcode of the jump instruction
-
-@@ -- fill in the jump instructions
-    str     r1,[r0,#0x00]               @@ These are the jump instructions (not used -- reset)
-    str     r1,[r0,#0x04]               @@ These are the jump instructions (UNDEF)
-    str     r1,[r0,#0x08]               @@ These are the jump instructions (SVC CALL)
-    str     r1,[r0,#0x0c]               @@ These are the jump instructions (PREFETCH ABORT)
-    str     r1,[r0,#0x10]               @@ These are the jump instructions (DATA ABORT)
-    str     r1,[r0,#0x14]               @@ These are the jump instructions (not used -- hyp mode)
-    str     r1,[r0,#0x18]               @@ These are the jump instructions (IRQ INT)
-    str     r1,[r0,#0x1c]               @@ These are the jump instructions (FIQ INT)
-
-@@ -- fill in the jump targets
-    ldr     r1,=LoaderResetTarget
-    str     r1,[r0,#0x20]               @@ The target for a reset (never used but filled in anyway)
-
-    ldr     r1,=LoaderUndefinedTarget
-    str     r1,[r0,#0x24]               @@ The target for an UNDEF
-
-    ldr     r1,=LoaderSuperTarget
-    str     r1,[r0,#0x28]               @@ The target for SUPER
-
-    ldr     r1,=LoaderPrefetchTarget
-    str     r1,[r0,#0x2c]               @@ The target for PREFETCH ABORT
-
-    ldr     r1,=LoaderDataAbortTarget
-    str     r1,[r0,#0x30]               @@ The target for DATA ABORT
-
-    mov     r1,#0
-    str     r1,[r0,#0x34]               @@ The target for not used (hyp)
-
-    ldr     r1,=LoaderIRQTarget
-    str     r1,[r0,#0x38]               @@ The target for IRQ
-
-    ldr     r1,=LoaderFIQTarget
-    str     r1,[r0,#0x3c]               @@ The target for FIQ
-
-@@ -- Set up the VBAR to use an absolute address
-    mrc     p15,0,r1,c1,c0,0
-    and     r1,r1,#(~(1<<13))
-    mcr     p15,0,r1,c1,c0,0
-
-    mcr     p15,0,r0,c12,c0,0           @@ !!! physical addr (identity mapped); will need to change in kernel mmu
-.endif
 
 @@===================================================================================================================
 

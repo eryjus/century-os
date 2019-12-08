@@ -137,8 +137,9 @@ inline void Panic(void) { while (1) HaltCpu(); }
 //
 // -- Synchronization Barriers
 //    ------------------------
-#define DSB()              __asm volatile("dsb")
-#define ISB()              __asm volatile("isb")
+#define DSB()               __asm volatile("dsb")
+#define ISB()               __asm volatile("isb")
+#define SEV()               __asm volatile("dsb\nsev\n");
 
 
 //
@@ -156,7 +157,7 @@ inline void Panic(void) { while (1) HaltCpu(); }
 //    ------------------------------------------------
 #define VMRS(vfpspec) ({                                    \
     uint32_t _val;                                          \
-    __asm__ volatile("vmrs " "%0, " vfpSpec : "=r" (_val)); \
+    __asm__ volatile("vmrs %0, " vfpspec : "=r" (_val));    \
     _val;                                                   \
 })
 
@@ -283,6 +284,14 @@ inline void Panic(void) { while (1) HaltCpu(); }
 
 
 //
+// -- Access to the VBAR (Vector Base Address Register)
+//    -------------------------------------------------
+#define VBAR                "p15, 0, %0, c12, c0, 0"
+#define READ_VBAR()         MRC(VBAR)
+#define WRITE_VBAR(val)     MCR(VBAR,val)
+
+
+//
 // -- Perform a TLBIMVAA (TLB Invalidate by MVA ALL ASID)
 //    ---------------------------------------------------
 #define TLBIMVAA(mem)       MCR("p15, 0, %0, c8, c7, 3",mem)
@@ -402,6 +411,12 @@ extern "C" archsize_t GetDFAR(void);
 // -- Get the Data Fault Status Register (DFSR)
 //    ------------------------------------------
 extern "C" archsize_t GetDFSR(void);
+
+
+//
+// -- Initialize the core to use the FPU
+//    ----------------------------------
+__CENTURY_FUNC__ void FpuInit(void);
 
 
 #define CpuTssInit()

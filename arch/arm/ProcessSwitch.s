@@ -54,8 +54,9 @@
 @@ -- Some local equates to access the scheduler elements
 @@    ---------------------------------------------------
     .equ        SCH_CURRENT_PROCESS,0
-    .equ        SCH_CHG_PENDING,4
-    .equ        SCH_LOCKS_HELD,0x18
+    .equ        SCH_CHG_PENDING,0x10
+    .equ        SCH_LOCK_COUNT,0x18
+    .equ        SCH_POSTPONE_COUNT,0x1c
 
 
 @@
@@ -78,13 +79,13 @@ ProcessSwitch:
 @@
 @@ -- before we get too crazy, do we need to postpone?
 @@    ------------------------------------------------
-    ldr     r1,=(scheduler+SCH_LOCKS_HELD)  @@ get the locks held address
-    ldr     r1,[r1]                         @@ and the count
+    ldr     r1,=(scheduler+SCH_POSTPONE_COUNT)  @@ get the locks held address (&scheduler.postponeCount)
+    ldr     r1,[r1]                         @@ and the count (scheduler.postponeCount)
     cmp     r1,#0                           @@ is this zero?
     beq     .cont                           @@ if zero, contunue
 
-    ldr     r1,=(scheduler+SCH_CHG_PENDING) @@ get the address of the process change pending
-    mov     r0,#1                           @@ load the value to store
+    ldr     r1,=(scheduler+SCH_CHG_PENDING) @@ get addr of the proc chg pend (&scheduler.processChangePending)
+    mov     r0,#1                           @@ load the value to store (value 1)
     str     r0,[r1]                         @@ set the flag
     mov     pc,lr                           @@ and return
 
@@ -98,19 +99,23 @@ ProcessSwitch:
 @@
 @@ -- Save the state by writing the current stack pointer to the current structure
 @@    ----------------------------------------------------------------------------
-    ldr     r1,=(scheduler+SCH_CURRENT_PROCESS) @@ get the address of the current process pointer
-    ldr     r2,[r1]                         @@ get the address of the structure
+    ldr     r1,=(scheduler+SCH_CURRENT_PROCESS) @@ get &scheduler.currentProcess
+    ldr     r2,[r1]                         @@ get scheduler.currentProcess (or the pointer to Process_t)
 
-    ldr     r4,[r2,#PROC_STATUS]            @@ get the status
+    ldr     r4,[r2,#PROC_STATUS]            @@ get the status scheduler.currentProcess->status
     cmp     r4,#PROC_STS_RUNNING            @@ is the status running
-    addeq   r4,#1                           @@ this will change the status to PROC_STS_READY
-    streq   r4,[r2,#PROC_STATUS]            @@ store the result
+    bne     .saveStack                      @@ if not, skip the next part
 
-    ldr     r3,[r2,#PROC_PRIORITY]          @@ get the process priority
-    ldr     r4,[r2,#PROC_QUANTUM_LEFT]      @@ get the quantum left
-    add     r4,r4,r3                        @@ add the new quantum allotment to the amount remaining
-                                            @@ -- adjusts for "overdrawn" processes
-    str     r4,[r2,#PROC_QUANTUM_LEFT]      @@ and store the result
+    push    {r0,r1,r2,r3}                   @@ save the clobber registers
+    ldr     r0,[r1]                         @@ get the current process (scheduler.currentProcess)
+    bl      ProcessDoReady                  @@ go make the current process ready
+    pop     {r0,r1,r2,r3}                   @@ restore the vlobber registers
+
+.saveStack:
+    push    {r0,r1,r2,r3}                   @@ save the clobber registers
+    bl      ProcessUpdateTimeUsed           @@ update the time accounting
+    pop     {r0,r1,r2,r3}                   @@ restore the vlobber registers
+
 
     str     sp,[r2,#PROC_TOP_OF_STACK]      @@ save the current stack pointer
     mrc     p15,0,r3,c2,c0,0                @@ get the address of the current address space
@@ -119,11 +124,17 @@ ProcessSwitch:
 @@
 @@ -- now, restore the state of the next task; r0 contains the address of this task
 @@    -----------------------------------------------------------------------------
-    str     r0,[r1]                         @@ set the new current process
-    ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack
-    mov     r4,#PROC_STS_RUNNING            @@ load the status into a register
-    str     r4,[r0,#PROC_STATUS]            @@ ... and set the status
-    ldr     r2,[r0,#PROC_VIRT_ADDR_SPACE]   @@ get the address space of the new task
+    str     r0,[r1]                         @@ set the new current process (scheduler.currentProcess = r0)
+    ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack (scheduler.currentProcess->topOfStack)
+    mov     r4,#PROC_STS_RUNNING            @@ load the status into a register (value 1)
+    str     r4,[r0,#PROC_STATUS]            @@ ... and set the status (scheduler.currentProcess->status = 1)
+    ldr     r2,[r0,#PROC_VIRT_ADDR_SPACE]   @@ get addr spc of new tsk (r2 = scheduler.currentProcess->virtAddrSpace)
+
+    ldr     r1,[r0,#PROC_PRIORITY]          @@ get the process priority (r1 = scheduler.currentProcess->priority)
+    ldr     r4,[r0,#PROC_QUANTUM_LEFT]      @@ get the quantum left (r4 = scheduler.currentProcess->quantumLeft)
+    add     r4,r4,r1                        @@ add the new quantum allotment to the amount remaining
+                                            @@ -- adjusts for "overdrawn" processes
+    str     r4,[r0,#PROC_QUANTUM_LEFT]      @@ and store the result (scheduler.currentProcess->quantumLeft = r4)
 
     cmp     r2,r3                           @@ are they the same virtual address space?
     mcrne   p15,0,r2,c2,c0,0                @@ replace the top level mmu tables

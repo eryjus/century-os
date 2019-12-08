@@ -227,8 +227,40 @@ enum {
     DELMODE_SMI     = 0b010,
     DELMODE_NMI     = 0b100,
     DELMODE_INIT    = 0b101,
-    DELMODE_EXTINT  = 0b111,
+    DELMODE_STARTUP = 0b110,
 };
+
+
+//
+// -- The LocalAPIC ICR High DWORD structure
+//    --------------------------------------
+typedef union LapicIcrHi_t {
+    struct {
+        uint32_t reserved : 24;
+        uint32_t destination : 8;
+    } __attribute__((packed));
+    uint32_t raw;
+} __attribute__((packed)) LapicIcrHi_t;
+
+
+//
+// -- The LocalAPIC ICR Low DWORD structure
+//    -------------------------------------
+typedef union LapicIcrLo_t {
+    struct {
+        uint32_t vector : 8;
+        uint32_t deliveryMode : 3;
+        uint32_t destinationMode : 1;
+        uint32_t deliveryStatus : 1;
+        uint32_t pad1 : 1;
+        uint32_t level : 1;
+        uint32_t trigger : 1;
+        uint32_t pad2 : 2;
+        uint32_t destinationShorthand : 2;
+        uint32_t pad3 : 12;
+    } __attribute__((packed));
+    uint32_t raw;
+} __attribute__((packed)) LapicIcrLo_t;
 
 
 //
@@ -240,6 +272,8 @@ __CENTURY_FUNC__ void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _IoApicEoi(PicDevice_t *dev, Irq_t irq);
 __CENTURY_FUNC__ void _LApicBroadcastIpi(PicDevice_t *dev, int ipi);
+__CENTURY_FUNC__ void _LApicBroadcastInit(PicDevice_t *dev, uint32_t core);
+__CENTURY_FUNC__ void _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr);
 
 //
 // -- A helper function for translating an IRQ to a redir table entry

@@ -29,18 +29,19 @@ __CENTURY_FUNC__ void __krntext PmmScrubBlock(void)
 
     kprintf("Preparing to scrub a frame\n");
     PmmBlock_t *block = NULL;
-    SPIN_BLOCK(pmm.scrubStack.lock) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubStack.lock) {
         // -- double check just in case something changed
         if (!IsListEmpty(&pmm.scrubStack)) {
             ListHead_t::List_t *list = pmm.scrubStack.list.next;
             ListRemoveInit(list);
             block = FIND_PARENT(list, PmmBlock_t, list);
             pmm.scrubStack.count -= block->count;
-            CLEAN_PMM_BLOCK(block);
             CLEAN_PMM();
         }
 
-        SpinlockUnlock(&pmm.scrubStack.lock);
+        SPINLOCK_RLS_RESTORE_INT(pmm.scrubStack.lock, flags);
+
+        if (block) CLEAN_PMM_BLOCK(block);
     }
 
 
@@ -63,13 +64,13 @@ __CENTURY_FUNC__ void __krntext PmmScrubBlock(void)
     if (_PmmAddToStackNode(stack, block->frame, block->count)) FREE(block);
     else {
         kprintf("Pushing the block onto the stack\n");
-        SPIN_BLOCK(stack->lock) {
+        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
             stack->count += block->count;
             Push(stack, &block->list);
-            SpinlockUnlock(&stack->lock);
+            CLEAN_PMM();
+            SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
         }
     }
 
     CLEAN_PMM_BLOCK(block);
-    CLEAN_PMM();
 }
