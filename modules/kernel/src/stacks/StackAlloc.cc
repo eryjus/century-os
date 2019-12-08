@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  PicBroadcastIpi.cc -- Broadcast an IPI to all CPUs
+//  StackAlloc.cc -- Allocate the stack associated with the address handed in
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,32 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Jun-08  Initial   0.4.5   ADCL  Initial version
+//  2019-Dec-01  Initial   0.4.6d  ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
-#include "timer.h"
-#include "hardware.h"
-#include "pic.h"
+#include "stacks.h"
 
 
 //
-// -- Broadcast an IPI to all CPUs (including myself)
-//    -----------------------------------------------
-void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
+// -- allocate a stack by setting the proper bit
+//    ------------------------------------------
+EXPORT KERNEL
+void StackDoAlloc(archsize_t stackBase)
 {
-    if (ipi < 0 || ipi > 31) return;
-    if (!dev) return;
+    if (!assert(stackBase >= STACK_LOCATION)) return;
+    if (!assert(stackBase < STACK_LOCATION + (4 * 1024 * 1024))) return;
 
-    for (int i = 0; i < 1; i ++) {
-        MmioWrite(IPI_MAILBOX_BASE + (0x10 * i), (1<<ipi));
-    }
+    stackBase &= ~(STACK_SIZE - 1);           // align to stack
+    stackBase -= STACK_LOCATION;
+    stackBase /= STACK_SIZE;
+
+    int index = stackBase / 32;
+    int bit = stackBase % 32;
+
+    stacks[index] |= (1 << bit);
 }
+

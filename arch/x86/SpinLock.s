@@ -40,8 +40,8 @@
 ;;
 ;; -- This is the beginning of the code segment for this file
 ;;    -------------------------------------------------------
-    section .text
-    cpu        586
+    section     .text
+    cpu         586
 
 
 ;;

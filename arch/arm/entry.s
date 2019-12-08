@@ -255,56 +255,6 @@ bssLoop:
 @@    above.
 @@    ----------------------------------------------------------------------------------------------------------
 
-.if 0
-@@ -- clear out r0 for address 0x00000000
-    mov     r0,#0                       @@ we want address 0
-
-@@ -- prepare the bit-coded jump instruction
-    movw    r1,#0xf018                  @@ and fill in the bottom 2 bytes
-    movt    r1,#0xe59f                  @@ this is the bitcode of the jump instruction
-
-@@ -- fill in the jump instructions
-    str     r1,[r0,#0x00]               @@ These are the jump instructions (not used -- reset)
-    str     r1,[r0,#0x04]               @@ These are the jump instructions (UNDEF)
-    str     r1,[r0,#0x08]               @@ These are the jump instructions (SVC CALL)
-    str     r1,[r0,#0x0c]               @@ These are the jump instructions (PREFETCH ABORT)
-    str     r1,[r0,#0x10]               @@ These are the jump instructions (DATA ABORT)
-    str     r1,[r0,#0x14]               @@ These are the jump instructions (not used -- hyp mode)
-    str     r1,[r0,#0x18]               @@ These are the jump instructions (IRQ INT)
-    str     r1,[r0,#0x1c]               @@ These are the jump instructions (FIQ INT)
-
-@@ -- fill in the jump targets
-    ldr     r1,=LoaderResetTarget
-    str     r1,[r0,#0x20]               @@ The target for a reset (never used but filled in anyway)
-
-    ldr     r1,=LoaderUndefinedTarget
-    str     r1,[r0,#0x24]               @@ The target for an UNDEF
-
-    ldr     r1,=LoaderSuperTarget
-    str     r1,[r0,#0x28]               @@ The target for SUPER
-
-    ldr     r1,=LoaderPrefetchTarget
-    str     r1,[r0,#0x2c]               @@ The target for PREFETCH ABORT
-
-    ldr     r1,=LoaderDataAbortTarget
-    str     r1,[r0,#0x30]               @@ The target for DATA ABORT
-
-    mov     r1,#0
-    str     r1,[r0,#0x34]               @@ The target for not used (hyp)
-
-    ldr     r1,=LoaderIRQTarget
-    str     r1,[r0,#0x38]               @@ The target for IRQ
-
-    ldr     r1,=LoaderFIQTarget
-    str     r1,[r0,#0x3c]               @@ The target for FIQ
-
-@@ -- Set up the VBAR to use an absolute address
-    mrc     p15,0,r1,c1,c0,0
-    and     r1,r1,#(~(1<<13))
-    mcr     p15,0,r1,c1,c0,0
-
-    mcr     p15,0,r0,c12,c0,0           @@ !!! physical addr (identity mapped); will need to change in kernel mmu
-.endif
 
 @@===================================================================================================================
 

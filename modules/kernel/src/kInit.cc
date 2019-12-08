@@ -46,8 +46,6 @@
 #include "pmm.h"
 #include "serial.h"
 #include "atomic.h"
-#include "semaphore.h"
-#include "message.h"
 
 
 //
@@ -113,12 +111,10 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
-    SemaphoreInit();
-    MessageInit();
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
-//    CoresStart();
+    CoresStart();
 
     A = ProcessCreate(StartA);
     B = ProcessCreate(StartB);
@@ -208,5 +204,8 @@ void kInit(void)
 //
 // -- This is the structure with info about the cpus
 //    ----------------------------------------------
-Cpu_t cpus;
+Cpu_t cpus = {
+    .cpusDiscovered = 0,
+    .cpusRunning = 1,
+};
 

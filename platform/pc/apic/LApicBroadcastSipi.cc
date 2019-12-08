@@ -24,12 +24,23 @@
 //
 // -- Broadcast a SIPI to all CPUs (including myself)
 //    -----------------------------------------------
-void __ldrtext _LApicBroadcastSipi(PicDevice_t *dev)
+void __ldrtext _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr)
 {
     if (!dev) return;
 
-    uint32_t icr = (0b11<<18) | (1<<14) | (1<<0b101);
+    LapicIcrHi_t hi = {
+        .destination = (uint8_t)core,
+    };
 
-    MmioWrite(LAPIC_ICR_HI, 0x00);
-    MmioWrite(LAPIC_ICR_LO, icr);
+    LapicIcrLo_t lo = {0};
+    lo.vector = (addr >> 12) & 0xff;
+    lo.deliveryMode = DELMODE_STARTUP;
+    lo.destinationMode = 0;
+    lo.deliveryStatus = 1;
+    lo.level = 1;
+    lo.trigger = 1;
+    lo.destinationShorthand = 0b00;
+
+    MmioWrite(LAPIC_MMIO + LAPIC_ICR_HI, hi.raw);
+    MmioWrite(LAPIC_MMIO + LAPIC_ICR_LO, lo.raw);
 }

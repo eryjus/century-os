@@ -643,7 +643,347 @@ So, I think the first thing to do is to make sure I am really using the IOAPIC. 
 
 This, then, leaved the Posix IPC synchronization primitives to debug.  Before I get into that, I think I want to commit this code.
 
+---
 
+## Version 0.4.6d
 
+OK, now time to put some thought into debugging the IPC primitives.  Maybe this is where the rewrite needs to come in, I don't know.  But I do know I will need to spend some more time reading.
+
+Right out of the chute, I realize that I started coding to XSI conformance -- which is an extension to the regular Posix conformance level.  So, I made a mistake.  In the Posix specification, I really need to focus on [`semaphore.h`](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/semaphore.h.html) as the starting point for my work.
+
+---
+
+### 2019-Nov-30
+
+OK, so maybe I was wrong yesterday.  It looks like `sem_open()` and the like are C runtime library routines whereas `semget()` is a system interface.  See `man 2 syscalls`.  This is what I am interested in.
+
+---
+
+I'm starting to wonder if I am not getting the cart before the horse here....  Do I really need APIs for all this user-space stuff before I actually have a user-space and before I have a C Runtime library?  In other words, shouldn't a spinlock be sufficient at the kernel level and leave all this other stuff to runtime?
+
+Now, I will need some form of messaging between kernel processes.  But that is not yet the point either.  The point is to get all the processors running.  For that, I will need to go back to the [memory map](http://eryjus.ddns.net:3000/projects/century-os/wiki/High-Level_Virtual_Memory_Map) (which remains a living document) because I had problems with more than 1 processor stepping on stacks.
+
+However, in just updating this map, I realize that I need a mechanism for allocating/releasing kernel stacks.  I have alocated space for 1024 kernel-related stacks (each 4K in size).  I only need a flag to indicate free or used (`bool`), so a bitmap should work.  The problem here is that I need to be able to do some of this in the loader and maintain it in the kernel as well.
+
+I am also going to need to get my PMM up and running as a task as well.  This will end up in user-space (which is not yet working properly) and I will need message-passing capability.  I have a small PMM for initialization which will eventually step on the kernel data and I need to keep an eye on that -- a very close eye indeed!  But no point in taking that on yet.
+
+Finally, I believe I have initialization all wrong.  I believe I want to actually start a process from the kernel to be able to map the devices and trigger driver loads and then let that process end.  But, once again, there is no need to take that on now either.
+
+So, the stack allocator it is.  Up to 1024 stacks.  This will need 128 bytes to hold the bitmap.  Or, 32 X 32-bit dwords.  This really should be small enough to statically allocate.
+
+Well, no....  I really do not need to go there yet either.  I am trying to set up a stack for every CPU as part of the Boot Processor initialization.  This is not correct.  I merely need to allocate one for the BP and move on.  So this will be cleaned up now.
+
+Also, `cpus.cpuCount` is messed up and not handled properly.
+
+---
+
+Thinking about this a bit, I beleive the best effort here is going to be to keep track of the discovered cores and the running cores.  For the rpi2b target, it will be simple (at some point I need to pull in the dtb).  For the x86-pc target, I will need the MADT for the core count.  The easiest way to get there is to change the `cpus` structure member names and fix what breaks.
+
+Where's my Easy Button?  Now, go back to starting the additional cores.
+
+I thought I had the rpi2b core 1 starting:
+
+```C++
+__CENTURY_FUNC__ void CoresStart(void)
+{
+    // -- start core 1
+    kprintf("Starting core with message to %p\n", IPI_MAILBOX_BASE + 0x0c + (0x10 * 1));
+    MmioWrite(IPI_MAILBOX_BASE + 0x0c + (0x10 * 1), (uint32_t)entryAp);
+    SEV();
+}
+```
+
+It technically does, but there are issues:
+
+```
+Starting core with message to 0xf900009c
+sDhaet an eEwx cperpotcieosns:
+m.a.c kD aitsa  lFoacualtte dA dadtr e0sxsf:f 800x1f0f0800 1(fffr8a
+ . .0 xD0a0t0a0 0F4a0u0l)t
+ctthaet unse wR epgrioscteesrs:  s0txa0c0k0 0i0s8 0l7o
+a.t.e dF aautl t0 xsftfa8t0u2s0 000x 7(:f rTarmaen s0lxa0t0i0o0n0 4f0a1u)�5�) .(�EE�����х�с����ᕍ�����ѽ����5�)5�)����"��х�с���Յ��ѱ������ɑ��͕���́������ᅙ����������j�RjrRrrr"��х�с���Յ��ѱ��M��M��х���Ձ�I��I����ͥ�͕�ɕ�Ɂ������������������ª�j�RjrRrrr2��Յ��ѱ��́�ͅ�х���Ձ��������Ł�Q������͝����ѕ���ѹ������ձ��с�������ɱ��с������ٙ���ɥ�5�)���������������5�)�������Ʌ�Օ��с������������ɕ����������
+```
+
+So, I better start off cleaning this up.  The x86-pc target does not start crap.
+
+So, then assuming that ever other letter belongs to one core, I can pull this apart like this:
+
+```
+she new process
+.. Data Fault Address: 0xff801ff8
+.. Data Fault Status Register: 0x00000807
+.. Fault status 0x7: Translation fau
+```
+
+If I am seeing this properly, then the stack for the second CPU is not mapped....  tomorrow.
+
+---
+
+### 2019-Dec-01
+
+This morning I realized that I am passing the entire Loader portion of the boot code.  What was my thinking here??
+
+> ### 2019-Jun-08
+>
+> [...]
+>
+> So, for the APs, we are going to go off to another entry file (`entryAp.s`).  In this file each AP will wait until there is "permission" to continue, at which point, we will get a stack and start running some code.
+>
+> The problem with the stack is that we cannot reuse the stack from CPU0.  For CPU0, we are starting with the stack at `0x8000`.  This persists until we jump to the kernel, `kinit()`, when the stack is replaced at that point.  So, what I really need in this case is a method to allocate stacks.  It should be as easy as taking the cpu number and setting an offset, but the AP does not have enough configuration to be able to map a stack into the MMU.  CPU0 will have to be responsible for this task during `MmuInit()`.
+
+Ahhh...  This was my thinking.  It makes sense now.
+
+I was going to have CPU0 perform all the mappings needed for the other CPUs for stacks and have them already ready and waiting, so all any AP was required to do was calculate its stack and set the register.
+
+I removed this code earlier.
+
+> ### 2019-Nov-30
+>
+> [...]
+>
+> So, the stack allocator it is.  Up to 1024 stacks.  This will need 128 bytes to hold the bitmap.  Or, 32 X 32-bit dwords.  This really should be small enough to statically allocate.
+>
+> Well, no....  I really do not need to go there yet either.  I am trying to set up a stack for every CPU as part of the Boot Processor initialization.  This is not correct.  I merely need to allocate one for the BP and move on.  So this will be cleaned up now.
+
+So, I really do need a stack allocator for the kernel stacks.  I would be OK if I had not consumed these stacks with running processes, but I did and it properly exposed a problem.  I did have some decent bitmap code I can resurrect for this purpose.
+
+---
+
+After creating the stack manager, I also updated the 2 `ProcessNewStack()` functions to take advantage of this.  When I try to test it, the system goes no further.  Ahhh..  I'm also calling `StackAlloc()` with the lock held.
+
+---
+
+I thought I had this all cleaned up and then figured out that the rpi2b target locks on boot.  There is something going awry with `PlatformInit()` or thereafter.  This means I have something still very fragile.
+
+---
+
+### 2019-Dec-02
+
+Well, I got that all sorted out.  My bitmap calculations were off.  Once I got that all worked out, things worked just fine, and I have 2 cores started on the rpi2b target.
+
+I still have some significant issues to work through for the x86-pc target.
+
+But, I was also thinking about how to get the second core to get into the scheduler.  There is really no reason to keep a process going at this point, so it is not like the boot processor that assumes the butler role.  On the other hand, I have no `Process_t` structure I can use to call `ProcessSchedule()` directly.  However, that is not to say that I cannot allocate a `Process_t` structure for the core and then call `ProcessTerminate()` on itself.
+
+Before I go there, I really want to get another core started on an x86-pc.  For that, I need to read -- I'm all a mess there.
+
+[This code](https://wiki.osdev.org/APIC#SIPI_Sequence) has a sample startup sequence.  And the startup sequence is great, but how to I set the startup location?
+
+---
+
+### 2019-Dec-03
+
+I think I knew this before, but I just realized it again last night: *these cores all start up in real mode!*  This means I have to do all the work of getting them into protected mode.  Now, that really should not be a problem, but the whole thought of starting with 16-bit code threw me a bit last night.
+
+...  and if you have a look at `entryAp.s` for x86, I stopped working on that while it was being worked on.  It really looks like a mess.
+
+---
+
+Well, I have that written.  My only problem is that I am stuck on the temporary stack.  But is that OK?  I think it is because I am not going to get very deep into anything before it self-terminates.
+
+So, now I need to see if I can spin up a core and see if I can totally crash this thing.  Tomorrow.
+
+---
+
+### 2019-Dec-04
+
+Thinking about this, I am going to have to be very careful about setting up a race condition between getting the temporary process stopped which will free up the stack and performing the post-loader cleanup which will dump the pages from the MMU tables.  The TODO is captured [here](http://eryjus.ddns.net:3000/issues/421).
+
+Now, with that said, let me see if I can't get a CPU spun up.  I have that compelling feeling like I should start over again to clean up the code.  The problem I am having is that I feel like I should be able to spin the CPUs up as part of the loader while I am parsing the ACPI tables -- have them start and wait in a holding pen until a lock is release or a semaphore is increased.
+
+OK, well, I press on....
+
+---
+
+Well I am able to get the next core to start.  It almost immediately started giving me `#UD` faults.
+
+I got that figured out by setting the vector properly (which is `000vv000` where `vv` is the vector number!).  And, now I am having a location problem when the `kernel.elf` is linked.
+
+---
+
+### 2019-Dec-05
+
+Well, I spend most of my time today debugging the trampoline code to get into protected mode again.  I finally have achieved protected mode (I had to use an `iretd` rather than a `jmp long` to get there -- the encoding was just not going to work).  Now, with that said, I am not certain I will be able to have this run on real hardware yet.  Though I am hopeful.
+
+What I did not realize (or perhaps remember), what that I need a TSS for each CPU.  My current problem is this:
+
+```
+00171667489d[CPU1  ] protected mode activated
+00171667499d[CPU1  ] inhibit interrupts mask = 3
+00171667504e[CPU1  ] LTR: doesn't point to an available TSS descriptor!
+```
+
+I am using the same TSS as core0, so that makes sense.  So, how many CPUs should I support?  For that, I need to go back to the GDT and IDT and the amount of available space between them....
+
+I will also have some clean-up to perform as the GDT and IDT also need to be mapped into virtual memory space -- and this will need to be done after the MMU is initialized.
+
+---
+
+### 2019-Dec-06
+
+This should be the mapping to the GDT and IDT:
+
+```
+<bochs:7> page 0x3fd800
+ PDE: 0x00000000000000e7    PS g pat D A pcd pwt U W P
+ PTE: 0x0000000000000000       g pat d a pcd pwt S R p
+physical address not available for linear 0x00000000003fd000
+```
+
+...  and this all looks fubar to me.
+
+OK, the base of the page table is at `0x3fe000`.  When I turn on paging, I have:
+
+```
+<bochs:13> page 0x3fe000
+ PDE: 0x00000000000000e7    PS g pat D A pcd pwt U W P
+ PTE: 0x0000000000000000       g pat d a pcd pwt S R p
+ ```
+
+ Before I enable paging, it is:
+
+ ```
+ <bochs:3> page 0x3fe000
+ PDE: 0x00000000000000e7    PS g pat D A pcd pwt U W P
+linear page 0x00000000003fe000 maps to physical page 0x0000003fe000
+```
+
+... which is correct.  This is a 4MB page mapping -- a large page.
+
+Hmmm...  for CPU0:
+
+```
+<bochs:5> creg
+CR0=0xe0000011: PG CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x0000000000000000
+CR3=0x0000003fe000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x00000010: pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce pge mce pae PSE de tsd pvi vme
+CR8: 0x0
+EFER=0x00000000: ffxsr nxe lma lme sce
+```
+
+... while for CPU1:
+
+```
+<bochs:7> creg
+CR0=0x60000011: pg CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x0000000000000000
+CR3=0x0000003fe000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x00000000: pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce pge mce pae pse de tsd pvi vme
+CR8: 0x0
+EFER=0x00000000: ffxsr nxe lma lme sce
+```
+
+`cr4` has the `PSE` flag set on CPU0 whereas it is not set on CPU1.  PSE means 'page size extension'.  I bet that is relevant!
+
+And now it appears to be a `#PF`.  The output is intermingled with real output, so it's a mess to determine what is what.
+
+However, I can get this data from Bochs:
+
+```
+<bochs:3> creg
+CR0=0xe0000011: PG CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x000000006a14ec83
+CR3=0x0000003fe000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x00000010: pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce pge mce pae PSE de tsd pvi vme
+CR8: 0x0
+EFER=0x00000000: ffxsr nxe lma lme sce
+<bochs:4> reg
+CPU1:
+rax: 00000000_00000017 rcx: 00000000_00000000
+rdx: 00000000_80006dd9 rbx: 00000000_0000000e
+rsp: 00000000_00001f66 rbp: 00000000_00000000
+rsi: 00000000_00000000 rdi: 00000000_00000018
+r8 : 00000000_00000000 r9 : 00000000_00000000
+r10: 00000000_00000000 r11: 00000000_00000000
+r12: 00000000_00000000 r13: 00000000_00000000
+r14: 00000000_00000000 r15: 00000000_00000000
+rip: 00000000_80000655
+eflags 0x00000016: id vip vif ac vm rf nt IOPL=0 of df if tf sf zf AF PF cf
+<bochs:5> print-stack
+Stack address size 4
+ | STACK 0x00001f66 [0x80001c54]
+ | STACK 0x00001f6a [0x80006dd9]
+ | STACK 0x00001f6e [0x0000000e]
+ | STACK 0x00001f72 [0x00000000]
+ | STACK 0x00001f76 [0x003fe000]
+ | STACK 0x00001f7a [0x00000000]
+ | STACK 0x00001f7e [0x00000000]
+ | STACK 0x00001f82 [0x00000004]
+ | STACK 0x00001f86 [0x80001c7c]
+ | STACK 0x00001f8a [0x00001faa]
+ | STACK 0x00001f8e [0x00000000]
+ | STACK 0x00001f92 [0x1f9c6800]
+ | STACK 0x00001f96 [0x00004871]
+ | STACK 0x00001f9a [0x1fc00000]
+ | STACK 0x00001f9e [0x68004bdf]
+ | STACK 0x00001fa2 [0x00000004]
+ | STACK 0x00001fa6 [0x80001b82]
+ | STACK 0x00001faa [0x00000010]
+ | STACK 0x00001fae [0x00000010]
+ | STACK 0x00001fb2 [0x00000010]
+ | STACK 0x00001fb6 [0x00000010]
+ | STACK 0x00001fba [0x00000010]
+ | STACK 0x00001fbe [0x003fe000]
+ | STACK 0x00001fc2 [0x6a14ec83]
+ | STACK 0x00001fc6 [0xe0000011]
+ | STACK 0x00001fca [0x00000018]
+ | STACK 0x00001fce [0x00000000]
+ | STACK 0x00001fd2 [0x00000000]
+ | STACK 0x00001fd6 [0x00001fda]
+ | STACK 0x00001fda [0x00000004]
+ | STACK 0x00001fde [0x00000000]
+ | STACK 0x00001fe2 [0x00000008]
+ | STACK 0x00001fe6 [0x800040a0]
+ | STACK 0x00001fea [0x0000000e]
+ | STACK 0x00001fee [0x00000000]
+ | STACK 0x00001ff2 [0x00000000]
+ | STACK 0x00001ff6 [0x6a14ec83]
+ | STACK 0x00001ffa [0x00000008]
+ | STACK 0x00001ffe [0x00010086]
+ ```
+
+So it looks like I end up almost directly into a `#PF` -- as in the stack is not that deep -- as in nothing on it.  `0x00010086` is `eflags`.
+
+Ok, so my jump code is:
+
+```
+800090bb:       b8 a0 40 00 80          mov    $0x800040a0,%eax
+800090c0:       ff 20                   jmp    *(%eax)
+```
+
+And the code bytes at `0x800040a0` are:
+
+```
+800040a0 <kInitAp>:
+800040a0:       83 ec 14                sub    $0x14,%esp
+800040a3:       6a 2a                   push   $0x2a
+```
+
+... or `0x6a14ec83`.  This matches the value in `cr2`.  So my problem is I am improperly jumpting to the location identified by the contents of the address I loaded into `eax`.  Fail.
+
+However, after that change, both cpus are running.  This is a huge accomplishment.  I am going to wait for tomorrow and then test again and commit my code.
+
+---
+
+### 2019-Dec-08
+
+This morning (well yesterday when I had a few minutes), I added a lock to the `kprintf()` function, so that the entire line can be printed properly.  This should help getting the data sorted out when a CPU crashes.
+
+So, now, I need to figure out the TSS for the second core.  I commented that code out to get past that problem (the TSS was already being used).
+
+---
+
+I spent a little time documenting [Low Memory Usage Map](http://eryjus.ddns.net:3000/projects/century-os/wiki/Low_Memory_Usage_Map) for the physical frames.  These should all be static locations, so it will be safe to reference them directly.
+
+I also spend some time documenting the target [GDT](http://eryjus.ddns.net:3000/projects/century-os/wiki/GDT), which will have to move.
+
+But, I think it is time to commit this code.
 
 

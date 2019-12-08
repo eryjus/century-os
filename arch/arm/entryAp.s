@@ -67,6 +67,11 @@ entryApHold:
 @@    ------------------------------------------------------------------------------------------------
 entryAp:
 @@
+@@ -- Give a temporary stack (reused by all cores, so we can only start 1 at a time)
+@@    ------------------------------------------------------------------------------
+    mov     sp,#0x8000                  @@ set the stack
+
+@@
 @@ -- make sure this core is in svc mode -- may be in hyp mode
 @@    --------------------------------------------------------
     mrs     r0,cpsr                     @@ get the current program status register
@@ -151,6 +156,9 @@ cont:
 @@
 @@ -- OK, we are able to continue, we need a stack
 @@    --------------------------------------------
+    bl      NextEarlyFrame              @@ Get a frame for out stack
+    mov     r2,r0                       @@ Save for later
+
     mov     r1,#0xff8                   @@ This will load value 0xff800000
     lsl     r1,#20                      @@ ... as a strarting address
 
