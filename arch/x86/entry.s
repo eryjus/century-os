@@ -218,8 +218,8 @@ gdtStart:
 earlyFrame:
     dd          (4 * 1024)                      ;; start allocating at 4MB
 
-
-
+stackBase:
+    dd          0
 
 idtTemplate:
     dd          0x00000008,0x00ee0000
@@ -262,6 +262,7 @@ initialize:
     call        NextEarlyFrame                  ;; get a frame back in eax
     add         eax,STACK_SIZE                  ;; go to the end of the stack
     mov         esp,eax                         ;; set the stack
+    mov         [stackBase],eax                 ;; save that for later
 
 
 ;;
@@ -441,6 +442,25 @@ clearBss:
 
 
 ;;
+;; -- 0xff800000 for our stack
+;;    ------------------------
+    call    MakePageTable                       ;; get a page table
+    mov     ebp,eax                             ;; save the location for later
+    or      eax,MMU_BASE|MMU_KERNEL             ;; fix up the other bits
+    mov     [ebx + (1022 * 4)],eax              ;; 0xff800000 / 0x400000 = 0x3fe (1022)
+    mov     eax,ebp                             ;; get the saved address
+
+;; -- init to populate the table
+    mov     esi,[stackBase]                     ;; get the stack physical address
+    mov     edi,0                               ;; the index into the table
+
+;; -- loop to populate the table
+    mov     edx,esi                             ;; get the address (page aligned)
+    or      edx,MMU_BASE|MMU_KERNEL             ;; get the other bits
+    mov     [eax + (edi * 4)],edx               ;; set the page table entry
+
+
+;;
 ;; -- Now we need a GDT and an IDT built.  The GDT will need to be perfectly constructed as it will persist
 ;;    for the rest of the OS; the IDT does not need to be and can actually fit in the same frame as the
 ;;    GDT.  However, we need to load the GDTR and IDTR properly for the CPU.  At the same time, get the TSS
@@ -522,6 +542,7 @@ newGdt:
 ;;
 ;; -- If we manage to get here, we now can jump to LoaderMain -- not a call
 ;;    ---------------------------------------------------------------------
+    mov     esp,0xff801000                      ;; set the stack for the loader
     jmp     LoaderMain
 
 
