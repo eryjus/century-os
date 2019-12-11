@@ -120,10 +120,11 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
     //
     // -- Finally, double check we did not over-allocate into the kernel
     //    --------------------------------------------------------------
-    if (((pmmEarlyFrame + 1) << 12) < PHYS_OF(_kernelEnd)) {
+    extern uint32_t earlyFrame;
+    if (((earlyFrame + 1) << 12) < PHYS_OF(_kernelEnd)) {
         kprintf("PANIC: Too many frames were allocated to get the system running!\n");
         kprintf("       The kernel ends at %p and we allocated frame %p\n",
-                PHYS_OF(_kernelEnd), (pmmEarlyFrame + 1) << 12);
+                PHYS_OF(_kernelEnd), (earlyFrame + 1) << 12);
         kprintf("       Recompile the system with larget identity mapped support\n");
         HaltCpu();
     }

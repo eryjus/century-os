@@ -23,16 +23,6 @@
 
 
 //
-// -- This is the frame right below 4MB, which will be the next one allocated
-//    -----------------------------------------------------------------------
-EXPORT LOADER_DATA
-frame_t pmmEarlyFrame = 0x000003ff;
-
-EXPORT LOADER_BSS
-frame_t pmmEarlyFrameSave = 0;
-
-
-//
 // -- This is the frame of the interrupt table, whatever that means for the arch
 //    --------------------------------------------------------------------------
 EXPORT LOADER_BSS

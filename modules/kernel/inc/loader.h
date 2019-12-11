@@ -27,8 +27,6 @@ EXTERN archsize_t phys_loc;
 EXTERN archsize_t kern_loc;
 EXTERN uint8_t *_loaderEnd;
 EXTERN uint8_t *_loaderStart;
-EXTERN frame_t pmmEarlyFrame;
-EXTERN frame_t pmmEarlyFrameSave;
 EXTERN archsize_t mmuLvl1Table;
 EXTERN frame_t intTableAddr;
 
