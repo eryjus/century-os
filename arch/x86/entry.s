@@ -33,17 +33,18 @@
     global      JumpKernel
     global      NextEarlyFrame
     global      earlyFrame
+    global      mmuLvl1Count                    ;; the number of frames for this level 1 mmu table
+    global      mmuLvl1Table                    ;; the frame for the level 1 mmu table
+    global      mb1Data
+    global      mb2Data
+    global      intTableAddr                    ;; interrupt table address
+
 
 ;;
 ;; -- Now, we need some things from other functions imported
 ;;    ------------------------------------------------------
     extern      LoaderMain                      ;; allow reference to external LoaderMain
-    extern      mb1Data                         ;; the address of the MB1 MBI
-    extern      mb2Data                         ;; the address of the MB2 MBI
-    extern      mmuLvl1Count                    ;; the number of frames for this level 1 mmu table
-    extern      mmuLvl1Table                    ;; the frame for the level 1 mmu table
     extern      earlyStackFrame                 ;; the frame the stack is allocated to
-    extern      intTableAddr                    ;; the location of the gdt, idt, and tss structures
     extern      bssPhys                         ;; the bss starting address (linker provided)
     extern      bssSize                         ;; the bss size (linker provided)
     extern      mbStart                         ;; mboot section starting address (linker provided)
@@ -218,6 +219,12 @@ gdtStart:
 earlyFrame:
     dd          (4 * 1024)                      ;; start allocating at 4MB
 
+mmuLvl1Count:
+    dd          0
+
+mmuLvl1Table:
+    dd          0
+
 stackBase:
     dd          0
 
@@ -229,6 +236,19 @@ ldtSize:
     dw          0
 ldtLoc:
     dd          0
+
+
+;;
+;; -- some additional variables for use later
+;;    ---------------------------------------
+mb1Data:
+    dd          0
+mb2Data:
+    dd          0
+
+intTableAddr:
+    dd          0
+
 
 
 ;;
@@ -592,5 +612,5 @@ JumpKernel:
 ;;    --------------------------------------------------------
     align       4
 stack:
-    db          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    dd          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 stack_top:

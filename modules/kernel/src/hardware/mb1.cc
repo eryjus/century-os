@@ -149,7 +149,7 @@ typedef struct MB1 {
 //
 // -- This is the address of the MB1 Multiboot information structure
 //    --------------------------------------------------------------
-__ldrdata MB1 *mb1Data = 0;
+extern MB1 *mb1Data;
 
 
 //

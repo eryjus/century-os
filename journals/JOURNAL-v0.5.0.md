@@ -102,3 +102,98 @@ Before that, though, I will need to get a proper stack for x96-pc.  This should 
 
 This, then, gives me a stack to work with.  I should be able to work with that from here.  One more commit and then I'm on to the rpi2b.
 
+---
+
+### 2019-Dec-11
+
+OK, the problem I am going to have with the rpi2b entry point is that there is not cute little recursive mapping trick and I need to be able to maintain all these management tables myself.
+
+---
+
+I think I have all this code done.  I need to figure out how to test it.  I know it will not run on qemu based on the load address.  I beleive I will need to create a special rpi2b-qemu target to get this to work.
+
+---
+
+I was able to find and compile `rpi-boot`.  This allowed me to be able to run my code in qemu (no need for the rpi2b-qemu target).  With that, I have been able to confirm that my code is getting control.  However, I am gettnig a prefetch abort, meaning I have a problem with the paging tables.  Shocker.
+
+---
+
+### 2019-Dec-12
+
+OK, since I have not been using QEMU to debug anything so far, I am going to haev to start learning how to do this.  I need to be able to inspect the contents of the paging tables as I go.
+
+OK, `mmuLvl1Table` and `mmuLvl1Count` both currently reside in high memory.  They are going to have to move.
+
+---
+
+That done, I am finally able to investigate the memory.  And it appears I have an alignment problem with the tables:
+
+```
+        ...
+ 1000004:       01008001        tsteq   r0, r1
+ 1000008:       01008191                        ; <UNDEFINED> instruction: 0x01008191
+ 100000c:       01008321        tsteq   r0, r1, lsr #6
+ 1000010:       010084b1                        ; <UNDEFINED> instruction: 0x010084b1
+```
+
+Memory location `0x1000000` holds `0x00000000`, and it should hold the 1K table (which I assume is at `0x01008000`).  However, that table appears to be at the next memory location.
+
+Well, it appears I have 2 problems here:
+1.  The alignmment problem.
+2.  A problem incrementing the top 22 bits properly (least significant 10 bits remain 0 for the flags).
+
+It looks like I was able to get most of that cleaned up.  But I still have lingering issues:
+
+```
+        ...
+ 1000004:       01008001
+ 1000008:       01008191
+ 100000c:       01008321
+ 1000010:       010084b1
+        ...
+ 1003fd0:       01006001
+ 1003fd4:       01006191
+ 1003fd8:       01006321
+ 1003fdc:       010064b1
+        ...
+ 1003ff0:       01007001
+ 1003ff4:       01007191
+ 1003ff8:       01007321
+ 1003ffc:       010074b1
+```
+
+Of the 3 blocks above, the top one is wrong while the bottom 2 are correct.
+
+I also appear to be missing the kernel space mappings.
+
+---
+
+OK, they are not correct.
+
+Picking apart the bottom 12 bits of the address `0x1006xxx` block...
+| bits | use | index 1 | index 2 | index 3 | index 4 |
+|:----:|:----|:-------:|:-------:|:-------:|:-------:|
+| 11:10 | AP[1:0] | 0 | 0 | 0 | 1 |
+| 9 | Not used | 0 | 0 | 1 | 0 |
+| 8:5 | Domain | 0 | 0xc | 9 | 5 |
+| 4 | Execute Never | 0 | 1 | 0 | 1 |
+| 3 | Cashable | 0 | 0 | 0 | 0 |
+| 2 | Bufferesd | 0 | 0 | 0 | 0 |
+| 1 | Set to 1 | 0 | 0 | 0 | 0 |
+| 0 | Page Execute Never | 1 | 1 | 1 | 1 |
+
+So, this is a mess!
+
+---
+
+### 2019-Dec-16
+
+Over the last few days or so, I have been able to spend a few minutes here and here sorting out the issues the rpi2b entry code.  There have been several issues and have not properly documented them all.
+
+I do, however, believe I have this code ready to commit.  For both targets, I have been able to get the `entry.s` file to boot all the way through and get paging enabled.  I have a proper stack defined for `LoaderMain()`.
+
+Now, to be fair, I have not accomplished my goals.  The CPU is not is its complete native state.  In particular, interrupts cannot be handled properly on either arch and the GDT is not mapped in kernel space for the x86 arch.  However, what I am able to do is call functions in kernel address space.
+
+Execution is still broken (it will not load/execute the test code), but entry.s is cleaned up.  This is ready for a commit.
+
+
