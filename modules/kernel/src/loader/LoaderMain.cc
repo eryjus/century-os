@@ -58,11 +58,8 @@ void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 
 
     // -- Theoretically, after this point, there should be very little architecture-dependent code
-    FrameBufferClear();
-    FrameBufferPutS("Welcome to Century-OS\n");
-    kprintf("Jumping to %p (%smapped) with stack %p (%smapped)\n", kInit, (MmuIsMapped((archsize_t)kInit)?"":"not "),
-            STACK_LOCATION, (MmuIsMapped(STACK_LOCATION)?"":"not "));
     JumpKernel(kInit, STACK_LOCATION + STACK_SIZE);
+
 
     // -- if we ever get here, we have some big problems!
     assert_msg(false, "Returned from kInit() back to LoaderMain()!!!");

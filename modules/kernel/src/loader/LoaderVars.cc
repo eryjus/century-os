@@ -23,37 +23,10 @@
 
 
 //
-// -- This is the frame right below 4MB, which will be the next one allocated
-//    -----------------------------------------------------------------------
-EXPORT LOADER_DATA
-frame_t pmmEarlyFrame = 0x000003ff;
-
-EXPORT LOADER_BSS
-frame_t pmmEarlyFrameSave = 0;
-
-
-//
-// -- This is the frame of the interrupt table, whatever that means for the arch
-//    --------------------------------------------------------------------------
-EXPORT LOADER_BSS
-frame_t intTableAddr = 0;
-
-
-//
 // -- This is the frame that is used by the early stack
 //    -------------------------------------------------
 EXPORT LOADER_BSS
 frame_t earlyStackFrame = 0;
-
-
-//
-// -- This is the frame for the MMU level 1 table and its frame count
-//    ---------------------------------------------------------------
-EXPORT LOADER_BSS
-archsize_t mmuLvl1Table = 0;
-
-EXPORT LOADER_BSS
-size_t mmuLvl1Count = 0;
 
 
 //

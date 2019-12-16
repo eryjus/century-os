@@ -203,7 +203,7 @@ typedef struct Mb2FbInfo_t {
 //
 // -- The multiboot 2 information structure
 //    -------------------------------------
-__ldrdata void *mb2Data;
+extern void *mb2Data;
 extern void *mb1Data;
 
 
