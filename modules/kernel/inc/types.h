@@ -63,9 +63,21 @@
 #define __krndata       __attribute__((section(".data")))
 
 
+//
+// -- some things to add readability/direction to the linker
+//    ------------------------------------------------------
 #define EXPORT          __attribute__((visibility("default")))
 #define HIDDEN          __attribute__((visibility("hidden")))
 #define EXTERN          extern
+#define EXTERN_C        EXTERN "C"
+
+
+//
+// -- Things that might appear on the ENTRY section
+//    ---------------------------------------------
+#define ENTRY           __attribute__((section(".text.entry")))
+#define ENTRY_DATA      __attribute__((section(".data.entry")))
+#define ENTRY_BSS       __attribute__((section(".bss.entry")))
 
 #define KERNEL          __attribute__((section(".text")))
 #define KERNEL_DATA     __attribute__((section(".data")))
@@ -206,4 +218,5 @@ const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
 // -- The ISR Handlers
 //    ----------------
 extern isrFunc_t isrHandlers[256];
+
 

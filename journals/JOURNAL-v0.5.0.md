@@ -196,4 +196,16 @@ Now, to be fair, I have not accomplished my goals.  The CPU is not is its comple
 
 Execution is still broken (it will not load/execute the test code), but entry.s is cleaned up.  This is ready for a commit.
 
+---
 
+## Version 0.5.0b
+
+So, the loader is going to be the next thing to address.  This version is concerned with getting that code sorted out.  To do that, I need to articualte the new goals of the loader.  These are:
+1. Perform any config that was not able to be done with the `entry.s` file (handle interrupts, proper GDT)
+2. Collect any information about hardware (including multiboot structures) and place those in reasonable locations.
+
+This portion is about hardware, not OS structures.
+
+Since the loader is running in kernel-space memory, I should be able to elminate all special loader tricks I was using.  `loader.h` goes away.  Also, the loader variables go away.
+
+This, now, gets me to the point where I can address the serial port for outputting debugging information.  The purpose of the `loaderSerial` variable was the address at which the device was placed.  Essentially, they are the same except for fucntion addresses.

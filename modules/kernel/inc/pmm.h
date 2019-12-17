@@ -139,6 +139,12 @@ __CENTURY_FUNC__ void PmmDumpState(void);
 
 
 //
+// -- Allocate an early frame before the PMM is put in charge
+//    -------------------------------------------------------
+extern "C" frame_t NextEarlyFrame(void);
+
+
+//
 // -- Clean/Invalidate PMM Manager structure
 //    --------------------------------------
 #define CLEAN_PMM()                 CLEAN_CACHE(&pmm, sizeof(PmmManager_t))

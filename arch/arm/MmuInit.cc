@@ -83,11 +83,11 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "pmm.h"
 #include "cpu.h"
 #include "stacks.h"
+#include "entry.h"
 #include "mmu.h"
 
 

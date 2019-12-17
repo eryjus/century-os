@@ -25,7 +25,6 @@
 #include "printf.h"
 #include "pmm.h"
 #include "spinlock.h"
-#include "loader.h"
 #include "mmu.h"
 
 

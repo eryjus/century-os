@@ -15,12 +15,12 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "hw-disc.h"
 #include "serial.h"
 #include "printf.h"
+#include "mmu.h"
 #include "platform.h"
 
 
@@ -28,9 +28,9 @@
 // -- Perform the early initialization.  The goal here is to not have to worry about loader/kernel code once
 //    this is complete
 //    ------------------------------------------------------------------------------------------------------
-void __ldrtext EarlyInit(void)
+EXTERN_C void __ldrtext EarlyInit(void)
 {
-    SerialOpen(&loaderSerial);       // initialize the serial port so we can output debug data
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
 
     if (CheckCpuid() != 0) {
         SetCpuid(true);

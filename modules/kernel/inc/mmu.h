@@ -79,6 +79,7 @@ __CENTURY_FUNC__ bool MmuIsMapped(archsize_t addr);
 //
 // -- Complete the initialization of the MMU
 //    --------------------------------------
+void MmuEarlyInit(void);
 void MmuInit(void);
 
 

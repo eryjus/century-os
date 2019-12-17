@@ -15,7 +15,6 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "serial.h"
@@ -35,7 +34,7 @@ extern FunctionPtr_t const init_start[], init_end[];
 //
 // -- Perform this function initialization
 //    ------------------------------------
-EXPORT LOADER
+EXTERN_C EXPORT LOADER
 void LoaderFunctionInit(void)
 {
     FunctionPtr_t *wrk = (FunctionPtr_t *)init_start;
@@ -44,7 +43,5 @@ void LoaderFunctionInit(void)
         (*wrk)();                   // -- call the function
         wrk ++;
     }
-
-    lMemSetB = (kMemSetB_t)PHYS_OF(kMemSetB);       // a carefully crafted function that is relocatable
 }
 

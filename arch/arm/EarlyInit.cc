@@ -15,21 +15,21 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "printf.h"
 #include "platform.h"
+#include "entry.h"
+#include "mmu.h"
 #include "serial.h"
-
 
 
 //
 // -- Perform the early initialization.  The goal here is to not have to worry about loader/kernel code once
 //    this is complete
 //    ------------------------------------------------------------------------------------------------------
-void __ldrtext EarlyInit(void)
+EXTERN_C void __ldrtext EarlyInit(void)
 {
-    SerialOpen(&loaderSerial);                   // initialize the serial port so we can output debug data
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
 
     MmuEarlyInit();                 // Complete the MMU initialization for the loader
 

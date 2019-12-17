@@ -23,11 +23,11 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "serial.h"
 #include "mmu.h"
+#include "entry.h"
 #include "printf.h"
 
 
@@ -35,11 +35,13 @@
 #   define DEBUG_MMU 0
 #endif
 
+
 //
 // -- Complete the initialization of the Mmu for the loader to function properly
 //    --------------------------------------------------------------------------
-__CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
+void MmuEarlyInit(void)
 {
+#if 0
     extern uint8_t _kernelStart[];
     extern uint8_t _kernelEnd[];
     archsize_t kernelStart = (archsize_t)_kernelStart;
@@ -102,16 +104,8 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
             LoaderSerialPutS("Making new table at frame "); LoaderSerialPutHex(newFrame); LoaderSerialPutChar('\n');
 #endif
 
-            if (newFrame < PHYS_OF(_kernelEnd) >> 12) {
-                LoaderSerialPutS("Out of memory in MmuEarlyInit(); add another 4MB section\n");
-                LoaderSerialPutS(".. Frame was "); LoaderSerialPutHex(newFrame); LoaderSerialPutChar('\n');
-                LoaderSerialPutS(".. Limit is "); LoaderSerialPutHex(PHYS_OF(_kernelEnd) >> 12);
-                        LoaderSerialPutChar('\n');
-                Halt();
-            }
-
             void *addr = (void *)(newFrame << 12);
-            lMemSetB(addr, 0, FRAME_SIZE);
+            kMemSetB(addr, 0, FRAME_SIZE);
 
             pde->frame = newFrame;
             pde->us = 1;
@@ -135,14 +129,14 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
 
         PageEntry_t *pte = PT_ENTRY(section);
         if (pte->p != 0) {
-            LoaderSerialPutS("This page is already mapped!!!  ");
-            LoaderSerialPutHex((uint32_t)*((uint32_t *)pte));
-            LoaderSerialPutChar('\n');
+            SerialPutS("This page is already mapped!!!  ");
+            SerialPutHex((uint32_t)*((uint32_t *)pte));
+            SerialPutChar('\n');
 
             HaltCpu();
         }
 
-        frame_t frame = PHYS_OF(section) >> 12;
+// TODO: fix        frame_t frame = PHYS_OF(section) >> 12;
 
 #if DEBUG_MMU == 1
         LoaderSerialPutS(".. The PTE address is "); LoaderSerialPutHex((uint32_t)pte); LoaderSerialPutChar('\n');
@@ -178,6 +172,6 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     LoaderSerialPutS("MmuEarlyInit() is complete\n");
     kprintf("At this point, the kernel is fully mapped!!!\n");
 #endif
+#endif
 }
-
 

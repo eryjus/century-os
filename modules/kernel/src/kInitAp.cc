@@ -2,7 +2,6 @@
 #include "types.h"
 #include "printf.h"
 #include "cpu.h"
-#include "loader.h"
 #include "timer.h"
 #include "process.h"
 #include "heap.h"

@@ -23,28 +23,28 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "serial.h"
 #include "mmu.h"
 #include "printf.h"
+#include "entry.h"
 
 
 #ifndef DEBUG_MMU
 #   define DEBUG_MMU 0
 #endif
 
-__CENTURY_FUNC__ void DecorateRegs(void);
-
 
 //
 // -- Complete the initialization of the Mmu for the loader to function properly
 //    --------------------------------------------------------------------------
-__CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
+void MmuEarlyInit(void)
 {
+#if 0
     extern uint8_t _kernelStart[];
     extern uint8_t _kernelEnd[];
+
     archsize_t kernelStart = (archsize_t)_kernelStart;
     archsize_t kernelEnd = (archsize_t)_kernelEnd;
     archsize_t sectionCurr = kernelStart >> 20;
@@ -81,14 +81,6 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
         if (ttl1Entry->fault == 0b00) {
             frame_t newFrame = NextEarlyFrame();
 
-            if (newFrame < PHYS_OF(_kernelEnd) >> 12) {
-                LoaderSerialPutS("Out of memory in MmuEarlyInit(); add another 4MB section\n");
-                LoaderSerialPutS(".. Frame was "); LoaderSerialPutHex(newFrame); LoaderSerialPutChar('\n');
-                LoaderSerialPutS(".. Limit is "); LoaderSerialPutHex(PHYS_OF(_kernelEnd) >> 12);
-                        LoaderSerialPutChar('\n');
-                Halt();
-            }
-
 #if DEBUG_MMU == 1
             LoaderSerialPutS("The new frame number is ");
             LoaderSerialPutHex(newFrame);
@@ -96,7 +88,7 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
 #endif
 
             Ttl2_t *ttl2 = (Ttl2_t *)(newFrame << 12);
-            lMemSetB(ttl2, 0, FRAME_SIZE);
+            kMemSetB(ttl2, 0, FRAME_SIZE);
 
             for (int i = 0; i < 4; i ++) {
 #if DEBUG_MMU == 1
@@ -142,15 +134,15 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
 #endif
 
         if (ttl2Entry->fault != 0b00) {
-            LoaderSerialPutS("This page is already mapped!!!  ");
-            LoaderSerialPutHex((uint32_t)*((uint32_t *)ttl2Entry));
+            SerialPutS("This page is already mapped!!!  ");
+            SerialPutHex((uint32_t)*((uint32_t *)ttl2Entry));
 
             HaltCpu();
         }
 
         // TODO: make sure that these are set up properly for the kernel
         // -- Use the PHYS_OF() macro to convert the page to an physical address; and then a frame
-        ttl2Entry->frame = PHYS_OF(pageCurr<<12)>>12;
+// TODO: fix        ttl2Entry->frame = PHYS_OF(pageCurr<<12)>>12;
         ttl2Entry->s = 1;
         ttl2Entry->apx = 0;
         ttl2Entry->ap = 0b11;
@@ -181,6 +173,6 @@ __CENTURY_FUNC__ void __ldrtext MmuEarlyInit(void)
     kprintf("At this point, the kernel is fully mapped!!!\n");   // -- having trouble with cache enabled with this
     LoaderSerialPutS("Did we get here?\n");
 #endif
+#endif
 }
-
 

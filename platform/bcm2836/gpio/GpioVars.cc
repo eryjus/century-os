@@ -15,7 +15,6 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "hardware.h"
 
 
@@ -24,8 +23,8 @@
 //    --------------------------------------------------------------------------------
 __ldrdata GpioDevice_t loaderGpio = {
     .base = LDR_GPIO_BASE,
-    .GpioSelectAlt = (void (*)(GpioDevice_t *, GpioPin_t, GpioAlt_t))PHYS_OF(_GpioSelectAlt),
-    .GpioEnablePin = (void (*)(GpioDevice_t *, GpioPin_t))PHYS_OF(_GpioEnablePin),
+    .GpioSelectAlt = _GpioSelectAlt,
+    .GpioEnablePin = _GpioEnablePin,
 };
 
 

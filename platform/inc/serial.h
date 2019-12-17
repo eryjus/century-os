@@ -62,8 +62,7 @@ typedef struct SerialDevice_t {
 //
 // -- Here, declare the different configurations of the serial port we will use
 //    -------------------------------------------------------------------------
-extern SerialDevice_t loaderSerial;
-extern SerialDevice_t kernelSerial;
+extern SerialDevice_t debugSerial;
 
 
 //

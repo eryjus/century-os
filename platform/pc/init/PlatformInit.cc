@@ -28,7 +28,6 @@
 //    ------------------------------------
 void PlatformInit(void)
 {
-    UpdateKprintfPort();
     PicPick();
     TimerPick();
 

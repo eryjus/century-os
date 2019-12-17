@@ -18,7 +18,6 @@
 
 
 #include "types.h"
-#include "loader.h"
 #include "hw-disc.h"
 #include "pmm.h"
 #include "serial.h"
@@ -33,10 +32,13 @@
 // -- called from assembly language...
 //    --------------------------------
 extern "C" EXPORT LOADER
-void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
+void LoaderFunctionInit(void);
 
 extern "C" EXPORT LOADER
-void SerialEarlyPutChar(uint8_t);
+void EarlyInit(void);
+
+extern "C" EXPORT LOADER
+void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
 
 extern "C" EXPORT KERNEL
 void kInit(void);
@@ -45,7 +47,7 @@ void kInit(void);
 //
 // -- The actual loader main function
 //    -------------------------------
-EXPORT LOADER
+EXTERN_C EXPORT LOADER
 void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
     LoaderFunctionInit();               // go and initialize all the function locations

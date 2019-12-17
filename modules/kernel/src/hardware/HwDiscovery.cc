@@ -15,19 +15,17 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "printf.h"
 #include "hw-disc.h"
 
-__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
 
 //
 // -- Perform the hardware discovery
 //    ------------------------------
 void __ldrtext HwDiscovery(void)
 {
-    lMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
+    kMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
     Mb1Parse();
     Mb2Parse();
 //    ArchDiscovery();

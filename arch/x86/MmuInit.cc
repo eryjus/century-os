@@ -22,11 +22,11 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "pmm.h"
 #include "interrupt.h"
 #include "stacks.h"
+#include "entry.h"
 #include "mmu.h"
 
 

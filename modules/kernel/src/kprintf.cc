@@ -25,25 +25,9 @@
 
 
 //
-// -- This is the serial port we will write to; this will be updated later by the loader to reference the
-//    kernel version of the serial port in mapped address space.
-//    ---------------------------------------------------------------------------------------------------
-SerialDevice_t *toPort = &loaderSerial;
-
-
-//
 // -- This is the spinlock that is used to ensure that only one process can output to the serial port at a time
 //    ---------------------------------------------------------------------------------------------------------
 Spinlock_t kprintfLock = {0};
-
-
-//
-// -- This is a function that will update this port -- simple to call
-//    ---------------------------------------------------------------
-extern "C" void UpdateKprintfPort(void)
-{
-    toPort = &kernelSerial;
-}
 
 
 //
@@ -66,8 +50,6 @@ enum {
 static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static const char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t);
-
 //
 // -- This is a printf()-like function to print to the serial port
 //    ------------------------------------------------------------
@@ -84,7 +66,7 @@ int kprintf(const char *fmt, ...)
         for ( ; *fmt; fmt ++) {
             // -- for any character not a '%', just print the character
             if (*fmt != '%') {
-                SerialPutChar(toPort, *fmt);
+                SerialPutChar(&debugSerial, *fmt);
                 printed ++;
                 continue;
             }
@@ -109,14 +91,14 @@ int kprintf(const char *fmt, ...)
                 // fall through
 
             case '%':
-                SerialPutChar(toPort, '%');
+                SerialPutChar(&debugSerial, '%');
                 printed ++;
                 continue;
 
             case 's': {
                 char *s = va_arg(args, char *);
                 if (!s) s = (char *)"<NULL>";
-                while (*s) SerialPutChar(toPort, *s ++);
+                while (*s) SerialPutChar(&debugSerial, *s ++);
                 printed ++;
                 continue;
             }
@@ -128,11 +110,11 @@ int kprintf(const char *fmt, ...)
 
             case 'p':
                 val = va_arg(args, archsize_t);
-                SerialPutS(toPort, "0x");
+                SerialPutS(&debugSerial, "0x");
                 printed += 2;
 
                 for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
-                    SerialPutChar(toPort, dig[(val >> j) & 0x0f]);
+                    SerialPutChar(&debugSerial, dig[(val >> j) & 0x0f]);
                     printed ++;
                 }
 
@@ -146,7 +128,7 @@ int kprintf(const char *fmt, ...)
             case 'x':
                 {
                     val = va_arg(args, archsize_t);
-                    SerialPutS(toPort, "0x");
+                    SerialPutS(&debugSerial, "0x");
                     printed += 2;
 
                     bool allZero = true;
@@ -155,13 +137,13 @@ int kprintf(const char *fmt, ...)
                         int ch = (val >> j) & 0x0f;
                         if (ch != 0) allZero = false;
                         if (!allZero || flags & ZEROPAD) {
-                            SerialPutChar(toPort, dig[ch]);
+                            SerialPutChar(&debugSerial, dig[ch]);
                             printed ++;
                         }
                     }
 
                     if (allZero && !(flags & ZEROPAD)) {
-                        SerialPutChar(toPort, '0');
+                        SerialPutChar(&debugSerial, '0');
                         printed ++;
                     }
 
@@ -175,7 +157,7 @@ int kprintf(const char *fmt, ...)
                     int i = 0;
 
                     if (val == 0) {
-                        SerialPutChar(toPort, '0');
+                        SerialPutChar(&debugSerial, '0');
                         printed ++;
                     } else {
                         while (val) {
@@ -184,7 +166,7 @@ int kprintf(const char *fmt, ...)
                         }
 
                         while (--i >= 0) {
-                            SerialPutChar(toPort, buf[i]);
+                            SerialPutChar(&debugSerial, buf[i]);
                             printed ++;
                         }
                     }
