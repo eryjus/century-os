@@ -56,7 +56,8 @@
 //
 // -- initialize the physical portion of the memory manager
 //    -----------------------------------------------------
-__CENTURY_FUNC__ void __ldrtext PmmInit(void)
+EXTERN_C EXPORT LOADER
+void PmmInit(void)
 {
     extern bool pmmInitialized;
 

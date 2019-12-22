@@ -18,6 +18,8 @@
 
 
 #include "hardware.h"
+#include "cpu.h"
+#include "serial.h"
 #include "hw-disc.h"
 #include "platform.h"
 
@@ -27,10 +29,12 @@
 //    ---------------------------------------------------
 void __ldrtext PlatformEarlyInit(void)
 {
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
     HwDiscovery();
 
     // -- at some point, this will come from the DTB
     cpus.cpusDiscovered = 4;
+    FpuInit();
 }
 
 

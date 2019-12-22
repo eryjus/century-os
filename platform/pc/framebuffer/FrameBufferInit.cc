@@ -28,6 +28,8 @@
 //    -------------------------------------------
 void __ldrtext FrameBufferInit(void)
 {
+    // -- goose the config to the correct fb address
+    SetFrameBufferAddr((uint16_t *)MMU_FRAMEBUFFER);
     SetFgColor(0xffff);
     SetBgColor(0x1234);
 

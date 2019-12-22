@@ -24,7 +24,8 @@
 //
 // -- Initialize the UART Serial Port
 //    -------------------------------
-void __ldrtext _SerialOpen(SerialDevice_t *dev)
+EXTERN_C EXPORT KERNEL
+void _SerialOpen(SerialDevice_t *dev)
 {
     if (!dev) return;
 

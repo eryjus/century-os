@@ -17,6 +17,7 @@
 
 #include "timer.h"
 #include "cpu.h"
+#include "mmu.h"
 #include "pic.h"
 
 

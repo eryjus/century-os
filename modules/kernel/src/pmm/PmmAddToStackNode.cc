@@ -34,7 +34,8 @@
 //
 // -- search through the stack and see if the frame can be added to an existing block; create a new one if not.
 //    ---------------------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ bool __krntext _PmmAddToStackNode(StackHead_t *stack, frame_t frame, size_t count)
+EXTERN_C EXPORT KERNEL
+bool _PmmAddToStackNode(StackHead_t *stack, frame_t frame, size_t count)
 {
     bool rv = true;     // -- assume we will be able to add it to an existing block
 

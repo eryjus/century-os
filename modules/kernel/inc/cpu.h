@@ -113,11 +113,4 @@ typedef struct Cpu_t {
 extern Cpu_t cpus;
 
 
-//
-// -- this is the location of the kernel stack
-//    ----------------------------------------
-#define STACK_LOCATION          0xff800000
-#define STACK_SIZE              0x1000
-
-
 #endif

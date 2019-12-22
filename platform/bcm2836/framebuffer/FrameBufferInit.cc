@@ -23,6 +23,7 @@
 #include "hw-disc.h"
 #include "printf.h"
 #include "fb.h"
+#include "mmu.h"
 #include "hardware.h"
 
 
@@ -38,6 +39,24 @@ __ldrdata uint32_t mbBuf[64] __attribute__((aligned(16)));
 void __ldrtext FrameBufferInit(void)
 {
     kprintf("Setting up the frame buffer\n");
+
+
+    //
+    // -- The next step is to map the frame buffer.
+    //    -----------------------------------------
+    archsize_t fbAddr = ((archsize_t)GetFrameBufferAddr());        // better be aligned to frame boundary!!!
+    size_t fbSize = GetFrameBufferPitch() * GetFrameBufferHeight();
+    fbSize += (fbSize&0xfff?PAGE_SIZE:0);   // -- this is adjusted so that when we `>> 12` we are mapping enough
+    fbSize >>= 12;                          // -- now, the number of frames to map
+    archsize_t off = 0;
+
+    while (fbSize) {
+        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN | PG_DEVICE | PG_WRT);
+        off += PAGE_SIZE;
+        fbAddr += PAGE_SIZE;
+        fbSize --;
+    }
+
     uint16_t *fb;
 
     mbBuf[0] = 32 * 4;

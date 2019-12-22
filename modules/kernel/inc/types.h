@@ -25,6 +25,8 @@
 #pragma once
 #define __TYPES_H__
 
+#include "constants.h"
+
 
 //
 // -- these are the only 2 standard include files that are safe to include
@@ -70,6 +72,7 @@
 #define HIDDEN          __attribute__((visibility("hidden")))
 #define EXTERN          extern
 #define EXTERN_C        EXTERN "C"
+#define NORETURN        __attribute__((noreturn))
 
 
 //

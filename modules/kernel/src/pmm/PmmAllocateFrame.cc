@@ -26,16 +26,14 @@
 #include "pmm.h"
 
 
-__krndata bool pmmInitialized = false;
-
-
 //
 // -- Allocate a frame and return it
 //    ------------------------------
-__CENTURY_FUNC__ frame_t __krntext PmmAllocateFrame(void)
+EXTERN_C EXPORT KERNEL
+frame_t PmmAllocateFrame(void)
 {
     if (!pmmInitialized) {
-        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
+//        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
         return NextEarlyFrame();
     }
 

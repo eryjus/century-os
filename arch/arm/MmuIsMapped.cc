@@ -24,7 +24,8 @@
 //
 // -- Check for the page and unmap if it is mapped.
 //    ---------------------------------------------
-bool __krntext MmuIsMapped(archsize_t addr)
+EXTERN_C EXPORT KERNEL
+bool MmuIsMapped(archsize_t addr)
 {
     Ttl1_t *ttl1Table = (Ttl1_t *)(TTL1_KRN_VADDR);
     Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];

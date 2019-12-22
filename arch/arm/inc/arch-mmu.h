@@ -65,6 +65,6 @@ typedef struct Ttl2_t {
 //
 // -- This is a function to create a new top-level paging structure
 //    -------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 frame_t MmuMakeNewTtl1Table(void);
-
 

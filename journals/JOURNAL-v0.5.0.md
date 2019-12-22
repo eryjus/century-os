@@ -209,3 +209,287 @@ This portion is about hardware, not OS structures.
 Since the loader is running in kernel-space memory, I should be able to elminate all special loader tricks I was using.  `loader.h` goes away.  Also, the loader variables go away.
 
 This, now, gets me to the point where I can address the serial port for outputting debugging information.  The purpose of the `loaderSerial` variable was the address at which the device was placed.  Essentially, they are the same except for fucntion addresses.
+
+---
+
+I was able to get a successful compile.  I'm certain it will not run so I am not even going to test it.  But I am going to commit this code loally.
+
+---
+
+OK the first order of business is going to be to get the output working again in the loader.  This will be a major part of the rework.
+
+That done, this then brings me to `MmuEarlyInit()`...  This function is going to be very architecture dependent.  So, starting with rpi2b, I need to map the MMIO memory space to the virtual memory location.
+
+---
+
+### 2019-Dec-17
+
+Today I am working on debugging the rpi2b target to get to the point where I can output text for debugging.
+
+---
+
+I was finally able to get the additional issues with `entry.s` addressed and I am now booting into the loader.  With that, I am finding that I am nto able to get past `EntryInit()` due to a problem with `MmuEarlyInit()` due to a problem with `MmuMapToFrame()` due to a problem with the macro `TTL1_ENTRY()` due to the fact that the TTL1 table is not properly mapped to the management space.
+
+In addition, I had to remove all the debugging calls to `kprintf()` from several functions.  I will need to come up with something to replace it.
+
+---
+
+### 2019-Dec-18
+
+OK, let's think this through a little bit (I have been doing some debugging of the paging tables for the rpi2b target):
+
+* The TTL1 table is 16K (4 pages) at phyiscal address `0x1000000`.
+* These 4 pages need to be mapped to address `0xff404000`, `0xff405000`, `0xff406000`, and `0xff407000`.
+* This means that TTL1 Entry `0xff4` (`0xff404000 >> 20`) needs to have a table assigned to it.
+* TTL1 Entry `0xff4` equates to offset `0x3fd0` (`0xff4 << 2`), or at address `0x1003fd0`.
+* This also happens to fall on a `4 X 1K` boundary, so no additional adjustment is necessary (`0xff4 & 0xffc` is `0xff4`).
+* The TTL2 table for this is allocated at `0x1006000`.
+* Given the above information, the following 4 tables will be put in place:
+    * Address `0x1003fd0` will receive the table `0x1006000` for TTL1 index `0xff4`
+    * Address `0x1003fd4` will receive the table `0x1006400` for TTL1 index `0xff5`
+    * Address `0x1003fd8` will receive the table `0x1006800` for TTL1 index `0xff6`
+    * Address `0x1003fdc` will receive the table `0x1006c00` for TTL1 index `0xff7`
+* With that, the TTL2 table base physical address will be `0x1006000` for index `0xff4`.
+* The virtual addresses for the TTL2 tables begin at `0xffc00000`.
+* The index from the base of the TTL2 table is `0xff404` (`0xff404000 >> 12`).
+* The offset from the base address of the TTL2 table is `0x3fd010` (`0xff404 << 2`).
+* The TTL2 entry I need to map will be at address `0xffffd010`.
+* The additional TTL2 entries to map will be:
+    * Address `0xffffd014` for index `0xff405`.
+    * Address `0xffffd018` for index `0xff406`.
+    * Address `0xffffd01c` for index `0xff407`.
+* The page `0xffffd000` is mapped to frame `0x1007000`
+* The index into this particular frame is `0x04`.
+* The offset into this particular frame is `0x10` (`0x04 << 2`).
+* The table at physical address `0x1007010` is `0`, meaning that this is not mapped.
+* The other tables at physical addresses `0x1007014`, `0x1007018`, and `0x100701c` are also `0`.
+
+Now, the macro `TTL1_ENTRY()` is trying to read physical memory starting at address `0xff404000` while the MMU is enabled.  This is not working because of the failure at physical address `0x1007010`.
+
+I think I have defined my first problem to fix.  But not tonight.
+
+---
+
+### 2019-Dec-19
+
+For the start of the first mappings, I have have the following comment block:
+
+```
+@@
+@@ -- Now we want to set up paging.  The first order of business here is to map the TTL1 table for managing
+@@    entries.  This requires a new page to be allocated and mapped into the TTL1 table itself.
+@@
+@@    The measureable results of this section are expected to be:
+@@    * 0x1000000 (for 4 pages) contains the TTL1 table
+@@    * create a new TTL2 table block (for managing 4 frames) exp: 0x1006000
+@@    * associate a TTL1 entries:
+@@        * index 0xff4 (offset 0x3fd0) to address 0x1006000
+@@        * index 0xff5 (offset 0x3fd4) to address 0x1006400
+@@        * index 0xff6 (offset 0x3fd8) to address 0x1006800
+@@        * index 0xff7 (offset 0x3fdc) to address 0x1006c00
+@@    * map pages into TTL2 table at 0x1006000:
+@@        * index 0x04 (offset 0x10) to address 0x1000000
+@@        * index 0x05 (offset 0x14) to address 0x1001000
+@@        * index 0x06 (offset 0x18) to address 0x1002000
+@@        * index 0x07 (offset 0x1c) to address 0x1003000
+```
+
+I should be able to properly measure these results and make any adjustments necessary.
+
+And I need to consider some adjustments:
+
+```
+(gdb) p /x *0x1003fd0
+$1 = 0x1006001
+(gdb) p /x *0x1003fd4
+$2 = 0x1006401
+(gdb) p /x *0x1003fd8
+$3 = 0x1006801
+(gdb) p /x *0x1003fdc
+$4 = 0x1006c01
+(gdb) p /x *0x1006010
+$5 = 0x1000003
+(gdb) p /x *0x1006014
+$6 = 0x0
+(gdb) p /x *0x1006018
+$7 = 0x0
+(gdb) p /x *0x100601c
+$8 = 0x0
+```
+
+The last 4 entries are `0`.  So, either my test criteria are wrong or the test results are wrong....  And I was incrementing the wrong register, so my code was wrong.
+
+Moving on to the next section....  Which I cleaned up and tested successfully.
+
+---
+
+### 2019-Dec-20
+
+I need to get my head around this.  I know the following logic works:
+
+```C++
+//
+// -- This is the location of the TTL1/TTL2 Tables in kernel space
+//    ------------------------------------------------------------
+#define TTL1_KRN_VADDR      0xff404000
+#define MGMT_KRN_TTL2       0xfffff000
+#define TTL2_KRN_VADDR      0xffc00000
+
+
+//
+// -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
+//    into the various tables
+//    -----------------------------------------------------------------------------------------------------
+#define KRN_TTL1_ENTRY(a)       (&((Ttl1_t *)TTL1_KRN_VADDR)[(a) >> 20])
+#define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_KRN_VADDR)[((a) >> 20) & 0xffc])
+#define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_KRN_TTL2)[(a) >> 22])
+#define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_KRN_VADDR)[(a) >> 12])
+```
+
+So, the question is: how to change this so that it works with my `entry.s` module before I have all these address up and running?
+
+First of all, this is an array in C++ and I need to change this to be addresses of 32-bit words.  So, every one of these will be shifted-left by 2 to multiply by 4.
+
+I think the first order os business here is going to be to code these all out in assembly.  I am using `r9` as a scratch register in `entry.s` and `r8` as a counter.  So each of these 3 key macros (not `KRN_TTL1_ENTRY4`) will use registers `r5`, `r6`, or `r7`.  `KRN_TTL1_ENTRY4` will reuse the same register as `KRN_TTL1_ENTRY` and will be a prerequisite call.  Each should only need to operate on its own register.
+
+---
+
+OK, I was finally able to get into the loader space.  Plus, I was able to get past the management table issues..., well the first of them anyway.
+
+I want to commit this code while I have it.
+
+---
+
+OK, now I can complete the rest of the MMU setup that is needed from the upper memory space.
+
+---
+
+### 2019-Dec-21
+
+Today, my primary goal is to get serial output happening again on the rpi2b.  I have moved the hardware MMIO address space and I have not updated the new location in the `#define`s.  However, I am not yet getting to that place in code.  So, I need to make sure I am getting out of `MmuEarlyInit()`.
+
+I am faulting trying to move the MMIO addresses.  My suspicion is that I have a problem with creating a new TTL2 table and getting that set up properly.
+
+I was able to get a log of this fault sequence and I am getting the following:
+
+```
+IN:
+0x808018e8:  e1a00006  mov      r0, r6
+0x808018ec:  e8bd41f0  pop      {r4, r5, r6, r7, r8, lr}
+0x808018f0:  ea00065f  b        #0x80803274
+
+R00=81004a00 R01=00000000 R02=ffffd000 R03=0000d000
+R04=ff400000 R05=81004a00 R06=000000c0 R07=0100d000
+R08=00000001 R09=0100d000 R10=000287a0 R11=000254cc
+R12=05000000 R13=ff400fa8 R14=808018e8 R15=808018e8
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600003f
+...with DFSR 0x7 DFAR 0xff400fa8
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x5 IFAR 0x1005010
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x5 IFAR 0x100500c
+```
+
+Now, the `DFSR` register tells me that this is a Second Level translation fault (as in the TTL2 entry could not be found) and the `DFAR` register tells me that this is on address `0xff400fa8`.  What bothers me is the address.  That address is supposed to be used for clearing a frame before placing it into the tables in its final location.  But if there was a problem with that address, I would expect it to fail much closer to `0xff400000`, not near the end of the page.
+
+Now, the value in `r15` confuses me as well.  This address is at the end of the `MmuClearFrame()` function, but there is no memory reference near that instruction (other than stack references).  For a data abort, the problem happened 2 instructions before the value in `pc`, so that instruction would be:
+
+```
+808018e0:       e1a00005        mov     r0, r5
+```
+
+That makes no sense.  If I take the instruction itself, it was:
+
+```
+808018e8:       e1a00006        mov     r0, r6
+```
+
+That makes no sense either!
+
+I could consider this a cache consistency problem, but qemu does not emulate cache that I know of.
+
+Ahhh...  but if you look at the value in `r13` (`sp`), there is the offending value!  So, it appears that my stack and the frame to clear are getting mixed up somehow.
+
+I am loading this value from `entry.s`.  I definitely am stomping on myself here.
+
+---
+
+I have that fixed and I have the rpi2b target running to the point just before it opens the serial port for debugging output.
+
+The x86-pc target still triple faults.  And I need to make sure it is getting at least that far.  And it is.
+
+So, I am now able to make the `EarlyInit()` fuctions match between the targets, so I can simplify to 1 version of this function.  It is now called `LoaderEarlyInit()`.
+
+I have some additional cleanup to do for all the work I had done to get to this point.
+
+One of the goals at this point is to figure out a way to have a common location for defining constants but output the proper header file for any given architecture, compiler, or assembler.  I believe I might be able to use `sed` for this...  maybe `awk`.  Or, all `awk`.
+
+Anyway, I now have a `constants` file I can maintain centrally and output the different constants for each target as appropriate.  Later, I will need to be able to selectively output constants depending on the target I am using.  But that will indeed be later.
+
+I also believe I have properly cleaned up the `entry.s` file for both archs.  This moves me on to the `LoaderMain()` function.
+
+`LoaderMain()` is rather trivial, but I cannot execute all the way through this function yet.  The first call is `LoaderFunctionInit()`.
+
+`LoaderFunctionInit()` has some linker-defined variables that I also want to centralize.  I believe I can place those in `loader.h` and have them be in the right spot.  They are part of the loader sections anyway and will go away at a leter time.  If I need to capture them, it is appropriate to move them into kernel data space.
+
+Next in `LoaderMain()` is the call to `LoaderEarlyInit()`.  This then calls `MmuEarlyInit()`.
+
+Now, `MmuEarlyInit()` really needs to be renamed to `MmuInit()`, but I have one of those already.  `MmuInit()` should go away since the MMU really needs to be completely initialized after this call to `MmuEarlyInit()` -- there should be nothing more than routine maintenance to do after `MmuEarlyInit()` is done.  Several things could not be completed at the `entry.s` level since we did not yet have everything ready to go.
+
+So, the first thing to do now it safely remove `MmuInit()`.  This will be done by temporarily renaming the file.
+
+I have also realized that I do not yet have the framebuffer mapped on the rpi2b target.  This is also throwing a fault.
+
+Let me see if I can identify the fault....
+
+I never would have figure on this:
+
+```
+IN:
+0x80000228:  e30002f0  movw     r0, #0x2f0
+0x8000022c:  e3480100  movt     r0, #0x8100
+0x80000230:  e5903008  ldr      r3, [r0, #8]
+0x80000234:  e12fff33  blx      r3
+
+R00=40040000 R01=fb000000 R02=80003000 R03=00000001
+R04=00112008 R05=00000000 R06=00000000 R07=00000000
+R08=ff802000 R09=fffff000 R10=000287a0 R11=000254cc
+R12=40040000 R13=ff801ff0 R14=fffff1c8 R15=80000228
+PSR=400001d3 -Z-- A NS svc32
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x7 IFAR 0x0
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x5 IFAR 0x100500c
+```
+
+In this case, I am trying to jump to a `0x00000000` address.
+
+Hmmm, could it be that I am skipping the framebuffer load altogether?  Possible I guess.  But I am returning back to `LoaderEarlyInit()`.
+
+So, thinking about this, what I think to be the case is that I am trying to map the framebuffer in the MMU before I have been able to determine where that it -- from the hardware scan in `PlatformInit()`.  This will have to move.
+
+I am also realizing that the x86-pc `MmuEarlyInit()` function does nothing and it also needs to be properly addressed.  Most of that goes away for real, but I need to finish up with mapping the IVT into kernel space.  Also, with a properly placed infinite loop, I am actually still getting a triple fault, so I need to track that down.  It looks like that final bit of code is not needed, so it was also removed.  What is left to do is set up to map the IVT properly.
+
+---
+
+### 2019-Dec-22
+
+I was able to get this all sorted out this morning.  I found that I was trying to map an address that did not have a Page Table and had assumed it was there.  This was not a problem for rpi2b since I had the TTL1 management space mapped into this same TTL1 entry.  For x86-pc, this was not the case and I had to artifically create this Page Table for this address space.  That identified and fixed, the kernel now boots to the `SerialOpen()` call.
+
+I can continue on with the cleanup.
+
+Next, I want to consider if I can eliminate `LoaderEarlyInit()`.  I think I should because it's only purpose is to call `MmuInit()` and `PlatformInit()`.  It does a couple of other it also does a couple of other things I will be moving to `PlatformInit()`.  So, in short I have a function whose sole purpose is to call 2 functions.  Sounds like unnecessary overhead to me.
+
+
+

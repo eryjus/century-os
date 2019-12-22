@@ -21,7 +21,8 @@
 //
 // -- This is the device description that will be used for outputting data to the debugging serial port
 //    -------------------------------------------------------------------------------------------------
-__krndata SerialDevice_t debugSerial = {
+EXPORT KERNEL_DATA
+SerialDevice_t debugSerial = {
     .base = COM1,
     .lock = {0},
     .SerialHasRoom = _SerialHasRoom,

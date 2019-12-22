@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  MmuNewVirtualSpace.cc -- For a new process, create the user virtual address space
+//  MmuVars.cc -- Common variables for the MMU
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,24 +10,20 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-16  Initial   0.3.2   ADCL  Initial version
+//  2019-Dec-22  Initial  v0.5.0b  ADCL  Initial Version
 //
 //===================================================================================================================
 
 
 #include "types.h"
+#include "cpu.h"
 #include "spinlock.h"
-#include "pmm.h"
 #include "mmu.h"
 
 
 //
-// -- for arm, all we need is a blank address space
-//    ---------------------------------------------
-EXTERN_C EXPORT KERNEL
-frame_t MmuNewVirtualSpace(frame_t stack)
-{
-    frame_t rv = PmmAllocAlignedFrames(4, 14);
-    for (int i = 0; i < 4; i ++) MmuClearFrame(rv + i);
-    return rv;
-}
+// -- This spinlock is used to control access to the address space to clear the frame
+//    -------------------------------------------------------------------------------
+EXPORT KERNEL_DATA
+Spinlock_t frameClearLock = {0};
+

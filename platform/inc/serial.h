@@ -62,7 +62,8 @@ typedef struct SerialDevice_t {
 //
 // -- Here, declare the different configurations of the serial port we will use
 //    -------------------------------------------------------------------------
-extern SerialDevice_t debugSerial;
+EXTERN KERNEL_DATA
+SerialDevice_t debugSerial;
 
 
 //
@@ -80,7 +81,9 @@ inline void SerialPutChar(SerialDevice_t *dev, uint8_t ch) { dev->SerialPutChar(
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-extern void _SerialOpen(SerialDevice_t *dev);
+EXTERN_C EXPORT KERNEL
+void _SerialOpen(SerialDevice_t *dev);
+
 extern void _SerialClose(SerialDevice_t *dev);
 extern bool _SerialHasRoom(SerialDevice_t *dev);
 extern bool _SerialHasChar(SerialDevice_t *dev);

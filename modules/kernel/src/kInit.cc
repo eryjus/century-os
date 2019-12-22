@@ -81,7 +81,7 @@ void StartB(void)
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
-EXPORT KERNEL
+EXTERN_C EXPORT KERNEL NORETURN
 void kInit(void)
 {
     //

@@ -1,10 +1,18 @@
 //===================================================================================================================
 //
-//  MmuInit.cc -- Complete the initialization for the MMU for ARM
+//  MmuyInit.cc -- Complete the MMU initialization for the arm architecture
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
+//
+//  The goal of this function is to make sure that MMU is fully mapped.  Now that we have access to upper memory
+//  functions, we will use them to complete the mappings still pening.  These are:
+//  * MMIO space
+//  * Interrupt Vector Table (map to existing frame but in upper address space)
+//  * Frame buffer
+//
+//  All other addresses should be mapped properly before handing control to the loader.
 //
 //  While the MMU is up and running, the OS structures to manage the MMU are not set up yet.  The purpose of this
 //  function is to make sure the MMU is in a state the kernel can take over this responsibility.  There are still
@@ -78,206 +86,27 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-15  Initial   0.3.0   ADCL  Initial version
+//  2019-Feb-13  Initial   0.3.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "pmm.h"
 #include "cpu.h"
-#include "stacks.h"
-#include "entry.h"
+#include "serial.h"
 #include "mmu.h"
+#include "hw-disc.h"
+#include "printf.h"
+#include "entry.h"
+#include "loader.h"
 
 
 //
-// -- complete the mmu initialization
-//    -------------------------------
-void __ldrtext MmuInit(void)
+// -- Complete the initialization of the Mmu for the loader to function properly
+//    --------------------------------------------------------------------------
+EXTERN_C EXPORT LOADER
+void MmuInit(void)
 {
-    //
-    // -- the first order of business is to map the ttl1 table into its management address.  This will mean
-    //    creating a new ttl2 table for this location since it most likely does nto exist.  The target location
-    //    for the table is `TTL1_KRN_VADDR`.
-    //    -----------------------------------------------------------------------------------------------------
-    Ttl1_t *ttl1Table = (Ttl1_t *)mmuLvl1Table;
-    Ttl1_t *ttl1Entry = &ttl1Table[(TTL1_KRN_VADDR >> 20) & 0xffc];     // adjusted for %4 == 0
-    Ttl2_t *ttl2Table = 0;
-    int idx;
-    frame_t ttl1Frame;
-
-    // -- it has not been touched yet, so we need a frame for the TTL2 table
-    if (ttl1Entry->fault == 0b00) {
-        frame_t ttl2 = NextEarlyFrame();
-        void *addr = (void *)(ttl2 << 12);
-        kMemSetB(addr, 0, FRAME_SIZE);
-
-        kprintf("Against the TTL1 table at %p:\n", mmuLvl1Table);
-
-        for (int i = 0; i < 4; i ++) {
-            kprintf("Mapping a new ttl2 table at address %p to table %p\n", &ttl1Entry[i], (ttl2<<2) + i);
-            ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
-            ttl1Entry[i].fault = 0b01;
-
-            INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
-        }
-    }
-
-    // -- now, get the right table and map the page
-    ttl1Entry = &ttl1Table[TTL1_KRN_VADDR >> 20];
-    ttl2Table = (Ttl2_t *)((ttl1Entry->ttl2) << 10);
-
-    kprintf("Preparing to populate the TTL2 table at %p\n", ttl2Table);
-
-    // -- for the ttl1 table, we need to map 4 pages
-    ttl1Frame = (((archsize_t)mmuLvl1Table) >> 12);
-    idx = (TTL1_KRN_VADDR >> 12) & 0xff;
-    for (int i = 0; i < 4; i ++) {
-        ttl2Table[idx + i].frame = ttl1Frame + i;
-        ttl2Table[idx + i].s = 1;
-        ttl2Table[idx + i].apx = 0;
-        ttl2Table[idx + i].ap = 0b11;
-        ttl2Table[idx + i].tex = 0b001;
-        ttl2Table[idx + i].c = 1;
-        ttl2Table[idx + i].b = 1;
-        ttl2Table[idx + i].nG = 0;
-        ttl2Table[idx + i].fault = 0b10;
-
-        INVALIDATE_PAGE(&ttl2Table[idx + i], &ttl2Table[idx + i]);
-    }
-
-
-    //
-    // -- From here on, we can use the proper kernel address for the TTL1 table.
-    //
-    //    The next order of business is to build out the ttl2 tables for the management address for the ttl2 tables.
-    //    This seems recursive, but I plan to use the address space from 0xffc00000 to 0xffffffff to manage all of
-    //    the ttl2 tables at least for the kernel space.  Therefore, for ttl1 entries 0xffc, 0xffd, 0xffe, and 0xfff,
-    //    I need to map those into a frame.  The good news here is that it all fits in one frame.  As a result, this
-    //    is going to look a LOT like the code above.  Why not do it as its own function?  I should only need to
-    //    do this 3 times and for specific instances.  The general function is another story, but it requires this
-    //    table to work.  Doing this now will also make the next step trivial.
-    //    -----------------------------------------------------------------------------------------------------------
-    ttl1Entry = KRN_TTL1_ENTRY4(TTL2_KRN_VADDR);     // adjusted for %4 == 0
-    kprintf("Build out the TTL2 table for address %p\n", TTL2_KRN_VADDR);
-    frame_t ttl2;
-
-    // -- it has not been touched yet, so we need a frame for the TTL2 table
-    if (ttl1Entry->fault == 0b00) {
-        ttl2 = NextEarlyFrame();
-        void *addr = (void *)(ttl2 << 12);
-        kMemSetB(addr, 0, FRAME_SIZE);
-
-        for (int i = 0; i < 4; i ++) {
-            kprintf(".. Setting the ttl2 table for MB %x\n", (TTL2_KRN_VADDR >> 20) + i);
-            ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
-            ttl1Entry[i].fault = 0b01;
-
-            INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
-        }
-    } else ttl2 = ttl1Entry->ttl2;
-
-
-    //
-    // -- The next task here is to recursively map the last entry in the TTL2 table to itself.  It is this mapping
-    //    that makes management possible from kernel space.  Note that there are actually 4 tables in this frame
-    //    and we need to get to the last entry of the last table.  in the index 0x3ff, the '3' is the table and
-    //    the 'ff' is the index -- conceptually anyway.
-    //    ---------------------------------------------------------------------------------------------------------
-    Ttl2_t *ttl2Mgmt;
-
-    ttl2Mgmt = (Ttl2_t *)(ttl2 << 12);
-
-    ttl2Mgmt[0x3ff].frame = ttl2;
-    ttl2Mgmt[0x3ff].s = 1;
-    ttl2Mgmt[0x3ff].apx = 0;
-    ttl2Mgmt[0x3ff].ap = 0b11;
-    ttl2Mgmt[0x3ff].tex = 0b001;
-    ttl2Mgmt[0x3ff].c = 1;
-    ttl2Mgmt[0x3ff].b = 1;
-    ttl2Mgmt[0x3ff].nG = 0;
-    ttl2Mgmt[0x3ff].fault = 0b10;
-
-    INVALIDATE_PAGE(&ttl2Mgmt[0x3ff], ttl2Mgmt);
-
-
-    //
-    // -- From here, we can use the TTL2 management addresses to map frames as well.
-    //
-    //    now that we have the ttl2 table to manage all the ttl2 tables, we need to map the existing ttl2 tables
-    //    into these entries to be managed.  However, we only want the addresses that are `>= 0x80000000`.  First,
-    //    everything that is in low memory will be abandonned when we clean up after the kernel.  Second, this
-    //    particular table will be used only for the kernel space -- there is another table that will be built
-    //    for the user space addresses.
-    //    --------------------------------------------------------------------------------------------------------
-
-    // -- since there are 4 ttl2 tables per frame, we can jump by 4 tables (0x100 * 4)
-    for (unsigned int i = 0x80000000; i >= 0x80000000; i += 0x400000) {    // will loop through 0; code for it
-        ttl1Entry = KRN_TTL1_ENTRY(i);
-
-        // -- now is there a ttl2 table attached?
-        if (ttl1Entry->fault == 0b01) {
-            kprintf("Writing a management mapping for %p\n", i);
-            ttl2Mgmt = KRN_TTL2_MGMT(i);
-
-            ttl2Mgmt->frame = ttl1Entry->ttl2 >> 2;
-            ttl2Mgmt->s = 1;
-            ttl2Mgmt->apx = 0;
-            ttl2Mgmt->ap = 0b11;
-            ttl2Mgmt->tex = 0b001;
-            ttl2Mgmt->c = 1;
-            ttl2Mgmt->b = 1;
-            ttl2Mgmt->nG = 0;
-            ttl2Mgmt->fault = 0b10;
-
-            INVALIDATE_PAGE(ttl2Mgmt, ttl2Mgmt);
-        }
-    }
-
-
-    //
-    // -- from here on, we can use the general-purpose functions to perform our work since the management tables
-    //    are fully assembled.  The next step is to map the frame buffer.
-    //    ------------------------------------------------------------------------------------------------------
-    archsize_t fbAddr = ((archsize_t)GetFrameBufferAddr());        // better be aligned to frame boundary!!!
-    size_t fbSize = GetFrameBufferPitch() * GetFrameBufferHeight();
-    fbSize += (fbSize&0xfff?0x1000:0);      // -- this is adjusted so that when we `>> 12` we are mapping enough
-    fbSize >>= 12;                          // -- now, the number of frames to map
-    archsize_t off = 0;
-
-    kprintf("MMU: Mapping the frame buffer at %p for %x frames\n", fbAddr, fbSize);
-
-    while (fbSize) {
-        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN | PG_DEVICE | PG_WRT);
-        off += 0x1000;
-        fbAddr += 0x1000;
-        fbSize --;
-    }
-
-    // -- goose the config to the correct fb address
-    SetFrameBufferAddr((uint16_t *)MMU_FRAMEBUFFER);
-
-
-    //
-    // -- Next up is the MMIO locations.  These are currently at physical address `0x3f000000` to `0x4003ffff`, if
-    //    you include the BCM2836 extensions for multiple cores.  The goal here is to re-map these to be in kernel
-    //    space at `0xf8000000` to `0xf903ffff`.  This should be trivial, almost.
-    //    --------------------------------------------------------------------------------------------------------
-    archsize_t mmioPhys = 0x3f000;                      // address converted to frame
-    archsize_t mmioVirt = MMIO_VADDR;
-    int count = (0x40040000 - 0x3f000000) >> 12;
-
-    kprintf("MMU: Mapping the mmio addresses to %p for %x frames\n", mmioVirt, count + 1);
-
-    while (count >= 0) {
-        MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
-        mmioVirt += 0x1000;
-        mmioPhys ++;
-        count --;
-    }
-
-
     //
     // -- Next up is the VBAR -- which needs to be mapped.  This one is rather trivial.
     //    -----------------------------------------------------------------------------
@@ -285,20 +114,14 @@ void __ldrtext MmuInit(void)
 
 
     //
-    // -- the next order of business is to set up the stack (but do not yet change to it -- we are in a function
-    //    and will need to clean up and return from this function and getting that right is risky).
-    //    ------------------------------------------------------------------------------------------------------
-    archsize_t stackLoc = STACK_LOCATION;
-    for (int j = 0; j < cpus.cpusDiscovered; j ++) {
-        StackAlloc(STACK_LOCATION + (j * STACK_SIZE));
-
-        for (int i = 0; i < STACK_SIZE; i += 0x1000, stackLoc += 0x1000) {
-            MmuMapToFrame(stackLoc, PmmAllocateFrame(), PG_KRN | PG_WRT);
-        }
+    // -- Next up is the MMIO locations.  These are currently at physical address `0x3f000000` to `0x4003ffff`, if
+    //    you include the BCM2836 extensions for multiple cores.  The goal here is to re-map these to be in kernel
+    //    space at `0xf8000000` to `0xf903ffff`.  This should be trivial, almost.
+    //    --------------------------------------------------------------------------------------------------------
+    for (archsize_t mmioVirt = MMIO_VADDR, mmioPhys = MMIO_LOADER_LOC;
+            mmioPhys <= MMIO_LOADER_END;
+            mmioPhys ++, mmioVirt += PAGE_SIZE) {
+        MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
     }
-
-    kprintf("MMU: The MMU is initialized\n");
 }
-
-
 

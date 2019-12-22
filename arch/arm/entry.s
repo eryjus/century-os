@@ -22,6 +22,9 @@
 @@===================================================================================================================
 
 
+.include "constants.inc"
+
+
 @@
 @@ -- make sure that if the required symbols are defined; Branch Predictor
 @@    --------------------------------------------------------------------
@@ -37,42 +40,6 @@
     .equ        ENABLE_CACHE,0
 .endif
 
-
-@@
-@@ -- some constants
-@@    --------------
-    .equ        STACK_SIZE,4096
-    .equ        TTL1_TBLE_VADDR,0xff404000
-    .equ        TTL2_TBLE_VADDR,0xffc00000
-
-
-    .equ        MMU_FAULT,0
-    .equ        MMU_TTL2,0b01
-    .equ        MMU_CODE_PAGE,0b10
-    .equ        MMU_DATA_PAGE,0b11
-
-    .equ        MMU_BUFFERED,(1<<2)
-    .equ        MMU_UNBUFFERED,0
-
-    .equ        MMU_CACHED,(1<<3)
-    .equ        MMU_UNCACHED,0
-
-    .equ        MMU_ACCESS_PERMISSIONS,(0b11<<4)
-    .equ        MMU_TEX,(0b001<<6)
-
-    .equ        MMU_APX,(1<<9)
-
-    .equ        MMU_SHARABLE,(1<<16)
-    .equ        MMU_NOT_SHARABLE,0
-
-    .equ        MMU_GLOBAL,0
-    .equ        MMU_NOT_GLOBAL,(1<<17)
-
-
-    .equ        MMU_TTL1_ENTRY,MMU_TTL2
-    .equ        MMU_MGMT,(MMU_GLOBAL|MMU_DATA_PAGE|MMU_SHARABLE|MMU_ACCESS_PERMISSIONS|MMU_TEX|MMU_CACHED|MMU_BUFFERED)
-    .equ        MMU_KRN_CODE,(MMU_GLOBAL|MMU_SHARABLE|MMU_CODE_PAGE|MMU_ACCESS_PERMISSIONS|MMU_TEX|MMU_CACHED|MMU_BUFFERED)
-    .equ        MMU_KRN_DATA,(MMU_GLOBAL|MMU_SHARABLE|MMU_DATA_PAGE|MMU_ACCESS_PERMISSIONS|MMU_TEX|MMU_CACHED|MMU_BUFFERED)
 
 @@
 @@ -- explose some global symbols
@@ -95,20 +62,13 @@
 
 
 @@
-@@ -- The following are used to populate the multiboot v1 header
-@@    ----------------------------------------------------------
-    .equ        MAGIC,0x1badb002
-    .equ        FLAGS,1<<1 | 1<<2               @@ -- 4K align; memory map
-
-
-@@
 @@ -- This is the multiboot 1 header
 @@    ------------------------------
 multiboot_header:
 @@ -- magic fields
-    .long       MAGIC
-    .long       FLAGS
-    .long       0-MAGIC-FLAGS
+    .long       MAGIC1
+    .long       MBFLAGS
+    .long       0-MAGIC1-MBFLAGS
 
 @@
 @@ -- The PMM frame early allocation mechanism
@@ -212,9 +172,9 @@ cont:
 @@ -- Clear out kernel bss -- this needs to be adjusted for the kernel physical load address
 initialize:
     ldr     r4,=bssPhys
-    str     r4,[r4]
+    ldr     r4,[r4]
     ldr     r9,=bssSize
-    str     r9,[r9]
+    ldr     r9,[r9]
     add     r9,r9,r4
 
 @@ -- values to store
@@ -230,7 +190,6 @@ bssLoop:
 @@ -- If we're still below _bssEnd, loop
     cmp     r4,r9
     blo     bssLoop
-
 
 @@
 @@ -- The first thing we need it the TTB1 table -- which must be 16K aligned
@@ -308,20 +267,36 @@ bssLoop:
 @@
 @@ -- Now we want to set up paging.  The first order of business here is to map the TTL1 table for managing
 @@    entries.  This requires a new page to be allocated and mapped into the TTL1 table itself.
+@@
+@@    The measureable results of this section are expected to be:
+@@    * 0x1000000 (for 4 pages) contains the TTL1 table
+@@    * create a new TTL2 table block (for managing 4 frames) exp: 0x1006000
+@@    * associate a TTL1 entries:
+@@        * index 0xff4 (offset 0x3fd0) to address 0x1006000
+@@        * index 0xff5 (offset 0x3fd4) to address 0x1006400
+@@        * index 0xff6 (offset 0x3fd8) to address 0x1006800
+@@        * index 0xff7 (offset 0x3fdc) to address 0x1006c00
+@@    * map pages into TTL2 table at 0x1006000:
+@@        * index 0x04 (offset 0x10) to address 0x1000000
+@@        * index 0x05 (offset 0x14) to address 0x1001000
+@@        * index 0x06 (offset 0x18) to address 0x1002000
+@@        * index 0x07 (offset 0x1c) to address 0x1003000
 @@    --------------------------------------------------------------------------------------------------------
     ldr     r0,=mmuLvl1Count                    @@ get our frame
     mov     r1,#4                               @@ calculate the size of the
     str     r1,[r0]                             @@ set the frame count
 
 @@ -- go make a new TTL2 table for the virtual TTL1 table address
-    mov     r0,#(TTL1_TBLE_VADDR&0xffff)        @@ The address of the TTL1 table in virtual memory
-    movt    r0,#(TTL1_TBLE_VADDR>>16)
+    mov     r0,#(ARMV7_TTL1_TABLE_VADDR&0xffff) @@ The address of the TTL1 table in virtual memory
+    movt    r0,#(ARMV7_TTL1_TABLE_VADDR>>16)
     mov     r1,r0                               @@ save this for a future call
     bl      NewTTL2Table                        @@ Go make a table for this address
+    mov     r3,r0                               @@ save the TTL2 table physical address for later
 
 @@ -- this address needs to be saved because we need it later for the TTL2 management table init later
-    mov     r9,#MMU_DATA_PAGE                   @@ get the page flags
+    mov     r9,#ARMV7_MMU_DATA_PAGE             @@ get the page flags
     ldr     r2,=mmuLvl1Table                    @@ get the table address
+    ldr     r2,[r2]
     orr     r2,r9                               @@ and merge those
 
 @@ -- now, complete the mappings for the TTL1 table (4 mappings)
@@ -330,7 +305,7 @@ bssLoop:
 .loop1:
     bl      MapPage                             @@ map the page
 
-    add     r0,#4096                            @@ next page
+    add     r1,#4096                            @@ next page
     add     r2,#4096                            @@ next frame
 
     add     r8,#1                               @@ increment and check if we are done
@@ -343,32 +318,56 @@ bssLoop:
 @@    create the TTL2 tables for managing the TTL2 tables.  In this case we will need
 @@    to be able to map from address `0xffc00000` on up.  This is 4MB of memory and
 @@    will only need 4 tables (1K each), or 1 frame.
+@@
+@@    Measureable results from this section are:
+@@    * create a new TTL2 table block (for managing 4 frames) exp: 0x1007000
+@@    * associate a TTL1 entries:
+@@        * index 0xffc (offset 0x3ff0) to address 0x1007000
+@@        * index 0xffd (offset 0x3ff4) to address 0x1007400
+@@        * index 0xffe (offset 0x3ff8) to address 0x1007800
+@@        * index 0xfff (offset 0x3ffc) to address 0x1007c00
 @@    --------------------------------------------------------------------------------
-    mov     r0,#(TTL2_TBLE_VADDR&0xffff)        @@ load the address of the TTL2 tables
-    movt    r0,#(TTL2_TBLE_VADDR>>16)
+    mov     r0,#(ARMV7_TTL2_TABLE_VADDR&0xffff) @@ load the address of the TTL2 tables
+    movt    r0,#(ARMV7_TTL2_TABLE_VADDR>>16)
     mov     r1,r0                               @@ save this register for a later call
     bl      NewTTL2Table                        @@ make a new table
 
-    ldr     r9,=ttl2Mgmt                        @@ save a copy of this table
-    str     r0,[r9]
-
-
-@@ -- now, we map this new TTL2 table into the TTL2 table management space
-    mov     r2,r0                               @@ this is a mapping within itself
-
-    mov     r9,#MMU_DATA_PAGE                   @@ get the page flags
-    orr     r2,r9                               @@ and merge those
-
-    bl      MapPage                             @@ map the page into the table
+    ldr     r2,=ttl2Mgmt                        @@ save the table for later maintenance
+    str     r0,[r2]
 
 
 @@
-@@ -- now, we need to go back and get the frame for the TTL1 table maintenance and map that
+@@ -- Next, the TTL2 table for addresses 0xffc00000 need to be mapped into this very same
+@@    physical address at 0x1007000.  This is a single 4K page so there will be a single
+@@    TTL2 entry that gets updated.  The address to map is 0xffc00000 and the index to map
+@@    is 0x3ff (offset 0xffc) in the physical address.
+@@
+@@    Measureable results here:
+@@    * Address 0x1007ffc points to frame 0x1007000
+@@    ---------------------------------------------------------------------------------------
+    mov     r2,r0                               @@ make the table address and the frame address match
+    mov     r9,#ARMV7_MMU_DATA_PAGE             @@ get the page flags
+    orr     r2,r9                               @@ and add them to the address
+    mov     r1,#(ARMV7_TTL2_TABLE_VADDR&0xffff)
+    movt    r1,#(ARMV7_TTL2_TABLE_VADDR>>16)
+    bl      MapTtl2Mgmt
+
+
+@@
+@@ -- Finally, we need to do the same thing as above, but for the TTL1 management entries
+@@    starting at address 0xff404000.  There are 4 X 4K pages.  First, we need a TTL2 table
+@@    for this address (0xff404000 for 4 pages in total).  We have this saved in r3 so far.
+@@    So, it is just a matter of mapping that into the Management space
+@@
+@@    Measureable results here:
+@@    * Address 0x1007ff4 points to frame 0x1006000
 @@    -------------------------------------------------------------------------------------
-    mov     r1,#(TTL1_TBLE_VADDR&0xffff)        @@ The address of the TTL1 table in virtual memory
-    movt    r1,#(TTL1_TBLE_VADDR>>16)
-    ldr     r2,=mmuLvl1Table                    @@ the physical frame
-    bl      MapTtl2Mgmt                         @@ create the management mapping
+    mov     r2,r3                               @@ get the TTL2 table for TTL1 managment
+    mov     r9,#ARMV7_MMU_DATA_PAGE             @@ get the page flags
+    orr     r2,r9                               @@ and add them to the address
+    mov     r1,#(ARMV7_TTL1_TABLE_VADDR&0xffff)
+    movt    r1,#(ARMV7_TTL1_TABLE_VADDR>>16)
+    bl      MapTtl2Mgmt
 
 
 @@
@@ -392,6 +391,14 @@ bssLoop:
 @@              Access Permissions any priv [1:0] -+    +--------------- Domain (use 0 for now)
 @@
 @@    Identity map the mboot section at 1MB
+@@
+@@    Measureable results:
+@@    * 0x1000000 maps to TTL2 table (expect 0x1008000)
+@@    * 0x1000004 maps to TTL2 table 0x1008400
+@@    * 0x1000008 maps to TTL2 table 0x1008800
+@@    * 0x100000c maps to TTL2 table 0x1008c00
+@@    * 0x1008400 maps to frame 0x100000
+@@    * 0x1008404 maps to frame 0x101000
 @@    ---------------------------------------------------------------------------------------------------------
     ldr     r0,=mbPhys                          @@ get the mboot physical address
     ldr     r0,[r0]
@@ -400,7 +407,7 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12                              @@ number of pages to write
 
-    mov     r2,#MMU_DATA_PAGE                   @@ load the flags
+    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
 
     mov     r8,#0                               @@ start the counter
 
@@ -428,7 +435,7 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#MMU_DATA_PAGE                   @@ load the flags
+    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -455,7 +462,7 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#MMU_DATA_PAGE                   @@ load the flags
+    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -482,7 +489,7 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#MMU_CODE_PAGE                   @@ load the flags
+    mov     r2,#ARMV7_MMU_CODE_PAGE             @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -509,7 +516,7 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#MMU_DATA_PAGE                   @@ load the flags
+    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -526,17 +533,16 @@ bssLoop:
 @@
 @@ -- map the stack
 @@    -------------
-    mov     r0,#0                               @@ stack location
-    movt    r0,#0xff40                          @@ stack location
+    mov     r0,#(STACK_BASE&0xffff)             @@ stack location
+    movt    r0,#(STACK_BASE>>16)                @@ stack location
     mov     r8,r0                               @@ save the stack, we wll replace it in a bit
     add     r8,#STACK_SIZE                      @@ and calculate the proper top of stack
     mov     r1,sp                               @@ current stack
     mov     r9,#0xf000
     movt    r9,#0xffff
     and     r1,r9                               @@ mask out the the base physical address
-    mov     r2,#MMU_DATA_PAGE
+    mov     r2,#ARMV7_MMU_DATA_PAGE
     bl      MapPageFull
-
 
 @@ -- now we enable caches
     ldr     r0,=mmuLvl1Table
@@ -603,29 +609,22 @@ MakePageTable:
 NewTTL2Table:
     push    {r1-r9,lr}                          @@ save a whole bunch of registers
 
-@@ -- save our parameter and get a new table to work with
-    ldr     r2,=mmuLvl1Table
-    ldr     r2,[r2]                             @@ r2 will hold the physcal address of the TTL1 table
-    mov     r1,r0                               @@ r1 will hold the address for which we create the table
+    mov     r5,r0                               @@ our address to map
+    bl      KrnTtl1Entry4                       @@ and get the address of the "mod 4" entry in r5
     bl      MakePageTable                       @@ r0 will hold the physical address of the new table
 
-@@ -- now calculate the offset from the table start
-    mov     r3,r1,lsr #22                       @@ this will also align to a 4K boundary
-    lsl     r3,#4                               @@ r3 holds an offset into the TTL1 physical address (proper align)
-
 @@ -- finally, we need the value to load into the TTL1 table entry
-    mov     r9,#MMU_TTL1_ENTRY
+    mov     r9,#ARMV7_MMU_TTL1_ENTRY
     orr     r4,r0,r9                            @@ r4 holds the value value to load
 
     mov     r8,#0                               @@ this is the number of entries we loaded
 
 @@ -- we can now load the entries
 .ttl2loop:
-    add     r9,r2,r3                            @@ r9 is the address to load
-    str     r4,[r9]
+    str     r4,[r5]
 
     add     r4,#0x400                           @@ move to the next TTL2 table of 4
-    add     r3,#4                               @@ move to the next TTL1 entry
+    add     r5,#4                               @@ move to the next TTL1 entry
 
     add     r8,#1                               @@ one more done
     cmp     r8,#4                               @@ are we done?
@@ -644,17 +643,15 @@ NewTTL2Table:
 @@    r0 to r9 are all preserved.
 @@    ------------------------------------------------------------------------------------------------------------
 MapPage:
-    push    {r0-r2,r9,lr}
+    push    {r0-r2,r7,r9,lr}
 
-    lsr     r1,#12                              @@ drop the frame offset
-    mov     r9,#0x3ff
-    and     r1,r9                               @@ get a 4 X 1K table index
-    lsl     r1,#2                               @@ convert that into an offset
+    mov     r7,r1                               @@ set the register for the call
+    bl      KrnTtl2EntryOffset                  @@ go get the offset into the r0 table
 
-    add     r0,r1                               @@ get the proper physicasl address
+    add     r0,r7                               @@ get the proper physicasl address
     str     r2,[r0]                             @@ complete the mapping
 
-    pop     {r0-r2,r9,pc}
+    pop     {r0-r2,r7,r9,pc}
 
 @@
 @@ -- This fucntion will perform a full mappng -- nap the page and if neessary make a new TTL2 table
@@ -684,16 +681,13 @@ MapPageFull:
 @@ -- now, r0 has the address to map; r1 has the frame with its bits; r2-r9 are scratch regs
 @@    the first order of business is to determine if we need a new TTL2 table
 @@    ---------------------------------------------------------------------------------------
-    lsr     r2,r0,#22                           @@ the index into ttl1 (properly aligned to a 4K boundary)
-    lsl     r2,#4                               @@ the offset into the ttl1 table
-    ldr     r9,=mmuLvl1Table
-    ldr     r9,[r9]                             @@ get the address of the table
-    add     r2,r9                               @@ r2 will hold the address of the ttl1 entry
+    mov     r5,r0
+    bl      KrnTtl1Entry4                       @@ get the address of the TTL1 entry (r5)
 
-    ldr     r3,[r2]                             @@ r3 has the ttl1 entry
+    ldr     r3,[r5]                             @@ r3 has the ttl1 entry
     mov     r9,r3                               @@ we need a copy
     and     r9,#0x03                            @@ get the fault bits
-    cmp     r9,#(MMU_TTL2)                      @@ is there a ttl2 table
+    cmp     r9,#(ARMV7_MMU_TTL2)                @@ is there a ttl2 table
 
     beq     .haveTtl2                           @@ if we have one, no need to make a new one
 
@@ -704,7 +698,7 @@ MapPageFull:
     mov     r4,r0                               @@ we need to save te physical address as well
     pop     {r0}                                @@ restore the saved work
 
-    mov     r9,#(MMU_TTL2)                      @@ get the bits to set
+    mov     r9,#(ARMV7_MMU_TTL2)                @@ get the bits to set
     orr     r3,r9                               @@ make the proper ttl1 entry
     str     r3,[r2]                             @@ and put it in place
 
@@ -715,18 +709,17 @@ MapPageFull:
     bl      MapTtl2Mgmt                         @@ take care of manaement mapping
     pop     {r0-r2}                             @@ restore our work
 
-@@ -- we now have a ttl2 address
+@@ -- we now have a ttl2 address; r3 has the address of the TTL2 table
 .haveTtl2:
     mov     r9,#0xf000                          @@ establish the cleanup mask
     movt    r9,#0xffff                          @@ establish the cleanup mask
     and     r4,r3,r9                            @@ r4 now holds the physical ttl2 frame address
 
 @@ -- now the ttl2 entry address
-    mov     r5,r0,lsr #12                       @@ construct the offset
-    mov     r9,#0x3ff
-    and     r5,r9                               @@ now the index into the ttl2 table
-    lsl     r5,#2                               @@ the offset into the ttl2 table
-    add     r5,r4                               @@ r5 now holds the address of the ttl2 entry
+    mov     r7,r0                               @@ the address to map
+    bl      KrnTtl2EntryOffset                  @@ get the offset into the physical table
+
+    add     r5,r7,r4                            @@ r5 now holds the address of the ttl2 entry
 
 @@ -- complete the mapping
     str     r1,[r5]                             @@ after all that, this is it
@@ -744,25 +737,92 @@ MapPageFull:
 @@    need to be converted to an offset.
 @@    r1 -- an address anywhere in the TTL2 table (will be cleaned up)
 @@    r2 -- the physical address of the TTL2 table as a frame of the page (bits will be added)
-@@    returns a cleaned up address for the first entry of the first ttl2 table
+@@    returns nothing of value
 @@    -----------------------------------------------------------------------------------------
 MapTtl2Mgmt:
-    push    {r1-r9,lr}
+    push    {r2,r6,r9,lr}
 
-    ldr     r0,=ttl2Mgmt                        @@ get the physical address of the ttl2 table
-    mov     r9,#(0xfffffc00&0xffff)             @@ mask off the first address of the first entry in the first table
-    movt    r9,#(0xfffffc00>>16)                @@ mask off the first address of the first entry in the first table
-    and     r1,r9
-    mov     r6,r1                               @@ save for return
+    mov     r6,r1                               @@ get the address to map
+    bl      KrnTtl2Mgmt                         @@ r6 will not contain the address
 
-    mov     r9,#MMU_TTL1_ENTRY
+    mov     r9,#(ARMV7_MMU_DATA_PAGE&0xffff)    @@ get the flags we want to set
+    movt    r9,#(ARMV7_MMU_DATA_PAGE>>16)
     orr     r2,r9                               @@ r2 holds the value value to load with the extra bits
 
-    bl      MapPage                             @@ go map the page
+    str     r2,[r6]                             @@ complete the mapping
 
-    mov     r0,r6                               @@ get our cleaned up return value
+    pop     {r2,r6,r9,pc}
 
-    pop     {r1-r9,pc}
+
+@@
+@@ -- This function will calculate the Kernel TTL1 Entry address for a given address in r5.
+@@    The proper TTL1 Entry address will be returned in r5.  No other registers will be
+@@    changed.
+@@    -------------------------------------------------------------------------------------
+KrnTtl1Entry:
+    push    {r0, lr}
+
+    lsr     r5,#20                              @@ get the index of the entry
+    lsl     r5,#2                               @@ convert that to an offset
+
+    ldr     r0,=mmuLvl1Table                    @@ load the base address of the table
+    ldr     r0,[r0]
+
+    add     r5,r0                               @@ now, calculate the address
+
+    pop     {r0, pc}
+
+
+@@
+@@ -- This function will calculate the Kernel TTL1 Entry address for the first of a block
+@@    of 4 TTL2 tables.
+@@    -----------------------------------------------------------------------------------
+KrnTtl1Entry4:
+    push    {r9,lr}
+
+    bl      KrnTtl1Entry
+    mov     r9,#0xfff0
+    movt    r9,#0xffff
+    and     r5,r9
+
+    pop     {r9,pc}
+
+
+@@
+@@ -- This function will calculate the Management address for a TTL2 table for an address
+@@    provided in r6.  The address will be returned in r6.  All other registers are
+@@    unchanged.
+@@    -----------------------------------------------------------------------------------
+KrnTtl2Mgmt:
+    push    {r0, lr}
+
+    lsr     r6,#22                              @@ get the index of the entry
+    lsl     r6,#2                               @@ convert that to an offset
+
+    ldr     r0,=ttl2Mgmt                        @@ load the base address of the table
+    ldr     r0,[r0]
+
+    add     r6,r0                               @@ now, calculate the address
+
+    pop     {r0, pc}
+
+
+@@
+@@ -- This function will calculate the offset into a physical frame for a TTL2 entry.
+@@    The address to calculate is passed in r7 and the offset is returned in the same
+@@    register.  No other registers are changed.  Unlike the 3 above functions, this
+@@    merely returns an address offset, not the final address itself.
+@@    -------------------------------------------------------------------------------
+KrnTtl2EntryOffset:
+    push    {r0,lr}
+
+    lsr     r7,#12                              @@ get the index
+    mov     r0,#0x3ff                           @@ mask out the top bits
+    and     r7,r0
+    lsl     r7,#2                               @@ make that an offset
+
+
+    pop     {r0,pc}                             @@ return
 
 
 

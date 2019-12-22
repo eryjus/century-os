@@ -11,6 +11,9 @@
 //  explicitly not allowed to be mapped.  The loader takes care of this and there is no reason whatsoever why any
 //  other task should need to map to this frame.
 //
+//  Note that this function is called before any serial port mapping/setup is complete; therefore, not debugging
+//  code can exist in this function yet.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
@@ -28,26 +31,17 @@
 #include "mmu.h"
 
 
-#ifndef DEBUG_MMU
-#   define DEBUG_MMU 0
-#endif
-
-
 //
 // -- Helper function to create and map a new table
 //    ----------------------------------------------------------------------------------------------
-static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
+EXTERN_C HIDDEN KERNEL
+frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
 {
     //
     // -- We have been asked to create a new TTL2 table.  We got here, so we know we need a frame.
     //    Go get it.
     //    ----------------------------------------------------------------------------------------
     frame_t frame = PmmAllocateFrame();
-#if DEBUG_MMU == 1
-    kprintf("The frame just allocated is at %p\n", frame);
-#endif
-
-
     MmuClearFrame(frame);
 
 
@@ -78,10 +72,6 @@ static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     //    responsibility.  Therefore, the only thing left to do is to return the frame we have allocated
     //    and prepared to be a TTL2 table.
     //    ----------------------------------------------------------------------------------------------
-#if DEBUG_MMU == 1
-    kprintf("TTL2 table prepared\n");
-#endif
-
     BPIALLIS();
     return frame;
 }
@@ -90,24 +80,13 @@ static frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
 //
 // -- Map a page to a frame
 //    ---------------------
+EXTERN_C EXPORT KERNEL
 void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 {
     // -- refuse to map frame 0 for security reasons
-    if (!frame) {
-        kprintf("Explicit request to map frame 0 refused.\n");
+    if (!frame || !addr) {
         return;
     }
-
-    // -- refuse to map the NULL address for security reasons
-    if (!addr) {
-        kprintf("Explicit request to map virtual address 0 refused.\n");
-        return;
-    }
-
-
-#if DEBUG_MMU == 1
-    kprintf("Mapping address %p to frame %p\n", addr, frame);
-#endif
 
 
     //

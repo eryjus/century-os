@@ -14,6 +14,10 @@ extern "C" {
     EXPORT LOADER void kInitAp(void);
 }
 
+#ifndef FpuInit
+#define FpuInit() (void)0
+#endif
+
 
 //
 // -- This is AP Entry point.  While we have a shared temporary stack and need to get that

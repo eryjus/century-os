@@ -22,7 +22,7 @@
 //
 // -- Allocate an early frame before the PMM is put in charge
 //    -------------------------------------------------------
-EXTERN_C ENTRY
+EXTERN_C EXPORT ENTRY
 frame_t NextEarlyFrame(void);
 
 
@@ -153,4 +153,14 @@ EXTERN ENTRY_DATA archsize_t stabVirt;
 #define stabPhysEnd   (stabPhys + stabSize)
 #define stabVirtStart (stabVirt)
 #define stabVirtEnd   (stabEnd)
+
+
+
+//
+// -- This is an array of function pointers that need to be called to initialize some data
+//    ------------------------------------------------------------------------------------
+typedef void (*FunctionPtr_t)(void);
+
+// -- these 2 addresses bound the array
+EXTERN LOADER_DATA FunctionPtr_t const init_start[], init_end[];
 
