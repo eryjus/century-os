@@ -80,7 +80,7 @@ extern void _GpioDisablePin(GpioDevice_t *dev, GpioPin_t pin);
 //
 // -- define the base locations for both the loader and the kernel versions
 //    ---------------------------------------------------------------------
-#define LDR_GPIO_BASE       (MMIO_LOADER_LOC + 0x200000)
+#define LDR_GPIO_BASE       ((MMIO_LOADER_LOC << 12) + 0x200000)
 #define KRN_GPIO_BASE       (MMIO_VADDR + 0x200000)
 
 

@@ -25,6 +25,7 @@ EXPORT KERNEL_DATA
 SerialDevice_t debugSerial = {
     .base = COM1,
     .lock = {0},
+    .SerialOpen = _SerialOpen,
     .SerialHasRoom = _SerialHasRoom,
     .SerialPutChar = _SerialPutChar,
 };

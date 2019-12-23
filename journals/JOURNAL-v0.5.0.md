@@ -491,5 +491,22 @@ I can continue on with the cleanup.
 
 Next, I want to consider if I can eliminate `LoaderEarlyInit()`.  I think I should because it's only purpose is to call `MmuInit()` and `PlatformInit()`.  It does a couple of other it also does a couple of other things I will be moving to `PlatformInit()`.  So, in short I have a function whose sole purpose is to call 2 functions.  Sounds like unnecessary overhead to me.
 
+---
+
+I committed my changes so far and pushed those to GitHub.
+
+So, now on to the serial port.  I am going to start with x86, since that really should work out of the box.  It does not, so there is some silly problem, I am sure.  In the meantime, it's a triple fault.
+
+That's right, the code is jumping to `0x00000000`.
+
+---
+
+I have several issues sorted at this point, but the rpi2b is not outputting data to the serial port.  There are no faults (that I know of), just no serial output.
+
+Now, I recall there were issues with that using qemu (only 1 serial port was emulated -- whatever one I am not using...), so I cannot take that at face value.
+
+I also think I remember having similar problems earlier on and it ended up being mappings in the MMU.  Hmmmm....
+
+
 
 

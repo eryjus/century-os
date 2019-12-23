@@ -29,7 +29,7 @@ typedef archsize_t SerialBase_t;
 //
 // -- These are the base addresses for the serial port depending on the loader or kernel addressing
 //    ---------------------------------------------------------------------------------------------
-#define LDR_SERIAL_BASE     (MMIO_LOADER_LOC + 0x215000)
+#define LDR_SERIAL_BASE     ((MMIO_LOADER_LOC << 12) + 0x215000)
 #define KRN_SERIAL_BASE     (MMIO_VADDR + 0x215000)
 
 

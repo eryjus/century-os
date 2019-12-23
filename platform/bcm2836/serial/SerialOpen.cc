@@ -66,4 +66,6 @@ void _SerialOpen(SerialDevice_t *dev)
 
     // -- clear the input buffer
     while ((MmioRead(base + AUX_MU_LSR_REG) & (1<<0)) != 0) MmioRead(base + AUX_MU_IO_REG);
+    SerialPutChar(dev, 'A');
 }
+

@@ -28,9 +28,12 @@
 //
 // -- Handle the early initialization for the pc platform
 //    ---------------------------------------------------
-void __ldrtext PlatformEarlyInit(void)
+EXTERN_C EXPORT LOADER
+void PlatformEarlyInit(void)
 {
     SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+kprintf("Serial Port Open\n");
+while (true) {}
 
     if (CheckCpuid() != 0) {
         SetCpuid(true);

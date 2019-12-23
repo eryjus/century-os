@@ -119,9 +119,13 @@ void MmuInit(void)
     //    space at `0xf8000000` to `0xf903ffff`.  This should be trivial, almost.
     //    --------------------------------------------------------------------------------------------------------
     for (archsize_t mmioVirt = MMIO_VADDR, mmioPhys = MMIO_LOADER_LOC;
-            mmioPhys <= MMIO_LOADER_END;
+            mmioPhys < MMIO_LOADER_END;
             mmioPhys ++, mmioVirt += PAGE_SIZE) {
         MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
+    }
+
+    for (archsize_t mmioPhys = MMIO_LOADER_LOC; mmioPhys < MMIO_LOADER_END; mmioPhys ++) {
+        MmuMapToFrame(mmioPhys << 12, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
     }
 }
 

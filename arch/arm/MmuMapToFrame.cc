@@ -120,8 +120,8 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
     ttl2Entry->ap = 0b11;
-    ttl2Entry->tex = flags&PG_DEVICE?0b000:0b001;
-    ttl2Entry->c = flags&PG_DEVICE?0:1;
+    ttl2Entry->tex = (flags&PG_DEVICE?0b000:0b001);
+    ttl2Entry->c = (flags&PG_DEVICE?0:1);
     ttl2Entry->b = 1;
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;

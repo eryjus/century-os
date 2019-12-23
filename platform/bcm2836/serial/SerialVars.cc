@@ -25,11 +25,12 @@
 //    -------------------------------------------------------------------------------------------------
 EXPORT KERNEL_DATA
 SerialDevice_t debugSerial = {
-    .base = KRN_SERIAL_BASE,
+    .base = LDR_SERIAL_BASE,
     .lock = {0},
+    .SerialOpen = _SerialOpen,
     .SerialHasRoom = _SerialHasRoom,
     .SerialPutChar = _SerialPutChar,
-    .platformData = &kernelGpio,
+    .platformData = &loaderGpio,
 };
 
 

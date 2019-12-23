@@ -34,7 +34,7 @@ frame_t PmmAllocateFrame(void)
 {
     if (!pmmInitialized) {
 //        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
-        return NextEarlyFrame();
+        return (NextEarlyFrame() >> 12);
     }
 
     frame_t rv = 0;         // assume we will not find anything

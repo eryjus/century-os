@@ -110,7 +110,8 @@ int kprintf(const char *fmt, ...)
 
             case 'p':
                 val = va_arg(args, archsize_t);
-                SerialPutS(&debugSerial, "0x");
+                SerialPutChar(&debugSerial, '0');
+                SerialPutChar(&debugSerial, 'x');
                 printed += 2;
 
                 for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
@@ -128,7 +129,8 @@ int kprintf(const char *fmt, ...)
             case 'x':
                 {
                     val = va_arg(args, archsize_t);
-                    SerialPutS(&debugSerial, "0x");
+                    SerialPutChar(&debugSerial, '0');
+                    SerialPutChar(&debugSerial, 'x');
                     printed += 2;
 
                     bool allZero = true;

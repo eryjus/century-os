@@ -379,12 +379,6 @@ extern "C" void EnterSystemMode(void);
 
 
 //
-// -- Get the CBAR
-//    ------------
-extern "C" archsize_t GetCBAR(void);
-
-
-//
 // -- Get the Data Fault Address Register (DFAR)
 //    ------------------------------------------
 extern "C" archsize_t GetDFAR(void);

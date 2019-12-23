@@ -26,6 +26,7 @@
 //
 // -- Complete the platform initialization
 //    ------------------------------------
+EXTERN_C EXPORT LOADER
 void PlatformInit(void)
 {
     kprintf("Serial port updated\n");
