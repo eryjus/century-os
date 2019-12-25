@@ -24,6 +24,9 @@
 #include "hw-disc.h"
 #include "platform.h"
 
+EXTERN EXPORT KERNEL_DATA
+SerialDevice_t testSerial;
+
 
 //
 // -- Handle the early initialization for the pc platform
@@ -31,6 +34,8 @@
 EXTERN_C EXPORT LOADER
 void PlatformEarlyInit(void)
 {
+    MmioWrite(0x3f215000 + AUX_MU_IO_REG, 'C');
+    _SerialPutChar(&testSerial, 'B');
     SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
     kprintf("Serial Port Open\n");
 while(true) {}

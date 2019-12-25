@@ -33,27 +33,35 @@ void _SerialOpen(SerialDevice_t *dev)
 
     // -- must start by enabling the mini-UART; no register access will work until...
     MmioWrite(base + AUX_ENABLES, 1);
+    DSB();
 
     // -- Disable all interrupts
     MmioWrite(base + AUX_MU_IER_REG, 0);
+    DSB();
 
     // -- Reset the control register
     MmioWrite(base + AUX_MU_CNTL_REG, 0);
+    DSB();
 
     // -- Program the Line Control Register -- 8 bits, please
-    MmioWrite(base + AUX_MU_LCR_REG, 3);
+    MmioWrite(base + AUX_MU_LCR_REG, 1);
+    DSB();
 
     // -- Program the Modem Control Register -- reset
     MmioWrite(base + AUX_MU_MCR_REG, 0);
+    DSB();
 
     // -- Disable all interrupts -- again
     MmioWrite(base + AUX_MU_IER_REG, 0);
+    DSB();
 
     // -- Clear all interrupts
     MmioWrite(base + AUX_MU_IIR_REG, 0xc6);
+    DSB();
 
     // -- Set the BAUD to 115200 -- ((250,000,000/115200)/8)-1 = 270
     MmioWrite(base + AUX_MU_BAUD_REG, 270);
+    DSB();
 
     GpioDevice_t *gpio = (GpioDevice_t *)dev->platformData;
     GpioSelectAlt(gpio, GPIO14, ALT5);
@@ -63,9 +71,11 @@ void _SerialOpen(SerialDevice_t *dev)
 
     // -- Enable TX/RX
     MmioWrite(base + AUX_MU_CNTL_REG, 3);
+    DSB();
 
     // -- clear the input buffer
     while ((MmioRead(base + AUX_MU_LSR_REG) & (1<<0)) != 0) MmioRead(base + AUX_MU_IO_REG);
     SerialPutChar(dev, 'A');
+while (true) {}
 }
 

@@ -165,7 +165,7 @@ rpi2b: init
 ##    -----------------------------------------
 .PHONY: run-rpi2b
 run-rpi2b: rpi2b
-	pbl-server /dev/ttyUSB0 sysroot/rpi2b/boot/grub/cfg-file
+	pbl-server /dev/ttyUSB0 targets/rpi2b/bin/boot/grub/cfg-file
 
 
 ##

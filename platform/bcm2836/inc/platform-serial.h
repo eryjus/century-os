@@ -63,7 +63,7 @@ typedef archsize_t SerialBase_t;
 #define AUX_MU_IER_REG      (0x44)                      // Mini UART Interrupt Enable
 //-------------------------------------------------------------------------------------------------------------------
 #define AUXMUIER_RXENB      (1<<1)                      // Generate interrupt when RX FIFO queue has data
-#define AUXMUIER_TXENB      (1<<1)                      // Generate interrupt when TX FIFO queue is empty
+#define AUXMUIER_TXENB      (1<<0)                      // Generate interrupt when TX FIFO queue is empty
 
 
 #define AUX_MU_IIR_REG      (0x48)                      // Mini UART Interrupt Identify

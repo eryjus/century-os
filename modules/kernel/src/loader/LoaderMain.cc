@@ -35,6 +35,7 @@
 EXTERN_C EXPORT LOADER NORETURN
 void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
+    _SerialPutChar(&debugSerial, 'L');
     LoaderFunctionInit();               // go and initialize all the function locations
     MmuInit();                          // Complete the MMU initialization for the loader
     PlatformEarlyInit();

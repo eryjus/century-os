@@ -112,6 +112,13 @@ intTableAddr:
     .align      4
 
 entry:
+
+    mov     r0,#0x5040
+    movt    r0,#0x3f21
+    mov     r1,#31
+s:  str     r1,[r0]
+    b       s
+
 @@
 @@ -- figure out which CPU we are on; only CPU 0 continues after this
 @@

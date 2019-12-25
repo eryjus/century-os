@@ -507,6 +507,29 @@ Now, I recall there were issues with that using qemu (only 1 serial port was emu
 
 I also think I remember having similar problems earlier on and it ended up being mappings in the MMU.  Hmmmm....
 
+---
+
+OK, the qemu emulator will not emulate the mini-UART.  So, I cannot use qemu as too much of a test-bed.  I also remember having this problem earlier.
+
+Now, I am not certain where I am getting to in real hardware.
+
+So, the reality is I am going to have to figure out how to write to the serial port before I get to the kernel -- at least for now.
+
+---
+
+### 2019-Dec-23
+
+I am wondering if I have a problem with the loader....  I doubt it, but I need to test it to be sure.
+
+Actually, I am struggling to prove that the kernel loader (my code) actually gets control.
+
+---
+
+### 2019-Dec-24
+
+The more I think about this, the more I am drawn to the thought that I really messed up the linker script.
+
+
 
 
 

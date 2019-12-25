@@ -25,7 +25,8 @@
 //
 // -- Write a single character to the UART
 //    ------------------------------------
-void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
+EXTERN_C EXPORT ENTRY
+void _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
 {
     if (!dev) return;
     if (ch == '\n') dev->SerialPutChar(dev, '\r');

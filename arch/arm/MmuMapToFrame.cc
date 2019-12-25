@@ -73,6 +73,7 @@ frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     //    and prepared to be a TTL2 table.
     //    ----------------------------------------------------------------------------------------------
     BPIALLIS();
+    DSB();
     return frame;
 }
 
@@ -102,6 +103,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
             ttl1Entry[i].fault = 0b01;
 
             INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
+            DSB();
         }
     }
 
@@ -122,10 +124,11 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     ttl2Entry->ap = 0b11;
     ttl2Entry->tex = (flags&PG_DEVICE?0b000:0b001);
     ttl2Entry->c = (flags&PG_DEVICE?0:1);
-    ttl2Entry->b = 1;
+    ttl2Entry->b = (flags&PG_DEVICE?0:1);
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;
 
     INVALIDATE_PAGE(ttl2Entry, addr);
+    DSB();
 }
 
