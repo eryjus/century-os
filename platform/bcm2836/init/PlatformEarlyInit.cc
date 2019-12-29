@@ -18,19 +18,28 @@
 
 
 #include "hardware.h"
+#include "cpu.h"
+#include "serial.h"
+#include "printf.h"
 #include "hw-disc.h"
 #include "platform.h"
+
+EXTERN EXPORT KERNEL_DATA
+SerialDevice_t testSerial;
 
 
 //
 // -- Handle the early initialization for the pc platform
 //    ---------------------------------------------------
-void __ldrtext PlatformEarlyInit(void)
+EXTERN_C EXPORT LOADER
+void PlatformEarlyInit(void)
 {
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
     HwDiscovery();
 
     // -- at some point, this will come from the DTB
     cpus.cpusDiscovered = 4;
+    FpuInit();
 }
 
 

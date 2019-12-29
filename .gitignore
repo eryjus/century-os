@@ -18,6 +18,9 @@ tuprules.inc
 *.old
 *.elf
 *.a
+*.dmp
 targets/**/grub.cfg
 targets/**/cfg-file*
+
+platform/**/inc/constants.*
 

@@ -24,6 +24,7 @@
 //
 // -- Check for the page and unmap if it is mapped.
 //    ---------------------------------------------
+EXTERN_C EXPORT KERNEL
 frame_t MmuUnmapPage(archsize_t addr)
 {
     Ttl1_t *ttl1Table = (Ttl1_t *)(TTL1_KRN_VADDR);

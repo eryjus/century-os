@@ -18,7 +18,6 @@
 
 
 #include "types.h"
-#include "loader.h"
 #include "hw-disc.h"
 #include "pmm.h"
 #include "serial.h"
@@ -27,38 +26,29 @@
 #include "heap.h"
 #include "fb.h"
 #include "platform.h"
-
-
-//
-// -- called from assembly language...
-//    --------------------------------
-extern "C" EXPORT LOADER
-void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
-
-extern "C" EXPORT LOADER
-void SerialEarlyPutChar(uint8_t);
-
-extern "C" EXPORT KERNEL
-void kInit(void);
+#include "loader.h"
 
 
 //
 // -- The actual loader main function
 //    -------------------------------
-EXPORT LOADER
+EXTERN_C EXPORT LOADER NORETURN
 void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
     LoaderFunctionInit();               // go and initialize all the function locations
-    EarlyInit();
+    MmuInit();                          // Complete the MMU initialization for the loader
+    PlatformEarlyInit();
+    kprintf("Welcome\n");
+while (true) {}
+
     FrameBufferInit();
-    MmuInit();                          // after this call, all kernel memory can be accessed
     HeapInit();
     PmmInit();
     PlatformInit();
 
 
     // -- Theoretically, after this point, there should be very little architecture-dependent code
-    JumpKernel(kInit, STACK_LOCATION + STACK_SIZE);
+    JumpKernel(kInit, STACK_LOCATION);
 
 
     // -- if we ever get here, we have some big problems!

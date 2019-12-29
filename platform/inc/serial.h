@@ -19,7 +19,7 @@
 //===================================================================================================================
 
 
-#ifndef __SERIAL_H__
+#pragma once
 #define __SERIAL_H__
 
 
@@ -62,58 +62,51 @@ typedef struct SerialDevice_t {
 //
 // -- Here, declare the different configurations of the serial port we will use
 //    -------------------------------------------------------------------------
-extern SerialDevice_t loaderSerial;
-extern SerialDevice_t kernelSerial;
+EXTERN KERNEL_DATA
+SerialDevice_t debugSerial;
 
 
 //
 // -- These are the common interface functions we will use to interact with the serial port.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    -----------------------------------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 inline void SerialOpen(SerialDevice_t *dev) { dev->SerialOpen(dev); }
+
+EXTERN_C EXPORT KERNEL
 inline void SerialClose(SerialDevice_t *dev) { dev->SerialClose(dev); }
+
+EXTERN_C EXPORT KERNEL
 inline bool SerialHasRoom(SerialDevice_t *dev) { return dev->SerialHasRoom(dev); }
+
+EXTERN_C EXPORT KERNEL
 inline bool SerialHasChar(SerialDevice_t *dev) { return dev->SerialHasChar(dev); }
+
+EXTERN_C EXPORT KERNEL
 inline uint8_t SerialGetChar(SerialDevice_t *dev) { return dev->SerialGetChar(dev); }
+
+EXTERN_C EXPORT KERNEL
 inline void SerialPutChar(SerialDevice_t *dev, uint8_t ch) { dev->SerialPutChar(dev, ch); }
 
 
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-extern void _SerialOpen(SerialDevice_t *dev);
-extern void _SerialClose(SerialDevice_t *dev);
-extern bool _SerialHasRoom(SerialDevice_t *dev);
-extern bool _SerialHasChar(SerialDevice_t *dev);
-extern uint8_t _SerialGetChar(SerialDevice_t *dev);
-extern void _SerialPutChar(SerialDevice_t *dev, uint8_t ch);
+EXTERN_C EXPORT KERNEL
+void _SerialOpen(SerialDevice_t *dev);
 
+EXTERN_C EXPORT KERNEL
+void _SerialClose(SerialDevice_t *dev);
 
-//
-// -- Put a String to the Serial Port; this will not work in the loader, but we can prepend this call with
-//    a translation of the string to the physical address.  This will be done in `loader.h`.
-//    ----------------------------------------------------------------------------------------------------
-#define SerialPutS(dev,x)                                           \
-    do {                                                            \
-        const char *s = x;                                          \
-        while (*s) SerialPutChar(dev, *s ++);                       \
-    } while (0)
+EXTERN_C EXPORT KERNEL
+bool _SerialHasRoom(SerialDevice_t *dev);
 
+EXTERN_C EXPORT KERNEL
+bool _SerialHasChar(SerialDevice_t *dev);
 
-//
-// -- Put a hex value to the serial port
-//    ----------------------------------
-#define SerialPutHex(dev,val)                                       \
-    do {                                                            \
-        SerialPutChar(dev, '0');                                    \
-        SerialPutChar(dev, 'x');                                    \
-        for (int i = 28; i >= 0; i -= 4) {                          \
-            char c = (((val) >> i) & 0x0f);                         \
-                                                                    \
-            if (c > 9) SerialPutChar(dev, c - 10 + 'a');            \
-            else SerialPutChar(dev, c + '0');                       \
-        }                                                           \
-    } while (0)
+EXTERN_C EXPORT KERNEL
+uint8_t _SerialGetChar(SerialDevice_t *dev);
 
+EXTERN_C EXPORT KERNEL
+void _SerialPutChar(SerialDevice_t *dev, uint8_t ch);
 
-#endif

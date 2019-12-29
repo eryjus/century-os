@@ -81,21 +81,9 @@
 
 
 //
-// -- This is the location of the exception vector table
-//    --------------------------------------------------
-#define EXCEPT_VECTOR_TABLE 0xff401000
-
-
-//
 // -- This is the size of the short TSS stack
 //    ---------------------------------------
 #define TSS_STACK_SIZE  512
-
-
-//
-// -- this is the size of a frame for this architecture
-//    -------------------------------------------------
-#define FRAME_SIZE          4096
 
 
 //
@@ -310,7 +298,3 @@ __CENTURY_FUNC__ int CheckCpuid(void);
 __CENTURY_FUNC__ void CollectCpuid(void);
 
 
-//
-// -- Dummy function to fake a FPU initialization
-//    -------------------------------------------
-#define FpuInit()   (void)0

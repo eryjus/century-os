@@ -27,36 +27,21 @@
 #include "mmu.h"
 
 
-#define DEBUG_MMU 0
-
 //
 // -- Map a page to a frame
 //    ---------------------
+EXTERN_C EXPORT KERNEL
 void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 {
     // -- refuse to map frame 0 for security reasons
-    if (!frame) {
-        kprintf("Explicit request to map frame 0 refused.\n");
+    if (!frame || !addr) {
         return;
     }
-
-    // -- refuse to map the NULL address for security reasons
-    if (!addr) {
-        kprintf("Explicit request to map virtual address 0 refused.\n");
-        return;
-    }
-
-
-#if DEBUG_MMU == 1
-    kprintf("Mapping address %p to frame %p\n", addr, frame);
-#endif
-
 
     PageEntry_t *pde = PD_ENTRY(addr);
 
     if (!pde->p) {
         frame_t fr = PmmAllocateFrame();
-//        kprintf("MMU: Creating a new page table at frame %p\n", fr);
         MmuClearFrame(fr);
         pde->frame = fr;
         pde->rw = 1;
@@ -67,7 +52,6 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     PageEntry_t *pte = PT_ENTRY(addr);
 
     if (pte->p) {
-        kprintf("Request to overwrite frame for page %p refused; use MmuUnmapPage() first\n", addr);
         return;
     }
 

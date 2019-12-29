@@ -15,27 +15,17 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "cpu.h"
 #include "serial.h"
+#include "entry.h"
+#include "loader.h"
 
-
-//
-// -- This is an array of functions that need to be called right away to initialize the data
-//    --------------------------------------------------------------------------------------
-typedef void (*FunctionPtr_t)(void);
-
-
-//
-// -- These 2 addresses bound the array
-//    ---------------------------------
-extern FunctionPtr_t const init_start[], init_end[];
 
 //
 // -- Perform this function initialization
 //    ------------------------------------
-EXPORT LOADER
+EXTERN_C EXPORT LOADER
 void LoaderFunctionInit(void)
 {
     FunctionPtr_t *wrk = (FunctionPtr_t *)init_start;
@@ -44,7 +34,5 @@ void LoaderFunctionInit(void)
         (*wrk)();                   // -- call the function
         wrk ++;
     }
-
-    lMemSetB = (kMemSetB_t)PHYS_OF(kMemSetB);       // a carefully crafted function that is relocatable
 }
 

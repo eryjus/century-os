@@ -20,6 +20,7 @@
 #include "hardware.h"
 #include "hw-disc.h"
 #include "fb.h"
+#include "serial.h"
 #include "printf.h"
 #include "platform.h"
 
@@ -27,8 +28,16 @@
 //
 // -- Handle the early initialization for the pc platform
 //    ---------------------------------------------------
-void __ldrtext PlatformEarlyInit(void)
+EXTERN_C EXPORT LOADER
+void PlatformEarlyInit(void)
 {
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+
+    if (CheckCpuid() != 0) {
+        SetCpuid(true);
+        CollectCpuid();
+    }
+
     HwDiscovery();
     RSDP_t *rsdp = AcpiFindRsdp();
     if (rsdp == NULL) return;

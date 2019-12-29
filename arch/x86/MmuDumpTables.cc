@@ -22,7 +22,8 @@
 //
 // -- Dump the MMU Tables for a specific address
 //    ------------------------------------------
-void __krntext MmuDumpTables(archsize_t addr)
+EXTERN_C EXPORT KERNEL
+void MmuDumpTables(archsize_t addr)
 {
     archsize_t cr3 = RECURSIVE_PD_VADDR;
 

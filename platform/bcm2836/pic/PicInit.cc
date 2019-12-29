@@ -19,6 +19,7 @@
 #include "interrupt.h"
 #include "heap.h"
 #include "printf.h"
+#include "mmu.h"
 #include "timer.h"
 
 

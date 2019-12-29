@@ -26,9 +26,9 @@
 //
 // -- Complete the platform initialization
 //    ------------------------------------
+EXTERN_C EXPORT LOADER
 void PlatformInit(void)
 {
-    UpdateKprintfPort();
     PicPick();
     TimerPick();
 

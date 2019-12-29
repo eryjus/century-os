@@ -56,13 +56,6 @@
 
 
 //
-// -- The address of the MMIO addresses
-//    ---------------------------------
-#define MMIO_VADDR          0xf8000000
-#define MMIO_LOADER_LOC     0x3f000000
-
-
-//
 // -- This is the location of the TTL1/TTL2 Tables in kernel space
 //    ------------------------------------------------------------
 #define TTL1_KRN_VADDR      0xff404000
@@ -98,22 +91,12 @@
 #define TTL2_ENTRY(a,f)         (((f)&PG_KRN)?KRN_TTL2_ENTRY(a):USR_TTL2_ENTRY(a))
 
 
-//
-// -- This is the location of the exception vector table
-//    --------------------------------------------------
-#define EXCEPT_VECTOR_TABLE 0xff401000
 
 
 //
 // -- This is the size of the short exception stacks
 //    ----------------------------------------------
 #define EXCEPTION_STACK_SIZE  512
-
-
-//
-// -- this is the size of a frame for this architecture
-//    -------------------------------------------------
-#define FRAME_SIZE              4096
 
 
 //
@@ -393,12 +376,6 @@ inline void Panic(void) { while (1) HaltCpu(); }
 // -- A dummy function to enter system mode, since this is for the ARM
 //    ----------------------------------------------------------------
 extern "C" void EnterSystemMode(void);
-
-
-//
-// -- Get the CBAR
-//    ------------
-extern "C" archsize_t GetCBAR(void);
 
 
 //

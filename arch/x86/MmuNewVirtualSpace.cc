@@ -24,7 +24,8 @@
 //
 // -- for x86, we need to copy the kernel address space from PD[512] to PD[1023]
 //    --------------------------------------------------------------------------
-frame_t __krntext MmuNewVirtualSpace(frame_t stack)
+EXTERN_C EXPORT KERNEL
+frame_t MmuNewVirtualSpace(frame_t stack)
 {
     frame_t rv = PmmAllocateFrame();
 

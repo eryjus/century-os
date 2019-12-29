@@ -15,6 +15,8 @@
 @@===================================================================================================================
 
 
+.include "constants.inc"
+
 @@
 @@ -- make sure that if the required symbols are defined; Branch Predictor
 @@    --------------------------------------------------------------------
@@ -159,8 +161,8 @@ cont:
     bl      NextEarlyFrame              @@ Get a frame for out stack
     mov     r2,r0                       @@ Save for later
 
-    mov     r1,#0xff8                   @@ This will load value 0xff800000
-    lsl     r1,#20                      @@ ... as a strarting address
+    mov     r1,#(STACK_LOCATION&0xffff) @@ This will load value 0xff800000
+    movt    r1,#(STACK_LOCATION>>16)    @@ ... as a strarting address
 
     mrc     p15,0,r0,c0,c0,5            @@ Read Multiprocessor Affinity Register
     and     r0,r0,#0x3                  @@ Extract CPU ID bits

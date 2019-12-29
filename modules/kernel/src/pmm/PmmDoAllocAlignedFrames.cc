@@ -89,7 +89,8 @@ static frame_t __krntext PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, fr
 //
 // -- This function is the working to find a frame that is properly aligned and allocate multiple contiguous frames
 //    -------------------------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ frame_t __krntext _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment)
+EXTERN_C EXPORT KERNEL
+frame_t _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment)
 {
     //
     // -- start by determining the bits we cannot have enabled when we evaluate a frame

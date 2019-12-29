@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  SerialEarlyPutChar.cc -- Write a single character to the UART Serial Port -- for being called early in boot
+//  MmuVars.cc -- Common variables for the MMU
 //
 //        Copyright (c)  2017-2019 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,27 +10,20 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-02  Initial   0.4.0   ADCL  Initial version
+//  2019-Dec-22  Initial  v0.5.0b  ADCL  Initial Version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "loader.h"
-#include "hardware.h"
-#include "serial.h"
+#include "cpu.h"
+#include "spinlock.h"
+#include "mmu.h"
 
-
-__CENTURY_FUNC__ void SerialEarlyPutChar(uint8_t ch);
 
 //
-// -- Write a single character to the UART
-//    ------------------------------------
-void __ldrtext SerialEarlyPutChar(uint8_t ch)
-{
-    if (ch == '\n') SerialEarlyPutChar('\r');
+// -- This spinlock is used to control access to the address space to clear the frame
+//    -------------------------------------------------------------------------------
+EXPORT KERNEL_DATA
+Spinlock_t frameClearLock = {0};
 
-    while ((MmioRead(LDR_SERIAL_BASE + AUX_MU_LSR_REG) & (1<<5)) == 0) { }
-
-    MmioWrite(LDR_SERIAL_BASE + AUX_MU_IO_REG, ch);
-}

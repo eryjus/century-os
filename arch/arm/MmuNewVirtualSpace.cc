@@ -24,7 +24,8 @@
 //
 // -- for arm, all we need is a blank address space
 //    ---------------------------------------------
-frame_t __krntext MmuNewVirtualSpace(frame_t stack)
+EXTERN_C EXPORT KERNEL
+frame_t MmuNewVirtualSpace(frame_t stack)
 {
     frame_t rv = PmmAllocAlignedFrames(4, 14);
     for (int i = 0; i < 4; i ++) MmuClearFrame(rv + i);

@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-#include "loader.h"
+#include "mmu.h"
 #include "hardware.h"
 
 
@@ -24,8 +24,8 @@
 //    --------------------------------------------------------------------------------
 __ldrdata MailboxDevice_t loaderMailbox = {
     .base = LDR_MAILBOX_BASE,
-    .MailboxSend = (void (*)(struct MailboxDevice_t *, archsize_t, archsize_t))PHYS_OF(_MailboxSend),
-    .MailboxReceive = (archsize_t (*)(struct MailboxDevice_t *, archsize_t))PHYS_OF(_MailboxReceive),
+    .MailboxSend = _MailboxSend,
+    .MailboxReceive = _MailboxReceive,
 };
 
 

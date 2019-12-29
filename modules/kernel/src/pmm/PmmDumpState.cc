@@ -26,7 +26,8 @@
 //
 // -- This function will dump as much of the current state of the PMM as possible (given locks)
 //    -----------------------------------------------------------------------------------------
-void __krntext PmmDumpState(void)
+EXTERN_C EXPORT KERNEL
+void PmmDumpState(void)
 {
     kprintf("\n");
     kprintf("=============================================================================================\n");

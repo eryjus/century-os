@@ -37,7 +37,6 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "serial.h"
 #include "printf.h"
@@ -57,10 +56,10 @@
 //
 // -- initialize the physical portion of the memory manager
 //    -----------------------------------------------------
-__CENTURY_FUNC__ void __ldrtext PmmInit(void)
+EXTERN_C EXPORT LOADER
+void PmmInit(void)
 {
     extern bool pmmInitialized;
-    extern uint8_t _kernelEnd[];
 
     kprintf("Startng PMM initialization\n");
 
@@ -115,19 +114,6 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
     }
 
     CLEAN_PMM();
-
-
-    //
-    // -- Finally, double check we did not over-allocate into the kernel
-    //    --------------------------------------------------------------
-    extern uint32_t earlyFrame;
-    if (((earlyFrame + 1) << 12) < PHYS_OF(_kernelEnd)) {
-        kprintf("PANIC: Too many frames were allocated to get the system running!\n");
-        kprintf("       The kernel ends at %p and we allocated frame %p\n",
-                PHYS_OF(_kernelEnd), (earlyFrame + 1) << 12);
-        kprintf("       Recompile the system with larget identity mapped support\n");
-        HaltCpu();
-    }
 
 
     //

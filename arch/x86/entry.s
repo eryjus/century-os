@@ -18,6 +18,9 @@
 ;;===================================================================================================================
 
 
+%include "constants.inc"
+
+
 ;;
 ;; -- take care of making sure that the conditional assemble flags are defined
 ;;    ------------------------------------------------------------------------
@@ -72,56 +75,10 @@
 
 
 ;;
-;; -- The following are used to populate the multiboot v1 header
-;;    ----------------------------------------------------------
-MAGIC           equ     0x1badb002
-FLAGS           equ     (1<<1 | 1<<2)           ;; get mem & set video
-
-;;
 ;; -- The following are used to populate the multiboot v2 header
 ;;    ----------------------------------------------------------
-MAGIC2          equ     0xe85250d6
 LEN             equ     MultibootHeader2End - MultibootHeader2
 CHECK2          equ     (-(MAGIC2 + LEN) & 0xffffffff)
-
-
-;;
-;; -- Standard Video resolution
-;;    -------------------------
-MODE_TYPE       equ     0
-WIDTH           equ     1024
-HEIGHT          equ     768
-DEPTH           equ     16
-
-
-;;
-;; -- This is the stack size
-;;    ----------------------
-STACK_SIZE      equ     4096
-
-
-;;
-;; -- MMU mapping base values
-;;    -----------------------
-MMU_PRESENT     equ     (1<<0)
-
-MMU_READ        equ     0
-MMU_WRITE       equ     (1<<1)
-
-MMU_SUPERVISOR  equ     0
-MMU_USER        equ     (1<<2)
-
-MMU_PWT         equ     (1<<3)
-MMU_PCD         equ     (1<<4)
-MMU_ACCESSED    equ     (1<<5)
-MMU_DIRTY       equ     (1<<6)
-MMU_PAT         equ     (1<<7)
-MMU_GLOBAL      equ     (1<<8)
-MMU_KERNEL      equ     (1<<9)
-
-MMU_BASE        equ     MMU_PRESENT|MMU_WRITE|MMU_SUPERVISOR
-MMU_KRN_CODE    equ     MMU_PRESENT|MMU_SUPERVISOR|MMU_READ|MMU_KERNEL
-MMY_KRN_DATA    equ     MMU_PRESENT|MMU_SUPERVISOR|MMU_WRITE|MMU_KERNEL
 
 
 ;;
@@ -130,9 +87,9 @@ MMY_KRN_DATA    equ     MMU_PRESENT|MMU_SUPERVISOR|MMU_WRITE|MMU_KERNEL
     align       4
 multiboot_header:
     ;; -- magic fields
-    dd          MAGIC
-    dd          FLAGS
-    dd          -MAGIC-FLAGS
+    dd          MAGIC1
+    dd          MBFLAGS
+    dd          -MAGIC1-MBFLAGS
 ;; -- address fields (unused placeholders)
     dd          0
     dd          0
@@ -263,13 +220,13 @@ intTableAddr:
 ;; -- This is the entry point where we will get control -- first which MBI do we have?
 ;;    --------------------------------------------------------------------------------
 entry:
-    cmp         eax,0x2badb002
+    cmp         eax,MB1SIG
     jne         chkMB2
     mov         [mb1Data],ebx
     jmp         initialize
 
 chkMB2:
-    cmp         eax,0x36d76289
+    cmp         eax,MB2SIG
     jne         initialize
     mov         [mb2Data],ebx
 
@@ -313,7 +270,7 @@ clearBss:
     mov     ebx,eax                             ;; keep the table safe in ebx
 
 ;; -- take care of the recursive mapping
-    or      eax,MMU_BASE                        ;; convert the value in eax into an Entry
+    or      eax,X86_MMU_BASE                    ;; convert the value in eax into an Entry
     mov     [ebx + 4092],eax                    ;; create the recursive mapping (1024 * 4)
 
 
@@ -323,7 +280,7 @@ clearBss:
 ;;    -----------------------------------------------------------------------------------------
     call    MakePageTable                       ;; get a page table
     mov     ebp,eax                             ;; save the location for later
-    or      eax,MMU_BASE                        ;; fix up the bits
+    or      eax,X86_MMU_BASE                    ;; fix up the bits
     mov     [ebx + (0 * 4)],eax                 ;; this will be at entry 0 (0 / 0x400000)
     mov     eax,ebp                             ;; get the saved address
 
@@ -338,7 +295,7 @@ clearBss:
 ;; -- loop to populate the table
 .loop1:
     mov     edx,esi                             ;; get the address (page aligned)
-    or      edx,MMU_BASE                        ;; get the other bits
+    or      edx,X86_MMU_BASE                    ;; get the other bits
     mov     [eax + (edi * 4)],edx               ;; set the page table entry
     inc     edi                                 ;; next index
     add     esi,0x1000                          ;; next page
@@ -350,7 +307,7 @@ clearBss:
 ;;    --------------------------
     call    MakePageTable                       ;; get a page table
     mov     ebp,eax                             ;; save the location for later
-    or      eax,MMU_BASE|MMU_KERNEL             ;; fix up the other bits
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
     mov     [ebx + (512 * 4)],eax               ;; 0x80000000 / 0x400000 = 0x200 (512)
     mov     eax,ebp                             ;; get the saved address
 
@@ -366,7 +323,7 @@ clearBss:
 ;; -- loop to populate the table
 .loop2:
     mov     edx,esi                             ;; get the address (page aligned)
-    or      edx,MMU_BASE|MMU_KERNEL             ;; get the other bits
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
     mov     [eax + (edi * 4)],edx               ;; set the page table entry
     inc     edi                                 ;; next index
     add     esi,0x1000                          ;; next page
@@ -378,7 +335,7 @@ clearBss:
 ;;    ------------------------
     call    MakePageTable                       ;; get a page table
     mov     ebp,eax                             ;; save the location for later
-    or      eax,MMU_BASE|MMU_KERNEL             ;; fix up the other bits
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
     mov     [ebx + (513 * 4)],eax               ;; 0x80400000 / 0x400000 = 0x201 (513)
     mov     eax,ebp                             ;; get the saved address
 
@@ -394,10 +351,10 @@ clearBss:
 ;; -- loop to populate the table
 .loop3:
     mov     edx,esi                             ;; get the address (page aligned)
-    or      edx,MMU_BASE|MMU_KERNEL             ;; get the other bits
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
     mov     [eax + (edi * 4)],edx               ;; set the page table entry
     inc     edi                                 ;; next index
-    add     esi,0x1000                          ;; next page
+    add     esi,PAGE_SIZE                       ;; next page
     loopne  .loop3
 
 
@@ -406,7 +363,7 @@ clearBss:
 ;;    --------------------------
     call    MakePageTable                       ;; get a page table
     mov     ebp,eax                             ;; save the location for later
-    or      eax,MMU_BASE|MMU_KERNEL             ;; fix up the other bits
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
     mov     [ebx + (514 * 4)],eax               ;; 0x80800000 / 0x400000 = 0x202 (514)
     mov     eax,ebp                             ;; get the saved address
 
@@ -422,10 +379,10 @@ clearBss:
 ;; -- loop to populate the table
 .loop4:
     mov     edx,esi                             ;; get the address (page aligned)
-    or      edx,MMU_BASE|MMU_KERNEL             ;; get the other bits
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
     mov     [eax + (edi * 4)],edx               ;; set the page table entry
     inc     edi                                 ;; next index
-    add     esi,0x1000                          ;; next page
+    add     esi,PAGE_SIZE                       ;; next page
     loopne  .loop4
 
 ;; -- see if we have more than 4MB kernel code (See Redmine #431 and complete it here)
@@ -436,7 +393,7 @@ clearBss:
 ;;    --------------------------
     call    MakePageTable                       ;; get a page table
     mov     ebp,eax                             ;; save the location for later
-    or      eax,MMU_BASE|MMU_KERNEL             ;; fix up the other bits
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
     mov     [ebx + (516 * 4)],eax               ;; 0x8100000 / 0x400000 = 0x204 (516)
     mov     eax,ebp                             ;; get the saved address
 
@@ -452,10 +409,10 @@ clearBss:
 ;; -- loop to populate the table
 .loop5:
     mov     edx,esi                             ;; get the address (page aligned)
-    or      edx,MMU_BASE|MMU_KERNEL             ;; get the other bits
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
     mov     [eax + (edi * 4)],edx               ;; set the page table entry
     inc     edi                                 ;; next index
-    add     esi,0x1000                          ;; next page
+    add     esi,PAGE_SIZE                       ;; next page
     loopne  .loop5
 
 ;; -- see if we have more than 4MB kernel code (See Redmine #432 and complete it here)
@@ -466,7 +423,7 @@ clearBss:
 ;;    ------------------------
     call    MakePageTable                       ;; get a page table
     mov     ebp,eax                             ;; save the location for later
-    or      eax,MMU_BASE|MMU_KERNEL             ;; fix up the other bits
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
     mov     [ebx + (1022 * 4)],eax              ;; 0xff800000 / 0x400000 = 0x3fe (1022)
     mov     eax,ebp                             ;; get the saved address
 
@@ -476,8 +433,16 @@ clearBss:
 
 ;; -- loop to populate the table
     mov     edx,esi                             ;; get the address (page aligned)
-    or      edx,MMU_BASE|MMU_KERNEL             ;; get the other bits
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
     mov     [eax + (edi * 4)],edx               ;; set the page table entry
+
+
+;;
+;; -- Finally, we need a page table for 0xff400000 for small arch stuff)
+;;    ------------------------------------------------------------------
+    call    MakePageTable                       ;; get a page table
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
+    mov     [ebx + (1021 * 4)],eax              ;; 0xff400000 / 0x400000 = 0x3fe (1021)
 
 
 ;;
@@ -548,6 +513,7 @@ newGdt:
     mov     fs,ax
     mov     gs,ax
     mov     ss,ax
+    mov     esp,STACK_LOCATION                  ;; set the stack for the loader
 
 
 ;; -- the final task is to enable paging
@@ -562,7 +528,6 @@ newGdt:
 ;;
 ;; -- If we manage to get here, we now can jump to LoaderMain -- not a call
 ;;    ---------------------------------------------------------------------
-    mov     esp,0xff801000                      ;; set the stack for the loader
     jmp     LoaderMain
 
 
@@ -578,7 +543,7 @@ MakePageTable:
     mov     edi,eax                             ;; move it to the edi register
     push    eax                                 ;; save eax on the stack
     xor     eax,eax                             ;; clear eax
-    mov     ecx,STACK_SIZE                      ;; the number of bytes to clear
+    mov     ecx,PAGE_SIZE                       ;; the number of bytes to clear
     cld                                         ;; increment
     rep     stosd                               ;; clear the block
 
