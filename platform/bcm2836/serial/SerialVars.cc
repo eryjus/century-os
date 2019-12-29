@@ -33,17 +33,3 @@ SerialDevice_t debugSerial = {
     .platformData = &kernelGpio,
 };
 
-
-
-EXPORT KERNEL_DATA
-SerialDevice_t testSerial = {
-    .base = LDR_SERIAL_BASE,
-    .lock = {0},
-    .SerialOpen = _SerialOpen,
-    .SerialHasRoom = _SerialHasRoom,
-    .SerialPutChar = _SerialPutChar,
-    .platformData = &loaderGpio,
-};
-
-
-

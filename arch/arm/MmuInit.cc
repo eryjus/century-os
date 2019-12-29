@@ -123,9 +123,5 @@ void MmuInit(void)
             mmioPhys ++, mmioVirt += PAGE_SIZE) {
         MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
     }
-
-    for (archsize_t mmioPhys = MMIO_LOADER_LOC; mmioPhys < MMIO_LOADER_END; mmioPhys ++) {
-        MmuMapToFrame(mmioPhys << 12, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
-    }
 }
 

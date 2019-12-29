@@ -25,7 +25,7 @@
 //
 // -- Write a single character to the UART
 //    ------------------------------------
-EXTERN_C EXPORT ENTRY
+EXTERN_C EXPORT KERNEL
 void _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
 {
     if (!dev) return;
@@ -35,7 +35,6 @@ void _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
         while ((MmioRead(dev->base + AUX_MU_LSR_REG) & (1<<5)) == 0) { }
 
         MmioWrite(dev->base + AUX_MU_IO_REG, ch);
-        DSB();
         SPINLOCK_RLS_RESTORE_INT(dev->lock, flags);
     }
 }

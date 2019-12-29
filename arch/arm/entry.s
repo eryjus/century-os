@@ -112,13 +112,6 @@ intTableAddr:
     .align      4
 
 entry:
-
-    mov     r0,#0x5040
-    movt    r0,#0x3f21
-    mov     r1,#31
-s:  str     r1,[r0]
-    b       s
-
 @@
 @@ -- figure out which CPU we are on; only CPU 0 continues after this
 @@
@@ -159,7 +152,7 @@ hyp:
 
 @@ -- everyone continues from here
 cont:
-    ldr     sp,=stack_top                       @@ set the stack
+
 
 @@
 @@ -- some early CPU initialization
@@ -178,6 +171,8 @@ cont:
 
 @@ -- Clear out kernel bss -- this needs to be adjusted for the kernel physical load address
 initialize:
+    ldr     sp,=stack_top                       @@ set the stack
+
     ldr     r4,=bssPhys
     ldr     r4,[r4]
     ldr     r9,=bssSize
@@ -192,7 +187,7 @@ initialize:
 
 bssLoop:
 @@ -- store multiple at r4
-    stmia   r4!, {r5-r8}
+    stmia   r4!,{r5-r8}
 
 @@ -- If we're still below _bssEnd, loop
     cmp     r4,r9
@@ -301,7 +296,8 @@ bssLoop:
     mov     r3,r0                               @@ save the TTL2 table physical address for later
 
 @@ -- this address needs to be saved because we need it later for the TTL2 management table init later
-    mov     r9,#ARMV7_MMU_DATA_PAGE             @@ get the page flags
+    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ get the page flags
+    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)        @@ get the page flags
     ldr     r2,=mmuLvl1Table                    @@ get the table address
     ldr     r2,[r2]
     orr     r2,r9                               @@ and merge those
@@ -353,7 +349,8 @@ bssLoop:
 @@    * Address 0x1007ffc points to frame 0x1007000
 @@    ---------------------------------------------------------------------------------------
     mov     r2,r0                               @@ make the table address and the frame address match
-    mov     r9,#ARMV7_MMU_DATA_PAGE             @@ get the page flags
+    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ get the page flags
+    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)        @@ get the page flags
     orr     r2,r9                               @@ and add them to the address
     mov     r1,#(ARMV7_TTL2_TABLE_VADDR&0xffff)
     movt    r1,#(ARMV7_TTL2_TABLE_VADDR>>16)
@@ -370,7 +367,8 @@ bssLoop:
 @@    * Address 0x1007ff4 points to frame 0x1006000
 @@    -------------------------------------------------------------------------------------
     mov     r2,r3                               @@ get the TTL2 table for TTL1 managment
-    mov     r9,#ARMV7_MMU_DATA_PAGE             @@ get the page flags
+    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ get the page flags
+    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)        @@ get the page flags
     orr     r2,r9                               @@ and add them to the address
     mov     r1,#(ARMV7_TTL1_TABLE_VADDR&0xffff)
     movt    r1,#(ARMV7_TTL1_TABLE_VADDR>>16)
@@ -414,7 +412,8 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12                              @@ number of pages to write
 
-    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
+    mov     r2,#(ARMV7_MMU_KRN_ANY&0xffff)      @@ load the flags
+    movt    r2,#(ARMV7_MMU_KRN_ANY>>16)         @@ load the flags
 
     mov     r8,#0                               @@ start the counter
 
@@ -422,12 +421,12 @@ bssLoop:
 .loop2:
     mov     r1,r0                               @@ identity map
     bl      MapPageFull                         @@ map the page
+    bl      DumpMmuTables
     add     r8,#1
     add     r0,#4096
 
     cmp     r8,r3                               @@ are we done
     blo     .loop2
-
 
 @@
 @@ -- now map the loader code/data section (0x80000000)
@@ -442,7 +441,8 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
+    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ load the flags
+    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)        @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -469,7 +469,8 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
+    mov     r2,#(ARMV7_MMU_KRN_ANY&0xffff)      @@ load the flags
+    movt    r2,#(ARMV7_MMU_KRN_ANY>>16)         @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -496,7 +497,8 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#ARMV7_MMU_CODE_PAGE             @@ load the flags
+    mov     r2,#(ARMV7_MMU_KRN_CODE&0xffff)     @@ load the flags
+    movt    r2,#(ARMV7_MMU_KRN_CODE>>16)        @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -523,7 +525,8 @@ bssLoop:
     ldr     r3,[r3]
     lsr     r3,#12
 
-    mov     r2,#ARMV7_MMU_DATA_PAGE             @@ load the flags
+    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ load the flags
+    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)        @@ load the flags
 
     mov     r8,#0                               @@ start a counter
 
@@ -548,7 +551,8 @@ bssLoop:
     mov     r9,#0xf000
     movt    r9,#0xffff
     and     r1,r9                               @@ mask out the the base physical address
-    mov     r2,#ARMV7_MMU_DATA_PAGE
+    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)
+    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)
     bl      MapPageFull
 
 @@ -- now we enable caches
@@ -564,11 +568,16 @@ bssLoop:
     mov     r1,#0xffffffff                      @@ All domains can manage all things by default
     mcr     p15,0,r1,c3,c0,0                    @@ write these to the domain access register
 
+    ldr     r0,=pg
+    bl      DumpMmuTables
+
+
 @@ -- now we enable paging
     mrc     p15,0,r1,c1,c0,0                    @@ This gets the cp15 register 1 and puts it in r0
     orr     r1,#1                               @@ set bit 0
     mcr     p15,0,r1,c1,c0,0                    @@ Put the cp15 register 1 back, with the MMU enabled
 
+pg:
 .if ENABLE_BRANCH_PREDICTOR
     mcr     p15,0,r0,c7,c5,6                    @@ invalidate the branch predictor (required maintenance when enabled)
 .endif
@@ -576,7 +585,6 @@ bssLoop:
 .if ENABLE_CACHE
     mcr     p15,0,r0,c7,c1,0                    @@ invalidate all instruction caches (required maintenance when enabled)
 .endif
-
 
 @@ -- finally jump to the loader initialization function
     mov     sp,r8                               @@ replace the stack
@@ -619,6 +627,14 @@ NewTTL2Table:
     mov     r5,r0                               @@ our address to map
     bl      KrnTtl1Entry4                       @@ and get the address of the "mod 4" entry in r5
     bl      MakePageTable                       @@ r0 will hold the physical address of the new table
+
+    push    {r0}
+    ldr     r0,=mmu6
+    bl      OutputString
+    mov     r0,r5
+    bl      OutputHex
+    bl      OutputNewline
+    pop     {r0}
 
 @@ -- finally, we need the value to load into the TTL1 table entry
     mov     r9,#ARMV7_MMU_TTL1_ENTRY
@@ -691,10 +707,16 @@ MapPageFull:
     mov     r5,r0
     bl      KrnTtl1Entry4                       @@ get the address of the TTL1 entry (r5)
 
+    push    {r0}
+    mov     r0,r5
+    bl      OutputHex
+    bl      OutputNewline
+    pop     {r0}
+
     ldr     r3,[r5]                             @@ r3 has the ttl1 entry
     mov     r9,r3                               @@ we need a copy
     and     r9,#0x03                            @@ get the fault bits
-    cmp     r9,#(ARMV7_MMU_TTL2)                @@ is there a ttl2 table
+    cmp     r9,#(ARMV7_MMU_TTL1_ENTRY)          @@ is there a ttl2 table
 
     beq     .haveTtl2                           @@ if we have one, no need to make a new one
 
@@ -705,10 +727,6 @@ MapPageFull:
     mov     r4,r0                               @@ we need to save te physical address as well
     pop     {r0}                                @@ restore the saved work
 
-    mov     r9,#(ARMV7_MMU_TTL2)                @@ get the bits to set
-    orr     r3,r9                               @@ make the proper ttl1 entry
-    str     r3,[r2]                             @@ and put it in place
-
 @@ -- map the ttl2 management entry
     push    {r0-r2}                             @@ save our work again
     mov     r1,r3                               @@ get the address to map
@@ -718,6 +736,12 @@ MapPageFull:
 
 @@ -- we now have a ttl2 address; r3 has the address of the TTL2 table
 .haveTtl2:
+    push    {r0}
+    ldr     r0,=mmu5
+    bl      OutputString
+    bl      OutputNewline
+    pop     {r0}
+
     mov     r9,#0xf000                          @@ establish the cleanup mask
     movt    r9,#0xffff                          @@ establish the cleanup mask
     and     r4,r3,r9                            @@ r4 now holds the physical ttl2 frame address
@@ -730,6 +754,11 @@ MapPageFull:
 
 @@ -- complete the mapping
     str     r1,[r5]                             @@ after all that, this is it
+    push    {r0}
+    mov     r0,r5
+    bl      OutputHex
+    bl      OutputNewline
+    pop     {r0}
 
     pop     {r0}                                @@ restore the return address
     pop     {r1-r9,pc}
@@ -752,8 +781,8 @@ MapTtl2Mgmt:
     mov     r6,r1                               @@ get the address to map
     bl      KrnTtl2Mgmt                         @@ r6 will not contain the address
 
-    mov     r9,#(ARMV7_MMU_DATA_PAGE&0xffff)    @@ get the flags we want to set
-    movt    r9,#(ARMV7_MMU_DATA_PAGE>>16)
+    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ get the flags we want to set
+    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)
     orr     r2,r9                               @@ r2 holds the value value to load with the extra bits
 
     str     r2,[r6]                             @@ complete the mapping
@@ -856,9 +885,210 @@ JumpKernel:
 
 
 @@
+@@ -- Output a character
+@@    ------------------
+OutputChar:
+    push    {r0,r1,lr}
+    and     r0,#0xff
+
+OutputChar.loop:
+    mov     r1,#0x5054                          @@ get the status register
+    movt    r1,#0x3f21
+    ldr     r1,[r1]                             @@ get the status
+    and     r1,#(1<<5)                          @@ test the bit
+    tst     r1,r1                               @@ is it 0?
+    beq     OutputChar.loop
+
+    mov     r1,#0x5040
+    movt    r1,#0x3f21
+    str     r0,[r1]
+
+    pop     {r0,r1,pc}
+
+
+@@
+@@ -- Output a string
+@@    ---------------
+OutputString:
+    push    {r0,r1,lr}
+    mov     r1,r0                               @@ save the string
+
+OutputString.loop:
+    mov     r0,#0
+    ldrb    r0,[r1]                             @@ get the byte to output
+    add     r1,#1
+    cmp     r0,#0
+    popeq   {r0,r1,pc}                          @@ if NULL char we can exit
+
+    bl      OutputChar                          @@ output the char
+    b       OutputString.loop                   @@ loop to the end
+
+
+@@
+@@ -- Output a hex number
+@@    -------------------
+OutputHex:
+    push    {r0-r4,lr}
+
+    mov     r2,r0                               @@ save the value to print
+    mov     r0,#'0'                             @@ output "0x"
+    bl      OutputChar
+    mov     r0,#'x'
+    bl      OutputChar
+
+    mov     r1,#28                              @@ set the number of bits to shift
+
+OutputHex.loop:
+    mov     r0,r2                               @@ get the nibble
+    lsr     r0,r1
+    and     r0,#0xf                             @@ and mask out the value
+
+    ldr     r3,=hex                             @@ get the hex offset
+    add     r3,r0
+    mov     r4,#0
+    ldrb    r4,[r3]
+    mov     r0,r4
+
+    bl      OutputChar
+
+    cmp     r1,#0                               @@ was this the last nibble
+    popeq   {r0-r4,pc}
+
+    sub     r1,#4
+    b       OutputHex.loop
+
+
+@@
+@@ -- Output New line
+@@    ---------------
+OutputNewline:
+    push    {r0,lr}
+
+    mov     r0,#13
+    bl      OutputChar
+
+    mov     r0,#10
+    bl      OutputChar
+
+    pop     {r0,pc}
+
+
+@@
+@@ -- Dump the page tables for an address
+@@    -----------------------------------
+DumpMmuTables:
+    push    {r0-r10,lr}
+
+    mov     r10,r0                              @@ save off the address we are working with
+
+
+@@ -- Output the header
+    ldr     r0,=mmu1
+    bl      OutputString
+    mov     r0,r10
+    bl      OutputHex
+    bl      OutputNewline
+
+    ldr     r0,=mmu2
+    bl      OutputString
+    bl      OutputNewline
+
+
+@@ -- Now, get the TTL1 entry for the address
+    ldr     r0,=mmu3
+    bl      OutputString
+
+    mov     r0,r10,lsr #20
+    lsl     r0,#2                               @@ this is an offset
+
+    ldr     r1,=mmuLvl1Table
+    ldr     r1,[r1]
+
+    add     r0,r1                               @@ this is the address of the TTL1 entry
+    mov     r2,r0
+
+    bl      OutputHex
+    mov     r0,#' '
+    bl      OutputChar
+
+    ldr     r0,[r2]                             @@ ..  and now we have the entry
+    mov     r9,r0                               @@ save this value
+    bl      OutputHex
+    bl      OutputNewline
+
+    and     r0,#3                               @@ get the fault bits
+    cmp     r0,#0                               @@ and if they are 0, we can exit
+    popeq   {r0-r10,pc}
+
+@@ -- Now, get the TTL2 entry for the address
+    mov     r7,#0x3ff
+    bic     r8,r9,r7                            @@ mask off the table address
+
+    mov     r0,r10,lsr #12                      @@ adjust for the index
+    and     r0,#0xff                            @@ get the index
+    lsl     r0,#2                               @@ and convert that to an address
+    add     r8,r0                               @@ r8 now holds the TTL2 entry address
+
+    ldr     r0,=mmu4
+    bl      OutputString
+
+
+    mov     r0,r8                               @@ get the address of the entry
+    bl      OutputHex
+    mov     r0,#' '
+    bl      OutputChar
+
+    ldr     r0,[r8]                             @@ ..  and now we have the entry
+    bl      OutputHex
+    bl      OutputNewline
+
+
+    pop     {r0-r10,pc}
+
+
+@@
 @@ -- we need a small stack for out first calls to get a stack
 @@    --------------------------------------------------------
+    .section    .data.entry
     .align      4
 stack:
     .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 stack_top:
+
+
+    .align      4
+hex:
+    .byte       '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
+
+    .align      4
+mmu1:
+    .asciz      "Dumping MMU tables for address "
+
+    .align      4
+mmu2:
+    .asciz      "-----------------------------------------"
+
+    .align      4
+mmu3:
+    .asciz      "TTL1 entry at address "
+
+    .align      4
+mmu4:
+    .asciz      "TTL2 entry at address "
+
+    .align      4
+mmu5:
+    .asciz      "Mapping a new TTL2 table.  "
+
+    .align      4
+mmu6:
+    .asciz      "New TTL2 table at entry "
+
+    .align      4
+mmu7:
+    .asciz      "Jumping to Loader\r\n"
+
+
+

@@ -34,11 +34,7 @@ SerialDevice_t testSerial;
 EXTERN_C EXPORT LOADER
 void PlatformEarlyInit(void)
 {
-    MmioWrite(0x3f215000 + AUX_MU_IO_REG, 'C');
-    _SerialPutChar(&testSerial, 'B');
     SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
-    kprintf("Serial Port Open\n");
-while(true) {}
     HwDiscovery();
 
     // -- at some point, this will come from the DTB

@@ -529,6 +529,196 @@ Actually, I am struggling to prove that the kernel loader (my code) actually get
 
 The more I think about this, the more I am drawn to the thought that I really messed up the linker script.
 
+So, from v0.4.6, this is the results from `readelf`:
+
+```
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           ARM
+  Version:                           0x1
+  Entry point address:               0x1025f4
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          575880 (bytes into file)
+  Flags:                             0x5000400, Version5 EABI, hard-float ABI
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         4
+  Size of section headers:           40 (bytes)
+  Number of section headers:         11
+  Section header string table index: 10
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .loader           PROGBITS        00100000 001000 006001 00  AX  0   0 4096
+  [ 2] .text             PROGBITS        80000000 008000 004060 00  AX  0   0  8
+  [ 3] .rodata           PROGBITS        80005000 00d000 0028ac 00   A  0   0  4
+  [ 4] .stab             PROGBITS        80008000 010000 07376d 00   A  0   0  4
+  [ 5] .data             PROGBITS        8007c000 084000 0003dc 00  WA  0   0  8
+  [ 6] .bss              NOBITS          8007d000 0843dc 004644 00  WA  0   0  4
+  [ 7] .ARM.attributes   ARM_ATTRIBUTES  00000000 0843dc 000039 00      0   0  1
+  [ 8] .symtab           SYMTAB          00000000 084418 006600 10      9 1418  4
+  [ 9] .strtab           STRTAB          00000000 08aa18 001f1d 00      0   0  1
+  [10] .shstrtab         STRTAB          00000000 08c935 000052 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  y (purecode), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x06001 0x06001 R E 0x1000
+  LOAD           0x008000 0x80000000 0x00107000 0x7b76d 0x7b76d R E 0x1000
+  LOAD           0x084000 0x8007c000 0x00183000 0x003dc 0x05644 RW  0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .loader
+   01     .text .rodata .stab
+   02     .data .bss
+   03
+```
+
+The big change here was to combine several sections.  The current sections are:
+
+```
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           ARM
+  Version:                           0x1
+  Entry point address:               0x100090
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          539476 (bytes into file)
+  Flags:                             0x5000400, Version5 EABI, hard-float ABI
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         6
+  Size of section headers:           40 (bytes)
+  Number of section headers:         11
+  Section header string table index: 10
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .entry            PROGBITS        00100000 001000 001000 00  AX  0   0 16
+  [ 2] .loader           PROGBITS        80000000 002000 004000 00  AX  0   0 4096
+  [ 3] .syscall          PROGBITS        80400000 006000 001000 00  WA  0   0  1
+  [ 4] .text             PROGBITS        80800000 007000 007000 00  AX  0   0  8
+  [ 5] .data             PROGBITS        81000000 00e000 005000 00  WA  0   0  8
+  [ 6] .stab             PROGBITS        81005000 013000 068000 00   A  0   0  4
+  [ 7] .ARM.attributes   ARM_ATTRIBUTES  00000000 07b000 000039 00      0   0  1
+  [ 8] .symtab           SYMTAB          00000000 07b03c 006900 10      9 1433  4
+  [ 9] .strtab           STRTAB          00000000 08193c 0021c0 00      0   0  1
+  [10] .shstrtab         STRTAB          00000000 083afc 000055 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  y (purecode), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x01000 0x01000 R E 0x1000
+  LOAD           0x002000 0x80000000 0x00101000 0x04000 0x04000 R E 0x1000
+  LOAD           0x006000 0x80400000 0x00105000 0x01000 0x01000 RW  0x1000
+  LOAD           0x007000 0x80800000 0x00106000 0x07000 0x07000 R E 0x1000
+  LOAD           0x00e000 0x81000000 0x0010d000 0x6d000 0x6d000 RW  0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .entry
+   01     .loader
+   02     .syscall
+   03     .text
+   04     .data .stab
+   05
+```
+
+It's not that the resulting elf is malformed, but that the `pi-bootloader` may not be able to handle it.
+
+I think.
+
+---
+
+Turns out that I am no longer able to think in decimal...  I was trying to print the number `'1'`, but I was printing decimal `31` rather than hexadecimal `0x31`.  When I cleaned that up, it worked.
+
+So, now to figure out how far I get.
+
+I was able to narrow down the problem to the first call to `MapPageFull` in `entry.s`.  I finally have something to work on here.
+
+OK, to save my debugging code:
+
+```
+    mov     r0,#0x5040
+    movt    r0,#0x3f21
+    mov     r1,#'#'
+s:  str     r1,[r0]
+    b       s
+```
+
+This outputs a stream of `'#'` characters.
+
+My problem is this block of code:
+
+```
+    mov     r9,#(ARMV7_MMU_TTL2)                @@ get the bits to set
+    orr     r3,r9                               @@ make the proper ttl1 entry
+    str     r3,[r2]                             @@ and put it in place
+```
+
+The `str` opcode does not have a valid `r2` value.  I need to clean that up.
+
+OK, so the paging tables are still messed up, even after fixing up the above issue.
+
+So, I am going to have to invest is some time into some additional debugging code.
+
+---
+
+### 2019-Dec-26
+
+So, I am unable to get the code to boot again.  I am not sure what the heck is going on, but it feels very fragile to me!  Even my output at the start of the entry point no longer works.  CRAP!
+
+Hmmm... OK...  When I write a loop of characters, I get the results I am looking for.  A single character does not work.
+
+So, I need to make sure I can output a single character.
+
+Ok, seriously, all I really changed was to clean up some alignments and now it runs.
+
+---
+
+### 2019-Dec-27
+
+More stepping through the bits I need to understand to get the rpi booting again....
+
+---
+
+### 2019-Dec-29
+
+I have finally been able to get the loader executing.  However, I am still not able to get the serial port to output anything.  So, since the MMIO memory is being identity mapped and mapped to the proper virtual memory locations.
+
+---
+
+I was finally able to finally get the rpi2b serial port to output characters properly.  I cleaned up my debugging mess and now I am getting problems with the hardware sections of both archs.  With that, I should commit my code.  I will also push it since this is a significant milestone.  I was supposed to get farther than this with v0.5.0b, but I think I will also branch this and continue on a new branch since so much work went into this.
+
 
 
 
