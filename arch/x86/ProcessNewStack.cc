@@ -2,7 +2,7 @@
 //
 // ProcessNewStack.cc -- for a new process, create its stack so we can return from ProcessSwitch()
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //

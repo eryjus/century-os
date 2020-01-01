@@ -2,7 +2,7 @@
 //
 //  IsrRegister.cc -- Register an ISR Handler to the table
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
