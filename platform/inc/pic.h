@@ -2,7 +2,7 @@
 //
 //  pic.h -- These are the hardware abstractions for interacting with the Programmable Interrupt Controller
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
