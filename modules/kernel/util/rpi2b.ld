@@ -2,7 +2,7 @@
 /*                                                                                                                 */
 /*  rpi2b.ld -- This is the linker script for locating the sections in the target binary                           */
 /*                                                                                                                 */
-/*        Copyright (c)  2017-2019 -- Adam Clark                                                                   */
+/*        Copyright (c)  2017-2020 -- Adam Clark                                                                   */
 /*                                                                                                                 */
 /* --------------------------------------------------------------------------------------------------------------- */
 /*                                                                                                                 */

@@ -2,7 +2,7 @@
 ##
 ##  Makefile -- This is the core makefile for creating the Century OS for any of the supported architectures
 ##
-##        Copyright (c)  2017-2019 -- Adam Clark; See LICENSE.md
+##        Copyright (c)  2017-2020 -- Adam Clark; See LICENSE.md
 ##
 ##  The basic folder layout here is going to be as follows:
 ##
