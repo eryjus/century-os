@@ -719,7 +719,51 @@ I have finally been able to get the loader executing.  However, I am still not a
 
 I was finally able to finally get the rpi2b serial port to output characters properly.  I cleaned up my debugging mess and now I am getting problems with the hardware sections of both archs.  With that, I should commit my code.  I will also push it since this is a significant milestone.  I was supposed to get farther than this with v0.5.0b, but I think I will also branch this and continue on a new branch since so much work went into this.
 
+---
 
+## Version 0.5.0c
 
+I will continue on this branch with the work to get all the hardware reporting and initializing properly.
 
+It appears that my fault handlers are not working right yet.  This should be the next task.
 
+The following code is in `LoaderMain()`:
+
+```C++
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+{
+    LoaderFunctionInit();               // go and initialize all the function locations
+    MmuInit();                          // Complete the MMU initialization for the loader
+    PlatformEarlyInit();
+    kprintf("Welcome\n");
+```
+
+This code does nothing to relocate the GDT or to set up the IDT in its final location for any form in either arch.  I could add this to any of the functions, but I would prefer to have that completed sooner than later.  In reality, this really should have been done in `entry.s` but was not convenient.  Therefore, I believe a function ahead of `LoaderFunctionInt()` is in order to get these final CPU structures initialized.
+
+Now, here is the problem: to complete the GDT setup, I am going to need a TSS per CPU.  To determine the number of CPUs, I am going to need to complete `PlatformEarlyInit()` (or at least `HardwareDiscovery()` therein).  And `PlatformEarlyInit()` needs to come after `MmuInit()` to get all the mappings settled.  Finally, `LoaderFunctionInit()` really does need to come first to makes sure that the structures are properly initialized before we get into anything that might use that (like a serial port) -- stuff that the C++ runtime expects to have been called.
+
+So, this is a bit of a chicken-and-egg problem.
+
+I really need to leave the setup as it is and get this all settled down properly knowing I do not have a properly configured GDT or IDT for anything yet -- until I get past `PlatformEarlyInit()`.  So, I need to make sure that the GDT and IDT structures are identity mapped for now.
+
+Having done that for both archs, I am able to get the proper exception for rpi2b (x86-pc has not yet been set up, so I cannot yet expect the same behavior).
+
+Now, with that said, I should be able to get the IDT up and running and handle exceptions.  This may yet be able to be handled in `entry.s`.
+
+I have an IDT set up now, but I am getting some odd exceptions (`#UD` in particular).  I will need to run logs on this.
+
+---
+
+### 2019-Dec-30
+
+So, logs....  which turned out to be a quick and easy cleanup.
+
+After that, I discovered a problem with mapping a page from the kernel for rpi2b.  The management space is not mapped properly.
+
+I realize now that I have no function to dump the mmu tables for rpi2b.  I need to get that function implemented.
+
+---
+
+### 2019-Dec-31
+
+Well,  managed to get my arm `entry.s` too far out of whack and checked out the one from the last commit....  and now I am redoing some debugging.   rpi2b exceptions are not working again.

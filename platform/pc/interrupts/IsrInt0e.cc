@@ -26,8 +26,9 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt0e(isrRegs_t *regs)
 {
     kprintf("\nPage Fault\n");
-    IsrDumpState(regs);
+//    IsrDumpState(regs);
 }

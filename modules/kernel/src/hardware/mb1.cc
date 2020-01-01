@@ -17,6 +17,7 @@
 
 #include "types.h"
 #include "serial.h"
+#include "mmu.h"
 #include "printf.h"
 #include "hw-disc.h"
 
@@ -148,7 +149,7 @@ typedef struct MB1 {
 //
 // -- This is the address of the MB1 Multiboot information structure
 //    --------------------------------------------------------------
-extern MB1 *mb1Data;
+EXTERN EXPORT LOADER_BSS MB1 *mb1Data;
 
 
 //
@@ -160,11 +161,20 @@ extern MB1 *mb1Data;
 //
 // -- Parse the Multiboot 1 header
 //    ----------------------------
-void __ldrtext Mb1Parse(void)
+EXTERN_C EXPORT LOADER
+void Mb1Parse(void)
 {
     if (!mb1Data) return;
 
     kprintf("Found the mbi structure at %p\n", mb1Data);
+
+    //
+    // -- the mb1Data structure needs to be identity mapped
+    //    -------------------------------------------------
+    archsize_t mb1Page = (archsize_t)mb1Data;
+    mb1Page &= ~0xfff;
+    MmuDumpTables(0xffc003f8);
+    MmuMapToFrame(mb1Page, mb1Page >> 12, PG_KRN);
     kprintf("  The flags are: %p\n", mb1Data->flags);
 
     //
@@ -239,17 +249,6 @@ void __ldrtext Mb1Parse(void)
                         (uint32_t)entry->mmapLength&0xffffffff);
                 kprintf("    entry size is: %p\n", entry->mmapSize);
             }
-
-#if DEBUG_MB==1
-            kprintf("  MMap Entry count is: %x\n", GetMMapEntryCount());
-
-            uint32_t *wrk = (uint32_t *)entry;
-            for (int i = 0; i < 6; i ++) {
-                kprintf("        32-bit entry %x contains %p\n", i, wrk[i]);
-            }
-
-            kprintf("  Through all entries...\n");
-#endif
 
             if (entry->mmapType == 1) AddAvailMem(entry->mmapAddr, entry->mmapLength);
             uint64_t newLimit = entry->mmapAddr + entry->mmapLength;

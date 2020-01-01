@@ -19,6 +19,7 @@
 
 
 #include "types.h"
+#include "cpu.h"
 #include "printf.h"
 #include "interrupt.h"
 
@@ -40,5 +41,6 @@ void IsrHandler(isrRegs_t regs)
         handler(&regs);
     } else {
         kprintf("Unhandled Interrupt #%x\n", regs.intno);
+        Halt();
     }
 }

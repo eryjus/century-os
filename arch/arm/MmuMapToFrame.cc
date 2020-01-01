@@ -95,6 +95,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     //    by checking the TTL1 Entry and checking the fault field.
     //    ----------------------------------------------------------------------------------------------------
     if (TTL1_ENTRY(addr, flags)->fault == 0b00) {
+        kprintf("TTL1 entry is not mapped to a TTL2 table; creating\n");
         frame_t ttl2 = MmuMakeTtl2Table(addr, flags);
         Ttl1_t *ttl1Entry = TTL1_ENTRY4(addr, flags);
 

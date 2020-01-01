@@ -68,3 +68,14 @@ typedef struct Ttl2_t {
 EXTERN_C EXPORT KERNEL
 frame_t MmuMakeNewTtl1Table(void);
 
+EXTERN_C EXPORT KERNEL
+void MmuDumpTables(archsize_t addr);
+
+
+//
+// -- Several macros to help with debugging the MMU Tables
+//    ----------------------------------------------------
+#define MMU_TTL1_ENTRY(addr)    (&(((Ttl1_t *)ARMV7_TTL1_TABLE_VADDR)[addr >> 20]))
+#define MMU_TTL2_ENTRY(addr)    (&(((Ttl2_t *)ARMV7_TTL2_TABLE_VADDR)[addr >> 12]))
+
+

@@ -26,6 +26,14 @@
 
 
 @@
+@@ -- make sure we have a value for whether we include debug code
+@@    -----------------------------------------------------------
+.ifndef ENABLE_DEBUG_ENTRY
+    .equ        ENABLE_DEBUG_ENTRY,0
+.endif
+
+
+@@
 @@ -- make sure that if the required symbols are defined; Branch Predictor
 @@    --------------------------------------------------------------------
 .ifndef ENABLE_BRANCH_PREDICTOR
@@ -421,7 +429,9 @@ bssLoop:
 .loop2:
     mov     r1,r0                               @@ identity map
     bl      MapPageFull                         @@ map the page
+.if ENABLE_DEBUG_ENTRY
     bl      DumpMmuTables
+.endif
     add     r8,#1
     add     r0,#4096
 
@@ -555,6 +565,23 @@ bssLoop:
     movt    r2,#(ARMV7_MMU_KRN_DATA>>16)
     bl      MapPageFull
 
+
+@@
+@@ -- finally map the Exception Vector Table
+@@    --------------------------------------
+    mov     r0,#(EXCEPT_VECTOR_TABLE&0xffff)
+    movt    r0,#(EXCEPT_VECTOR_TABLE>>16)
+
+    ldr     r1,=intTableAddr
+    ldr     r1,[r1]
+    mov     r0,r1                               @@ this needs to be fixed later
+
+    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)
+    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)
+
+    bl      MapPageFull
+
+
 @@ -- now we enable caches
     ldr     r0,=mmuLvl1Table
     ldr     r0,[r0]
@@ -568,8 +595,14 @@ bssLoop:
     mov     r1,#0xffffffff                      @@ All domains can manage all things by default
     mcr     p15,0,r1,c3,c0,0                    @@ write these to the domain access register
 
+.if ENABLE_DEBUG_ENTRY
     ldr     r0,=pg
     bl      DumpMmuTables
+
+    mov     r0,#0x03f8
+    movt    r0,#0xffc0
+    bl      DumpMmuTables
+.endif
 
 
 @@ -- now we enable paging
@@ -628,6 +661,7 @@ NewTTL2Table:
     bl      KrnTtl1Entry4                       @@ and get the address of the "mod 4" entry in r5
     bl      MakePageTable                       @@ r0 will hold the physical address of the new table
 
+.if ENABLE_DEBUG_ENTRY
     push    {r0}
     ldr     r0,=mmu6
     bl      OutputString
@@ -635,6 +669,7 @@ NewTTL2Table:
     bl      OutputHex
     bl      OutputNewline
     pop     {r0}
+.endif
 
 @@ -- finally, we need the value to load into the TTL1 table entry
     mov     r9,#ARMV7_MMU_TTL1_ENTRY
@@ -707,11 +742,13 @@ MapPageFull:
     mov     r5,r0
     bl      KrnTtl1Entry4                       @@ get the address of the TTL1 entry (r5)
 
+.if ENABLE_DEBUG_ENTRY
     push    {r0}
     mov     r0,r5
     bl      OutputHex
     bl      OutputNewline
     pop     {r0}
+.endif
 
     ldr     r3,[r5]                             @@ r3 has the ttl1 entry
     mov     r9,r3                               @@ we need a copy
@@ -736,11 +773,13 @@ MapPageFull:
 
 @@ -- we now have a ttl2 address; r3 has the address of the TTL2 table
 .haveTtl2:
+.if ENABLE_DEBUG_ENTRY
     push    {r0}
     ldr     r0,=mmu5
     bl      OutputString
     bl      OutputNewline
     pop     {r0}
+.endif
 
     mov     r9,#0xf000                          @@ establish the cleanup mask
     movt    r9,#0xffff                          @@ establish the cleanup mask
@@ -754,11 +793,14 @@ MapPageFull:
 
 @@ -- complete the mapping
     str     r1,[r5]                             @@ after all that, this is it
+
+.if ENABLE_DEBUG_ENTRY
     push    {r0}
     mov     r0,r5
     bl      OutputHex
     bl      OutputNewline
     pop     {r0}
+.endif
 
     pop     {r0}                                @@ restore the return address
     pop     {r1-r9,pc}
@@ -884,6 +926,8 @@ JumpKernel:
     mov     pc,r0                               @@ very simply set the new program counter; no fuss
 
 
+
+.if ENABLE_DEBUG_ENTRY
 @@
 @@ -- Output a character
 @@    ------------------
@@ -1044,7 +1088,7 @@ DumpMmuTables:
 
 
     pop     {r0-r10,pc}
-
+.endif
 
 @@
 @@ -- we need a small stack for out first calls to get a stack
@@ -1058,6 +1102,7 @@ stack:
 stack_top:
 
 
+.if ENABLE_DEBUG_ENTRY
     .align      4
 hex:
     .byte       '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
@@ -1090,5 +1135,5 @@ mmu6:
 mmu7:
     .asciz      "Jumping to Loader\r\n"
 
-
+.endif
 

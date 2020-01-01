@@ -52,7 +52,10 @@ void IsrInt0a(isrRegs_t *regs);
 void IsrInt0b(isrRegs_t *regs);
 void IsrInt0c(isrRegs_t *regs);
 void IsrInt0d(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt0e(isrRegs_t *regs);
+
 void IsrInt0f(isrRegs_t *regs);
 void IsrInt10(isrRegs_t *regs);
 void IsrInt11(isrRegs_t *regs);

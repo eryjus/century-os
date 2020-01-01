@@ -218,7 +218,7 @@ typedef struct HardwareDiscovery_t {
 //
 // -- We will work with a local copy and then copy the ending structure to its final location
 //    ---------------------------------------------------------------------------------------
-extern HardwareDiscovery_t *localHwDisc;
+EXTERN EXPORT LOADER_BSS HardwareDiscovery_t *localHwDisc;
 
 
 //
@@ -233,18 +233,21 @@ static_assert(sizeof(HardwareDiscovery_t) <= 4096, \
 //
 // -- Hardware discovery function to collect the hardware inventory
 //    -------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void HwDiscovery(void);
 
 
 //
 // -- Read the MB1 structures and place the important bits in the localHwDisc structure
 //    ---------------------------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void Mb1Parse(void);
 
 
 //
 // -- Read the MB2 structures and place the important bits in the localHwDisc structure
 //    ---------------------------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void Mb2Parse(void);
 
 
