@@ -2,7 +2,7 @@
 //
 //  AcpiReadMadt.cc -- Read the MADT table and determine what we will do with the information
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -24,7 +24,8 @@
 //
 // -- Read the ACPI MADT Table, and figure out what it means to CenturyOS
 //    -------------------------------------------------------------------
-void __ldrtext AcpiReadMadt(archsize_t loc)
+EXTERN_C EXPORT LOADER
+void AcpiReadMadt(archsize_t loc)
 {
     MADT_t *madt = (MADT_t *)loc;
     kprintf(".... MADT table length is %p\n", madt->length);

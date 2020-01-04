@@ -2,7 +2,7 @@
 ##
 ##  Tupfile -- An alternative to 'make` build system -- build the object files for the x86-pc target
 ##
-##        Copyright (c)  2017-2019 -- Adam Clark
+##        Copyright (c)  2017-2020 -- Adam Clark
 ##
 ## -----------------------------------------------------------------------------------------------------------------
 ##

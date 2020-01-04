@@ -2,7 +2,7 @@
 //
 //  printf.h -- A printf()-like function to write output to the serial port
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -16,14 +16,22 @@
 //===================================================================================================================
 
 
-#ifndef __PRINTF_H__
-#define __PRINTF_H__
+#pragma once
+
+#include "types.h"
+
+
+//
+// -- used to "turn on" kprintf() output
+//    ----------------------------------
+EXTERN EXPORT KERNEL_DATA bool kPrintfEnabled;
+
 
 
 //
 // -- This function operates like printf()
 //    ------------------------------------
+EXTERN_C EXPORT KERNEL
 int kprintf(const char *fmt, ...);
 
 
-#endif

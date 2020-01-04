@@ -2,7 +2,7 @@
 //
 //  AcpiReadXsdt.cc -- Validate and read the XSDT table
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -24,7 +24,8 @@
 //
 // -- read the xsdt table
 //    -------------------
-bool __ldrtext AcpiReadXsdt(archsize_t loc)
+EXTERN_C EXPORT LOADER
+bool AcpiReadXsdt(archsize_t loc)
 {
     kprintf("Reading the XSDT\n");
     CHK_ACPI(loc);

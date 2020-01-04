@@ -2,7 +2,7 @@
 //
 //  AcpiGetTableSig.cc -- Get the signature of the table at an address
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -23,7 +23,7 @@
 //
 // -- get the table signature (and check its valid); return 0 if invalid
 //    ------------------------------------------------------------------
-EXPORT LOADER
+EXTERN_C EXPORT LOADER
 uint32_t AcpiGetTableSig(archsize_t loc)
 {
     kprintf("Checking ACPI table at %p\n", loc);
@@ -280,3 +280,4 @@ uint32_t AcpiGetTableSig(archsize_t loc)
 
     return rv;
 }
+

@@ -1,7 +1,7 @@
 //===================================================================================================================
 //  kprintf.cc -- Write a formatted string to the serial port COM1 (like printf)
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -27,7 +27,13 @@
 //
 // -- This is the spinlock that is used to ensure that only one process can output to the serial port at a time
 //    ---------------------------------------------------------------------------------------------------------
-Spinlock_t kprintfLock = {0};
+EXPORT KERNEL_DATA Spinlock_t kprintfLock = {0};
+
+
+//
+// -- Output will be disabled until we have everything ready -- allowing for debug code in mixed-use functions
+//    --------------------------------------------------------------------------------------------------------
+EXPORT KERNEL_DATA bool kPrintfEnabled = false;
 
 
 //
@@ -55,6 +61,8 @@ static const char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 //    ------------------------------------------------------------
 int kprintf(const char *fmt, ...)
 {
+    if (!kPrintfEnabled) return 0;
+
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(kprintfLock) {
         int printed = 0;
         const char *dig = digits;

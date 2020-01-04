@@ -2,7 +2,7 @@
 ;;
 ;;  entry.s -- Entry point for x86 architecture
 ;;
-;;        Copyright (c)  2017-2019 -- Adam Clark
+;;        Copyright (c)  2017-2020 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
 ;;        See License.md for details.
 ;;
@@ -66,6 +66,38 @@
     extern      dataSize                        ;; kernel data size (linker provided)
     extern      dataVirt                        ;; kernel data section starting address (linker provided)
 
+    extern      isr0                            ;; interrupt handler 0x00
+    extern      isr1                            ;; interrupt handler 0x01
+    extern      isr2                            ;; interrupt handler 0x02
+    extern      isr3                            ;; interrupt handler 0x03
+    extern      isr4                            ;; interrupt handler 0x04
+    extern      isr5                            ;; interrupt handler 0x05
+    extern      isr6                            ;; interrupt handler 0x06
+    extern      isr7                            ;; interrupt handler 0x07
+    extern      isr8                            ;; interrupt handler 0x08
+    extern      isr9                            ;; interrupt handler 0x09
+    extern      isr10                           ;; interrupt handler 0x0a
+    extern      isr11                           ;; interrupt handler 0x0b
+    extern      isr12                           ;; interrupt handler 0x0c
+    extern      isr13                           ;; interrupt handler 0x0d
+    extern      isr14                           ;; interrupt handler 0x0e
+    extern      isr15                           ;; interrupt handler 0x0f
+    extern      isr16                           ;; interrupt handler 0x10
+    extern      isr17                           ;; interrupt handler 0x11
+    extern      isr18                           ;; interrupt handler 0x12
+    extern      isr19                           ;; interrupt handler 0x13
+    extern      isr20                           ;; interrupt handler 0x14
+    extern      isr21                           ;; interrupt handler 0x15
+    extern      isr22                           ;; interrupt handler 0x16
+    extern      isr23                           ;; interrupt handler 0x17
+    extern      isr24                           ;; interrupt handler 0x18
+    extern      isr25                           ;; interrupt handler 0x19
+    extern      isr26                           ;; interrupt handler 0x1a
+    extern      isr27                           ;; interrupt handler 0x1b
+    extern      isr28                           ;; interrupt handler 0x1c
+    extern      isr29                           ;; interrupt handler 0x1d
+    extern      isr30                           ;; interrupt handler 0x1e
+    extern      isr31                           ;; interrupt handler 0x1f
 
 ;;
 ;; -- This is the multiboot header.  During the link process, it will be relocated to the beginning of the
@@ -287,7 +319,7 @@ clearBss:
 ;; -- init to populate the table
     mov     ecx,[mbSize]                        ;; get the size of the multiboot section
     shr     ecx,12                              ;; convert that to pages/frames (size is page aligned)
-    inc     ecx                                 ;; we need one extra page
+    inc     ecx                                 ;; we need one extra page for loopne
     mov     esi,[mbPhys]                        ;; get the address
     mov     edi,[mbStart]                       ;; the index into the table (0x100000 >> 12)
     shr     edi,12
@@ -300,6 +332,26 @@ clearBss:
     inc     edi                                 ;; next index
     add     esi,0x1000                          ;; next page
     loopne  .loop1
+
+
+;;
+;; -- Identity map the page/frame that contains the current GDT and IDT
+;;    -----------------------------------------------------------------
+    call    MakePageTable                       ;; get the address of the GDT/IDT for later
+    mov     [intTableAddr],eax
+
+    call    MakePageTable                       ;; get a page table
+    mov     ebp,eax                             ;; save for later
+    or      eax,X86_MMU_BASE                    ;; fix up the bits
+    mov     [ebx + (4 * 4)],eax                 ;; this will be at entry 4 (0x100a000 / 0x400000)
+    mov     eax,ebp                             ;; it's later
+
+    mov     edx,[intTableAddr]                  ;; get the address
+    mov     edi,edx                             ;; the index into the table (0x100000 >> 12)
+    shr     edi,12
+    and     edi,0x3ff
+    or      edx,X86_MMU_BASE                    ;; get the other bits
+    mov     [eax + (edi * 4)],edx               ;; set the page table entry
 
 
 ;;
@@ -451,8 +503,7 @@ clearBss:
 ;;    GDT.  However, we need to load the GDTR and IDTR properly for the CPU.  At the same time, get the TSS
 ;;    ready to go.
 ;;    -----------------------------------------------------------------------------------------------------
-    call    NextEarlyFrame                      ;; go get a frame for the GDT/TSS/IDT stuff
-    mov     [intTableAddr],eax                  ;; save this frame for later
+    mov     eax,[intTableAddr]                  ;; get this from earlier
     mov     edi,eax                             ;; save the frame to the edi
     mov     ecx,0x400                           ;; we going to move 0x400 dwords
     xor     eax,eax                             ;; and we are going to clear this frame
@@ -484,6 +535,205 @@ clearBss:
 ;; -- when loopne decremented, it will not execute when ecx == 0; so clean that up
     mov     [edi],eax                           ;; write the last value
     mov     [edi+4],ebx                         ;; write the last value
+
+
+;;
+;; -- from here, we need to map the address of the IDT
+;;    ------------------------------------------------
+    mov     ebx,[intTableAddr]                  ;; get the address of the table
+    add     ebx,0x800                           ;; adjust to the IDT
+
+    mov     eax,0x08                            ;; exception 0x00
+    mov     edx,isr0
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x00)],eax
+    mov     [ebx + (8 * 0x00) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x01
+    mov     edx,isr1
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x01)],eax
+    mov     [ebx + (8 * 0x01) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x02
+    mov     edx,isr2
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x02)],eax
+    mov     [ebx + (8 * 0x02) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x03
+    mov     edx,isr3
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x03)],eax
+    mov     [ebx + (8 * 0x03) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x04
+    mov     edx,isr4
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x04)],eax
+    mov     [ebx + (8 * 0x04) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x05
+    mov     edx,isr5
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x05)],eax
+    mov     [ebx + (8 * 0x05) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x06
+    mov     edx,isr6
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x06)],eax
+    mov     [ebx + (8 * 0x06) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x07
+    mov     edx,isr7
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x07)],eax
+    mov     [ebx + (8 * 0x07) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x08
+    mov     edx,isr8
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x08)],eax
+    mov     [ebx + (8 * 0x08) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x09
+    mov     edx,isr9
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x09)],eax
+    mov     [ebx + (8 * 0x09) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x0a
+    mov     edx,isr10
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x0a)],eax
+    mov     [ebx + (8 * 0x0a) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x0b
+    mov     edx,isr11
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x0b)],eax
+    mov     [ebx + (8 * 0x0b) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x0c
+    mov     edx,isr12
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x0c)],eax
+    mov     [ebx + (8 * 0x0c) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x0d
+    mov     edx,isr13
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x0d)],eax
+    mov     [ebx + (8 * 0x0d) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x0e
+    mov     edx,isr14
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x0e)],eax
+    mov     [ebx + (8 * 0x0e) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x0f
+    mov     edx,isr15
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x0f)],eax
+    mov     [ebx + (8 * 0x0f) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x10
+    mov     edx,isr16
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x10)],eax
+    mov     [ebx + (8 * 0x10) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x11
+    mov     edx,isr17
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x11)],eax
+    mov     [ebx + (8 * 0x11) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x12
+    mov     edx,isr18
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x12)],eax
+    mov     [ebx + (8 * 0x12) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x13
+    mov     edx,isr19
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x13)],eax
+    mov     [ebx + (8 * 0x13) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x14
+    mov     edx,isr20
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x14)],eax
+    mov     [ebx + (8 * 0x14) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x15
+    mov     edx,isr21
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x15)],eax
+    mov     [ebx + (8 * 0x15) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x16
+    mov     edx,isr22
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x16)],eax
+    mov     [ebx + (8 * 0x16) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x17
+    mov     edx,isr23
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x17)],eax
+    mov     [ebx + (8 * 0x17) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x18
+    mov     edx,isr24
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x18)],eax
+    mov     [ebx + (8 * 0x18) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x19
+    mov     edx,isr25
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x19)],eax
+    mov     [ebx + (8 * 0x19) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x1a
+    mov     edx,isr26
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x1a)],eax
+    mov     [ebx + (8 * 0x1a) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x1b
+    mov     edx,isr27
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x1b)],eax
+    mov     [ebx + (8 * 0x1b) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x1c
+    mov     edx,isr28
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x1c)],eax
+    mov     [ebx + (8 * 0x1c) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x1d
+    mov     edx,isr29
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x1d)],eax
+    mov     [ebx + (8 * 0x1d) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x1e
+    mov     edx,isr30
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x1e)],eax
+    mov     [ebx + (8 * 0x1e) + 4],edx
+
+    mov     eax,0x08                            ;; exception 0x1f
+    mov     edx,isr31
+    call    MakeIdtEntry
+    mov     [ebx + (8 * 0x1f)],eax
+    mov     [ebx + (8 * 0x1f) + 4],edx
 
 
 ;;
@@ -546,10 +796,39 @@ MakePageTable:
     mov     ecx,PAGE_SIZE                       ;; the number of bytes to clear
     cld                                         ;; increment
     rep     stosd                               ;; clear the block
-
     pop     eax                                 ;; pop the address
+
     pop     edi                                 ;; pop saved registers
     pop     ecx
+    ret
+
+
+;;
+;; -- Create an IDT entry to call an ISR where eax holds the section selector and edx holds the
+;;    handler address.  The value of the IDT entry will be held in edx:eax.
+;;    -----------------------------------------------------------------------------------------
+MakeIdtEntry:
+    push    esi
+    push    edi
+
+    mov     esi,eax                             ;; save the selector
+    mov     edi,edx                             ;; save the address
+
+    xor     eax,eax                             ;; zero out the eax register
+    xor     edx,edx                             ;; zero out the edx register
+
+    shl     esi,16                              ;; adjust the selector
+    mov     eax,esi                             ;; move it to the destination; esi is now free
+    mov     esi,edi                             ;; get the address
+    and     esi,0xffff                          ;; and mask out the low part
+    or      eax,esi                             ;; move that part into the return register
+
+    and     edi,0xffff0000                      ;; get the high section
+    mov     edx,edi                             ;; put it in the return register
+    or      edx,0x8e00                          ;; set the flags
+
+    pop     edi
+    pop     esi
     ret
 
 
@@ -577,5 +856,6 @@ JumpKernel:
 ;;    --------------------------------------------------------
     align       4
 stack:
+    dd          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     dd          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 stack_top:

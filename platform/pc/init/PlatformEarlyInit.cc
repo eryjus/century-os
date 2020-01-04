@@ -2,7 +2,7 @@
 //
 //  PlatformEarlyInit.cc -- Handle the early initialization for the pc platform
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -22,6 +22,7 @@
 #include "fb.h"
 #include "serial.h"
 #include "printf.h"
+#include "mmu.h"
 #include "platform.h"
 
 
@@ -32,6 +33,7 @@ EXTERN_C EXPORT LOADER
 void PlatformEarlyInit(void)
 {
     SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+    kprintf("Hello...\n");
 
     if (CheckCpuid() != 0) {
         SetCpuid(true);
@@ -39,16 +41,24 @@ void PlatformEarlyInit(void)
     }
 
     HwDiscovery();
+
     RSDP_t *rsdp = AcpiFindRsdp();
     if (rsdp == NULL) return;
 
+    // -- temporarily map the acpi tables
+    MmuMapToFrame((archsize_t)rsdp, (frame_t)(((archsize_t)rsdp) >> 12), PG_KRN);
+
     if ((rsdp->xsdtAddress != 0) && (AcpiReadXsdt(rsdp->xsdtAddress) == true)) {
+        MmuUnmapPage((archsize_t)rsdp);
         return;
     }
 
     AcpiReadRsdt(rsdp->rsdtAddress);
 
     kprintf("The APIC base address is at %p\n", READ_APIC_BASE());
+
+    // -- unmap the acpi tables
+    MmuUnmapPage((archsize_t)rsdp);
 }
 
 

@@ -2,7 +2,7 @@
 //
 //  PlatformEarlyInit.cc -- Handle the early initialization for the bcm2835 platform
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -35,6 +35,7 @@ EXTERN_C EXPORT LOADER
 void PlatformEarlyInit(void)
 {
     SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+    kprintf("Hello...\n");
     HwDiscovery();
 
     // -- at some point, this will come from the DTB

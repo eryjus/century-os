@@ -2,7 +2,7 @@
 //
 //  IsrInt0e.cc -- Page Fault handler
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -26,8 +26,9 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt0e(isrRegs_t *regs)
 {
     kprintf("\nPage Fault\n");
-    IsrDumpState(regs);
+//    IsrDumpState(regs);
 }

@@ -2,7 +2,7 @@
 //
 //  platform-mailbox.h -- Mailbox definitions and functions for the bcm2835
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -37,7 +37,6 @@ typedef struct MailboxDevice_t {
 //
 // -- Here, declare the different configurations of the GPIO will use
 //    ---------------------------------------------------------------
-extern MailboxDevice_t loaderMailbox;
 extern MailboxDevice_t kernelMailbox;
 
 
@@ -59,7 +58,6 @@ extern archsize_t _MailboxReceive(MailboxDevice_t *dev, archsize_t mb);
 //
 // -- define the base locations for both the loader and the kernel versions
 //    ---------------------------------------------------------------------
-#define LDR_MAILBOX_BASE       ((MMIO_LOADER_LOC << 12) + 0xb880)
 #define KRN_MAILBOX_BASE       (MMIO_VADDR + 0xb880)
 
 

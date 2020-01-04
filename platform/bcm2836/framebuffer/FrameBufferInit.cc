@@ -2,7 +2,7 @@
 //
 //  FrameBufferInit.cc -- Frame buffer initialization for the console (rpi2b version)
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -94,8 +94,8 @@ void __ldrtext FrameBufferInit(void)
 
 
     CLEAN_CACHE(mbBuf, sizeof(mbBuf));
-    MailboxSend(&loaderMailbox, 8, (archsize_t)mbBuf);
-    MailboxReceive(&loaderMailbox, 8);
+    MailboxSend(&kernelMailbox, 8, (archsize_t)mbBuf);
+    MailboxReceive(&kernelMailbox, 8);
     INVALIDATE_CACHE(mbBuf, sizeof(mbBuf));
 
 
@@ -111,4 +111,12 @@ void __ldrtext FrameBufferInit(void)
 
     SetFgColor(0xffff);
     SetBgColor(0x1234);
+
+    int cnt = 400 * 800 * (16 / 8);
+    archsize_t page = (archsize_t)fb;
+    if (cnt & 0xfff) cnt = (cnt >> 12) + 1; else cnt = cnt >> 12;
+
+    for (int i = 0; i < cnt; i ++, page += PAGE_SIZE) {
+        MmuMapToFrame(FRAME_BUFFER_VADDR + (i << 12), page, PG_KRN | PG_WRT);
+    }
 }

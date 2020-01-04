@@ -2,7 +2,7 @@
 //
 //  LoaderMain.cc -- The main routine for the loader module
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -37,9 +37,9 @@ void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
     LoaderFunctionInit();               // go and initialize all the function locations
     MmuInit();                          // Complete the MMU initialization for the loader
+    kPrintfEnabled = true;
     PlatformEarlyInit();
     kprintf("Welcome\n");
-while (true) {}
 
     FrameBufferInit();
     HeapInit();

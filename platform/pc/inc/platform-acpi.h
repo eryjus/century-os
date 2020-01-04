@@ -2,7 +2,7 @@
 //
 //  platform-acpi.h -- These are the structures and functions for interacting with ACPI for the kernel
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -77,7 +77,7 @@ typedef struct RSDP_t {
 //
 // -- This function will locate the RSDP if available and note it in the hardware discovery table
 //    -------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ RSDP_t *AcpiFindRsdp(void);
+EXTERN_C EXPORT LOADER RSDP_t *AcpiFindRsdp(void);
 
 
 
@@ -109,13 +109,13 @@ __CENTURY_FUNC__ RSDP_t *AcpiFindRsdp(void);
 //
 // -- Check the table to see if it is what we expect; note that this memory must be mapped before calling
 //    ---------------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ bool AcpiCheckTable(archsize_t locn, uint32_t);
+EXTERN_C EXPORT LOADER bool AcpiCheckTable(archsize_t locn, uint32_t);
 
 
 //
 // -- get the table signature (and check its valid); return 0 if invalid
 //    ------------------------------------------------------------------
-__CENTURY_FUNC__ uint32_t AcpiGetTableSig(archsize_t loc);
+EXTERN_C EXPORT LOADER uint32_t AcpiGetTableSig(archsize_t loc);
 
 
 //
@@ -130,7 +130,7 @@ typedef struct RSDT_t {
 //
 // -- read the rdst table
 //    -------------------
-__CENTURY_FUNC__ bool AcpiReadRsdt(archsize_t loc);
+EXTERN_C EXPORT LOADER bool AcpiReadRsdt(archsize_t loc);
 
 
 //
@@ -145,7 +145,7 @@ typedef struct XSDT_t {
 //
 // -- read the xsdt table
 //    -------------------
-__CENTURY_FUNC__ bool AcpiReadXsdt(archsize_t loc);
+EXTERN_C EXPORT LOADER bool AcpiReadXsdt(archsize_t loc);
 
 
 //
@@ -162,7 +162,7 @@ typedef struct MADT_t {
 //
 // -- Read an ACPI MADT table
 //    -----------------------
-__CENTURY_FUNC__ void AcpiReadMadt(archsize_t loc);
+EXTERN_C EXPORT LOADER void AcpiReadMadt(archsize_t loc);
 
 
 //

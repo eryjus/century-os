@@ -2,7 +2,7 @@
 //
 //  AcpiReadRsdt.cc -- Validate and read the RSDT table
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -24,7 +24,8 @@
 //
 // -- read the rsdt table
 //    -------------------
-bool __ldrtext AcpiReadRsdt(archsize_t loc)
+EXTERN_C EXPORT LOADER
+bool AcpiReadRsdt(archsize_t loc)
 {
     kprintf("Reading the RSDT\n");
     CHK_ACPI(loc);

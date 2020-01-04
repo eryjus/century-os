@@ -2,7 +2,7 @@
 //
 //  arch-interrupt.cc -- These are functions related to interrupts for the i686 architecture
 //
-//        Copyright (c)  2017-2019 -- Adam Clark
+//        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
@@ -52,7 +52,10 @@ void IsrInt0a(isrRegs_t *regs);
 void IsrInt0b(isrRegs_t *regs);
 void IsrInt0c(isrRegs_t *regs);
 void IsrInt0d(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt0e(isrRegs_t *regs);
+
 void IsrInt0f(isrRegs_t *regs);
 void IsrInt10(isrRegs_t *regs);
 void IsrInt11(isrRegs_t *regs);
