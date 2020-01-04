@@ -10,6 +10,7 @@
       .equ MMU_STACK_INIT_VADDR,0xff40a000
       .equ ARMV7_TTL1_TABLE_VADDR,0xff404000
       .equ ARMV7_TTL2_TABLE_VADDR,0xffc00000
+      .equ ARMV7_TTL2_MGMT,0xfffff000
       .equ ARMV7_MMU_FAULT,0
       .equ ARMV7_MMU_TTL2,0b01
       .equ ARMV7_MMU_CODE_PAGE,0b10

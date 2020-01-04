@@ -23,7 +23,8 @@
 //
 // -- Check the table to see if it is what we expect; note that this memory must be mapped before calling
 //    ---------------------------------------------------------------------------------------------------
-bool __ldrtext AcpiCheckTable(archsize_t locn, uint32_t sig)
+EXTERN_C EXPORT LOADER
+bool AcpiCheckTable(archsize_t locn, uint32_t sig)
 {
     uint8_t *table = (uint8_t *)locn;
     uint32_t size;
@@ -46,3 +47,4 @@ bool __ldrtext AcpiCheckTable(archsize_t locn, uint32_t sig)
 
     return (checksum & 0xff) == 0;
 }
+

@@ -172,8 +172,6 @@ void Mb1Parse(void)
     // -- the mb1Data structure needs to be identity mapped
     //    -------------------------------------------------
     archsize_t mb1Page = (archsize_t)mb1Data;
-    mb1Page &= ~0xfff;
-    MmuDumpTables(0xffc003f8);
     MmuMapToFrame(mb1Page, mb1Page >> 12, PG_KRN);
     kprintf("  The flags are: %p\n", mb1Data->flags);
 
@@ -319,4 +317,6 @@ void Mb1Parse(void)
     }
 
     kprintf("Done parsing MB1 information\n");
+
+    MmuUnmapPage(mb1Page);
 }

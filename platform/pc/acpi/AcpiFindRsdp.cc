@@ -23,13 +23,15 @@
 
 #include "hw-disc.h"
 #include "printf.h"
+#include "mmu.h"
 #include "hardware.h"
 
 
 //
 // -- check a pointer to see if it really qualifies as a RSDP
 //    -------------------------------------------------------
-static bool IsRsdp(RSDP_t *rsdp)
+HIDDEN LOADER
+bool IsRsdp(RSDP_t *rsdp)
 {
     if (!rsdp) return false;
 
@@ -47,12 +49,17 @@ static bool IsRsdp(RSDP_t *rsdp)
 //
 // -- Locate the Root System Description Table
 //    ----------------------------------------
-RSDP_t *__ldrtext AcpiFindRsdp(void)
+EXTERN_C EXPORT LOADER
+RSDP_t * AcpiFindRsdp(void)
 {
     archsize_t wrk = GetEbda() & ~0x000f;
     archsize_t end = wrk + 1024;
+    archsize_t pg = wrk & ~0xfff;
     RSDP_t *rsdp;
+    RSDP_t *rv = NULL;
 
+
+    MmuMapToFrame(pg, pg >> 12, PG_KRN);
     if (wrk != 0) {
         while (wrk < end) {
             rsdp = (RSDP_t *)wrk;
@@ -60,15 +67,22 @@ RSDP_t *__ldrtext AcpiFindRsdp(void)
             if (rsdp->lSignature == RSDP_SIG && IsRsdp(rsdp)) {
                 kprintf("RSDP found at address %p\n", wrk);
                 SetRsdp(wrk);
+                MmuUnmapPage(pg);
                 return rsdp;
             }
 
             wrk += 16;
         }
     }
+    MmuUnmapPage(pg);
 
     wrk = 0xe0000;
     end = 0xfffff;
+
+    for (pg = wrk; pg < end; pg += PAGE_SIZE) {
+        MmuMapToFrame(pg, pg >> 12, PG_KRN);
+    }
+    pg = wrk;       // reset pg
 
     while (wrk < end) {
         rsdp = (RSDP_t *)wrk;
@@ -79,13 +93,19 @@ RSDP_t *__ldrtext AcpiFindRsdp(void)
             kprintf(".. Rsdt Address %p\n", rsdp->rsdtAddress);
             kprintf(".. Xsdt Address %p\n", rsdp->xsdtAddress);
             SetRsdp(wrk);
-            return rsdp;
+            rv = rsdp;
+            goto exit;
         }
 
         wrk += 16;
     }
 
-    return NULL;
+exit:
+    for (pg = wrk; pg < end; pg += PAGE_SIZE) {
+        MmuUnmapPage(pg);
+    }
+
+    return rv;
 }
 
 

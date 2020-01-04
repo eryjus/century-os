@@ -767,3 +767,106 @@ I realize now that I have no function to dump the mmu tables for rpi2b.  I need 
 ### 2019-Dec-31
 
 Well,  managed to get my arm `entry.s` too far out of whack and checked out the one from the last commit....  and now I am redoing some debugging.   rpi2b exceptions are not working again.
+
+---
+
+### 2020-Jan-01
+
+Well, Happy New Year!!  I started by ticking all the copyright (c) dates.  And broke a few things in the process (I really need to learn `git` better).  I will have to sort them all out.
+
+OK, so x86-pc works fine.
+
+rpi2b is getting this data abort:
+
+```
+IN:
+0x808034cc:  e5941000  ldr      r1, [r4]
+0x808034d0:  e2812054  add      r2, r1, #0x54
+0x808034d4:  e5923000  ldr      r3, [r2]
+0x808034d8:  e3130020  tst      r3, #0x20
+0x808034dc:  0afffffc  beq      #0x808034d4
+
+R00=810002f4 R01=00000001 R02=00000000 R03=80803494
+R04=810002f0 R05=00000054 R06=810002f4 R07=000000c0
+R08=ff800fbc R09=3fd01000 R10=000287a0 R11=808063f4
+R12=05000040 R13=ff800f40 R14=808034cc R15=808034cc
+PSR=600001d3 -ZC- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600003f
+...with DFSR 0x5 DFAR 0xf8215054
+```
+
+The DFAR is the mini-UART and is the mapped address.  So I need to figure out the DFSR.  And I see it is a First Level translation fault -- I do not have a TTL1 Entry for this address.  But how?
+
+OK, turns out I added some debugging code into `MmuMapToFrame()` and that is being executed too early.  And removing it fixed the problem.
+So, I need to figure out how to "turn on" debugging output.                                                           z
+
+---
+
+I am still faulting trying to map pages on rpi2b.  I still am missing somehow some epiphany I had at some point in an earlier version.  There is some page that is not mapped to be able to map a page.  I think it has something to do with recursively mapping a TTL2 table.  So, let's think this through:
+
+The formula for calculating the TTL1 Entry address is `(0xff404000 + ((<addr> >> 20) * 4))`.
+The formula for calculating the TTL2 Entry address is `(0xffc00000 + ((<addr> >> 12) * 4))`.
+
+| Page Base Address | TTL1 Entry Addr | TTL2 Entry Addr |
+|:------------------|:----------------|:----------------|
+| `0xff401000`      | `0xff407fd0`    | `0xffffd004`    |
+| `0xff407000`      | `0xff407fd0`    | `0xffffd01c`    |
+| `0xffffd000`      | `0xff407ffc`    | `0xfffffff4`    |
+| `0xfffff000`      | `0xff407ffc`    | `0xfffffffc`    |
+
+So:
+* `0xff401000` has a TTL1 Table and Entry, no TTL2 Table; check `0xffffd000`
+* `0xffffd000` has a TTL1 Table and Entry, a TTL2 Table, but no TTL2 Entry
+* `0xfffff000` has a TTL1 Table and Entry, a TTL2 Table, but no TTL2 Entry
+
+OK, so with that, I know that from `0xffc00000` to `0xffffffff` is 4MB.  This fits in 4 TTL1 entries, or in 4 TTL2 tables or 1 frame.  So, this means that TTL1 entries `0xffc` to `0xfff` should all be mapped (and I think they are).  These each will point to a TTL2 table of 256 entries, or 1 frame in total.  Therefore, address `0xfffffffc` should point to this frame.
+
+---
+
+So, I find the following comments from the v0.3.0 journal from 2019-Feb-17:
+
+> ### 2019-Feb-17
+>
+> I started today by cleaning up my `MmuInit()` function.  It certainly had some problems.  Now, since I have finally figured out that the TTL2 tables for managing the ttl2 tables needs a recursive mapping, I think it best to consider the types of structure entries I need to be able to manage to map a frame into virtual address space.  So, for any given address `addr`, I need to be able to find:
+> 1. The TTL1 Entry for that address: `TTL1_KRN_VADDR[addr >> 20]`.  This is used when we need to add a TTL2 table.  This space is already mapped and ready to be used.
+> 1. The TTL2 Management Table TTL2 Entry for that address: `0xfffff000[addr >> 22]` (taking into account the "`0x3ff`" comments from `MmuInit()`).  This address is used to map the new TTL2 table into the management space.  This table is already mapped and ready to be used.
+> 1. The TTL2 Entry for that address: `TTL2_KRN_VADDR[addr >> 12]`.  This is used to actually perform the mapping for the MMU.  Once the above steps are complete (meaning the entries are checked/mapped), every thing is in place to perform this function.
+>
+> With these 3 bits of information, I should be able to create a proper function to manage this information.  The key missing piece here is the "TTL2 Management Table TTL2 Entry" which I have been missing all this time.  And no recursion!
+
+And I am still struggling with that "TTL2 Management Table TTL2 Entry" concept.  Damn!!
+
+---
+
+### 2020-Jan-02
+
+I am spending most of my day reading.  Most of what I need to duplicate is in a previouis version of [`MmuInit()`](https://github.com/eryjus/century-os/blob/v0.3.0/arch/arm/MmuInit.cc).  This will need to be taken care of in `entry.s`, and once complete `MmuMapToFrame()` should work.
+
+The order of things that were done in `MmuInit()`:
+1. Map the TTL1 table into its management address
+1. Create and map the TTL2 table for the TTL2 management addresses (0xffc - 0xfff)
+1. Recursively map the last TTL2 entry to itself
+1. Map all existing TTL2 tables into the TTL2 management space
+
+From there, `MmuMapToFrame()` works.  At least in that version.
+
+---
+
+### 2020-Jan-03
+
+Finally!!  The key was to add a block of code at the end to loop through the `TTL1 % 4 == 0` TTL1 Entries and mapping them into the TTL2 management table.  This was the part I was missing.
+
+Now, the rpi2b boots to the Welcome message.  The x86pc page faults before then.  So, now to clean that up.
+
+OK, that problem exists in parsing the ACPI tables.  These need to be mapped and unmapped as I consume them.  And I have that worked out.
+
+---
+
+I have been able to get to the kernel.  In both archs, I am able to see the greeting "Welcome to CenturyOS -- a hobby operating system".  And then in both cases, I get a page fault.  So, I think it is time to commit this version.
+
+
+
+
+

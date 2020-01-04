@@ -24,7 +24,8 @@
 //
 // -- read the rsdt table
 //    -------------------
-bool __ldrtext AcpiReadRsdt(archsize_t loc)
+EXTERN_C EXPORT LOADER
+bool AcpiReadRsdt(archsize_t loc)
 {
     kprintf("Reading the RSDT\n");
     CHK_ACPI(loc);

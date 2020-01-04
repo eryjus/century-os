@@ -23,7 +23,7 @@
 //
 // -- get the table signature (and check its valid); return 0 if invalid
 //    ------------------------------------------------------------------
-EXPORT LOADER
+EXTERN_C EXPORT LOADER
 uint32_t AcpiGetTableSig(archsize_t loc)
 {
     kprintf("Checking ACPI table at %p\n", loc);
@@ -280,3 +280,4 @@ uint32_t AcpiGetTableSig(archsize_t loc)
 
     return rv;
 }
+

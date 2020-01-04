@@ -37,7 +37,6 @@ typedef struct MailboxDevice_t {
 //
 // -- Here, declare the different configurations of the GPIO will use
 //    ---------------------------------------------------------------
-extern MailboxDevice_t loaderMailbox;
 extern MailboxDevice_t kernelMailbox;
 
 
@@ -59,7 +58,6 @@ extern archsize_t _MailboxReceive(MailboxDevice_t *dev, archsize_t mb);
 //
 // -- define the base locations for both the loader and the kernel versions
 //    ---------------------------------------------------------------------
-#define LDR_MAILBOX_BASE       ((MMIO_LOADER_LOC << 12) + 0xb880)
 #define KRN_MAILBOX_BASE       (MMIO_VADDR + 0xb880)
 
 

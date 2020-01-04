@@ -35,6 +35,7 @@ EXTERN_C EXPORT LOADER
 void PlatformEarlyInit(void)
 {
     SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+    kprintf("Hello...\n");
     HwDiscovery();
 
     // -- at some point, this will come from the DTB

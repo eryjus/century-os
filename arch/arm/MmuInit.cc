@@ -45,7 +45,7 @@
 //  entries.  1MB can be represented by 20 bits (5 nibbles).
 //
 //  So, I also want to make sure I have the structure documented here.  I am going to do my best to draw with ASCII
-//  art.
+//  art.  This has been completed in the `entry.s` file.
 //
 //  The TTL1 table is located at over 4 pages from 0xff404000 to 0xff407000 inclusive.  There are 2 blocks of
 //  TTL1 entries we will be concerned with here: 0xff4-0xff7 and 0xffc-0xfff.  The first group is needed to map

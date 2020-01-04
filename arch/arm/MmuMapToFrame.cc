@@ -53,7 +53,7 @@ frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
 
     INVALIDATE_PAGE(ttl2Entry, addr);
 
-    ttl2Entry = TTL2_MGMT(addr, flags);
+    ttl2Entry = KRN_TTL2_MGMT(addr);
     ttl2Entry->frame = frame;
     ttl2Entry->s = 1;
     ttl2Entry->apx = 0;
@@ -78,6 +78,10 @@ frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
 }
 
 
+
+//==================================================================================================================
+
+
 //
 // -- Map a page to a frame
 //    ---------------------
@@ -94,10 +98,11 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     // -- The first order of business is to check if we have a TTL2 table for this address.  We will know this
     //    by checking the TTL1 Entry and checking the fault field.
     //    ----------------------------------------------------------------------------------------------------
-    if (TTL1_ENTRY(addr, flags)->fault == 0b00) {
-        kprintf("TTL1 entry is not mapped to a TTL2 table; creating\n");
+//    kprintf("Checking for TTL1 entry (%p; %x)....\n", addr, TTL1_ENTRY(addr, flags)->fault);
+    if (KRN_TTL1_ENTRY(addr)->fault == 0b00) {
+//        kprintf("TTL1 entry is not mapped to a TTL2 table; creating\n");
         frame_t ttl2 = MmuMakeTtl2Table(addr, flags);
-        Ttl1_t *ttl1Entry = TTL1_ENTRY4(addr, flags);
+        Ttl1_t *ttl1Entry = KRN_TTL1_ENTRY4(addr);
 
         for (int i = 0; i < 4; i ++) {
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
@@ -108,14 +113,17 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         }
     }
 
-
     //
     // -- At this point, we know we have a ttl2 table and the management entries are all set up properly.  It
     //    is just a matter of mapping the address.
     //    ---------------------------------------------------------------------------------------------------
-    Ttl2_t *ttl2Entry = TTL2_ENTRY(addr, flags);
+//    kprintf("Checking for TTL2 entry....\n");
+    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(addr);
+//    kprintf("ttl2Entry has been set: %p\n", ttl2Entry);
 
     if (ttl2Entry->fault != 0b00) return;
+
+//    kprintf("mapping the page\n");
 
     INVALIDATE_PAGE(ttl2Entry, addr);
 

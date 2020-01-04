@@ -20,16 +20,6 @@
 
 
 //
-// -- This is the device structure that will be used for the loader to access the gpio
-//    --------------------------------------------------------------------------------
-__ldrdata MailboxDevice_t loaderMailbox = {
-    .base = LDR_MAILBOX_BASE,
-    .MailboxSend = _MailboxSend,
-    .MailboxReceive = _MailboxReceive,
-};
-
-
-//
 // -- This is the device structure that will be used for the kernel to access the gpio
 //    --------------------------------------------------------------------------------
 __krndata MailboxDevice_t kernelMailbox = {

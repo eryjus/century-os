@@ -24,7 +24,8 @@
 //
 // -- read the xsdt table
 //    -------------------
-bool __ldrtext AcpiReadXsdt(archsize_t loc)
+EXTERN_C EXPORT LOADER
+bool AcpiReadXsdt(archsize_t loc)
 {
     kprintf("Reading the XSDT\n");
     CHK_ACPI(loc);

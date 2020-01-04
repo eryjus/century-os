@@ -56,41 +56,13 @@
 
 
 //
-// -- This is the location of the TTL1/TTL2 Tables in kernel space
-//    ------------------------------------------------------------
-#define TTL1_KRN_VADDR      0xff404000
-#define MGMT_KRN_TTL2       0xfffff000
-#define TTL2_KRN_VADDR      0xffc00000
-
-
-//
-// -- This is the location of the TTL1/TTL2 Tables in user space
-//    ----------------------------------------------------------
-#define TTL1_USR_VADDR      0x20010000
-#define MGMT_USR_TTL2       0x7ffff000
-#define TTL2_USR_VADDR      0x7fc00000
-
-
-//
 // -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
 //    into the various tables
 //    -----------------------------------------------------------------------------------------------------
-#define KRN_TTL1_ENTRY(a)       (&((Ttl1_t *)TTL1_KRN_VADDR)[(a) >> 20])
-#define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_KRN_VADDR)[((a) >> 20) & 0xffc])
-#define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_KRN_TTL2)[(a) >> 22])
-#define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_KRN_VADDR)[(a) >> 12])
-
-#define USR_TTL1_ENTRY(a)       (&((Ttl1_t *)TTL1_USR_VADDR)[(a) >> 20])
-#define USR_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_USR_VADDR)[((a) >> 20) & 0xffc])
-#define USR_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_USR_TTL2)[(a) >> 22])
-#define USR_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_USR_VADDR)[(a) >> 12])
-
-#define TTL1_ENTRY(a,f)         (((f)&PG_KRN)?KRN_TTL1_ENTRY(a):USR_TTL1_ENTRY(a))
-#define TTL1_ENTRY4(a,f)        (((f)&PG_KRN)?KRN_TTL1_ENTRY4(a):USR_TTL1_ENTRY4(a))
-#define TTL2_MGMT(a,f)          (((f)&PG_KRN)?KRN_TTL2_MGMT(a):USR_TTL2_MGMT(a))
-#define TTL2_ENTRY(a,f)         (((f)&PG_KRN)?KRN_TTL2_ENTRY(a):USR_TTL2_ENTRY(a))
-
-
+#define KRN_TTL1_ENTRY(a)       (&((Ttl1_t *)ARMV7_TTL1_TABLE_VADDR)[(a) >> 20])
+#define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)ARMV7_TTL1_TABLE_VADDR)[((a) >> 20) & 0xffc])
+#define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)ARMV7_TTL2_MGMT)[(a) >> 22])
+#define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)ARMV7_TTL2_TABLE_VADDR)[(a) >> 12])
 
 
 //
