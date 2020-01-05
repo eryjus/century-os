@@ -19,7 +19,6 @@
 
 #include "types.h"
 #include "printf.h"
-#include "platform.h"
 #include "pic.h"
 
 

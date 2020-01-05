@@ -15,14 +15,15 @@
 //===================================================================================================================
 
 
-#include "mmu.h"
+#include "types.h"
 #include "hardware.h"
 
 
 //
 // -- This is the device structure that will be used for the kernel to access the gpio
 //    --------------------------------------------------------------------------------
-__krndata MailboxDevice_t kernelMailbox = {
+EXPORT KERNEL_DATA
+MailboxDevice_t kernelMailbox = {
     .base = KRN_MAILBOX_BASE,
     .MailboxSend = _MailboxSend,
     .MailboxReceive = _MailboxReceive,

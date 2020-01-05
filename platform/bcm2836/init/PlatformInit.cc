@@ -18,8 +18,6 @@
 
 
 #include "types.h"
-#include "printf.h"
-#include "cpu.h"
 #include "platform.h"
 
 
@@ -29,6 +27,5 @@
 EXTERN_C EXPORT LOADER
 void PlatformInit(void)
 {
-    kprintf("Serial port updated\n");
 }
 

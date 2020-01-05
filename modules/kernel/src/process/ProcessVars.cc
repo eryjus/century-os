@@ -22,7 +22,8 @@
 //
 // -- This is the scheduler object
 //    ----------------------------
-__krndata Scheduler_t scheduler = {
+EXPORT KERNEL_DATA
+Scheduler_t scheduler = {
     NULL,                   // currentProcess
     0,                      // nextPID
     0xffffffffffffffff,     // nextWake

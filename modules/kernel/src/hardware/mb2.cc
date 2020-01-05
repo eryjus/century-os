@@ -202,14 +202,18 @@ typedef struct Mb2FbInfo_t {
 //
 // -- The multiboot 2 information structure
 //    -------------------------------------
-extern void *mb2Data;
-extern void *mb1Data;
+EXTERN LOADER_BSS
+void *mb2Data;
+
+EXTERN LOADER_BSS
+void *mb1Data;
 
 
 //
 // -- Mb2Parse() -- Read the multiboot 2 information from the data provided and store it locally
 //    ------------------------------------------------------------------------------------------
-void __ldrtext Mb2Parse(void)
+EXTERN_C EXPORT LOADER
+void Mb2Parse(void)
 {
     if (!mb2Data) return;
 

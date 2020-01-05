@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __TIMER_H__
 #   error "Use #include \"timer.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -24,12 +27,6 @@
 // -- on x86, this is the type we use to refer to the timer port
 //    ----------------------------------------------------------
 typedef archsize_t TimerBase_t;
-
-
-//
-// -- This is the base location where we will find the pit Timer
-//    ----------------------------------------------------------
-#define TIMER       0x40
 
 
 //
@@ -44,5 +41,9 @@ typedef archsize_t TimerBase_t;
 //
 // -- This is the timer device structures
 //    -----------------------------------
-extern TimerDevice_t lapicTimerControl;
-extern TimerDevice_t timer8253Control;
+EXTERN KERNEL_DATA
+TimerDevice_t lapicTimerControl;
+
+EXTERN KERNEL_DATA
+TimerDevice_t timer8253Control;
+

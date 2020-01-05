@@ -25,6 +25,7 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt00(isrRegs_t *regs)
 {
     kprintf("\nDivide Overflow\n");

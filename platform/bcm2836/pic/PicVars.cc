@@ -15,24 +15,24 @@
 //===================================================================================================================
 
 
-#include "timer.h"
-#include "cpu.h"
-#include "mmu.h"
+#include "types.h"
 #include "pic.h"
 
 
 //
 // -- This is the data that will be used to manage the pic
 //    ----------------------------------------------------
-__krndata Bcm2835Pic_t bcm2835Data = {
-    .picLoc = PIC,
-    .timerLoc = TIMER,
+EXPORT KERNEL_DATA
+Bcm2835Pic_t bcm2835Data = {
+    .picLoc = BCM2835_PIC,
+    .timerLoc = BCM2835_TIMER,
 };
 
 //
 // -- This is the device description that is used to output data to the serial port during loader initialization
 //    ----------------------------------------------------------------------------------------------------------
-__krndata PicDevice_t picBcm2835 = {
+EXPORT KERNEL_DATA
+PicDevice_t picBcm2835 = {
     .device = { .deviceData = (DeviceData_t *)&bcm2835Data, },
     .PicInit = _PicInit,
     .PicMaskIrq = _PicMaskIrq,
@@ -45,5 +45,6 @@ __krndata PicDevice_t picBcm2835 = {
 //
 // -- This is the pic we are going to use
 //    -----------------------------------
+EXPORT KERNEL_DATA
 PicDevice_t *picControl = &picBcm2835;
 

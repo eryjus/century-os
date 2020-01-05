@@ -26,6 +26,7 @@
 //
 // -- An Intel Interrupt
 //    --------------
+EXTERN_C EXPORT KERNEL
 void IsrInt0f(isrRegs_t *regs)
 {
     kprintf("\nRESERVED INT0F\n");

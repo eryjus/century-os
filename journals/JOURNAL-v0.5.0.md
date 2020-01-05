@@ -866,6 +866,25 @@ OK, that problem exists in parsing the ACPI tables.  These need to be mapped and
 
 I have been able to get to the kernel.  In both archs, I am able to see the greeting "Welcome to CenturyOS -- a hobby operating system".  And then in both cases, I get a page fault.  So, I think it is time to commit this version.
 
+---
+
+## Version 0.5.0d
+
+OK, so for this version, I will work on completing the cleanup of the loader code.  This will include cleaning up the debug code.  I will also review my Redmine list for anything that can be cleaned up in the loader.  At the same time will be a review of all the Platform code -- cleaning up any issues found therein.
+
+---
+
+### 2020-Jan-04
+
+I am working on platform cleanup....
+
+---
+
+### 2020-Jan-05
+
+I have been making a number of changes trying to get the code cleaned up.  I have quite a bit of it done, but not all.
+
+However, I think I need a commit at this piont.  Nearly every source file has been changed and the risks are getting higher by the minute.
 
 
 

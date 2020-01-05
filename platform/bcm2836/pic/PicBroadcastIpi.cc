@@ -15,16 +15,15 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
-#include "timer.h"
-#include "hardware.h"
-#include "mmu.h"
 #include "pic.h"
 
 
 //
 // -- Broadcast an IPI to all CPUs (including myself)
 //    -----------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
 {
     if (ipi < 0 || ipi > 31) return;

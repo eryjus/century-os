@@ -23,7 +23,8 @@
 //
 // -- This is the structure for the data needed by this driver
 //    --------------------------------------------------------
-__krndata IoApicDeviceData_t ioapicData = {
+EXPORT KERNEL_DATA
+IoApicDeviceData_t ioapicData = {
     .redirTableEntry = {
         IOREDTBL2,      // IRQ0
         IOREDTBL1,      // IRQ1
@@ -57,7 +58,8 @@ __krndata IoApicDeviceData_t ioapicData = {
 //
 // -- This is the device description for the IO APIC
 //    ----------------------------------------------
-__krndata PicDevice_t ioapicDriver = {
+EXPORT KERNEL_DATA
+PicDevice_t ioapicDriver = {
     .device = {
         .name = {'a', 'p', 'i', 'c', '\0'},
         .deviceData = (DeviceData_t)&ioapicData,
@@ -76,10 +78,12 @@ __krndata PicDevice_t ioapicDriver = {
 //
 // -- This is the device description for the local apic timer
 //    -------------------------------------------------------
-__krndata TimerDevice_t lapicTimerControl = {
+EXPORT KERNEL_DATA
+TimerDevice_t lapicTimerControl = {
     .TimerCallBack = TimerCallBack,
     .TimerInit = _LApicInit,
     .TimerEoi = _LApicEoi,
     .TimerPlatformTick = _TimerPlatformTick,
     .TimerCurrentCount = _TimerCurrentCount,
 };
+

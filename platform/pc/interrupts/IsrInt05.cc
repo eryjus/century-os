@@ -26,6 +26,7 @@
 //
 // -- Bound Exception Handler
 //    -----------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt05(isrRegs_t *regs)
 {
     kprintf("\nBound Exception\n");

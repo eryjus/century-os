@@ -30,13 +30,15 @@
 //
 // -- this is the buffer for the mailbox
 //    ----------------------------------
-__ldrdata uint32_t mbBuf[64] __attribute__((aligned(16)));
+EXPORT LOADER_DATA
+uint32_t mbBuf[64] __attribute__((aligned(16)));
 
 
 //
 // -- Initialize the additional frame buffer info
 //    -------------------------------------------
-void __ldrtext FrameBufferInit(void)
+EXTERN_C EXPORT LOADER
+void FrameBufferInit(void)
 {
     kprintf("Setting up the frame buffer\n");
 

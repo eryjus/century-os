@@ -16,17 +16,16 @@
 
 
 #include "types.h"
-#include "cpu.h"
-#include "hw-disc.h"
-#include "mmu.h"
 #include "interrupt.h"
+#include "printf.h"
 #include "pic.h"
 
 
 //
 // -- Register an IRQ handler
 //    -----------------------
-isrFunc_t __krntext _PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
+EXTERN_C EXPORT KERNEL
+isrFunc_t _PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
 {
     if (!dev) return (isrFunc_t)-1;
     if (!handler) return (isrFunc_t)-1;

@@ -18,8 +18,8 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "process.h"
-//#include "ipc.h"
 #include "interrupt.h"
 
 #include <errno.h>
@@ -28,6 +28,7 @@
 //
 // -- SYSCALL to send a message
 //    ----------------------------
+EXTERN_C EXPORT SYSCALL
 void SyscallSendMessage(isrRegs_t *regs)
 {
     #if 0

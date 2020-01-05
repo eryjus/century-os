@@ -15,8 +15,7 @@
 //===================================================================================================================
 
 
-#ifndef __PLATFORM_H__
-#define __PLATFORM_H__
+#pragma once
 
 
 #include "types.h"
@@ -35,5 +34,3 @@ void PlatformEarlyInit(void);
 EXTERN_C EXPORT LOADER
 void PlatformInit(void);
 
-
-#endif

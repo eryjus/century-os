@@ -26,6 +26,7 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt0a(isrRegs_t *regs)
 {
     kprintf("\nInvalid TSS\n");

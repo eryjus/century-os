@@ -26,12 +26,14 @@
 //
 // -- Handle a spurioius interrupt from the 8259 -- just in case
 //    ----------------------------------------------------------
-static void SpurriousPic(isrRegs_t *regs) { }
+EXTERN_C HIDDEN KERNEL
+void SpurriousPic(isrRegs_t *regs) { }
 
 
 //
 // -- Initialize the IO APIC
 //    ----------------------
+EXTERN_C EXPORT LOADER
 void _IoApicInit(PicDevice_t *dev, const char *name)
 {
     int count = GetIoapicCount();
@@ -87,16 +89,16 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
 
         MmuMapToFrame(addr, addr>>12, PG_DEVICE | PG_KRN | PG_WRT);
 
-        apicid.reg = IOAPIC_READ(addr,IOAPICID);
-        apicver.reg = IOAPIC_READ(addr, IOAPICVER);
+        apicid.reg = IoapicRead(addr,IOAPICID);
+        apicver.reg = IoapicRead(addr, IOAPICVER);
 
         kprintf("IOAPIC located at: %p\n", addr);
         kprintf("  The APIC ID is %x\n", apicid.apicId);
         kprintf("  The APIC Version is %x; the max redir is %x\n", apicver.version, apicver.maxRedir);
 
         for (int j = 0; j <= apicver.maxRedir; j ++) {
-            apicredir.reg0 = IOAPIC_READ(addr, IOREDTBL0 + (j * 2));
-            apicredir.reg1 = IOAPIC_READ(addr, IOREDTBL0 + (j * 2) + 1);
+            apicredir.reg0 = IoapicRead(addr, IOREDTBL0 + (j * 2));
+            apicredir.reg1 = IoapicRead(addr, IOREDTBL0 + (j * 2) + 1);
 
             kprintf("  Redirection table entry %x: %p %p\n", j, apicredir.reg1, apicredir.reg0);
         }

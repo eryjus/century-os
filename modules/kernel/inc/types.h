@@ -49,23 +49,6 @@
 
 
 //
-// -- This will set up for a __cfunc -- a custom #define to stop name mangling
-//    ------------------------------------------------------------------------
-#define __CENTURY_FUNC__         extern "C"
-
-
-//
-// -- these defined are to help with the placement of functions and data elements into the correct sections
-//    -----------------------------------------------------------------------------------------------------
-#define __ldrtext       __attribute__((section(".ldrtext")))
-#define __ldrdata       __attribute__((section(".ldrdata")))
-#define __ldrbss        __attribute__((section(".ldrbss")))
-
-#define __krntext       __attribute__((section(".text")))
-#define __krndata       __attribute__((section(".data")))
-
-
-//
 // -- some things to add readability/direction to the linker
 //    ------------------------------------------------------
 #define EXPORT          __attribute__((visibility("default")))
@@ -73,6 +56,7 @@
 #define EXTERN          extern
 #define EXTERN_C        EXTERN "C"
 #define NORETURN        __attribute__((noreturn))
+#define INLINE          inline __attribute__((always_inline))
 
 
 //
@@ -84,11 +68,17 @@
 
 #define KERNEL          __attribute__((section(".text")))
 #define KERNEL_DATA     __attribute__((section(".data")))
+#define KERNEL_BSS      __attribute__((section(".bss")))
 
 
 #define LOADER          __attribute__((section(".ldrtext")))
 #define LOADER_DATA     __attribute__((section(".ldrdata")))
 #define LOADER_BSS      __attribute__((section(".ldrbss")))
+
+
+#define SYSCALL         __attribute__((section(".text.syscall")))
+#define SYSCALL_DATA    __attribute__((section(".data.syscall")))
+#define SYSCALL_BSS     __attribute__((section(".bss.syscall")))
 
 
 //
@@ -141,10 +131,9 @@ typedef char *  va_list;
 //
 // -- Some additional runtime assertion checking; purposefully set up for use in conditions
 //    -------------------------------------------------------------------------------------
-extern "C" {
-    EXPORT KERNEL
-    bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
-}
+EXTERN_C EXPORT KERNEL
+bool AssertFailure(const char *expr, const char *msg, const char *file, int line);
+
 
 #ifdef assert
 #   undef assert
@@ -202,7 +191,8 @@ typedef uint8_t byte_t;
 //
 // -- The current PID
 //    ---------------
-extern volatile PID_t currentPID;
+EXTERN volatile KERNEL_BSS
+PID_t currentPID;
 
 
 //
@@ -220,6 +210,7 @@ const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
 //
 // -- The ISR Handlers
 //    ----------------
-extern isrFunc_t isrHandlers[256];
+EXTERN KERNEL_BSS
+isrFunc_t isrHandlers[256];
 
 

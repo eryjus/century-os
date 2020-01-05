@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
 #include "timer.h"
 #include "hardware.h"
@@ -24,7 +25,8 @@
 //
 // -- Broadcast an IPI to all CPUs (including myself)
 //    -----------------------------------------------
-void __krntext _LApicBroadcastIpi(PicDevice_t *dev, int ipi)
+EXTERN_C EXPORT KERNEL
+void _LApicBroadcastIpi(PicDevice_t *dev, int ipi)
 {
     if (ipi < 0 || ipi > 31) return;
     if (!dev) return;

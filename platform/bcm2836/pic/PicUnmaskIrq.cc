@@ -15,15 +15,15 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
-#include "cpu.h"
-#include "hardware.h"
 #include "pic.h"
 
 
 //
 // -- Enable the PIC to pass along an IRQ (some call it unmasking)
 //    ------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _PicUnmaskIrq(PicDevice_t *dev, int irq)
 {
     if (!dev) return;

@@ -15,12 +15,14 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
 
 
 //
 // -- Select the alternate function for a Gpio pin
 //    --------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _GpioEnablePin(GpioDevice_t *dev, GpioPin_t pin)
 {
     if (!dev) return;

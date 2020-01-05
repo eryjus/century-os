@@ -25,7 +25,8 @@
 //
 // -- Initialize the core to be able to use FPU instructions
 //    ------------------------------------------------------
-void __ldrtext FpuInit(void)
+EXTERN_C EXPORT LOADER
+void FpuInit(void)
 {
     //
     // -- prepare the FPU for accepting commands
@@ -40,3 +41,4 @@ void __ldrtext FpuInit(void)
     //    ------------------
     WRITE_FPEXC(1<<30);
 }
+

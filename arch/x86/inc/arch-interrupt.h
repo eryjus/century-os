@@ -18,67 +18,136 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __INTERRUPT_H__
 #   error "Do not include 'arch-interrupt.h' directly.  Include 'interrupt.h' and this file will be included"
 #endif
 
 
+#include "types.h"
+
+
 //
 // -- Set up an IDT gate
 //    ------------------
+EXTERN_C EXPORT KERNEL
 void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags);
 
 
 //
 // -- Build the IDT and populate its gates; initialize the handlers to NULL
 //    ---------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void ExceptionInit(void);
 
 
 //
 // -- These functions are the specific Interrupt service routines (before the handler)
 //    --------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt00(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt01(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt02(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt03(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt04(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt05(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt06(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt07(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt08(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt09(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt0a(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt0b(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt0c(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt0d(isrRegs_t *regs);
 
 EXTERN_C EXPORT KERNEL
 void IsrInt0e(isrRegs_t *regs);
 
+EXTERN_C EXPORT KERNEL
 void IsrInt0f(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt10(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt11(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt12(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt13(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt14(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt15(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt16(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt17(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt18(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt19(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt1a(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt1b(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt1c(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt1d(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt1e(isrRegs_t *regs);
+
+EXTERN_C EXPORT KERNEL
 void IsrInt1f(isrRegs_t *regs);
 
 
 //
 // -- A Local prototype to prevent the compiler from name mangling
 //    ------------------------------------------------------------
-extern "C" void IsrHandler(isrRegs_t regs);
+EXTERN_C EXPORT KERNEL
+void IsrHandler(isrRegs_t regs);
 
 
 //

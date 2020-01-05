@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __SERIAL_H__
 #   error "Use #include \"serial.h\" and it will pick up this file; do not #include this file directly."
 #endif

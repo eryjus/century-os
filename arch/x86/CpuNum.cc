@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "cpu.h"
 #include "pic.h"
 
@@ -22,7 +23,8 @@
 //
 // -- Get the CPU Number from the Local APIC
 //    --------------------------------------
-int __krntext CpuNum(void)
+EXTERN_C EXPORT KERNEL
+int CpuNum(void)
 {
     return (MmioRead(LAPIC_MMIO + LAPIC_ID) >> 24) & 0xff;
 }

@@ -26,7 +26,8 @@
 //
 // -- Initialize the additional frame buffer info
 //    -------------------------------------------
-void __ldrtext FrameBufferInit(void)
+EXTERN_C EXPORT LOADER
+void FrameBufferInit(void)
 {
     // -- goose the config to the correct fb address
     SetFrameBufferAddr((uint16_t *)MMU_FRAMEBUFFER);

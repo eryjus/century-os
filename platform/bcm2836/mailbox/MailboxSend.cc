@@ -18,7 +18,6 @@
 
 
 #include "types.h"
-#include "cpu.h"
 #include "printf.h"
 #include "hardware.h"
 
@@ -26,6 +25,7 @@
 //
 // -- Send a message to the mailbox
 //    -----------------------------
+EXTERN_C EXPORT KERNEL
 void _MailboxSend(MailboxDevice_t *dev, archsize_t mb, archsize_t msg)
 {
     kprintf("Checking dev..\n");

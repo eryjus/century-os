@@ -44,7 +44,8 @@
 //
 // -- Split the block as needed to pull out the proper alignment and size of frames
 //    -----------------------------------------------------------------------------
-static frame_t __krntext PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, frame_t atFrame, size_t count)
+EXTERN_C HIDDEN KERNEL
+frame_t PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, frame_t atFrame, size_t count)
 {
     if (block->frame < atFrame) {
         // -- Create a new block with the leading frames

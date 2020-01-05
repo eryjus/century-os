@@ -17,7 +17,9 @@
 //===================================================================================================================
 
 
-#ifndef __PMM_H__
+#pragma once
+
+
 #define __PMM_H__
 
 
@@ -141,7 +143,7 @@ inline void PmmScrubFrame(const frame_t frame) { MmuClearFrame(frame); }
 // -- This is the function to scrub a single block from the scrubStack
 //    ----------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-void __krntext PmmScrubBlock(void);
+void PmmScrubBlock(void);
 
 
 //
@@ -178,5 +180,3 @@ frame_t NextEarlyFrame(void);
 #define CLEAN_PMM_BLOCK(blk)        CLEAN_CACHE(blk, sizeof(PmmBlock_t))
 #define INVALIDATE_PMM_BLOCK(blk)   INVALIDATE_CACHE(blk, sizeof(PmmBlock_t))
 
-
-#endif

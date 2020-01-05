@@ -16,8 +16,7 @@
 //===================================================================================================================
 
 
-#ifndef __SPINLOCK_H__
-#define __SPINLOCK_H__
+#pragma once
 
 
 #include "types.h"
@@ -88,40 +87,38 @@ typedef struct Spinlock_t {
 
 
 //
-// -- Function prototypes
-//    -------------------
-extern "C" {
+// -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
+//    ---------------------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void SpinLock(Spinlock_t *lock);
 
 
-    //
-    // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
-    //    ---------------------------------------------------------------------------------------------
-    EXPORT KERNEL void SpinLock(Spinlock_t *lock);
+//
+// -- This inline function will unlock a spinlock, clearing the lock holder
+//    ---------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void SpinUnlock(Spinlock_t *lock);
 
 
-    //
-    // -- This inline function will unlock a spinlock, clearing the lock holder
-    //    ---------------------------------------------------------------------
-    EXPORT KERNEL void SpinUnlock(Spinlock_t *lock);
-
-
-    //
-    // -- This inline function will determine if a spinlock is locked
-    //    -----------------------------------------------------------
-    EXPORT KERNEL inline bool SpinlockIsLocked(Spinlock_t *lock) { return lock->lock == 1; }
-}
+//
+// -- This inline function will determine if a spinlock is locked
+//    -----------------------------------------------------------
+EXPORT KERNEL INLINE
+bool SpinlockIsLocked(Spinlock_t *lock) { return lock->lock == 1; }
 
 
 //
 // -- This is the lock that controls access to the address space for initializing the table
 //    -------------------------------------------------------------------------------------
-EXTERN KERNEL_DATA Spinlock_t mmuTableInitLock;
+EXTERN EXPORT KERNEL_DATA
+Spinlock_t mmuTableInitLock;
 
 
 //
 // -- This is the lock that controls access to the address space for initializing the table
 //    -------------------------------------------------------------------------------------
-EXTERN KERNEL_DATA Spinlock_t mmuStackInitLock;
+EXTERN EXPORT KERNEL_DATA
+Spinlock_t mmuStackInitLock;
 
 
 //
@@ -136,4 +133,3 @@ EXTERN KERNEL_DATA Spinlock_t mmuStackInitLock;
 #define INVALIDATE_SPINLOCK(lock) INVALIDATE_CACHE(lock, sizeof(Spinlock_t))
 
 
-#endif

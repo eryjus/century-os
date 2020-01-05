@@ -16,7 +16,6 @@
 
 
 #include "types.h"
-#include "printf.h"
 #include "hardware.h"
 #include "pic.h"
 
@@ -24,6 +23,7 @@
 //
 // -- Issue an EOI for the timer
 //    --------------------------
+EXTERN_C EXPORT KERNEL
 void _PicEoi(PicDevice_t *dev, Irq_t irq)
 {
     if (!dev) return;

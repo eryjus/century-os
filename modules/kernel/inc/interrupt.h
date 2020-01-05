@@ -19,7 +19,9 @@
 //===================================================================================================================
 
 
-#ifndef __INTERRUPT_H__
+#pragma once
+
+
 #define __INTERRUPT_H__
 
 
@@ -30,25 +32,28 @@
 //
 // -- Unregister an ISR (fails if nothing is registered)
 //    --------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrUnregister(uint8_t interrupt);
 
 
 //
 // -- Register an ISR (fails if something is already registered)
 //    ----------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 isrFunc_t IsrRegister(uint8_t interrupt, isrFunc_t func);
 
 
 //
 // -- Dump the CPU state
 //    ------------------
+EXTERN_C EXPORT KERNEL
 void IsrDumpState(isrRegs_t *regs);
 
 
 //
 // -- The system call handler
 //    -----------------------
-extern "C" void SyscallHandler(isrRegs_t *regs);
+EXTERN_C EXPORT SYSCALL
+void SyscallHandler(isrRegs_t *regs);
 
 
-#endif

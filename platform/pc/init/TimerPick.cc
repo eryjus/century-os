@@ -18,14 +18,14 @@
 #include "types.h"
 #include "hw-disc.h"
 #include "printf.h"
-#include "platform.h"
 #include "timer.h"
 
 
 //
 // -- pick the timer device we will use
 //    ---------------------------------
-__krntext TimerDevice_t *TimerPick(void)
+EXTERN_C EXPORT LOADER
+TimerDevice_t *TimerPick(void)
 {
     kprintf("Picking a timer to use...\n");
 

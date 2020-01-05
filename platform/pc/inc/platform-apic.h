@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __PIC_H__
 #   error "Use #include \"pic.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -124,12 +127,6 @@ typedef struct IoApicDeviceData_t {
 #define LAPIC_TMRINITCNT    (0x380)
 #define LAPIC_TMRCURRCNT    (0x390)
 #define LAPIC_TMRDIV        (0x3e0)
-
-
-//
-// -- The location in virtual memory for the LAPIC
-//    --------------------------------------------
-#define LAPIC_MMIO          (0xfee00000)
 
 
 //
@@ -266,43 +263,66 @@ typedef union LapicIcrLo_t {
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-__CENTURY_FUNC__ void _IoApicInit(PicDevice_t *dev, const char *name);
-__CENTURY_FUNC__ isrFunc_t _IoApicRegisterHandler(PicDevice_t *, Irq_t, int, isrFunc_t);
-__CENTURY_FUNC__ void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _IoApicEoi(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _LApicBroadcastIpi(PicDevice_t *dev, int ipi);
-__CENTURY_FUNC__ void _LApicBroadcastInit(PicDevice_t *dev, uint32_t core);
-__CENTURY_FUNC__ void _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr);
+EXTERN_C EXPORT KERNEL
+void _IoApicInit(PicDevice_t *dev, const char *name);
+
+EXTERN_C EXPORT KERNEL
+isrFunc_t _IoApicRegisterHandler(PicDevice_t *, Irq_t, int, isrFunc_t);
+
+EXTERN_C EXPORT KERNEL
+void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
+
+EXTERN_C EXPORT KERNEL
+ void _IoApicMaskIrq(PicDevice_t *dev, Irq_t irq);
+
+EXTERN_C EXPORT KERNEL
+void _IoApicEoi(PicDevice_t *dev, Irq_t irq);
+
+EXTERN_C EXPORT KERNEL
+void _LApicBroadcastIpi(PicDevice_t *dev, int ipi);
+
+EXTERN_C EXPORT KERNEL
+void _LApicBroadcastInit(PicDevice_t *dev, uint32_t core);
+
+EXTERN_C EXPORT KERNEL
+void _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr);
 
 //
 // -- A helper function for translating an IRQ to a redir table entry
 //    ---------------------------------------------------------------
-inline archsize_t IoApicRedir(IoApicDeviceData_t *data, Irq_t irq) { return data->redirTableEntry[irq]; }
+EXPORT KERNEL INLINE
+archsize_t IoApicRedir(IoApicDeviceData_t *data, Irq_t irq) { return data->redirTableEntry[irq]; }
 
 
 //
 // -- Local APIC Timer functions
 //    --------------------------
-__CENTURY_FUNC__ void _LApicInit(TimerDevice_t *dev, uint32_t frequency);
-__CENTURY_FUNC__ void _LApicEoi(TimerDevice_t *dev);
-__CENTURY_FUNC__ void _LApicPlatformTick(TimerDevice_t *dev);
-__CENTURY_FUNC__ uint64_t _LApicCurrentCount(TimerDevice_t *dev);
+EXTERN_C EXPORT KERNEL
+void _LApicInit(TimerDevice_t *dev, uint32_t frequency);
+
+EXTERN_C EXPORT KERNEL
+void _LApicEoi(TimerDevice_t *dev);
+
+EXTERN_C EXPORT KERNEL
+void _LApicPlatformTick(TimerDevice_t *dev);
+
+EXTERN_C EXPORT KERNEL
+uint64_t _LApicCurrentCount(TimerDevice_t *dev);
 
 
 //
-// -- These 2 macros will assist in reading from/writing to the ioapic registers
-//    --------------------------------------------------------------------------
-#define IOAPIC_READ(addr,reg)    ({                                 \
-            uint32_t _val;                                          \
-            MmioWrite(addr + IOREGSEL, reg);                        \
-            _val = MmioRead(addr + IOWIN);                          \
-            (_val);                                                 \
-        })
+// -- These 2 inlines will assist in reading from/writing to the ioapic registers
+//    ---------------------------------------------------------------------------
+EXPORT KERNEL INLINE
+uint32_t IoapicRead(archsize_t addr, uint32_t reg) {
+    MmioWrite(addr + IOREGSEL, reg);
+    return MmioRead(addr + IOWIN);
+}
 
-#define IOAPIC_WRITE(addr,reg,val)                                  \
-            do {                                                    \
-                MmioWrite(addr + IOREGSEL, reg);                    \
-                MmioWrite(addr + IOWIN, val);                       \
-            } while (0)
+
+EXPORT KERNEL INLINE
+void IoapicWrite(archsize_t addr, uint32_t reg, uint32_t val) {
+    MmioWrite(addr + IOREGSEL, reg);
+    MmioWrite(addr + IOWIN, val);
+}
 

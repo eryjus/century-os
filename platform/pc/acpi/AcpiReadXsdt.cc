@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
 #include "mmu.h"
 #include "hardware.h"
@@ -28,7 +29,7 @@ EXTERN_C EXPORT LOADER
 bool AcpiReadXsdt(archsize_t loc)
 {
     kprintf("Reading the XSDT\n");
-    CHK_ACPI(loc);
+    CheckAcpi(loc);
 
     if (!AcpiCheckTable(loc, MAKE_SIG("XSDT"))) {
         kprintf("The XSDT does not match the required checks\n");

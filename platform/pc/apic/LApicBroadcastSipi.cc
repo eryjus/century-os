@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
 #include "timer.h"
 #include "hardware.h"
@@ -24,7 +25,8 @@
 //
 // -- Broadcast a SIPI to all CPUs (including myself)
 //    -----------------------------------------------
-void __ldrtext _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr)
+EXTERN_C EXPORT KERNEL
+void _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr)
 {
     if (!dev) return;
 
@@ -44,3 +46,4 @@ void __ldrtext _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t a
     MmioWrite(LAPIC_MMIO + LAPIC_ICR_HI, hi.raw);
     MmioWrite(LAPIC_MMIO + LAPIC_ICR_LO, lo.raw);
 }
+

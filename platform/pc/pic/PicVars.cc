@@ -22,7 +22,8 @@
 //
 // -- This is the device description that is used to output data to the serial port during loader initialization
 //    ----------------------------------------------------------------------------------------------------------
-__krndata PicDevice_t pic8259 = {
+EXPORT KERNEL_DATA
+PicDevice_t pic8259 = {
     .PicInit = _PicInit,
     .PicRegisterHandler = _PicRegisterHandler,
     .PicMaskIrq = _PicMaskIrq,
