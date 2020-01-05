@@ -26,7 +26,8 @@
 //
 // -- This is the spurious IRQ handler
 //    --------------------------------
-static void __krntext LApicSpurious(isrRegs_t *regs)
+EXTERN_C HIDDEN KERNEL
+void LApicSpurious(isrRegs_t *regs)
 {
     kprintf("!");
 }
@@ -35,13 +36,17 @@ static void __krntext LApicSpurious(isrRegs_t *regs)
 //
 // -- this is used during initialization to calibrate the timer
 //    ---------------------------------------------------------
-static void __ldrtext LApicInitTimeout(isrRegs_t *regs)
+EXTERN_C HIDDEN KERNEL
+void LApicInitTimeout(isrRegs_t *regs)
 {
-
 }
 
 
-void __ldrtext _LApicInit(TimerDevice_t *dev, uint32_t freq)
+//
+// -- Initialize the Local APIC part of the split architecture
+//    --------------------------------------------------------
+EXTERN_C EXPORT LOADER
+void _LApicInit(TimerDevice_t *dev, uint32_t freq)
 {
     if (!dev) return;
 
@@ -154,6 +159,4 @@ void __ldrtext _LApicInit(TimerDevice_t *dev, uint32_t freq)
     MmioWrite(base + LAPIC_TMRINITCNT, factor);
     MmioWrite(base + LAPIC_LVT_TMR, 32 | (0b01<<17));
 }
-
-
 

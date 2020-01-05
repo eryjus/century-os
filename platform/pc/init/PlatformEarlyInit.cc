@@ -17,12 +17,12 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
 #include "hw-disc.h"
-#include "fb.h"
 #include "serial.h"
-#include "printf.h"
 #include "mmu.h"
+#include "printf.h"
 #include "platform.h"
 
 

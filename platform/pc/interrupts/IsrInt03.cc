@@ -26,6 +26,7 @@
 //
 // -- Breakpoint Handler
 //    ------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt03(isrRegs_t *regs)
 {
     kprintf("\nBreakpoint\n");

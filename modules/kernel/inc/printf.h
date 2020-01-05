@@ -24,7 +24,8 @@
 //
 // -- used to "turn on" kprintf() output
 //    ----------------------------------
-EXTERN EXPORT KERNEL_DATA bool kPrintfEnabled;
+EXTERN EXPORT KERNEL_DATA
+bool kPrintfEnabled;
 
 
 

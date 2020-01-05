@@ -27,96 +27,238 @@
 //
 // -- The ISR entry points as functions declared
 //    ------------------------------------------
-extern "C" {
-    extern void isr0  (void);
-    extern void isr1  (void);
-    extern void isr2  (void);
-    extern void isr3  (void);
-    extern void isr4  (void);
-    extern void isr5  (void);
-    extern void isr6  (void);
-    extern void isr7  (void);
-    extern void isr8  (void);
-    extern void isr9  (void);
-    extern void isr10 (void);
-    extern void isr11 (void);
-    extern void isr12 (void);
-    extern void isr13 (void);
-    extern void isr14 (void);
-    extern void isr15 (void);
-    extern void isr16 (void);
-    extern void isr17 (void);
-    extern void isr18 (void);
-    extern void isr19 (void);
-    extern void isr20 (void);
-    extern void isr21 (void);
-    extern void isr22 (void);
-    extern void isr23 (void);
-    extern void isr24 (void);
-    extern void isr25 (void);
-    extern void isr26 (void);
-    extern void isr27 (void);
-    extern void isr28 (void);
-    extern void isr29 (void);
-    extern void isr30 (void);
-    extern void isr31 (void);
+EXTERN_C EXPORT KERNEL
+void isr0  (void);
 
-    extern void isr100(void);
+EXTERN_C EXPORT KERNEL
+void isr1  (void);
 
-    extern void irq0  (void);
-    extern void irq1  (void);
-    extern void irq2  (void);
-    extern void irq3  (void);
-    extern void irq4  (void);
-    extern void irq5  (void);
-    extern void irq6  (void);
-    extern void irq7  (void);
-    extern void irq8  (void);
-    extern void irq9  (void);
-    extern void irq10 (void);
-    extern void irq11 (void);
-    extern void irq12 (void);
-    extern void irq13 (void);
-    extern void irq14 (void);
-    extern void irq15 (void);
-    extern void irq16 (void);
-    extern void irq17 (void);
-    extern void irq18 (void);
-    extern void irq19 (void);
-    extern void irq20 (void);
-    extern void irq21 (void);
-    extern void irq22 (void);
-    extern void irq23 (void);
+EXTERN_C EXPORT KERNEL
+void isr2  (void);
 
-    extern void irq240(void);
-    extern void irq241(void);
-    extern void irq242(void);
-    extern void irq243(void);
-    extern void irq244(void);
-    extern void irq245(void);
-    extern void irq246(void);
-    extern void irq247(void);
-    extern void irq248(void);
-    extern void irq249(void);
-    extern void irq250(void);
-    extern void irq251(void);
-    extern void irq252(void);
-    extern void irq253(void);
-    extern void irq254(void);
-    extern void irq255(void);
-}
+EXTERN_C EXPORT KERNEL
+void isr3  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr4  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr5  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr6  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr7  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr8  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr9  (void);
+
+EXTERN_C EXPORT KERNEL
+void isr10 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr11 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr12 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr13 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr14 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr15 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr16 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr17 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr18 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr19 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr20 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr21 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr22 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr23 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr24 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr25 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr26 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr27 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr28 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr29 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr30 (void);
+
+EXTERN_C EXPORT KERNEL
+void isr31 (void);
+
+EXTERN_C EXPORT SYSCALL
+void isr100(void);
+
+EXTERN_C EXPORT KERNEL
+void irq0  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq1  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq2  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq3  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq4  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq5  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq6  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq7  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq8  (void);
+
+EXTERN_C EXPORT KERNEL
+void irq9  (void);
+
+EXTERN_C EXPORT KERNEL
+
+void irq10 (void);
+EXTERN_C EXPORT KERNEL
+void irq11 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq12 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq13 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq14 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq15 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq16 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq17 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq18 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq19 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq20 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq21 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq22 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq23 (void);
+
+EXTERN_C EXPORT KERNEL
+void irq240(void);
+
+EXTERN_C EXPORT KERNEL
+void irq241(void);
+
+EXTERN_C EXPORT KERNEL
+void irq242(void);
+
+EXTERN_C EXPORT KERNEL
+void irq243(void);
+
+EXTERN_C EXPORT KERNEL
+void irq244(void);
+
+EXTERN_C EXPORT KERNEL
+void irq245(void);
+
+EXTERN_C EXPORT KERNEL
+void irq246(void);
+
+EXTERN_C EXPORT KERNEL
+void irq247(void);
+
+EXTERN_C EXPORT KERNEL
+void irq248(void);
+
+EXTERN_C EXPORT KERNEL
+void irq249(void);
+
+EXTERN_C EXPORT KERNEL
+void irq250(void);
+
+EXTERN_C EXPORT KERNEL
+void irq251(void);
+
+EXTERN_C EXPORT KERNEL
+void irq252(void);
+
+EXTERN_C EXPORT KERNEL
+void irq253(void);
+
+EXTERN_C EXPORT KERNEL
+void irq254(void);
+
+EXTERN_C EXPORT KERNEL
+void irq255(void);
 
 
 //
 // -- The location of the IDT.  Note that this is a foxed point in linear memory
 //    --------------------------------------------------------------------------
+EXPORT KERNEL_DATA
 IdtEntry *idtEntries = (IdtEntry *)IDT_ADDRESS;
 
 
 //
 // -- Build the parts of the IDT we are going to use so far
 //    -----------------------------------------------------
-void __ldrtext ExceptionInit(void)
+EXTERN_C EXPORT LOADER
+void ExceptionInit(void)
 {
     kprintf("Initializing the IDT properly\n");
     kMemSetB((uint8_t *)idtEntries, 0, sizeof(IdtEntry) * 256);

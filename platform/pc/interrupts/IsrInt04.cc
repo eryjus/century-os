@@ -26,6 +26,7 @@
 //
 // -- Overflow Handler
 //    ----------------
+EXTERN_C EXPORT KERNEL
 void IsrInt04(isrRegs_t *regs)
 {
     kprintf("\nOverflow\n");

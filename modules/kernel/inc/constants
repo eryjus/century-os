@@ -26,6 +26,33 @@
 
 
 ##
+## -- Some global configurations constants
+##    ------------------------------------
+MAX_DEV_NAME                    128
+
+
+##
+## -- Some arm specific constants
+##    ---------------------------
+KRN_GPIO_BASE                   (MMIO_VADDR+0x200000)
+KRN_MAILBOX_BASE                (MMIO_VADDR+0xb880)
+BCM2835_PIC                     (MMIO_VADDR+0x00b000)
+IPI_MAILBOX_BASE                (MMIO_VADDR+0x01000080)
+KRN_SERIAL_BASE                 (MMIO_VADDR+0x215000)
+BCM2835_TIMER                   (MMIO_VADDR+0x01003000)
+
+
+##
+## -- Some x86 specific constants
+##    ---------------------------
+ACPI_HDR_SIZE                   36
+ACPI_LO                         (0xb0000000)
+ACPI_HI                         (0xbfffffff)
+LAPIC_MMIO                      (0xfee00000)
+PC_TIMER                        0x40
+
+
+##
 ## -- Some constants related to the initial stack used by the loader
 ##    --------------------------------------------------------------
 STACK_SIZE                      0x1000

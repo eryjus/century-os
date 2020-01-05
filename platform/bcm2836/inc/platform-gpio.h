@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __HARDWARE_H__
 #   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -56,32 +59,35 @@ typedef struct GpioDevice_t {
 //
 // -- Here, declare the different configurations of the GPIO will use
 //    ---------------------------------------------------------------
-extern GpioDevice_t loaderGpio;
-extern GpioDevice_t kernelGpio;
+EXTERN KERNEL_DATA
+GpioDevice_t kernelGpio;
 
 
 //
 // -- These are the common interface functions we will use to interact with the GPIO.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    -----------------------------------------------------------------------------------------------------------
-inline void GpioSelectAlt(GpioDevice_t *dev, GpioPin_t pin, GpioAlt_t alt) { dev->GpioSelectAlt(dev, pin, alt); }
-inline void GpioEnablePin(GpioDevice_t *dev, GpioPin_t pin) { dev->GpioEnablePin(dev, pin); }
-inline void GpioDisablePin(GpioDevice_t *dev, GpioPin_t pin) { dev->GpioDisablePin(dev, pin); }
+EXPORT KERNEL INLINE
+void GpioSelectAlt(GpioDevice_t *dev, GpioPin_t pin, GpioAlt_t alt) { dev->GpioSelectAlt(dev, pin, alt); }
+
+EXPORT KERNEL INLINE
+void GpioEnablePin(GpioDevice_t *dev, GpioPin_t pin) { dev->GpioEnablePin(dev, pin); }
+
+EXPORT KERNEL INLINE
+void GpioDisablePin(GpioDevice_t *dev, GpioPin_t pin) { dev->GpioDisablePin(dev, pin); }
 
 
 //
 // -- Here are the function prototypes needed for these operations
 //    ------------------------------------------------------------
-extern void _GpioSelectAlt(GpioDevice_t *dev, GpioPin_t pin, GpioAlt_t alt);
-extern void _GpioEnablePin(GpioDevice_t *dev, GpioPin_t pin);
-extern void _GpioDisablePin(GpioDevice_t *dev, GpioPin_t pin);
+EXTERN_C EXPORT KERNEL
+void _GpioSelectAlt(GpioDevice_t *dev, GpioPin_t pin, GpioAlt_t alt);
 
+EXTERN_C EXPORT KERNEL
+void _GpioEnablePin(GpioDevice_t *dev, GpioPin_t pin);
 
-//
-// -- define the base locations for both the loader and the kernel versions
-//    ---------------------------------------------------------------------
-#define LDR_GPIO_BASE       ((MMIO_LOADER_LOC << 12) + 0x200000)
-#define KRN_GPIO_BASE       (MMIO_VADDR + 0x200000)
+EXTERN_C EXPORT KERNEL
+void _GpioDisablePin(GpioDevice_t *dev, GpioPin_t pin);
 
 
 //

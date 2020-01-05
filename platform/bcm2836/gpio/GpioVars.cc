@@ -15,24 +15,16 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "mmu.h"
 #include "hardware.h"
 
 
 //
-// -- This is the device structure that will be used for the loader to access the gpio
-//    --------------------------------------------------------------------------------
-__ldrdata GpioDevice_t loaderGpio = {
-    .base = LDR_GPIO_BASE,
-    .GpioSelectAlt = _GpioSelectAlt,
-    .GpioEnablePin = _GpioEnablePin,
-};
-
-
-//
 // -- This is the device structure that will be used for the kernel to access the gpio
 //    --------------------------------------------------------------------------------
-__krndata GpioDevice_t kernelGpio = {
+EXPORT KERNEL_DATA
+GpioDevice_t kernelGpio = {
     .base = KRN_GPIO_BASE,
     .GpioSelectAlt = _GpioSelectAlt,
     .GpioEnablePin = _GpioEnablePin,

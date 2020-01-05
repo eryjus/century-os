@@ -15,9 +15,8 @@
 //
 //===================================================================================================================
 
-#ifndef __FB_H__
-#define __FB_H__
 
+#pragma once
 
 #include "types.h"
 
@@ -25,48 +24,51 @@
 //
 // -- Initialize the frame buffer
 //    ---------------------------
+EXTERN_C EXPORT LOADER
 void FrameBufferInit(void);
 
 
 //
 // -- Clear the frame buffer
 //    ----------------------
+EXTERN_C EXPORT KERNEL
 void FrameBufferClear(void);
 
 
 //
 // -- Parse an RGB color in the form '#ffffff' into an RGB color
 //    ----------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 uint16_t FrameBufferParseRGB(const char *c);
 
 
 //
 // -- Draw a character on the screen
 //    ------------------------------
+EXTERN_C EXPORT KERNEL
 void FrameBufferDrawChar(char ch);
 
 
 //
 // -- Write a screen on the screen
 //    ----------------------------
+EXTERN_C EXPORT KERNEL
 void FrameBufferPutS(const char *s);
 
 
 //
 // -- Output a hex string to the screen
 //    ---------------------------------
-#define FrameBufferPutHex(val)                                      \
-    do {                                                            \
-        FrameBufferDrawChar('0');                                   \
-        FrameBufferDrawChar('x');                                   \
-        for (int i = 28; i >= 0; i -= 4) {                          \
-            char c = (((val) >> i) & 0x0f);                         \
-                                                                    \
-            if (c > 9) FrameBufferDrawChar(c - 10 + 'a');           \
-            else FrameBufferDrawChar(c + '0');                      \
-        }                                                           \
-    } while (0)
+EXPORT KERNEL INLINE
+void FrameBufferPutHex(uint32_t val) {
+    FrameBufferDrawChar('0');
+    FrameBufferDrawChar('x');
+    for (int i = 28; i >= 0; i -= 4) {
+        char c = (((val) >> i) & 0x0f);
+
+        if (c > 9) FrameBufferDrawChar(c - 10 + 'a');
+        else FrameBufferDrawChar(c + '0');
+    }
+}
 
 
-
-#endif

@@ -23,7 +23,8 @@
 //
 // -- Collect and store the CPUID info
 //    --------------------------------
-void __ldrtext CollectCpuid(void)
+EXTERN_C EXPORT LOADER
+void CollectCpuid(void)
 {
     CPUID(0x00, &localHwDisc->cpuid00eax, &localHwDisc->cpuid00ebx, &localHwDisc->cpuid00ecx,
             &localHwDisc->cpuid00edx);

@@ -26,6 +26,7 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt11(isrRegs_t *regs)
 {
     kprintf("\nAlignment Check\n");

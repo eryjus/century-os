@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-#include "cpu.h"
+#include "types.h"
 #include "hardware.h"
 #include "pic.h"
 
@@ -23,6 +23,7 @@
 //
 // -- Disable the PIC from passing along an IRQ (some call it masking)
 //    ----------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _PicMaskIrq(PicDevice_t *dev, Irq_t i)
 {
     if (!dev) return;

@@ -23,6 +23,7 @@
 //
 // -- Issue an EOI for the timer
 //    --------------------------
+EXTERN_C EXPORT KERNEL
 void _TimerEoi(TimerDevice_t *dev)
 {
     if (!dev) return;

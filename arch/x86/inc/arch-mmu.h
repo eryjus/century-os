@@ -16,9 +16,15 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __MMU_H__
 #   error "Do not include 'arch-mmu.h' directly.  Include 'mmu.h' and this file will be included"
 #endif
+
+
+#include "types.h"
 
 
 //
@@ -50,16 +56,29 @@ typedef struct PageEntry_t {
 //
 // -- These are the helper functions to make MMU management nearly painless
 //    ---------------------------------------------------------------------
-inline int MmuGetPDIndexFromAddr(archsize_t addr) { return (addr >> 22) & 0x3ff; }
-inline int MmuGetPTIndexFromAddr(archsize_t addr) { return (addr >> 12) & 0x3ff; }
-inline PageEntry_t *MmuGetPDAddress(void) { return (PageEntry_t *)RECURSIVE_PD_VADDR; }
-inline PageEntry_t *MmuGetPTAddress(archsize_t addr) {
+EXPORT KERNEL INLINE
+int MmuGetPDIndexFromAddr(archsize_t addr) { return (addr >> 22) & 0x3ff; }
+
+EXPORT KERNEL INLINE
+int MmuGetPTIndexFromAddr(archsize_t addr) { return (addr >> 12) & 0x3ff; }
+
+EXPORT KERNEL INLINE
+PageEntry_t *MmuGetPDAddress(void) { return (PageEntry_t *)RECURSIVE_PD_VADDR; }
+
+EXPORT KERNEL INLINE
+PageEntry_t *MmuGetPTAddress(archsize_t addr) {
     return (PageEntry_t *)(RECURSIVE_VADDR + (MmuGetPDIndexFromAddr(addr) * 0x1000));
 }
-inline PageEntry_t *MmuGetPDEntry(archsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
-inline PageEntry_t *MmuGetPTEntry(archsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }
 
+EXPORT KERNEL INLINE
+PageEntry_t *MmuGetPDEntry(archsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
 
-extern "C" void InvalidatePage(archsize_t addr);
-extern "C" void __krntext MmuDumpTables(archsize_t addr);
+EXPORT KERNEL INLINE
+PageEntry_t *MmuGetPTEntry(archsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }
+
+EXTERN_C EXPORT KERNEL
+void InvalidatePage(archsize_t addr);
+
+EXTERN_C EXPORT KERNEL
+void MmuDumpTables(archsize_t addr);
 

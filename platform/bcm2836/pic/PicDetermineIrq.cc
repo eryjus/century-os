@@ -15,12 +15,17 @@
 //===================================================================================================================
 
 
-#include "printf.h"
+#include "types.h"
 #include "timer.h"
+#include "printf.h"
 #include "pic.h"
 
 
-int __krntext _PicDetermineIrq(PicDevice_t *dev)
+//
+// -- From an interrupt, determine what is the IRQ to handle
+//    ------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+int _PicDetermineIrq(PicDevice_t *dev)
 {
     if (!dev) return -1;
 
@@ -33,7 +38,7 @@ int __krntext _PicDetermineIrq(PicDevice_t *dev)
     //
     // -- start by checking the core's interrupts
     //    ---------------------------------------
-    archsize_t irq = MmioRead(picData->timerLoc + TIMER_IRQ_SOURCE + (core * 4)) & 0xff;       // mask out the relevant ints
+    archsize_t irq = MmioRead(picData->timerLoc + TIMER_IRQ_SOURCE + (core * 4)) & 0xff; // mask out the relevant ints
     rv = __builtin_ffs(irq);
     if (rv != 0) return 64 + (rv - 1);
 

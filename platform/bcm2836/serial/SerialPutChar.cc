@@ -16,8 +16,8 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
-#include "cpu.h"
 #include "spinlock.h"
 #include "serial.h"
 

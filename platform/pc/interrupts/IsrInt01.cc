@@ -26,6 +26,7 @@
 //
 // -- A dummy reserved handler
 //    ------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt01(isrRegs_t *regs)
 {
     kprintf("\nRESERVED INT01\n");

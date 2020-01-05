@@ -17,8 +17,6 @@
 
 
 #include "types.h"
-#include "cpu.h"
-#include "hardware.h"
 #include "interrupt.h"
 #include "printf.h"
 #include "timer.h"
@@ -27,6 +25,7 @@
 //
 // -- Set the timer to fire at the desires frequency
 //    ----------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
 {
     if (!dev) return;
@@ -47,12 +46,12 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     // -- So now, I should be able to calculate the desired interval.  This is done by taking the clock
     //    frequency and dividing it by the requested frequency.  i.e.: READ_CNTFRQ / frequency.
     //    ---------------------------------------------------------------------------------------------
-    WRITE_CNTP_CVAL(0xffffffffffffffff);            // set the cval to its limit just to be in control
+    WRITE_CNTP_CVAL((uint64_t)-1);              // set the cval to its limit just to be in control
     dev->reloadValue = 1000000 / frequency;
 
-    PicInit(dev->pic, "PIC");                              // now, init the pic first
+    PicInit(dev->pic, "PIC");                   // now, init the pic first
     WRITE_CNTP_TVAL(dev->reloadValue);
-    WRITE_CNTP_CTL(1);                              // -- enable the timer
+    WRITE_CNTP_CTL(1);                          // enable the timer
 
     PicUnmaskIrq(dev->pic, IRQ_ARM_TIMER);
     kprintf("Timer Initialized\n");

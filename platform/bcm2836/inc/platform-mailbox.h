@@ -18,6 +18,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __HARDWARE_H__
 #   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -37,28 +40,29 @@ typedef struct MailboxDevice_t {
 //
 // -- Here, declare the different configurations of the GPIO will use
 //    ---------------------------------------------------------------
-extern MailboxDevice_t kernelMailbox;
+EXTERN KERNEL_DATA
+MailboxDevice_t kernelMailbox;
 
 
 //
 // -- These are the common interface functions we will use to interact with the GPIO.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    -----------------------------------------------------------------------------------------------------------
-inline void MailboxSend(MailboxDevice_t *dev, archsize_t mb, archsize_t msg) { dev->MailboxSend(dev, mb, msg); }
-inline archsize_t MailboxReceive(MailboxDevice_t *dev, archsize_t mb) { return dev->MailboxReceive(dev, mb); }
+EXPORT KERNEL INLINE
+void MailboxSend(MailboxDevice_t *dev, archsize_t mb, archsize_t msg) { dev->MailboxSend(dev, mb, msg); }
+
+EXPORT KERNEL INLINE
+archsize_t MailboxReceive(MailboxDevice_t *dev, archsize_t mb) { return dev->MailboxReceive(dev, mb); }
 
 
 //
 // -- Here are the function prototypes needed for these operations
 //    ------------------------------------------------------------
-extern void _MailboxSend(MailboxDevice_t *dev, archsize_t mb, archsize_t);
-extern archsize_t _MailboxReceive(MailboxDevice_t *dev, archsize_t mb);
+EXTERN_C EXPORT KERNEL
+void _MailboxSend(MailboxDevice_t *dev, archsize_t mb, archsize_t);
 
-
-//
-// -- define the base locations for both the loader and the kernel versions
-//    ---------------------------------------------------------------------
-#define KRN_MAILBOX_BASE       (MMIO_VADDR + 0xb880)
+EXTERN_C EXPORT KERNEL
+archsize_t _MailboxReceive(MailboxDevice_t *dev, archsize_t mb);
 
 
 //

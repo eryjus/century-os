@@ -26,6 +26,7 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt0d(isrRegs_t *regs)
 {
     kprintf("\nGeneral Protection Fault\n");

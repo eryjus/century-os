@@ -28,7 +28,8 @@
 //
 // -- This is a static function to make sure there is always a function to call
 //    -------------------------------------------------------------------------
-static void SyscallNullHandler(isrRegs_t *regs)
+EXTERN_C HIDDEN SYSCALL
+void SyscallNullHandler(isrRegs_t *regs)
 {
     SYSCALL_RETURN(regs) = -ENOSYS;
 }
@@ -37,7 +38,8 @@ static void SyscallNullHandler(isrRegs_t *regs)
 //
 // -- The ISR Handler Table
 //    ---------------------
-static isrFunc_t syscallHandlers[] = {
+HIDDEN SYSCALL_DATA
+isrFunc_t syscallHandlers[] = {
     SyscallNullHandler,                 // Function 0; trivial call
     SyscallReceiveMessage,              // Function 1: receive a message
     SyscallSendMessage,                 // Function 2: send a message
@@ -47,7 +49,8 @@ static isrFunc_t syscallHandlers[] = {
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
-extern "C" void SyscallHandler(isrRegs_t *regs)
+EXTERN_C EXPORT SYSCALL
+void SyscallHandler(isrRegs_t *regs)
 {
     if ((uint32_t)SYSCALL_FUNC_NO(regs) >= sizeof(syscallHandlers) / sizeof(isrFunc_t)) {
         SyscallNullHandler(regs);
@@ -57,3 +60,4 @@ extern "C" void SyscallHandler(isrRegs_t *regs)
     isrFunc_t handler = syscallHandlers[SYSCALL_FUNC_NO(regs)];
     handler(regs);
 }
+

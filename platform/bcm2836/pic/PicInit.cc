@@ -15,17 +15,15 @@
 //===================================================================================================================
 
 
-#include "cpu.h"
-#include "interrupt.h"
-#include "heap.h"
+#include "types.h"
 #include "printf.h"
-#include "mmu.h"
 #include "timer.h"
 
 
 //
 // -- Initialize the pic
 //    ------------------
+EXTERN_C EXPORT KERNEL
 void _PicInit(PicDevice_t *dev, const char *name)
 {
     if (!dev) return;
@@ -35,8 +33,8 @@ void _PicInit(PicDevice_t *dev, const char *name)
     int core = CpuNum();
 
     if (core == 0) {
-        picData->picLoc = PIC;
-        picData->timerLoc = TIMER;
+        picData->picLoc = BCM2835_PIC;
+        picData->timerLoc = BCM2835_TIMER;
 
         // -- for good measure, disable the FIQ
         MmioWrite(base1 + INT_FIQCTL, 0x0);

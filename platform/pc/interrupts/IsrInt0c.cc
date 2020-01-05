@@ -26,6 +26,7 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt0c(isrRegs_t *regs)
 {
     kprintf("\nStack Segment Fault\n");

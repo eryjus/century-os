@@ -26,12 +26,14 @@
 //
 // -- A pointer to the actual IDT
 //    ---------------------------
-extern IdtEntry *idtEntries;
+EXTERN EXPORT KERNEL_DATA
+IdtEntry *idtEntries;
 
 
 //
 // -- Construct a single IDT gate
 //    ---------------------------
+EXTERN_C EXPORT KERNEL
 void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
 {
     if (num > 255) return;

@@ -15,9 +15,15 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __PIC_H__
 #   error "Use #include \"pic.h\" and it will pick up this file; do not #include this file directly."
 #endif
+
+
+#include "types.h"
 
 
 //
@@ -29,7 +35,8 @@ typedef int Irq_t;
 //
 // -- These are the possible pic drivers for the computer
 //    ---------------------------------------------------
-extern struct PicDevice_t picBcm2835;
+EXTERN KERNEL_DATA
+struct PicDevice_t picBcm2835;
 
 
 //
@@ -59,19 +66,23 @@ typedef struct Bcm2835Pic_t {
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-__CENTURY_FUNC__ void _PicInit(PicDevice_t *dev, const char *name);
-__CENTURY_FUNC__ void _PicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _PicMaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _PicEoi(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ int _PicDetermineIrq(PicDevice_t *dev);
-__CENTURY_FUNC__ void _PicBroadcastIpi(PicDevice_t *dev, int ipi);
+EXTERN_C EXPORT KERNEL
+void _PicInit(PicDevice_t *dev, const char *name);
 
+EXTERN_C EXPORT KERNEL
+void _PicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
 
-//
-// -- This is the base location of the timer on x86
-//    ---------------------------------------------
-#define PIC                 (MMIO_VADDR + 0x00b000)
+EXTERN_C EXPORT KERNEL
+void _PicMaskIrq(PicDevice_t *dev, Irq_t irq);
 
+EXTERN_C EXPORT KERNEL
+void _PicEoi(PicDevice_t *dev, Irq_t irq);
+
+EXTERN_C EXPORT KERNEL
+int _PicDetermineIrq(PicDevice_t *dev);
+
+EXTERN_C EXPORT KERNEL
+void _PicBroadcastIpi(PicDevice_t *dev, int ipi);
 
 
 #define INT_IRQPEND0        (0x200)                     // The basic interrupt pending register
@@ -343,8 +354,5 @@ __CENTURY_FUNC__ void _PicBroadcastIpi(PicDevice_t *dev, int ipi);
 #define INTDIS0IRQDOORB0    (1<<2)                      // ARM Doorbell 0 Disable
 #define INTDIS0IRQMAIL      (1<<1)                      // ARM Mailbox IRQ Disable
 #define INTDIS0IRQTIMER     (1<<0)                      // ARM Timer IRQ Disable
-
-
-#define IPI_MAILBOX_BASE        (MMIO_VADDR + 0x01000080)
 
 

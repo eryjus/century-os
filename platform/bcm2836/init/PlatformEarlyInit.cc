@@ -17,15 +17,11 @@
 //===================================================================================================================
 
 
-#include "hardware.h"
-#include "cpu.h"
+#include "types.h"
 #include "serial.h"
 #include "printf.h"
 #include "hw-disc.h"
 #include "platform.h"
-
-EXTERN EXPORT KERNEL_DATA
-SerialDevice_t testSerial;
 
 
 //

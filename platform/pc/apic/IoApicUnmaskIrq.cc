@@ -26,7 +26,8 @@
 //
 // -- Enable an IRQ by unmasking it
 //    -----------------------------
-void __krntext _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq)
+EXTERN_C EXPORT KERNEL
+void _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq)
 {
     if (!dev) return;
     if (irq < 0 || irq > 23) return;
@@ -35,6 +36,6 @@ void __krntext _IoApicUnmaskIrq(PicDevice_t *dev, Irq_t irq)
     archsize_t addr = data->ioapicBase;
     archsize_t reg = IoApicRedir(data, irq);
 
-    IOAPIC_WRITE(addr, reg, IOAPIC_READ(addr, reg) & ~(1<<16));
+    IoapicWrite(addr, reg, IoapicRead(addr, reg) & ~(1<<16));
 }
 

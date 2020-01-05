@@ -16,9 +16,13 @@
 //===================================================================================================================
 
 
+#pragma once
+
 #ifndef __CPU_H__
 #   error "Do not include 'arch-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
 #endif
+
+#include "types.h"
 
 
 //
@@ -212,19 +216,22 @@ void CpuTssInit(void);
 //
 // -- Change the page directory to the physical address provided
 //    ----------------------------------------------------------
-__CENTURY_FUNC__ void MmuSwitchPageDir(archsize_t physAddr);
+EXTERN_C EXPORT KERNEL
+void MmuSwitchPageDir(archsize_t physAddr);
 
 
 //
 // -- a lightweight function to halt the cpu
 //    --------------------------------------
-inline void HaltCpu(void) { __asm("hlt"); }
+EXPORT KERNEL INLINE
+void HaltCpu(void) { __asm("hlt"); }
 
 
 //
 // -- Panic the kernel, dumping the register state
 //    --------------------------------------------
-inline void Panic(void) { __asm("int3"); }
+EXPORT KERNEL INLINE
+void Panic(void) { __asm("int3"); }
 
 
 //
@@ -246,20 +253,23 @@ inline void Panic(void) { __asm("int3"); }
 //    issue a single request to CPUID. Fits 'intel features', for instance note that even if only "eax" and "edx"
 //    are of interest, other registers will be modified by the operation, so we need to tell the compiler about it.
 //    -------------------------------------------------------------------------------------------------------------
-static inline void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
+EXPORT LOADER INLINE
+void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
     __asm volatile("cpuid":"=a"(*a),"=b"(*b),"=c"(*c),"=d"(*d):"a"(code)); }
 
 
 //
 // -- Model Specific Registers
 //    ------------------------
-static inline uint64_t RDMSR(uint32_t r) {
+EXPORT LOADER INLINE
+uint64_t RDMSR(uint32_t r) {
     uint32_t _lo, _hi;
     __asm volatile("rdmsr\n" : "=a"(_lo),"=d"(_hi) : "c"(r) : "%ebx");
     return (((uint64_t)_hi) << 32) | _lo;
 }
 
-static inline void WRMSR(uint32_t r, uint64_t v) {
+EXPORT LOADER INLINE
+void WRMSR(uint32_t r, uint64_t v) {
     uint32_t _lo = (uint32_t)(v & 0xffffffff);
     uint32_t _hi = (uint32_t)(v >> 32);
     __asm volatile("wrmsr\n" : : "c"(r),"a"(_lo),"d"(_hi));
@@ -277,24 +287,28 @@ static inline void WRMSR(uint32_t r, uint64_t v) {
 //
 // -- A dummy function to enter system mode, since this is for the ARM
 //    ----------------------------------------------------------------
-__CENTURY_FUNC__ inline void EnterSystemMode(void) {}
+EXPORT LOADER INLINE
+void EnterSystemMode(void) {}
 
 
 //
 // -- Get the CR3 value
 //    -----------------
-__CENTURY_FUNC__ archsize_t GetCr3(void);
+EXTERN_C EXPORT KERNEL
+archsize_t GetCr3(void);
 
 
 //
 // -- Check if CPUID is supported
 //    ---------------------------
-__CENTURY_FUNC__ int CheckCpuid(void);
+EXTERN_C EXPORT KERNEL
+int CheckCpuid(void);
 
 
 //
 // -- Collect the CPUID information
 //    -----------------------------
-__CENTURY_FUNC__ void CollectCpuid(void);
+EXTERN_C EXPORT KERNEL
+void CollectCpuid(void);
 
 

@@ -21,6 +21,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hw-disc.h"
 #include "printf.h"
 #include "mmu.h"
@@ -30,7 +31,7 @@
 //
 // -- check a pointer to see if it really qualifies as a RSDP
 //    -------------------------------------------------------
-HIDDEN LOADER
+EXTERN_C HIDDEN LOADER
 bool IsRsdp(RSDP_t *rsdp)
 {
     if (!rsdp) return false;

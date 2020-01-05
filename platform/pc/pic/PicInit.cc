@@ -15,7 +15,7 @@
 //===================================================================================================================
 
 
-#include "cpu.h"
+#include "types.h"
 #include "hardware.h"
 #include "pic.h"
 
@@ -23,6 +23,7 @@
 //
 // -- Initialize the x86 8259 PIC -- note, this is not the IOAPIC
 //    -----------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _PicInit(PicDevice_t *dev, const char *name)
 {
     if (!dev) return;

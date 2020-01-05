@@ -25,13 +25,15 @@
 //
 // -- This is the pic we are going to use
 //    -----------------------------------
+EXPORT KERNEL_DATA
 PicDevice_t *picControl = &pic8259;
 
 
 //
 // -- Pick the best PIC we have available to us and set up to use that
 //    ----------------------------------------------------------------
-__ldrtext PicDevice_t *PicPick(void)
+EXTERN_C EXPORT LOADER
+PicDevice_t *PicPick(void)
 {
     if (GetIoapicCount() > 0) picControl = &ioapicDriver;
     else picControl = &pic8259;                         // -- fall back in the 8259 PIC

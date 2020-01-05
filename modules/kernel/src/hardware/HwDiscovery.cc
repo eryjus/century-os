@@ -23,7 +23,8 @@
 //
 // -- Perform the hardware discovery
 //    ------------------------------
-void __ldrtext HwDiscovery(void)
+EXTERN_C EXPORT LOADER
+void HwDiscovery(void)
 {
     kMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
     Mb1Parse();

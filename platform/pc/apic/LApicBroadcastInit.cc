@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
 #include "timer.h"
 #include "hardware.h"
@@ -24,7 +25,8 @@
 //
 // -- Broadcast an INIT to all CPUs (including myself)
 //    ------------------------------------------------
-void __ldrtext _LApicBroadcastInit(PicDevice_t *dev, uint32_t core)
+EXTERN_C EXPORT LOADER
+void _LApicBroadcastInit(PicDevice_t *dev, uint32_t core)
 {
     if (!dev) return;
 

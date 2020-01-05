@@ -18,7 +18,9 @@
 //===================================================================================================================
 
 
-#ifndef __TIMER_H__
+#pragma once
+
+
 #define __TIMER_H__
 
 
@@ -34,6 +36,7 @@ struct TimerDevice_t;
 #if __has_include("platform-timer.h")
 #   include "platform-timer.h"
 #endif
+
 
 #include "pic.h"
 
@@ -56,36 +59,51 @@ typedef struct TimerDevice_t {
 
 
 //
-// -- The global timer control structure holding pointers to all the proper functions.  Before we reference this
-//    global variable, we are already in the kernel.  There is no need for a loader version of this device.
-//    ----------------------------------------------------------------------------------------------------------
-extern TimerDevice_t *timerControl;
+// -- The global timer control structure holding pointers to all the proper functions.
+//    --------------------------------------------------------------------------------
+EXTERN KERNEL_DATA
+TimerDevice_t *timerControl;
 
 
 //
 // -- These are the common interface functions we will use to interact with the timer.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    ------------------------------------------------------------------------------------------------------
-inline void TimerInit(TimerDevice_t *dev, uint32_t freq) { dev->TimerInit(dev, freq); }
-inline void TimerEoi(TimerDevice_t *dev) { dev->TimerEoi(dev); }
-inline void TimerPlatformTick(TimerDevice_t *dev) { dev->TimerPlatformTick(dev); }
-inline uint64_t TimerCurrentCount(TimerDevice_t *dev) { return dev->TimerCurrentCount(dev); }
+EXPORT KERNEL INLINE
+void TimerInit(TimerDevice_t *dev, uint32_t freq) { dev->TimerInit(dev, freq); }
+
+EXPORT KERNEL INLINE
+void TimerEoi(TimerDevice_t *dev) { dev->TimerEoi(dev); }
+
+EXPORT KERNEL INLINE
+void TimerPlatformTick(TimerDevice_t *dev) { dev->TimerPlatformTick(dev); }
+
+EXPORT KERNEL INLINE
+uint64_t TimerCurrentCount(TimerDevice_t *dev) { return dev->TimerCurrentCount(dev); }
 
 
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-__CENTURY_FUNC__ void TimerCallBack(isrRegs_t *reg);
-__CENTURY_FUNC__ void _TimerInit(TimerDevice_t *dev, uint32_t freq);
-__CENTURY_FUNC__ void _TimerEoi(TimerDevice_t *dev);
-__CENTURY_FUNC__ void _TimerPlatformTick(TimerDevice_t *dev);
-__CENTURY_FUNC__ uint64_t _TimerCurrentCount(TimerDevice_t *dev);
+EXTERN_C EXPORT KERNEL
+void TimerCallBack(isrRegs_t *reg);
+
+EXTERN_C EXPORT KERNEL
+void _TimerInit(TimerDevice_t *dev, uint32_t freq);
+
+EXTERN_C EXPORT KERNEL
+void _TimerEoi(TimerDevice_t *dev);
+
+EXTERN_C EXPORT KERNEL
+void _TimerPlatformTick(TimerDevice_t *dev);
+
+EXTERN_C EXPORT KERNEL
+uint64_t _TimerCurrentCount(TimerDevice_t *dev);
 
 
 //
 // -- Pick the correct Timer given what we have available
 //    ---------------------------------------------------
-__CENTURY_FUNC__ TimerDevice_t *TimerPick(void);
+EXTERN_C EXPORT LOADER
+TimerDevice_t *TimerPick(void);
 
-
-#endif

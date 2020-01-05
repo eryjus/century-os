@@ -26,7 +26,8 @@
 //
 // -- Signal EOI to the Local APIC
 //    ----------------------------
-void __krntext _LApicEoi(TimerDevice_t *dev)
+EXTERN_C EXPORT KERNEL
+void _LApicEoi(TimerDevice_t *dev)
 {
     if (!dev) return;
 

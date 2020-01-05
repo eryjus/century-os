@@ -347,25 +347,29 @@ inline void Panic(void) { while (1) HaltCpu(); }
 //
 // -- A dummy function to enter system mode, since this is for the ARM
 //    ----------------------------------------------------------------
-extern "C" void EnterSystemMode(void);
+EXTERN_C EXPORT LOADER
+void EnterSystemMode(void);
 
 
 //
 // -- Get the Data Fault Address Register (DFAR)
 //    ------------------------------------------
-extern "C" archsize_t GetDFAR(void);
+EXTERN_C EXPORT KERNEL
+archsize_t GetDFAR(void);
 
 
 //
 // -- Get the Data Fault Status Register (DFSR)
 //    ------------------------------------------
-extern "C" archsize_t GetDFSR(void);
+EXTERN_C EXPORT KERNEL
+archsize_t GetDFSR(void);
 
 
 //
 // -- Initialize the core to use the FPU
 //    ----------------------------------
-__CENTURY_FUNC__ void FpuInit(void);
+EXTERN_C EXPORT LOADER
+void FpuInit(void);
 
 
 #define CpuTssInit()

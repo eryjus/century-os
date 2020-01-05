@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __HARDWARE_H__
 #   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -22,24 +25,22 @@
 
 #include "types.h"
 #include "printf.h"
+#include "mmu.h"
 #include "cpu.h"
 
 
 //
-// -- These defines bound the ACPI location for now
+// -- Check if the ACPI is locatable for our kernel
 //    ---------------------------------------------
-#define ACPI_LO             (0xb0000000)
-#define ACPI_HI             (0xbfffffff)
-
-#define CHK_ACPI(loc)                                                           \
-        do {                                                                    \
-            if (!((loc) >= ACPI_LO) && ((loc) <= ACPI_HI)) {                    \
-                kprintf("ACPI is not is a supported location: %p\n", loc);      \
-                HaltCpu();                                                      \
-            } else {                                                            \
-                MmuMapToFrame(loc & 0xfffff000, loc >> 12, PG_KRN);             \
-            }                                                                   \
-        } while (0)
+EXPORT LOADER INLINE
+void CheckAcpi(archsize_t loc) {
+    if (!((loc) >= ACPI_LO) && ((loc) <= ACPI_HI)) {
+        kprintf("ACPI is not is a supported location: %p\n", loc);
+        HaltCpu();
+    } else {
+        MmuMapToFrame(loc & 0xfffff000, loc >> 12, PG_KRN);
+    }
+}
 
 
 //
@@ -77,8 +78,8 @@ typedef struct RSDP_t {
 //
 // -- This function will locate the RSDP if available and note it in the hardware discovery table
 //    -------------------------------------------------------------------------------------------
-EXTERN_C EXPORT LOADER RSDP_t *AcpiFindRsdp(void);
-
+EXTERN_C EXPORT LOADER
+RSDP_t *AcpiFindRsdp(void);
 
 
 //
@@ -100,22 +101,17 @@ EXTERN_C EXPORT LOADER RSDP_t *AcpiFindRsdp(void);
 
 
 //
-// -- this is the size of the above block, which will be needed in some cases to help
-//    calculate an offset
-//    -------------------------------------------------------------------------------
-#define ACPI_HDR_SIZE       36
-
-
-//
 // -- Check the table to see if it is what we expect; note that this memory must be mapped before calling
 //    ---------------------------------------------------------------------------------------------------
-EXTERN_C EXPORT LOADER bool AcpiCheckTable(archsize_t locn, uint32_t);
+EXTERN_C EXPORT LOADER
+bool AcpiCheckTable(archsize_t locn, uint32_t);
 
 
 //
 // -- get the table signature (and check its valid); return 0 if invalid
 //    ------------------------------------------------------------------
-EXTERN_C EXPORT LOADER uint32_t AcpiGetTableSig(archsize_t loc);
+EXTERN_C EXPORT LOADER
+uint32_t AcpiGetTableSig(archsize_t loc);
 
 
 //
@@ -130,7 +126,8 @@ typedef struct RSDT_t {
 //
 // -- read the rdst table
 //    -------------------
-EXTERN_C EXPORT LOADER bool AcpiReadRsdt(archsize_t loc);
+EXTERN_C EXPORT LOADER
+bool AcpiReadRsdt(archsize_t loc);
 
 
 //
@@ -145,7 +142,8 @@ typedef struct XSDT_t {
 //
 // -- read the xsdt table
 //    -------------------
-EXTERN_C EXPORT LOADER bool AcpiReadXsdt(archsize_t loc);
+EXTERN_C EXPORT LOADER
+bool AcpiReadXsdt(archsize_t loc);
 
 
 //
@@ -162,7 +160,8 @@ typedef struct MADT_t {
 //
 // -- Read an ACPI MADT table
 //    -----------------------
-EXTERN_C EXPORT LOADER void AcpiReadMadt(archsize_t loc);
+EXTERN_C EXPORT LOADER
+void AcpiReadMadt(archsize_t loc);
 
 
 //

@@ -1,3 +1,19 @@
+//===================================================================================================================
+//
+//  CoresStart.cc -- Start the cores for the x86-pc
+//
+//        Copyright (c)  2017-2020 -- Adam Clark
+//        Licensed under "THE BEER-WARE LICENSE"
+//        See License.md for details.
+//
+// ------------------------------------------------------------------------------------------------------------------
+//
+//     Date      Tracker  Version  Pgmr  Description
+//  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+//  2020-Jan-04  Initial  v0.5.0d  ADCL  Initial version
+//
+//===================================================================================================================
+
 
 #include "types.h"
 #include "timer.h"
@@ -8,9 +24,18 @@
 #include "pic.h"
 
 
-extern "C" void entryAp(void);
+//
+// -- an definition for the entry point for the cores
+//    -----------------------------------------------
+EXTERN_C EXPORT KERNEL
+void entryAp(void);
 
-__CENTURY_FUNC__ void CoresStart(void)
+
+//
+// -- start the other cores; remains in the kernel since we may want to do this later as well
+//    ---------------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void CoresStart(void)
 {
     //
     // -- Load the trampoline code into the low 1MB of memory
