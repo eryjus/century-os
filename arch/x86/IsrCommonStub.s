@@ -203,11 +203,12 @@ IsrCommonStub:
     mov         ax,ss                   ;; get ss
     push        eax                     ;; and push it
 
-    mov         ax,0x10                 ;; now make sure that data is setup for ring0
+    mov         ax,0x28                 ;; now make sure that data is setup for ring0
     mov         ds,ax                   ;; move it to ds, ...
     mov         es,ax                   ;; ... es, ...
     mov         fs,ax                   ;; ... fs, and ...
     mov         gs,ax                   ;; ... gs
+    mov         ax,0x10                 ;; Stack is seg sel 0x10...
     mov         ss,ax                   ;; ... ss
 
     call        IsrHandler              ;; call the C ISR haandler

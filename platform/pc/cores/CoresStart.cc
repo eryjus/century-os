@@ -40,10 +40,12 @@ void CoresStart(void)
     //
     // -- Load the trampoline code into the low 1MB of memory
     //    ---------------------------------------------------
-    uint8_t *trampoline = (uint8_t *)0x8000;        // for S&G, start at 32K
+    uint8_t *trampoline = (uint8_t *)X86_TRAMPOLINE;        // for S&G, start at 32K
     extern uint32_t intTableAddr;
     extern uint8_t _smpStart[];
     extern uint8_t _smpEnd[];
+
+    MmuMapToFrame(X86_TRAMPOLINE, X86_TRAMPOLINE >> 12, PG_KRN | PG_WRT | PG_DEVICE);
 
     kprintf("Copying the AP entry code to %p\n", trampoline);
     kprintf("... start at %p\n", _smpStart);
@@ -53,6 +55,12 @@ void CoresStart(void)
     // -- Patch up some memory locations
     *((uint32_t *)(&trampoline[14])) = intTableAddr;
     *((uint32_t *)(&trampoline[20])) = intTableAddr + 0x800;
+
+
+    // -- remap as read only!!
+    MmuUnmapPage(X86_TRAMPOLINE);
+    MmuMapToFrame(X86_TRAMPOLINE, X86_TRAMPOLINE >> 12, PG_KRN | PG_DEVICE);
+
 
     for (int i = 1; i < cpus.cpusDiscovered; i ++) {
         picControl->PicBroadcastInit(picControl, i);

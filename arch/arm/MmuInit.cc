@@ -123,5 +123,7 @@ void MmuInit(void)
             mmioPhys ++, mmioVirt += PAGE_SIZE) {
         MmuMapToFrame(mmioVirt, mmioPhys, PG_KRN | PG_DEVICE | PG_WRT);
     }
+
+    kPrintfEnabled = true;
 }
 

@@ -1,15 +1,22 @@
       .equ MAX_DEV_NAME,128
+      .equ MAX_CPUS,16
       .equ KRN_GPIO_BASE,(MMIO_VADDR+0x200000)
       .equ KRN_MAILBOX_BASE,(MMIO_VADDR+0xb880)
       .equ BCM2835_PIC,(MMIO_VADDR+0x00b000)
       .equ IPI_MAILBOX_BASE,(MMIO_VADDR+0x01000080)
       .equ KRN_SERIAL_BASE,(MMIO_VADDR+0x215000)
       .equ BCM2835_TIMER,(MMIO_VADDR+0x01003000)
+      .equ ARM_MAILBOX_OFFSET,0x40000000
       .equ ACPI_HDR_SIZE,36
       .equ ACPI_LO,(0xb0000000)
       .equ ACPI_HI,(0xbfffffff)
       .equ LAPIC_MMIO,(0xfee00000)
       .equ PC_TIMER,0x40
+      .equ X86_PHYS_GDT,(0x10000)
+      .equ X86_VIRT_GDT,(0xff410000)
+      .equ X86_PHYS_IDT,(0x9000)
+      .equ X86_VIRT_IDT,(0xff401000)
+      .equ X86_TRAMPOLINE,0x8000
       .equ STACK_SIZE,0x1000
       .equ STACK_BASE,0xff800000
       .equ STACK_LOCATION,(STACK_BASE+STACK_SIZE)
@@ -67,6 +74,8 @@
       .equ WIDTH,1024
       .equ HEIGHT,768
       .equ DEPTH,16
+      .equ RPI2B_HEIGHT,400
+      .equ RPI2B_WIDTH,800
       .equ EXCEPT_VECTOR_TABLE,0xff401000
       .equ MMIO_VADDR,0xf8000000
       .equ MMIO_LOADER_LOC,0x3f000

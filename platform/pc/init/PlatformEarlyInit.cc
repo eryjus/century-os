@@ -22,6 +22,7 @@
 #include "hw-disc.h"
 #include "serial.h"
 #include "mmu.h"
+#include "interrupt.h"
 #include "printf.h"
 #include "platform.h"
 
@@ -49,16 +50,20 @@ void PlatformEarlyInit(void)
     MmuMapToFrame((archsize_t)rsdp, (frame_t)(((archsize_t)rsdp) >> 12), PG_KRN);
 
     if ((rsdp->xsdtAddress != 0) && (AcpiReadXsdt(rsdp->xsdtAddress) == true)) {
-        MmuUnmapPage((archsize_t)rsdp);
-        return;
+        // -- do nothing here...
+    } else {
+        AcpiReadRsdt(rsdp->rsdtAddress);
+        kprintf("The APIC base address is at %p\n", READ_APIC_BASE());
+
     }
-
-    AcpiReadRsdt(rsdp->rsdtAddress);
-
-    kprintf("The APIC base address is at %p\n", READ_APIC_BASE());
 
     // -- unmap the acpi tables
     MmuUnmapPage((archsize_t)rsdp);
+
+
+    // -- Complete the CPU initialization
+    InitGdt();
+    ExceptionInit();
 }
 
 

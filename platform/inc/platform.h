@@ -16,9 +16,15 @@
 
 
 #pragma once
+#define __PLATFORM_H__
 
 
 #include "types.h"
+
+
+#if __has_include("platform-cpu.h")
+#   include "platform-cpu.h"
+#endif
 
 
 //

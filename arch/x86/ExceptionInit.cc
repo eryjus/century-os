@@ -248,20 +248,15 @@ void irq255(void);
 
 
 //
-// -- The location of the IDT.  Note that this is a foxed point in linear memory
-//    --------------------------------------------------------------------------
-EXPORT KERNEL_DATA
-IdtEntry *idtEntries = (IdtEntry *)IDT_ADDRESS;
-
-
-//
 // -- Build the parts of the IDT we are going to use so far
 //    -----------------------------------------------------
 EXTERN_C EXPORT LOADER
 void ExceptionInit(void)
 {
     kprintf("Initializing the IDT properly\n");
-    kMemSetB((uint8_t *)idtEntries, 0, sizeof(IdtEntry) * 256);
+
+    MmuMapToFrame(X86_VIRT_IDT, X86_PHYS_IDT >> 12, PG_WRT | PG_KRN);
+    kMemSetB((void *)X86_VIRT_IDT, 0, sizeof(IdtEntry) * 256);
 
     IdtSetGate( 0, (uint32_t)isr0 , 0x08, 0x8e);
     IdtSetGate( 1, (uint32_t)isr1 , 0x08, 0x8e);
@@ -339,6 +334,18 @@ void ExceptionInit(void)
     IdtSetGate(253, (uint32_t)irq253, 0x08, 0x8e);
     IdtSetGate(254, (uint32_t)irq254, 0x08, 0x8e);
     IdtSetGate(255, (uint32_t)irq255, 0x08, 0x8e);
+
+
+    // -- Finally we need to load the new GDT
+    struct {
+        uint16_t size;
+        uintptr_t loc;
+    } __attribute__((packed)) idtRec = {
+        (uint16_t)((sizeof(IdtEntry) * 256) - 1),
+        X86_VIRT_IDT,
+    };
+
+    LoadIdt(&idtRec);
 
 
     // -- Register the individual ISR routines

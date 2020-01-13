@@ -93,7 +93,6 @@
 //
 // -- These are critical CPU structure locations
 //    ------------------------------------------
-const archsize_t GDT_ADDRESS = 0xff401000;
 const archsize_t TSS_ADDRESS = 0xff401080;
 const archsize_t IDT_ADDRESS = 0xff401800;
 
@@ -163,39 +162,6 @@ typedef struct tss_t {
 
 
 //
-// -- This is the structure and layout of Frame 0, accessed through kernel address 0xff401000
-//    ---------------------------------------------------------------------------------------
-typedef struct Frame0_t {
-    Descriptor_t gdt[16];               // The GDT, for 128 bytes       (8*16)      128
-    tss_t tss;                          // The TSS                      (104)       104
-    byte_t unused1[384];                // Room to grow                 (384)       384
-    byte_t unused2[920];                // Room for the ioBitmap        (920)       920
-    byte_t unused3[512];                // Simply more room to grow     (512)       512
-    Descriptor_t idt[256];              // The IDT                      (8*256)    2048
-} __attribute__((packed)) Frame0_t;
-
-
-//
-// -- I'm going to let the compiler do the work for me here.  In case of an error, look for something like the
-//    following (gcc):
-//
-//      /home/adam/workspace/century-os/inc/types.h:59:70: error: division by zero [-Werror=div-by-zero]
-//       #define ct_assert(e) enum { ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) }
-//                                                                           ~^~~~~~~~
-//      /home/adam/workspace/century-os/modules/kernel/inc/tss.h:104:1: note: in expansion of macro 'ct_assert'
-//       ct_assert(sizeof(Frame0_t) == 4096);
-//       ^~~~~~~~~
-//    ---------------------------------------------------------------------------------------------------------
-ct_assert(sizeof(Frame0_t) == 4096);
-
-
-//
-// -- This is a pointer to the CPU structures
-//    ---------------------------------------
-extern Frame0_t *cpuStructs;
-
-
-//
 // -- This is a short stack specific for the TSS
 //    ------------------------------------------
 extern byte_t tssStack[TSS_STACK_SIZE];
@@ -204,7 +170,8 @@ extern byte_t tssStack[TSS_STACK_SIZE];
 //
 // -- Load the task register
 //    ----------------------
-extern "C" void Ltr(uint16_t tr);
+EXTERN_C EXPORT KERNEL
+void Ltr(uint16_t tr);
 
 
 //
@@ -255,7 +222,7 @@ void Panic(void) { __asm("int3"); }
 //    -------------------------------------------------------------------------------------------------------------
 EXPORT LOADER INLINE
 void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
-    __asm volatile("cpuid":"=a"(*a),"=b"(*b),"=c"(*c),"=d"(*d):"a"(code)); }
+    __asm volatile("cpuid\n" : "=a"(*a),"=b"(*b),"=c"(*c),"=d"(*d) : "a"(code)); }
 
 
 //
@@ -285,6 +252,13 @@ void WRMSR(uint32_t r, uint64_t v) {
 
 
 //
+// -- Bochs magic breakpoint
+//    ----------------------
+#define BOCHS_BREAK             __asm volatile("xchg %bx,%bx")
+#define BOCHS_TOGGLE_INSTR      __asm volatile("xchg %edx,%edx")
+
+
+//
 // -- A dummy function to enter system mode, since this is for the ARM
 //    ----------------------------------------------------------------
 EXPORT LOADER INLINE
@@ -310,5 +284,19 @@ int CheckCpuid(void);
 //    -----------------------------
 EXTERN_C EXPORT KERNEL
 void CollectCpuid(void);
+
+
+//
+// -- Load the GDT and set it up
+//    --------------------------
+EXTERN_C EXPORT KERNEL
+void LoadGdt(void *);
+
+
+//
+// -- Load the IDT
+//    ------------
+EXTERN_C EXPORT KERNEL
+void LoadIdt(void *);
 
 

@@ -30,7 +30,7 @@
 //
 // -- this is the buffer for the mailbox
 //    ----------------------------------
-EXPORT LOADER_DATA
+EXPORT LOADER_BSS
 uint32_t mbBuf[64] __attribute__((aligned(16)));
 
 
@@ -42,41 +42,26 @@ void FrameBufferInit(void)
 {
     kprintf("Setting up the frame buffer\n");
 
-
-    //
-    // -- The next step is to map the frame buffer.
-    //    -----------------------------------------
-    archsize_t fbAddr = ((archsize_t)GetFrameBufferAddr());        // better be aligned to frame boundary!!!
-    size_t fbSize = GetFrameBufferPitch() * GetFrameBufferHeight();
-    fbSize += (fbSize&0xfff?PAGE_SIZE:0);   // -- this is adjusted so that when we `>> 12` we are mapping enough
-    fbSize >>= 12;                          // -- now, the number of frames to map
-    archsize_t off = 0;
-
-    while (fbSize) {
-        MmuMapToFrame(MMU_FRAMEBUFFER + off, fbAddr >> 12, PG_KRN | PG_DEVICE | PG_WRT);
-        off += PAGE_SIZE;
-        fbAddr += PAGE_SIZE;
-        fbSize --;
-    }
-
     uint16_t *fb;
+
+    kMemSetB(mbBuf, 0, sizeof(mbBuf));
 
     mbBuf[0] = 32 * 4;
     mbBuf[1] = 0;           // This is a request code
     mbBuf[2] = 0x00048003;  // Set the physical width/height
     mbBuf[3] = 8;           // 8 byte request/reply
     mbBuf[4] = 0;           // indicate this is a request
-    mbBuf[5] = 800;         // 800 pixels wide
-    mbBuf[6] = 400;         // 400 pixels high
+    mbBuf[5] = RPI2B_WIDTH; // 800 pixels wide
+    mbBuf[6] = RPI2B_HEIGHT;// 400 pixels high
     mbBuf[7] = 0x00048004;  // Set the virtual width/height
     mbBuf[8] = 8;           // 8 byte request/reply
     mbBuf[9] = 0;           // indicate this is a request
-    mbBuf[10] = 800;        // 800 pixels wide
-    mbBuf[11] = 400;        // 400 pixels high
+    mbBuf[10] = RPI2B_WIDTH;// 800 pixels wide
+    mbBuf[11] = RPI2B_HEIGHT;// 400 pixels high
     mbBuf[12] = 0x00048005; // Set the color depth
     mbBuf[13] = 4;          // 4 byte request/reply
     mbBuf[14] = 0;          // indicate this is a request
-    mbBuf[15] = 16;         // 32-bit color
+    mbBuf[15] = DEPTH;      // 16-bit color
     mbBuf[16] = 0x00048009; // Set the virtual offset
     mbBuf[17] = 8;          // 8 byte request/reply
     mbBuf[18] = 0;          // indicate this is a request
@@ -95,30 +80,37 @@ void FrameBufferInit(void)
     mbBuf[31] = 0;          // clear one more anyway
 
 
+    kprintf("The physical address of the buffer at %p is %p\n", mbBuf, MmuVirtToPhys(mbBuf));
     CLEAN_CACHE(mbBuf, sizeof(mbBuf));
-    MailboxSend(&kernelMailbox, 8, (archsize_t)mbBuf);
+    MailboxSend(&kernelMailbox, 8, MmuVirtToPhys(mbBuf));
     MailboxReceive(&kernelMailbox, 8);
     INVALIDATE_CACHE(mbBuf, sizeof(mbBuf));
 
 
-    fb = (uint16_t *)(mbBuf[24] + 0x40000000);
+    fb = (uint16_t *)(mbBuf[24] + ARM_MAILBOX_OFFSET);
     SetFrameBufferAddr(fb);
-    SetFrameBufferHeight(400);
-    SetFrameBufferWidth(800);
-    SetFrameBufferBpp(16);
-    SetFrameBufferPitch(mbBuf[29]);
+    SetFrameBufferHeight(RPI2B_HEIGHT);
+    SetFrameBufferWidth(RPI2B_WIDTH);
+    SetFrameBufferBpp(DEPTH);
+    SetFrameBufferPitch(mbBuf[29]?mbBuf[29]:RPI2B_WIDTH*DEPTH);
 
     kprintf(".. Framebuffer located at: %p\n", GetFrameBufferAddr());
-    kprintf(".. Framebuffer size: %p\n", mbBuf[25]);
+    kprintf(".. Framebuffer size: %p\n", GetFrameBufferPitch() * GetFrameBufferHeight());
 
+
+    //
+    // -- Map the frame buffer to its final location in virtual memory
+    //    ------------------------------------------------------------
+    kprintf("Mapping the Frame Buffer\n");
+    for (archsize_t fbVirt = MMU_FRAMEBUFFER, fbFrame = ((archsize_t)GetFrameBufferAddr()) >> 12,
+                    fbEnd = fbVirt + (GetFrameBufferPitch() * GetFrameBufferHeight());
+            fbVirt < fbEnd; fbVirt += PAGE_SIZE, fbFrame ++) {
+        MmuMapToFrame(fbVirt, fbFrame, PG_KRN | PG_WRT | PG_DEVICE);
+    }
+
+    // -- goose the config to the correct fb address
+    SetFrameBufferAddr((uint16_t *)MMU_FRAMEBUFFER);
     SetFgColor(0xffff);
     SetBgColor(0x1234);
-
-    int cnt = 400 * 800 * (16 / 8);
-    archsize_t page = (archsize_t)fb;
-    if (cnt & 0xfff) cnt = (cnt >> 12) + 1; else cnt = cnt >> 12;
-
-    for (int i = 0; i < cnt; i ++, page += PAGE_SIZE) {
-        MmuMapToFrame(FRAME_BUFFER_VADDR + (i << 12), page, PG_KRN | PG_WRT);
-    }
+    FrameBufferClear();
 }

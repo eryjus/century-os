@@ -114,7 +114,7 @@ void kInit(void)
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
-    CoresStart();
+//    CoresStart();
 
     A = ProcessCreate(StartA);
     B = ProcessCreate(StartB);

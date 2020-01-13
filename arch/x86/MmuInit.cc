@@ -28,6 +28,7 @@
 #include "serial.h"
 #include "mmu.h"
 #include "entry.h"
+#include "hw-disc.h"
 #include "printf.h"
 #include "loader.h"
 
@@ -38,6 +39,9 @@
 EXTERN_C EXPORT LOADER
 void MmuInit(void)
 {
+    kPrintfEnabled = true;      // nothing required here to enable this
+
+
     //
     // -- Next up is the IVT -- which needs to be mapped.  This one is rather trivial.
     //    ----------------------------------------------------------------------------
