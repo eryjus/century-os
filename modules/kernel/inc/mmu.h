@@ -82,6 +82,14 @@ frame_t MmuNewVirtualSpace(frame_t stack);
 
 
 //
+// -- Convert a virtual address to physical for the current paging tables
+//    returns -1 if not mapped, which should be an invalid (unaligned) address for most archs
+//    ---------------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t MmuVirtToPhys(void *addr);
+
+
+//
 // -- Check a structure to see if it is fully mapped
 //    ----------------------------------------------
 #define IS_MAPPED(a,z) ({                                                                                       \

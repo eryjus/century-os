@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  CpuVars.cc -- Various variables used by the i686 CPU
+//  platform-cpu.h -- These are the structures and functions for the final CPU initialization
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,18 +10,26 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Nov-11  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-09  Initial   0.3.0   ADCL  Relocated
+//  2020-Jan-05  Initial  v0.5.0e  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "mmu.h"
-#include "cpu.h"
+#pragma once
+
+
+#ifndef __PLATFORM_H__
+#   error "Use #include \"platform.h\" and it will pick up this file; do not #include this file directly."
+#endif
+
+
+#include "types.h"
 
 
 //
-// -- This is a small stack for the TSS
-//    ---------------------------------
-byte_t tssStack[TSS_STACK_SIZE];
+// -- Initialize the GDT to its final location
+//    ----------------------------------------
+EXTERN_C EXPORT LOADER
+void InitGdt(void);
+
 

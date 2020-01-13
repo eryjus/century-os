@@ -37,7 +37,6 @@ void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
     LoaderFunctionInit();               // go and initialize all the function locations
     MmuInit();                          // Complete the MMU initialization for the loader
-    kPrintfEnabled = true;
     PlatformEarlyInit();
     kprintf("Welcome\n");
 

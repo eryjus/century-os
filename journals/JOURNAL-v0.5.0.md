@@ -886,6 +886,309 @@ I have been making a number of changes trying to get the code cleaned up.  I hav
 
 However, I think I need a commit at this piont.  Nearly every source file has been changed and the risks are getting higher by the minute.
 
+---
+
+## Version 0.5.0e
+
+In this version I continue the cleanup.  There is still a lot to settle down.  However, I want to specifically focus on getting the tests to run again.
+
+---
+
+The first thing I need to do for x86-pc is to get the GDT and IDT properly prepared.  This needs to be done after we discover the number of CPUs so that we can also determine the number of TSS entries that are needed.
+
+I started by performing some calculations on the number of CPUs I can support in a single frame of GDT entries.  This came to 167 CPUs:
+
+> The number of GDT entries we need is easily calculated: 9 + (CPU_count * 3).  Each GDT Entry is 8 bytes long.  Therefore, the number of CPUs we can support in a single frame is: `floor(((4096 / 8) - 9) / 3)` or `167`.  167 CPUs is quite simply a ridiculous number of CPUs at this juncture.
+
+So, considering it a bit, I think I only need to be able to support 16 at this time (167 is really out of the question and 128 is just as ridiculous).  So, in short, this calculation and decision making result in requiring only 1 frame for the GDT.  This means, then, that the other frames will be freed up later when the butler cleans up.
+
+Now, there will be a difference between the Physical GDT address and the Virtual GDT address.  The virtual GDT address will end up in high memory (>0x80000000).
+
+---
+
+### 2020-Jan-07
+
+I am still working on cleanup.  However, I have been able to confirm I am getting to the proper new GDT.
+
+---
+
+### 2020-Jan-08
+
+Today, I am going to work on making certain the x86-pc has a proper IDT in the proper location.
+
+---
+
+I have my stack mapped to the Page Directory.  CRAP!!!
+
+---
+
+### 2020-Jan-10
+
+Ok, so somewhere between the 2 `BOCHS_BREAK` lines I am overwriting my paing table:
+
+```C++
+    BOCHS_BREAK;    // stack mapping is still good here: 0x1001000
+
+    kprintf("Initializing the IDT properly\n");
+
+    BOCHS_BREAK;    // still mapped, but 0x1001000
+```
+
+Not exactly sure where that would be; `kprintf()` should be unintrusive.
+
+However, on the first break, I have the following mapping:
+
+```
+CR3=0x000001001000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+...
+<bochs:5> page 0xff8000000
+ PDE: 0x0000000000000015    ps         a PCD pwt U R P
+ PTE: 0x00000000f000ff53       G pat D a PCD pwt S W P
+```
+
+whereas for the second breal, I have:
+
+```
+CR3=0x000001001000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+...
+<bochs:7> page 0xff8000000
+ PDE: 0x0000000000200002    ps         a pcd pwt S W p
+physical address not available for linear 0x0000000ff8000000
+```
+
+So, since the PDE is different, this means that the entry at offset `0xff8` is being overwritten.  That would be at physical address `0x01001ff8`.
+
+---
+
+### 2020-Jan-11
+
+This morning (well even yesterday while I could think), I started looking at the Bochs instrumentation.  Where this comes in is that I think I can use that to track to actual execution instruction by instruction, placing the relevant values into the output.  This, then, will become a full execution log but will slow bochs tremendously!!!.  To overcome this, I will need to also create some way to toggle the instrumentation (turn on/off).  A `nop` is technically `0x90` or `xchg ax,ax`.  The bochs magic breakpiont is `xchg bx,bx`.  I can use `xchg dx,dx` to toggle the debugging output.
+
+Well, point of correction here...  `xchg ax,r16` is the `0x9x` family of instructions.  That will not work for a simple compare here.  However, the `xchg edx,edx`/`xchg dx,dx` (depending on the native CPU mode) will still work.  This should result in a byte sequence of `0x87 0xd2` which should be able to be easily trapped.
+
+So the first thing to do here is to build Bochs with instrumentation enabled.  To do that, I am going to copy the instrumenatation `example1` to a new folder and create a symlink under the Bochs instrument folder to my project.  This will allow me to make sure I have this working right before I get into my own version.
+
+---
+
+I was not able to keep the symlink for the folder.  I had to move the physical files into pleace.  But, now I get beautiful debugging output like this:
+
+```
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ss:[ebp-112]
+LEN 3   BYTES: 8b4590
+MEM ACCESS[0]: 0x000000000007fadc (linear) 0x00000007fadc (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: test eax, eax
+LEN 2   BYTES: 85c0
+
+----------------------------------------------------------
+CPU 0: jnz .+26 (0x0000001c)
+LEN 2   BYTES: 751a     BRANCH TARGET 00000000bffea65f (TAKEN)
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ss:[ebp-112]
+LEN 3   BYTES: 8b4590
+MEM ACCESS[0]: 0x000000000007fadc (linear) 0x00000007fadc (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: test eax, eax
+LEN 2   BYTES: 85c0
+
+----------------------------------------------------------
+CPU 0: jnz .+26 (0x0000001c)
+LEN 2   BYTES: 751a     BRANCH TARGET 00000000bffea680 (TAKEN)
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ss:[ebp-380]
+LEN 6   BYTES: 8b8584feffff
+MEM ACCESS[0]: 0x000000000007f9d0 (linear) 0x00000007f9d0 (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ds:[eax]
+LEN 2   BYTES: 8b00
+MEM ACCESS[0]: 0x00000000bffe6cb0 (linear) 0x0000bffe6cb0 (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ds:[eax+860]
+LEN 6   BYTES: 8b805c030000
+MEM ACCESS[0]: 0x00000000bffe757c (linear) 0x0000bffe757c (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: test eax, eax
+LEN 2   BYTES: 85c0
+
+----------------------------------------------------------
+```
+
+And I get lots of it.  Lots and lots.
+
+This is a good starting place, but I have got to be able to disable this or I am never going to get anything done with bochs.  So, I am going to start a new git and a new project.  The first order of business is to get the minimal stuff in place and then to write the repo.  But then I need to add code to toggle enable/disable of the code so I can be far more surgical with where I get the data.  So, I set this aside for a while....
+
+---
+
+OK, I have something!!
+
+Bochs debugger reports in particular for `cr3`:
+
+```
+<bochs:2> creg
+CR0=0xe0000011: PG CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x00000000ff800f28
+CR3=0x000001001000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x00000000: cet pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce pge mce pae pse de tsd pvi vme
+CR8: 0x0
+EFER=0x00000000: ffxsr nxe lma lme sce
+```
+
+and the instrumentation log reports:
+
+```
+00164631098i[      ] CPU 0: mov esp, 0xff801000
+00164631098i[      ] LEN 5	BYTES: bc001080ff
+```
+
+Now, later down the execution (less than a dozen instructions), we have:
+
+```
+00164631108i[      ] CPU 0: call .-88 (0xffffffad)
+00164631108i[      ] LEN 5	BYTES: e8a8ffffff
+00164631108i[      ] 	BRANCH TARGET 00000000800025a0 (TAKEN)
+00164631108i[      ] MEM ACCESS[0]: 0x00000000ff800ff0 (linear) 0x000001001ff0 (physical) WR SIZE: 4
+```
+
+This means that the stack (at `0xff800ff0` which points to physical address `0x1001ff0` is occupying the same frame as `cr3`.
+
+The stack virtual address is correct.  However the frame is wrong.
+
+So, this code is used to create a Page Table and add it to the Page Directory.  It then loads the base address of the stack into the page.
+
+```S
+;;
+;; -- 0xff800000 for our stack
+;;    ------------------------
+    call    MakePageTable                       ;; get a page table
+    mov     ebp,eax                             ;; save the location for later
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
+    mov     [ebx + (1022 * 4)],eax              ;; 0xff800000 / 0x400000 = 0x3fe (1022)
+    mov     eax,ebp                             ;; get the saved address
+
+;; -- init to populate the table
+    mov     esi,[stackBase]                     ;; get the stack physical address
+    mov     edi,0                               ;; the index into the table
+
+;; -- loop to populate the table
+    mov     edx,esi                             ;; get the address (page aligned)
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
+    mov     [eax + (edi * 4)],edx               ;; set the page table entry
+```
+
+In particular, I am interested in how `stackBase` is populated.
+
+```S
+;;
+;; -- The next order is business is to get a stack set up.  This will be done through `NextEarlyFrame()`.
+;;    ---------------------------------------------------------------------------------------------------
+initialize:
+    mov         esp,stack_top                   ;; This will set up an early stack so we can call a function
+    call        NextEarlyFrame                  ;; get a frame back in eax
+    add         eax,STACK_SIZE                  ;; go to the end of the stack
+    mov         esp,eax                         ;; set the stack
+    mov         [stackBase],eax                 ;; save that for later
+```
+
+`eax` is returned from `NextEarlyFrame` with the frame that will be mapped.  We use that to create a proper-depth stack, but we also adjust `eax` before we store that value into `stackBase`.  This is the problem -- the `mov [stackBase],eax` is out of sequence.  Also, I checked and this is the first call to `NextEarlyFrame` so I would expect to get `0x1000000` back from that call, not `0x1001000`.
+
+Interestingly enough, this was amazingly easy to track down with the instrumentation package!!!
+
+---
+
+### 2020-Jan-12
+
+Let's see here.  I need to figure out where I am faulting at this point.  I forgot where I was in the cleanup.  For x86-pc, it am faulting in `kMemSetW()`, which is only used as I recall in clearing the frame buffer.  For rpi2b, it is also faulting in `kMemSetW()`.  So, it is clear at this point I need to go back and make sure that the framebuffer is mapped in virtual memory.
+
+So, I might have to go back to instrumenation here....
+
+```C++
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+{
+    LoaderFunctionInit();               // go and initialize all the function locations
+    MmuInit();                          // Complete the MMU initialization for the loader
+    kPrintfEnabled = true;
+```
+
+This means I cannot get any output from `MmuInit()` because output is not enabled until after `MmuInit()` is complete.  Or..., maybe I can move that because it is dependent on the mapping of the MMIO address space for rpi2b.  Let do that!
+
+OK, realization here... I am working in the wrong space.  That is because the function `FrameBufferInit()` is collecting the data I need to map the framebuffer and that has not been called yet.  I really need to move my work onto that function.  Now, I also have a problem with rpi2b where it is being mapped twice -- and obviously neither are working properly so I have to work to do there as well.  I also have several bits of hard-coded information there that I need to get cleaned up as well.
+
+I have the rpi trying to start processes and scheduling.  It is not working 100% but that is a good place to get the pc to get caught up to.  The pc is to the point of trying to start the other cores by copying the trampoline code.
+
+However, neither arch is outputting to the monitor even though they should be at this point.  I need to get that debugged first.
+
+This also turned out to be an easy sequencing problem.  Well for x86-pc.
+
+For rpi2b, the screen is not updating and I am getting an interrupt vector 0x44:
+
+```
+Attempting the clear the monitor screen at address 0xfb000000
+.. Done!
+Request to map vector 0x41 to function at 0x80803668
+IsrHandler registered
+Enabling IRQ bit 0x0 at address 0xf800b218
+Done
+Timer Initialized
+Enabling interrupts now
+PANIC: Unhandled interrupt: 0x44
+```
+
+What the heck is *that*??  This is IRQ 68, which is not on the BCM2835 IRQ list.  So, it must be from the GPU....
+
+OK, this makes more sense:
+
+```C++
+//
+// -- BCM2835 defines IRQs 0-63, plus a handfull of additional IRQs.  These additional ones are being placed
+//    starting at IRQ64 and up.
+//    ------------------------------------------------------------------------------------------------------
+#define IRQ_ARM_TIMER       64
+#define IRQ_ARM_MAILBOX     65
+#define IRQ_ARM_DOORBELL0   66
+#define IRQ_ARM_DOORBALL1   67
+#define IRQ_GPU0_HALTED     68
+#define IRQ_GPU1_HALTED     69
+#define IRQ_ILLEGAL_ACCESS1 70
+#define IRQ_ILLEGAL_ACCESS0 71
+```
+
+---
+
+OK, so the GPU is halting.  But why???   Well, hang on....  I think I need the physical address of the structure I am communicating with the GPU with..  but I am in virtual memory.  This means I need to either identity map the structure OR I need to get a frame specifically for this so I know what the hardware address is.  I could also write an MMU function to get the frame for a page so I can calculate the hardware address.  Several options....
+
+So, let's consider the options:
+1. **Create an identity mapping for this structure.**  This will mean that to do this, I will need to find the physical address in runtime.  And then create a mapping for this address and hope that is will not conflict with something that is already mapped.  This is really not a good option.
+1. **Create a space in memory where this is a dedicated structure.**  I may end up doing that later for the video driver, but not likely.  The problem here is that this removes a complete frame for 64 * 4 or 256 bytes for something that has other options.  Not smart.
+1. **Write a general purpose MMU function to determine the physical address of a virtual one.**  This has a lot more promise in my opinion.  In reality, this will have a lot more use than any of the other solutions and it is not a uni-tasker (to steal a term from AB..)!  I think I will need something like this for DMA later -- I think (but mixing ARM and x86 technologies).
+
+Anyway, the MMU function is the way I am going to take this.
+
+---
+
+The first attempt at this did not work.  Simple cleanup though.
+
+So now the next step is to fix up the trampoline code.
+
+OK, I have both archs working without starting the extra APs.  I am going to commit this now and create a Redmine to get the APs working again.
+
+---
+
+
+
 
 
 

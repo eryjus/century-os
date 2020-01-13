@@ -244,3 +244,4 @@ typedef struct MadtLocalApicNMI_t {
     uint8_t localLINT;
 } __attribute__((packed)) MadtLocalApicNMI_t;
 
+

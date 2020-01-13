@@ -29,6 +29,7 @@
 ## -- Some global configurations constants
 ##    ------------------------------------
 MAX_DEV_NAME                    128
+MAX_CPUS                        16
 
 
 ##
@@ -40,6 +41,7 @@ BCM2835_PIC                     (MMIO_VADDR+0x00b000)
 IPI_MAILBOX_BASE                (MMIO_VADDR+0x01000080)
 KRN_SERIAL_BASE                 (MMIO_VADDR+0x215000)
 BCM2835_TIMER                   (MMIO_VADDR+0x01003000)
+ARM_MAILBOX_OFFSET              0x40000000
 
 
 ##
@@ -50,6 +52,14 @@ ACPI_LO                         (0xb0000000)
 ACPI_HI                         (0xbfffffff)
 LAPIC_MMIO                      (0xfee00000)
 PC_TIMER                        0x40
+
+X86_PHYS_GDT                    (0x10000)
+X86_VIRT_GDT                    (0xff410000)
+
+X86_PHYS_IDT                    (0x9000)
+X86_VIRT_IDT                    (0xff401000)
+
+X86_TRAMPOLINE                  0x8000
 
 
 ##
@@ -159,6 +169,8 @@ WIDTH                           1024
 HEIGHT                          768
 DEPTH                           16
 
+RPI2B_HEIGHT                    400
+RPI2B_WIDTH                     800
 
 ##
 ## -- Some constants related to exception/interrupt vectors

@@ -252,6 +252,8 @@ intTableAddr:
 ;; -- This is the entry point where we will get control -- first which MBI do we have?
 ;;    --------------------------------------------------------------------------------
 entry:
+;    xchg        edx,edx             ;; toggle the bochs instrumentation (now on)
+
     cmp         eax,MB1SIG
     jne         chkMB2
     mov         [mb1Data],ebx
@@ -269,9 +271,9 @@ chkMB2:
 initialize:
     mov         esp,stack_top                   ;; This will set up an early stack so we can call a function
     call        NextEarlyFrame                  ;; get a frame back in eax
+    mov         [stackBase],eax                 ;; save that for later
     add         eax,STACK_SIZE                  ;; go to the end of the stack
     mov         esp,eax                         ;; set the stack
-    mov         [stackBase],eax                 ;; save that for later
 
 
 ;;
