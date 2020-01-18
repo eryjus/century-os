@@ -1187,7 +1187,34 @@ OK, I have both archs working without starting the extra APs.  I am going to com
 
 ---
 
+## Version 0.5.0f
 
+OK, with the Boot Processor working (BP), I am now able to get into the Redmine work I have have been postponing.
+
+---
+
+### 2020-Jan-14
+
+Today I work on more Redmines.  `CpuNum()` is flawed and either I need to work on my understanding of what is required or my understanding of how to translate it.  See [#445](http://eryjus.ddns.net:3000/issues/445).
+
+So, for [#348](http://eryjus.ddns.net:3000/issues/348) related to the screen size and the number of characters that can be displayed, a character width is 8 pixels and its height is 16 pixels.  So the number of rows is `HEIGHT / 16` and `WIDTH / 8`.
+
+---
+
+### 2020-Jan-16
+
+Working on issues....
+
+* http://eryjus.ddns.net:3000/issues/372
+* http://eryjus.ddns.net:3000/issues/442
+
+---
+
+### 2020-Jan-17
+
+I want to get into [#380](http://eryjus.ddns.net:3000/issues/380).  This one will be intrusive.  So I am going to work on a commit to give me a roll-back point in case a make a holy mess of things.
+
+---
 
 
 

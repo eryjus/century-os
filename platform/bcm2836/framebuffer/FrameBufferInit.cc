@@ -51,13 +51,13 @@ void FrameBufferInit(void)
     mbBuf[2] = 0x00048003;  // Set the physical width/height
     mbBuf[3] = 8;           // 8 byte request/reply
     mbBuf[4] = 0;           // indicate this is a request
-    mbBuf[5] = RPI2B_WIDTH; // 800 pixels wide
-    mbBuf[6] = RPI2B_HEIGHT;// 400 pixels high
+    mbBuf[5] = WIDTH;       // 800 pixels wide
+    mbBuf[6] = HEIGHT;      // 400 pixels high
     mbBuf[7] = 0x00048004;  // Set the virtual width/height
     mbBuf[8] = 8;           // 8 byte request/reply
     mbBuf[9] = 0;           // indicate this is a request
-    mbBuf[10] = RPI2B_WIDTH;// 800 pixels wide
-    mbBuf[11] = RPI2B_HEIGHT;// 400 pixels high
+    mbBuf[10] = WIDTH;      // 800 pixels wide
+    mbBuf[11] = HEIGHT;     // 400 pixels high
     mbBuf[12] = 0x00048005; // Set the color depth
     mbBuf[13] = 4;          // 4 byte request/reply
     mbBuf[14] = 0;          // indicate this is a request
@@ -89,10 +89,10 @@ void FrameBufferInit(void)
 
     fb = (uint16_t *)(mbBuf[24] + ARM_MAILBOX_OFFSET);
     SetFrameBufferAddr(fb);
-    SetFrameBufferHeight(RPI2B_HEIGHT);
-    SetFrameBufferWidth(RPI2B_WIDTH);
+    SetFrameBufferHeight(HEIGHT);
+    SetFrameBufferWidth(WIDTH);
     SetFrameBufferBpp(DEPTH);
-    SetFrameBufferPitch(mbBuf[29]?mbBuf[29]:RPI2B_WIDTH*DEPTH);
+    SetFrameBufferPitch(mbBuf[29]?mbBuf[29]:WIDTH*DEPTH);
 
     kprintf(".. Framebuffer located at: %p\n", GetFrameBufferAddr());
     kprintf(".. Framebuffer size: %p\n", GetFrameBufferPitch() * GetFrameBufferHeight());

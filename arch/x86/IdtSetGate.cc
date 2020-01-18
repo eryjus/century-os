@@ -29,7 +29,7 @@
 EXTERN_C EXPORT KERNEL
 void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
 {
-    IdtEntry *idtEntries = (IdtEntry *)X86_VIRT_IDT;
+    IdtEntry_t *idtEntries = (IdtEntry_t *)X86_VIRT_IDT;
 
     if (num > 255) return;
 

@@ -19,8 +19,9 @@
 
 #include "types.h"
 #include "serial.h"
-#include "printf.h"
 #include "hw-disc.h"
+#include "cpu.h"
+#include "printf.h"
 #include "platform.h"
 
 

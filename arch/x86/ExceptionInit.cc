@@ -256,7 +256,7 @@ void ExceptionInit(void)
     kprintf("Initializing the IDT properly\n");
 
     MmuMapToFrame(X86_VIRT_IDT, X86_PHYS_IDT >> 12, PG_WRT | PG_KRN);
-    kMemSetB((void *)X86_VIRT_IDT, 0, sizeof(IdtEntry) * 256);
+    kMemSetB((void *)X86_VIRT_IDT, 0, sizeof(IdtEntry_t) * 256);
 
     IdtSetGate( 0, (uint32_t)isr0 , 0x08, 0x8e);
     IdtSetGate( 1, (uint32_t)isr1 , 0x08, 0x8e);
@@ -341,7 +341,7 @@ void ExceptionInit(void)
         uint16_t size;
         uintptr_t loc;
     } __attribute__((packed)) idtRec = {
-        (uint16_t)((sizeof(IdtEntry) * 256) - 1),
+        (uint16_t)((sizeof(IdtEntry_t) * 256) - 1),
         X86_VIRT_IDT,
     };
 

@@ -59,11 +59,11 @@ const char *causes[] = {
 
 extern "C" void DataAbortHandler(isrRegs_t *regs)
 {
-    archsize_t dfsr = GetDFSR();
+    archsize_t dfsr = READ_DFSR();
     int cause = ((dfsr & (1 << 10)) >> 6) | (dfsr & 0xf);
 
     kprintf("Data Exception:\n");
-    kprintf(".. Data Fault Address: %p\n", GetDFAR());
+    kprintf(".. Data Fault Address: %p\n", READ_DFAR());
     kprintf(".. Data Fault Status Register: %p\n", dfsr);
     kprintf(".. Fault status %x: %s\n", cause, causes[cause]);
     kprintf(".. Fault occurred because of a %s\n", (dfsr&(1<<11)?"write":"read"));

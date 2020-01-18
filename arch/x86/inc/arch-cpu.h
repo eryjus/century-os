@@ -38,38 +38,6 @@
 
 
 //
-// -- These are some addresses we need for this CPU architecture
-//    ----------------------------------------------------------
-#define HW_DISCOVERY_LOC            0x00003000
-
-
-//
-// -- This is the size of the short exception stacks
-//    ----------------------------------------------
-#define EXCEPTION_STACK_SIZE  4096
-
-
-//
-// -- Some specific memory locations
-//    ------------------------------
-#define PROCESS_PAGE_DIR    0xff430000
-#define PROCESS_PAGE_TABLE  0xff434000
-
-
-// -- these are dedicated to the function `MmuGetFrameForAddr()`, but documented here.
-#define MMU_FRAME_ADDR_PD   0xff436000
-#define MMU_FRAME_ADDR_PT   0xff43a000
-
-#define PROCESS_STACK_BUILD 0xff441000
-
-
-//
-// -- This is the location of the frame buffer
-//    ----------------------------------------
-#define FRAME_BUFFER_VADDR  0xfb000000
-
-
-//
 // -- This is the location of the Page Directory and Page Tables
 //    ----------------------------------------------------------
 #define PAGE_DIR_VADDR      0xfffff000
@@ -94,7 +62,6 @@
 // -- These are critical CPU structure locations
 //    ------------------------------------------
 const archsize_t TSS_ADDRESS = 0xff401080;
-const archsize_t IDT_ADDRESS = 0xff401800;
 
 
 //
@@ -256,13 +223,6 @@ void WRMSR(uint32_t r, uint64_t v) {
 //    ----------------------
 #define BOCHS_BREAK             __asm volatile("xchg %bx,%bx")
 #define BOCHS_TOGGLE_INSTR      __asm volatile("xchg %edx,%edx")
-
-
-//
-// -- A dummy function to enter system mode, since this is for the ARM
-//    ----------------------------------------------------------------
-EXPORT LOADER INLINE
-void EnterSystemMode(void) {}
 
 
 //

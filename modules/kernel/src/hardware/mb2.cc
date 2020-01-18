@@ -17,6 +17,7 @@
 
 #include "types.h"
 #include "serial.h"
+#include "mmu.h"
 #include "printf.h"
 #include "hw-disc.h"
 
@@ -36,6 +37,17 @@ enum {
     MB2_TAG_FRAMEBUFFER = 8,
     MB2_TAG_ELF_SYMS = 9,
     MB2_TAG_APM = 10,
+    MB2_TAG_EFI32 = 11,
+    MB2_TAG_EFI64 = 12,
+    MB2_TAG_SMBIOS = 13,
+    MB2_TAG_RSDP_V1 = 14,
+    MB2_TAG_RSDP_V2 = 15,
+    MB2_TAG_NET_INFO = 16,
+    MB2_TAG_EFI_MMAP = 17,
+    MB2_TAG_EFI_BOOT_SRV = 18,
+    MB2_TAG_EFI_IMG_32 = 19,
+    MB2_TAG_EFI_IMG_64 = 20,
+    MB2_TAG_LOAD_ADDR = 21,
 };
 
 
@@ -55,6 +67,35 @@ typedef struct Mb2BasicTag_t {
     uint32_t type;
     uint32_t size;
 } __attribute__((packed)) Mb2BasicTag_t;
+
+
+//
+// -- The command line for the boot
+//    -----------------------------
+typedef struct Mb2CmdLine_t {
+    Mb2BasicTag_t tag;         // type == 1
+    char cmdLine[0];
+} __attribute__((packed)) Mb2CmdLine_t;
+
+
+//
+// -- The bootloader name
+//    -------------------
+typedef struct Mb2Loader_t {
+    Mb2BasicTag_t tag;         // type == 2
+    char name[0];
+} __attribute__((packed)) Mb2Loader_t;
+
+
+//
+// -- A laoded module
+//    ---------------
+typedef struct Mb2Module_t {
+    Mb2BasicTag_t tag;         // type == 3
+    uint32_t modStart;
+    uint32_t modEnd;
+    char name[0];
+} __attribute__((packed)) Mb2Module_t;
 
 
 //
@@ -79,39 +120,6 @@ typedef struct Mb2BootDevice_t {
 
 
 //
-// -- The command line for the boot
-//    -----------------------------
-typedef struct Mb2CmdLine_t {
-    Mb2BasicTag_t tag;         // type == 1
-    char cmdLine[0];
-} __attribute__((packed)) Mb2CmdLine_t;
-
-
-//
-// -- A laoded module
-//    ---------------
-typedef struct Mb2Module_t {
-    Mb2BasicTag_t tag;         // type == 3
-    uint32_t modStart;
-    uint32_t modEnd;
-    char name[0];
-} __attribute__((packed)) Mb2Module_t;
-
-
-//
-// -- THe ELF Symbols
-//    ---------------
-typedef struct Mb2ElfSymbols_t {
-    Mb2BasicTag_t tag;         // type == 9
-    uint16_t num;
-    uint16_t entSize;
-    uint16_t shndx;
-    uint16_t reserved;
-    uint8_t sectionHdrs[0];
-} __attribute__((packed)) Mb2ElfSymbols_t;
-
-
-//
 // -- Memory Map
 //    ----------
 typedef struct Mb2MemMap_t {
@@ -125,32 +133,6 @@ typedef struct Mb2MemMap_t {
         uint32_t reserved;
     } entries [0];
 } __attribute__((packed)) Mb2MemMap_t;
-
-
-//
-// -- The bootloader name
-//    -------------------
-typedef struct Mb2Loader_t {
-    Mb2BasicTag_t tag;         // type == 2
-    char name[0];
-} __attribute__((packed)) Mb2Loader_t;
-
-
-//
-// -- The APM Table
-//    -------------
-typedef struct Mb2Apm_t {
-    Mb2BasicTag_t tag;         // type == 10; size == 28
-    uint16_t version;
-    uint16_t cseg;
-    uint32_t offset;
-    uint16_t cseg16;
-    uint16_t dseg;
-    uint16_t flags;
-    uint16_t csegLen;
-    uint16_t cseg16Len;
-    uint16_t dsegLen;
-} __attribute__((packed)) Mb2Apm_t;
 
 
 //
@@ -169,7 +151,7 @@ typedef struct Mb2VbeInfo_t {
 
 //
 // -- The FrameBuffer Info
-//    -------------
+//    --------------------
 typedef struct Mb2FbInfo_t {
     Mb2BasicTag_t tag;         // type == 8
     uint64_t fbAddr;
@@ -200,6 +182,139 @@ typedef struct Mb2FbInfo_t {
 
 
 //
+// -- The ELF Symbols
+//    ---------------
+typedef struct Mb2ElfSymbols_t {
+    Mb2BasicTag_t tag;         // type == 9
+    uint16_t num;
+    uint16_t entSize;
+    uint16_t shndx;
+    uint16_t reserved;
+    uint8_t sectionHdrs[0];
+} __attribute__((packed)) Mb2ElfSymbols_t;
+
+
+//
+// -- The APM Table
+//    -------------
+typedef struct Mb2Apm_t {
+    Mb2BasicTag_t tag;         // type == 10; size == 28
+    uint16_t version;
+    uint16_t cseg;
+    uint32_t offset;
+    uint16_t cseg16;
+    uint16_t dseg;
+    uint16_t flags;
+    uint16_t csegLen;
+    uint16_t cseg16Len;
+    uint16_t dsegLen;
+} __attribute__((packed)) Mb2Apm_t;
+
+
+//
+// -- EFI 32-bit system table pointer
+//    -------------------------------
+typedef struct Mb2Efi32_t {
+    Mb2BasicTag_t tag;          // type == 11; size == 12
+    uint32_t pointer;
+} __attribute__((packed)) Mb2Efi32_t;
+
+
+//
+// -- EFI 64-bit system table pointer
+//    -------------------------------
+typedef struct Mb2Efi64_t {
+    Mb2BasicTag_t tag;          // type == 12; size == 16
+    uint64_t pointer;
+} __attribute__((packed)) Mb2Efi64_t;
+
+
+//
+// -- SMBIOS Tables
+//    -------------
+typedef struct Mb2SmBios_t {
+    Mb2BasicTag_t tag;          // type == 13
+    uint8_t major;
+    uint8_t minor;
+    uint8_t reserved[6];
+    uint8_t smBiosTables[0];
+} __attribute__((packed)) Mb2SmBios_t;
+
+
+//
+// -- RSDPv1 Tables
+//    -------------
+typedef struct Mb2RsdpV1_t {
+    Mb2BasicTag_t tag;          // type == 14
+    uint8_t rsdpV1Copy[0];
+} __attribute__((packed)) Mb2RsdpV1_t;
+
+
+//
+// -- RSDPv2 Tables
+//    -------------
+typedef struct Mb2RsdpV2_t {
+    Mb2BasicTag_t tag;          // type == 15
+    uint8_t rsdpV2Copy[0];
+} __attribute__((packed)) Mb2RsdpV2_t;
+
+
+//
+// -- Networking Information
+//    ----------------------
+typedef struct Mb2NetInfo_t {
+    Mb2BasicTag_t tag;          // type == 16
+    uint8_t dhcpAck[0];
+} __attribute__((packed)) Mb2NetInfo_t;
+
+
+//
+// -- EFI Memory Map
+//    --------------
+typedef struct Mb2EfiMemMap_t {
+    Mb2BasicTag_t tag;          // type == 17
+    uint32_t descriptorSize;
+    uint32_t descriptorVer;
+    uint8_t efiMemMap[0];
+} __attribute__((packed)) Mb2EfiMemMap_t;
+
+
+//
+// -- EFI Boot Services Not Terminated (EFI Boot Services still available)
+//    --------------------------------------------------------------------
+typedef struct Mb2EfiBootServ_t {
+    Mb2BasicTag_t tag;          // type == 18; size == 8
+} __attribute__((packed)) Mb2EfiBootServ_t;
+
+
+//
+// -- EFI 32-bit image handle pointer
+//    -------------------------------
+typedef struct Mb2EfiImage32_t {
+    Mb2BasicTag_t tag;          // type == 19; size == 12
+    uint32_t pointer;
+} __attribute__((packed)) Mb2EfiImage32_t;
+
+
+//
+// -- EFI 64-bit image handle pointer
+//    -------------------------------
+typedef struct Mb2EfiImage64_t {
+    Mb2BasicTag_t tag;          // type == 20; size == 16
+    uint64_t pointer;
+} __attribute__((packed)) Mb2EfiImage64_t;
+
+
+//
+// -- Image load phys address
+//    -----------------------
+typedef struct Mb2LoadPhysAddr_t {
+    Mb2BasicTag_t tag;          // type == 21; size == 12
+    uint32_t baseAddr;
+} __attribute__((packed)) Mb2LoadPhysAddr_t;
+
+
+//
 // -- The multiboot 2 information structure
 //    -------------------------------------
 EXTERN LOADER_BSS
@@ -217,6 +332,10 @@ void Mb2Parse(void)
 {
     if (!mb2Data) return;
 
+    archsize_t mb2Page = (archsize_t)mb2Data;
+    MmuMapToFrame(mb2Page, mb2Page >> 12, PG_KRN);
+    MmuMapToFrame(mb2Page + PAGE_SIZE, (mb2Page + PAGE_SIZE) >> 12, PG_KRN);
+
     kprintf("Parsing MB2 Info at %p (MB1 info at %p)\n", mb2Data, mb1Data);
     kprintf(".. size = %x\n", ((uint32_t *)mb2Data)[0]);
     kprintf(".. resv = %x\n", ((uint32_t *)mb2Data)[1]);
@@ -226,7 +345,7 @@ void Mb2Parse(void)
 
     while (!lastTag) {
         Mb2BasicTag_t *tag = (Mb2BasicTag_t *)locn;
-        kprintf("MB2 info: %x\n", tag->type);
+        kprintf("MB2 info: at %p: %x\n", tag, tag->type);
         switch (tag->type) {
         case MB2_TAG_LAST_TAG:
             kprintf(".. Last Tag\n");
@@ -323,12 +442,84 @@ void Mb2Parse(void)
             break;
         }
 
+
+        case MB2_TAG_EFI32:
+            kprintf(".. EFI32 System Table\n");
+            break;
+
+
+        case MB2_TAG_EFI64:
+            kprintf(".. EFI64 System Table\n");
+            break;
+
+
+        case MB2_TAG_SMBIOS:
+            kprintf(".. SMBIOS Table\n");
+            break;
+
+
+        case MB2_TAG_RSDP_V1: {
+            Mb2RsdpV1_t *rdsp = (Mb2RsdpV1_t *)locn;
+
+            kprintf(".. RSDPV1 Table: %c%c%c%c%c%c%c%c\n", rdsp->rsdpV1Copy[0], rdsp->rsdpV1Copy[1],
+                    rdsp->rsdpV1Copy[2], rdsp->rsdpV1Copy[3], rdsp->rsdpV1Copy[4], rdsp->rsdpV1Copy[5],
+                    rdsp->rsdpV1Copy[6], rdsp->rsdpV1Copy[7]);
+            break;
+        }
+
+
+        case MB2_TAG_RSDP_V2:{
+            Mb2RsdpV2_t *rdsp = (Mb2RsdpV2_t *)locn;
+
+            kprintf(".. RSDPV2Table: %c%c%c%c%c%c%c%c\n", rdsp->rsdpV2Copy[0], rdsp->rsdpV2Copy[1],
+                    rdsp->rsdpV2Copy[2], rdsp->rsdpV2Copy[3], rdsp->rsdpV2Copy[4], rdsp->rsdpV2Copy[5],
+                    rdsp->rsdpV2Copy[6], rdsp->rsdpV2Copy[7]);
+            break;
+        }
+
+
+        case MB2_TAG_NET_INFO:
+            kprintf(".. Network Information Table\n");
+            break;
+
+
+        case MB2_TAG_EFI_MMAP:
+            kprintf(".. EFI Memory Map\n");
+            break;
+
+
+        case MB2_TAG_EFI_BOOT_SRV:
+            kprintf(".. EFI Boot Services not Terminated\n");
+            break;
+
+
+        case MB2_TAG_EFI_IMG_32:
+            kprintf(".. EFI 32-bit Image Pointer\n");
+            break;
+
+
+        case MB2_TAG_EFI_IMG_64:
+            kprintf(".. EFI 64-bit Image Pointer\n");
+            break;
+
+
+        case MB2_TAG_LOAD_ADDR: {
+            Mb2LoadPhysAddr_t *addr = (Mb2LoadPhysAddr_t *)locn;
+
+            kprintf(".. Load Base Address: %p\n", addr->baseAddr);
+            break;
+        }
+
+
         default:
-            kprintf("Unimplemented MB2 type\n");
+            kprintf("Unimplemented MB2 type: %x\n", tag->type);
             break;
         }
 
         locn += (tag->size + (~(tag->size - 1) & 0x7));
     }
+
+    MmuUnmapPage(mb2Page);
+    MmuUnmapPage(mb2Page + PAGE_SIZE);
 }
 

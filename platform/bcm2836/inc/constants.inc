@@ -27,6 +27,7 @@
       .equ MMU_CLEAR_FRAME,0xff400000
       .equ MMU_NEW_TABLE_INIT,0xff408000
       .equ MMU_STACK_INIT_VADDR,0xff40a000
+      .equ FRAME_BUFFER_VADDR,0xfb000000
       .equ ARMV7_TTL1_TABLE_VADDR,0xff404000
       .equ ARMV7_TTL2_TABLE_VADDR,0xffc00000
       .equ ARMV7_TTL2_MGMT,0xfffff000
@@ -74,8 +75,8 @@
       .equ WIDTH,1024
       .equ HEIGHT,768
       .equ DEPTH,16
-      .equ RPI2B_HEIGHT,400
-      .equ RPI2B_WIDTH,800
+      .equ FONT_HEIGHT,16
+      .equ FONT_WIDTH,8
       .equ EXCEPT_VECTOR_TABLE,0xff401000
       .equ MMIO_VADDR,0xf8000000
       .equ MMIO_LOADER_LOC,0x3f000

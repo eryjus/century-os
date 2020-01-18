@@ -81,7 +81,7 @@ MMU_FRAMEBUFFER                 0xfb000000
 MMU_CLEAR_FRAME                 0xff400000
 MMU_NEW_TABLE_INIT              0xff408000
 MMU_STACK_INIT_VADDR            0xff40a000
-
+FRAME_BUFFER_VADDR              0xfb000000
 
 
 ##
@@ -168,15 +168,14 @@ MODE_TYPE                       0
 WIDTH                           1024
 HEIGHT                          768
 DEPTH                           16
+FONT_HEIGHT                     16
+FONT_WIDTH                      8
 
-RPI2B_HEIGHT                    400
-RPI2B_WIDTH                     800
 
 ##
 ## -- Some constants related to exception/interrupt vectors
 ##    -----------------------------------------------------
 EXCEPT_VECTOR_TABLE             0xff401000
-
 
 
 ##

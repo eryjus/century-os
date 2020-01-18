@@ -38,24 +38,6 @@
 
 
 //
-// -- These are some addresses we need for this CPU architecture
-//    ----------------------------------------------------------
-#define HW_DISCOVERY_LOC            0x00003000
-
-
-//
-// -- This is the location where the stack will be initialized
-//    --------------------------------------------------------
-#define PROCESS_STACK_BUILD 0xff441000
-
-
-//
-// -- This is the location of the frame buffer
-//    ----------------------------------------
-#define FRAME_BUFFER_VADDR  0xfb000000
-
-
-//
 // -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
 //    into the various tables
 //    -----------------------------------------------------------------------------------------------------
@@ -63,12 +45,6 @@
 #define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)ARMV7_TTL1_TABLE_VADDR)[((a) >> 20) & 0xffc])
 #define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)ARMV7_TTL2_MGMT)[(a) >> 22])
 #define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)ARMV7_TTL2_TABLE_VADDR)[(a) >> 12])
-
-
-//
-// -- This is the size of the short exception stacks
-//    ----------------------------------------------
-#define EXCEPTION_STACK_SIZE  512
 
 
 //
@@ -223,11 +199,27 @@ inline void Panic(void) { while (1) HaltCpu(); }
 
 
 //
+// -- Access to the DFSR (Data Fault Status Register)
+//    -----------------------------------------------
+#define DFSR                "p15, 0, %0, c5, c0, 0"
+#define READ_DFSR()         MRC(DFSR)
+#define WRITE_DFSR(val)     MCR(DFSR,val)
+
+
+//
 // -- Access to the IFSR (Instruction Faulting Status Register)
 //    ---------------------------------------------------------
 #define IFSR                "p15, 0, %0, c5, c0, 1"
 #define READ_IFSR()         MRC(IFSR)
 #define WRITE_IFSR(val)     MCR(IFSR,val)
+
+
+//
+// -- Access to the DFAR (Data Fault Address Register)
+//    ------------------------------------------------
+#define DFAR                "p15, 0, %0, c6, c0, 0"
+#define READ_DFAR()         MRC(DFAR)
+#define WRITE_DFAR(val)     MCR(DFAR,val)
 
 
 //
@@ -342,27 +334,6 @@ inline void Panic(void) { while (1) HaltCpu(); }
             DSB();                                                  \
             ISB();                                                  \
         } while (0)
-
-
-//
-// -- A dummy function to enter system mode, since this is for the ARM
-//    ----------------------------------------------------------------
-EXTERN_C EXPORT LOADER
-void EnterSystemMode(void);
-
-
-//
-// -- Get the Data Fault Address Register (DFAR)
-//    ------------------------------------------
-EXTERN_C EXPORT KERNEL
-archsize_t GetDFAR(void);
-
-
-//
-// -- Get the Data Fault Status Register (DFSR)
-//    ------------------------------------------
-EXTERN_C EXPORT KERNEL
-archsize_t GetDFSR(void);
 
 
 //

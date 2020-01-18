@@ -42,7 +42,7 @@ extern uint8_t systemFont[];
 //    ------------------------------
 void FrameBufferDrawChar(char ch)
 {
-    if (GetRowPos() > 45) return;
+    if (GetRowPos() > HEIGHT / FONT_HEIGHT) return;
     if (ch & 0x80) {
         if ((ch & 0xc0) == 0xc0) ch = '?';
         else return;
@@ -57,7 +57,7 @@ void FrameBufferDrawChar(char ch)
     if (ch == '\t') {
         SetColPos(GetColPos() + (8 - (GetColPos() % 8)));
 
-        if (GetColPos() > GetFrameBufferWidth() / 8) {
+        if (GetColPos() > GetFrameBufferWidth() / FONT_WIDTH) {
             SetColPos(0);
             SetRowPos(GetRowPos() + 1);
         }
@@ -65,13 +65,14 @@ void FrameBufferDrawChar(char ch)
         return;
     }
 
-    uint8_t *chImg = &systemFont[ch * 16];              // first the character image (16 rows per image)
-    uint16_t *where = &((uint16_t *)GetFrameBufferAddr())[(GetRowPos() * GetFrameBufferWidth() * 16) + (GetColPos() * 8)];
+    uint8_t *chImg = &systemFont[ch * FONT_HEIGHT];              // first the character image (16 rows per image)
+    uint16_t *where = &((uint16_t *)GetFrameBufferAddr())[
+            (GetRowPos() * GetFrameBufferWidth() * FONT_HEIGHT) + (GetColPos() * FONT_WIDTH)];
 
-    for (int i = 0; i < 16; i ++, where += GetFrameBufferWidth()) {
+    for (int i = 0; i < FONT_HEIGHT; i ++, where += GetFrameBufferWidth()) {
         uint8_t c = chImg[i];
 
-        for (int j = 0; j < 8; j ++, c = c >> 1) {
+        for (int j = 0; j < FONT_WIDTH; j ++, c = c >> 1) {
             if (c & 0x01) where[j] = GetFgColor();
             else where[j] = GetBgColor();
         }
