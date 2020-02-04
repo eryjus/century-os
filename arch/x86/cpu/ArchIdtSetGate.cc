@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  IdtSetGate.cc -- Set the gate in the IDT.
+//  ArchIdtSetGate.cc -- Set the gate in the IDT.
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -27,13 +27,11 @@
 // -- Construct a single IDT gate
 //    ---------------------------
 EXTERN_C EXPORT KERNEL
-void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
+void ArchIdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags)
 {
     IdtEntry_t *idtEntries = (IdtEntry_t *)X86_VIRT_IDT;
 
     if (num > 255) return;
-
-//    kprintf("..  installing IDT for %x at %x:%p\n", num, sel, base);
 
     idtEntries[num].baseLow = (uint16_t)(base & 0xffff);
     idtEntries[num].baseHigh = (uint16_t)((base >> 16) & 0xffff);

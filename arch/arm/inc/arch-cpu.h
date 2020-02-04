@@ -26,6 +26,46 @@
 
 
 //
+// -- This is the abstraction of the CPU.
+//    -----------------------------------
+typedef struct ArchCpu_t {
+    COMMON_CPU_ELEMENTS
+} ArchCpu_t;
+
+
+//
+// -- Some optimizations for the elements we will get to frequently
+//    -------------------------------------------------------------
+#define thisCpu ((ArchCpu_t *)READ_TPIDRPRW())
+#define currentThread ((Process_t *)READ_TPIDRURO())
+
+
+//
+// -- Perform the Archictecture-Specifc CPU initialization required
+//    -------------------------------------------------------------
+#define ArchEarlyCpuInit()
+
+
+//
+// -- Complete the final initialization for the CPU
+//    ---------------------------------------------
+EXTERN_C EXPORT LOADER
+void ArchLateCpuInit(int c);
+
+
+//
+// -- Complete the initialization for the arch-specific CPU elements
+//    --------------------------------------------------------------
+#define ArchPerCpuInit(...)
+
+
+//
+// -- Arch Specific cpu location determination
+//    ----------------------------------------
+#define ArchCpuLocation()       READ_MPIDR()
+
+
+//
 // -- This is the max IOAPICs that can be defined for this arch
 //    ---------------------------------------------------------
 #define MAX_IOAPIC          1
@@ -144,6 +184,13 @@ inline void Panic(void) { while (1) HaltCpu(); }
 
 
 //
+// -- Access to the MPIDR (MultiProcessor ID Register)
+//    ------------------------------------------------
+#define MPIDR               "p15, 0, %0, c0, c0, 5"
+#define READ_MPIDR()        MRC(MPIDR)
+
+
+//
 // -- Access to the CLIDR (Cache Level ID Register)
 //    ---------------------------------------------
 #define CLIDR               "p15, 1, %0, c0, c0, 1"
@@ -236,6 +283,22 @@ inline void Panic(void) { while (1) HaltCpu(); }
 #define VBAR                "p15, 0, %0, c12, c0, 0"
 #define READ_VBAR()         MRC(VBAR)
 #define WRITE_VBAR(val)     MCR(VBAR,val)
+
+
+//
+// -- Access to the TPIDRURO (User Read Only Thread ID Register)
+//    ----------------------------------------------------------
+#define TPIDRURO            "p15, 0, %0, c13, c0, 3"
+#define READ_TPIDRURO()     MRC(TPIDRURO)
+#define WRITE_TPIDRURO(val) MCR(TPIDRURO,val)
+
+
+//
+// -- Access to the TPIDRPRW (PL1 Only Thread ID Register)
+//    ----------------------------------------------------
+#define TPIDRPRW            "p15, 0, %0, c13, c0, 4"
+#define READ_TPIDRPRW()     MRC(TPIDRPRW)
+#define WRITE_TPIDRPRW(val) MCR(TPIDRPRW,val)
 
 
 //
@@ -340,8 +403,9 @@ inline void Panic(void) { while (1) HaltCpu(); }
 // -- Initialize the core to use the FPU
 //    ----------------------------------
 EXTERN_C EXPORT LOADER
-void FpuInit(void);
+void ArchFpuInit(void);
 
 
-#define CpuTssInit()
+#define GetLocation()   READ_MPIDR()
+#define ApTimerInit(t,f) TimerInit(t, f)
 

@@ -29,7 +29,7 @@
 ## -- Some global configurations constants
 ##    ------------------------------------
 MAX_DEV_NAME                    128
-MAX_CPUS                        16
+MAX_CPUS                        4
 
 
 ##

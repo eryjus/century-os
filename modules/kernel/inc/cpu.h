@@ -24,9 +24,50 @@
 
 #include "types.h"
 
+
+//
+// -- This is the state of a CPU
+//    --------------------------
+typedef enum {
+    CPU_STOPPED = 0,
+    CPU_STARTING = 1,
+    CPU_STARTED = 2,
+    CPU_BAD = 0xffff,
+} CpuState_t;
+
+
+
+//
+// -- forward declare the process structure
+//    -------------------------------------
+struct Process_t;
+
+
+//
+// -- Set up the common CPU elements across all archs.  The actual ArchCpu_t structure will be defined
+//    in the arch-cpu.h include.
+//    ------------------------------------------------------------------------------------------------
+#define COMMON_CPU_ELEMENTS                 \
+    int cpuNum;                             \
+    archsize_t stackTop;                    \
+    archsize_t location;                    \
+    SMP_UNSTABLE CpuState_t state;          \
+    int kernelLocksHeld;                    \
+    bool reschedulePending;                 \
+    int disableIntDepth;                    \
+    ArchCpu_t *cpu;                         \
+    INT_UNSTABLE struct Process_t *process;
+
+
 #if __has_include("arch-cpu.h")
 #   include "arch-cpu.h"
 #endif
+
+
+//
+// -- Mark this CPU as started so the next one can be released
+//    --------------------------------------------------------
+#define NextCpu(c) cpus.perCpuData[c].state = CPU_STARTED
 
 
 //
@@ -93,17 +134,17 @@ size_t kStrLen(const char *s);
 
 
 //
-// -- Get the CPU number of the current process
-//    -----------------------------------------
-EXTERN_C EXPORT KERNEL
-int CpuNum(void);
-
-
-//
 // -- Start any APs that need to be started
 //    -------------------------------------
 EXTERN_C EXPORT KERNEL
 void CoresStart(void);
+
+
+//
+// -- Perform the initialization of the cpu data structure
+//    ----------------------------------------------------
+EXTERN_C EXPORT LOADER
+void CpuInit(void);
 
 
 //
@@ -112,12 +153,22 @@ void CoresStart(void);
 typedef struct Cpu_t {
     int cpusDiscovered;
     int cpusRunning;
+    int cpuStarting;
+    ArchCpu_t perCpuData[MAX_CPUS];
 } Cpu_t;
 
 
 //
-// -- This is used to control all the CPUs on the system
-//    --------------------------------------------------
-EXTERN KERNEL_DATA
+// -- A function to initialize the CPU structure for the cpu starting
+//    ---------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t CpuMyStruct(void);
+
+
+//
+// -- This is the cpu abstraction variable structure
+//    ----------------------------------------------
+EXTERN EXPORT KERNEL_BSS
 Cpu_t cpus;
+
 

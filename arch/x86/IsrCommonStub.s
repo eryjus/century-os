@@ -207,15 +207,13 @@ IsrCommonStub:
     mov         ds,ax                   ;; move it to ds, ...
     mov         es,ax                   ;; ... es, ...
     mov         fs,ax                   ;; ... fs, and ...
-    mov         gs,ax                   ;; ... gs
     mov         ax,0x10                 ;; Stack is seg sel 0x10...
     mov         ss,ax                   ;; ... ss
 
     call        IsrHandler              ;; call the C ISR haandler
 
     pop         eax                     ;; pop ss and discard
-    pop         eax                     ;; pop gs
-    mov         gs,ax                   ;; and set it
+    pop         eax                     ;; pop gs and discard
     pop         eax                     ;; pop fs
     mov         fs,ax                   ;; and set it
     pop         eax                     ;; pop es

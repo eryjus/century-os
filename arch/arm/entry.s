@@ -60,6 +60,8 @@
     .global     mb1Data
     .global     mb2Data
     .global     intTableAddr                    @@ IVT location
+    .global     OutputChar
+    .global     stack_top                       @@ each core will use this scratch space
 
 
 @@

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  platform.h -- These are the common functions for interacting with the platform
+//  ArchLateCpuInit.cc -- Polish off the CPU structures for the x86 arch
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,26 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-05  Initial   0.4.1   ADCL  Initial version
+//  2020-Feb-01  Initial  v0.5.0f  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-#define __PLATFORM_H__
-
-
 #include "types.h"
+#include "printf.h"
+#include "cpu.h"
 
 
 //
-// -- This is the early platform initialization function
-//    --------------------------------------------------
+// -- Complete the CPU initialization
+//    -------------------------------
 EXTERN_C EXPORT LOADER
-void PlatformEarlyInit(void);
+void ArchLateCpuInit(int c)
+{
+    kprintf("Finalizing CPU initialization\n");
+    ArchGsLoad(cpus.perCpuData[c].gsSelector);
+    ArchTssLoad(cpus.perCpuData[c].tssSelector);
+}
 
 
-//
-// -- Complete the platform initialization
-//    ------------------------------------
-EXTERN_C EXPORT LOADER
-void PlatformInit(void);
 

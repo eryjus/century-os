@@ -22,6 +22,12 @@
 #include "serial.h"
 
 
+EXTERN_C EXPORT LOADER
+void ___SerialPutChar(int ch)
+{
+    debugSerial.SerialPutChar(&debugSerial, (uint8_t)ch);
+}
+
 //
 // -- Write a single character to the UART
 //    ------------------------------------

@@ -114,7 +114,7 @@ void kInit(void)
     TimerInit(timerControl, 1000);
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
-//    CoresStart();
+    CoresStart();
 
     A = ProcessCreate(StartA);
     B = ProcessCreate(StartB);
@@ -199,13 +199,4 @@ void kInit(void)
     }
 #endif
 }
-
-
-//
-// -- This is the structure with info about the cpus
-//    ----------------------------------------------
-Cpu_t cpus = {
-    .cpusDiscovered = 0,
-    .cpusRunning = 1,
-};
 

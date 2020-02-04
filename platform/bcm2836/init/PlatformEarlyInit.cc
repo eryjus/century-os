@@ -37,7 +37,10 @@ void PlatformEarlyInit(void)
 
     // -- at some point, this will come from the DTB
     cpus.cpusDiscovered = 4;
-    FpuInit();
+    cpus.cpusRunning = 1;
+    if (cpus.cpusDiscovered > MAX_CPUS) cpus.cpusDiscovered = MAX_CPUS;
+
+    CpuInit();
 }
 
 

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  CpuVars.cc -- Various variables used by the i686 CPU
+//  CpuVars.cc -- CPU Astraction Variables
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,18 +10,21 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Nov-11  Initial   0.1.0   ADCL  Initial version
-//  2019-Feb-09  Initial   0.3.0   ADCL  Relocated
+//  2020-Feb-02  Initial  v0.5.0f  ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#include "types.h"
+#include "stacks.h"
 #include "mmu.h"
+#include "pmm.h"
 #include "cpu.h"
 
 
 //
-// -- This is a small stack for the TSS
-//    ---------------------------------
-byte_t tssStack[TSS_STACK_SIZE];
+// -- This data will be uninitialized by the compiler
+//    -----------------------------------------------
+EXPORT KERNEL_BSS
+Cpu_t cpus;
 

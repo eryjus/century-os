@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  platform-cpu.h -- These are the structures and functions for the final CPU initialization
+//  ArchPerCpuInit.cc -- Initialize the arch-specific per cpu elementss
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,25 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2020-Jan-05  Initial  v0.5.0e  ADCL  Initial version
+//  2020-Feb-01  Initial  v0.5.0f  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-
-
-#ifndef __PLATFORM_H__
-#   error "Use #include \"platform.h\" and it will pick up this file; do not #include this file directly."
-#endif
-
-
 #include "types.h"
+#include "printf.h"
+#include "cpu.h"
 
 
 //
-// -- Initialize the GDT to its final location
-//    ----------------------------------------
+// -- Both the gs and the TSS need to be initialized for this CPU
+//    -----------------------------------------------------------
 EXTERN_C EXPORT LOADER
-void InitGdt(void);
-
+void ArchPerCpuInit(int i)
+{
+    cpus.perCpuData[i].gsSelector  = ((i * 3) + 9 + 0) << 3;
+    cpus.perCpuData[i].tssSelector = ((i * 3) + 9 + 1) << 3;
+    kprintf("!!>> [%d]: Setting the gs selector to %x and the tss selector to %x\n", i,
+            cpus.perCpuData[i].gsSelector, cpus.perCpuData[i].tssSelector);
+}
 

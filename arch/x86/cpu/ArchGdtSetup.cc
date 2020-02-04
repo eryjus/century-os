@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  InitGdt.cc -- Initialize the GDT into its final location
+//  ArchGdtSetup.cc -- Initialize the GDT into its final location
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -34,7 +34,7 @@
 // -- Initialize the GDT to its final location
 //    ----------------------------------------
 EXTERN_C EXPORT LOADER
-void InitGdt(void)
+void ArchGdtSetup(void)
 {
     // -- first, calculate the number of frames we need for the GDT
     size_t gdtEntries = (cpus.cpusDiscovered * 3) + 9;
@@ -53,24 +53,24 @@ void InitGdt(void)
 
 
     // -- Now, we start populating the GDT Entries -- first the 9 standard entries
-    uint64_t *gdt = (uint64_t *)X86_VIRT_GDT;
+    Descriptor_t *gdt = (Descriptor_t *)X86_VIRT_GDT;
 
-    gdt[0] = 0x0000000000000000;        // 0x00: NULL GDT Entry (required)
-    gdt[1] = 0x00cf9a000000ffff;        // 0x08: kernel code
-    gdt[2] = 0x00cf92000000ffff;        // 0x10: kernel stack (and data)
-    gdt[3] = 0x00cffa000000ffff;        // 0x18: user code
-    gdt[4] = 0x00cff2000000ffff;        // 0x20: user stack (and data)
-    gdt[5] = 0x00cf92000000ffff;        // 0x28: kernel data
-    gdt[6] = 0x00cff2000000ffff;        // 0x30: user data
-    gdt[7] = 0x00cf9a000000ffff;        // loader code (not used)
-    gdt[8] = 0x00cf92000000ffff;        // loader data and stack (not used)
+    gdt[0] = NULL_GDT;                  // 0x00: NULL GDT Entry (required)
+    gdt[1] = KCODE_GDT;                 // 0x08: kernel code
+    gdt[2] = KDATA_GDT;                 // 0x10: kernel stack (and data)
+    gdt[3] = UCODE_GDT;                 // 0x18: user code
+    gdt[4] = UDATA_GDT;                 // 0x20: user stack (and data)
+    gdt[5] = KDATA_GDT;                 // 0x28: kernel data
+    gdt[6] = UDATA_GDT;                 // 0x30: user data
+    gdt[7] = LCODE_GDT;                 // loader code (not used)
+    gdt[8] = LDATA_GDT;                 // loader data and stack (not used)
 
 
     // -- now the TSS and gs segment selector for each CPU (Redmine #433 goes here)
     for (int i = 0; i < cpus.cpusDiscovered; i ++) {
-        gdt[ 9 + (i * 3)] = 0x0000000000000000;     // 32-bit TSS for this CPU
-        gdt[10 + (i * 3)] = 0x0000000000000000;     // 64-bit TSS for this CPU
-        gdt[11 + (i * 3)] = 0x0000000000000000;     // `gs` for this CPU
+        gdt[ 9 + (i * 3)] = GS_GDT((archsize_t)(&cpus.perCpuData[i].cpu));     // `gs` for this CPU
+        gdt[10 + (i * 3)] = TSS32_GDT((archsize_t(&cpus.perCpuData[i].tss)));  // 32-bit TSS entry for this CPU
+        gdt[11 + (i * 3)] = NULL_GDT;     // NULL TSS entry part 2 (reserved for 64-bit)
     }
 
 
@@ -85,6 +85,7 @@ void InitGdt(void)
 
 
     // -- load the GDT register
-    LoadGdt(&gdtRec);
+    ArchLoadGdt(&gdtRec);
+    kprintf("Permanent GDT established\n");
 }
 

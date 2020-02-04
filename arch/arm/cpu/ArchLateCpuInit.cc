@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  CpuNum.cc -- Get the current CPU Number from the Local APIC
+//  ArchCpuLateInit.cc -- Complete the final initialization for the CPU
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,22 +10,24 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Jun-07  Initial   0.4.5   ADCL  Initial version
+//  2019-Jun-16  Initial   0.4.6   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
+#include "printf.h"
+#include "platform.h"
+#include "serial.h"
 #include "cpu.h"
-#include "pic.h"
 
 
 //
-// -- Get the CPU Number from the Local APIC
-//    --------------------------------------
-EXTERN_C EXPORT KERNEL
-int CpuNum(void)
+// -- Complete the final CPU initialization steps
+EXTERN_C EXPORT LOADER
+void ArchLateCpuInit(int c)
 {
-    return (MmioRead(LAPIC_MMIO + LAPIC_ID) >> 24) & 0xff;
+    ArchFpuInit();
+    WRITE_TPIDRPRW(cpus.perCpuData[c].cpu);
 }
 

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  FpuInit.cc -- Initialize the core to handle FPU instructions
+//  CpuMyStruct.cc -- For the APs, initialize the specific elements in the cpus array
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,35 +10,28 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Jun-16  Initial   0.4.6   ADCL  Initial version
+//  2020-Feb-03  Initial  v0.5.0f  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
-#include "printf.h"
-#include "platform.h"
-#include "serial.h"
 
+#include "cpu.h"
+#include "printf.h"
+#include "pic.h"
 
 
 //
-// -- Initialize the core to be able to use FPU instructions
-//    ------------------------------------------------------
+// -- Complete the cpu structure initialization for this core
+//    -------------------------------------------------------
 EXTERN_C EXPORT LOADER
-void FpuInit(void)
+archsize_t CpuMyStruct(void)
 {
-    //
-    // -- prepare the FPU for accepting commands
-    //    --------------------------------------
-    archsize_t cpacr = READ_CPACR();
-    cpacr |= (0b11<<20);
-    cpacr |= (0b11<<22);
-    WRITE_CPACR(cpacr);
+    int idx = cpus.cpuStarting;
+    volatile ArchCpu_t *rv = &cpus.perCpuData[idx];
+    rv->location = GetLocation();
+    cpus.cpusRunning ++;
 
-    //
-    // -- and enable the fpu
-    //    ------------------
-    WRITE_FPEXC(1<<30);
+    return (archsize_t)rv;
 }
 

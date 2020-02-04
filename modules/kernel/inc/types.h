@@ -57,6 +57,12 @@
 #define EXTERN_C        EXTERN "C"
 #define NORETURN        __attribute__((noreturn))
 #define INLINE          inline __attribute__((always_inline))
+#define ALIGN(x)        __attribute__((align(x)))
+#define INT_UNSTABLE    volatile        /* changed by an interrupt handler */
+#define SMP_UNSTABLE    volatile        /* changed by another core */
+#define THR_UNSTABLE    volatile        /* changed by another thread */
+#define UNSTABLE        volatile        /* changed by 2 or more of the above */
+
 
 
 //
@@ -212,5 +218,8 @@ const isrFunc_t NULL_ISR = (isrFunc_t)NULL;
 //    ----------------
 EXTERN KERNEL_BSS
 isrFunc_t isrHandlers[256];
+
+
+#include "lists.h"
 
 
