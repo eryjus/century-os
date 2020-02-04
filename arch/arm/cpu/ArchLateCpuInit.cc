@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  FpuInit.cc -- Initialize the core to handle FPU instructions
+//  ArchCpuLateInit.cc -- Complete the final initialization for the CPU
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -19,26 +19,15 @@
 #include "printf.h"
 #include "platform.h"
 #include "serial.h"
-
+#include "cpu.h"
 
 
 //
-// -- Initialize the core to be able to use FPU instructions
-//    ------------------------------------------------------
+// -- Complete the final CPU initialization steps
 EXTERN_C EXPORT LOADER
-void FpuInit(void)
+void ArchLateCpuInit(int c)
 {
-    //
-    // -- prepare the FPU for accepting commands
-    //    --------------------------------------
-    archsize_t cpacr = READ_CPACR();
-    cpacr |= (0b11<<20);
-    cpacr |= (0b11<<22);
-    WRITE_CPACR(cpacr);
-
-    //
-    // -- and enable the fpu
-    //    ------------------
-    WRITE_FPEXC(1<<30);
+    ArchFpuInit();
+    WRITE_TPIDRPRW(cpus.perCpuData[c].cpu);
 }
 

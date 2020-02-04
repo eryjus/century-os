@@ -33,14 +33,7 @@
 // -- Set up an IDT gate
 //    ------------------
 EXTERN_C EXPORT KERNEL
-void IdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags);
-
-
-//
-// -- Build the IDT and populate its gates; initialize the handlers to NULL
-//    ---------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-void ExceptionInit(void);
+void ArchIdtSetGate(uint8_t num, archsize_t base, archsize_t sel, uint8_t flags);
 
 
 //
@@ -142,6 +135,8 @@ void IsrInt1e(isrRegs_t *regs);
 EXTERN_C EXPORT KERNEL
 void IsrInt1f(isrRegs_t *regs);
 
+EXTERN_C EXPORT KERNEL
+void ArchIntNone(isrRegs_t *regs);
 
 //
 // -- A Local prototype to prevent the compiler from name mangling

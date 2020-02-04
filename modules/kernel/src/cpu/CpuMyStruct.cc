@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  CpuVars.cc -- Various variables used by the rpi2b CPU
+//  CpuMyStruct.cc -- For the APs, initialize the specific elements in the cpus array
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,17 +10,28 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Nov-30  Initial   0.2.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Feb-03  Initial  v0.5.0f  ADCL  Initial version
 //
 //===================================================================================================================
 
 
+
 #include "cpu.h"
+#include "printf.h"
+#include "pic.h"
+
 
 //
-// -- This is the stack for the exception handlers
-//    --------------------------------------------
-byte_t exceptionStack[EXCEPTION_STACK_SIZE];
+// -- Complete the cpu structure initialization for this core
+//    -------------------------------------------------------
+EXTERN_C EXPORT LOADER
+archsize_t CpuMyStruct(void)
+{
+    int idx = cpus.cpuStarting;
+    volatile ArchCpu_t *rv = &cpus.perCpuData[idx];
+    rv->location = GetLocation();
+    cpus.cpusRunning ++;
 
+    return (archsize_t)rv;
+}
 

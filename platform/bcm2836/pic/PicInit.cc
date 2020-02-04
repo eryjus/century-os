@@ -30,7 +30,7 @@ void _PicInit(PicDevice_t *dev, const char *name)
     Bcm2835Pic_t *picData = (Bcm2835Pic_t *)dev->device.deviceData;
     PicBase_t base1 = picData->picLoc;
     PicBase_t base2 = picData->timerLoc;
-    int core = CpuNum();
+    int core = thisCpu->cpuNum;
 
     if (core == 0) {
         picData->picLoc = BCM2835_PIC;

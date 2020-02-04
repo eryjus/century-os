@@ -64,6 +64,14 @@ PmmManager_t pmm;
 EXTERN EXPORT KERNEL_DATA
 bool pmmInitialized;
 
+
+//
+// -- The early frame initialization
+//    ------------------------------
+EXTERN EXPORT LOADER_DATA
+archsize_t earlyFrame;
+
+
 //
 // -- add the frames to an existing block if possible, returning if the operation was successful
 //    ------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ExceptionInit.cc -- Build the IDT Table in-place
+//  ArchIdtSetup.cc -- Build the IDT Table in-place
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -157,8 +157,8 @@ EXTERN_C EXPORT KERNEL
 void irq9  (void);
 
 EXTERN_C EXPORT KERNEL
-
 void irq10 (void);
+
 EXTERN_C EXPORT KERNEL
 void irq11 (void);
 
@@ -251,89 +251,93 @@ void irq255(void);
 // -- Build the parts of the IDT we are going to use so far
 //    -----------------------------------------------------
 EXTERN_C EXPORT LOADER
-void ExceptionInit(void)
+void ArchIdtSetup(void)
 {
     kprintf("Initializing the IDT properly\n");
 
     MmuMapToFrame(X86_VIRT_IDT, X86_PHYS_IDT >> 12, PG_WRT | PG_KRN);
-    kMemSetB((void *)X86_VIRT_IDT, 0, sizeof(IdtEntry) * 256);
+    kMemSetB((void *)X86_VIRT_IDT, 0, sizeof(IdtEntry_t) * 256);
 
-    IdtSetGate( 0, (uint32_t)isr0 , 0x08, 0x8e);
-    IdtSetGate( 1, (uint32_t)isr1 , 0x08, 0x8e);
-    IdtSetGate( 2, (uint32_t)isr2 , 0x08, 0x8e);
-    IdtSetGate( 3, (uint32_t)isr3 , 0x08, 0x8e);
-    IdtSetGate( 4, (uint32_t)isr4 , 0x08, 0x8e);
-    IdtSetGate( 5, (uint32_t)isr5 , 0x08, 0x8e);
-    IdtSetGate( 6, (uint32_t)isr6 , 0x08, 0x8e);
-    IdtSetGate( 7, (uint32_t)isr7 , 0x08, 0x8e);
-    IdtSetGate( 8, (uint32_t)isr8 , 0x08, 0x8e);
-    IdtSetGate( 9, (uint32_t)isr9 , 0x08, 0x8e);
-    IdtSetGate(10, (uint32_t)isr10, 0x08, 0x8e);
-    IdtSetGate(11, (uint32_t)isr11, 0x08, 0x8e);
-    IdtSetGate(12, (uint32_t)isr12, 0x08, 0x8e);
-    IdtSetGate(13, (uint32_t)isr13, 0x08, 0x8e);
-    IdtSetGate(14, (uint32_t)isr14, 0x08, 0x8e);
-    IdtSetGate(15, (uint32_t)isr15, 0x08, 0x8e);
-    IdtSetGate(16, (uint32_t)isr16, 0x08, 0x8e);
-    IdtSetGate(17, (uint32_t)isr17, 0x08, 0x8e);
-    IdtSetGate(18, (uint32_t)isr18, 0x08, 0x8e);
-    IdtSetGate(19, (uint32_t)isr19, 0x08, 0x8e);
-    IdtSetGate(20, (uint32_t)isr20, 0x08, 0x8e);
-    IdtSetGate(21, (uint32_t)isr21, 0x08, 0x8e);
-    IdtSetGate(22, (uint32_t)isr22, 0x08, 0x8e);
-    IdtSetGate(23, (uint32_t)isr23, 0x08, 0x8e);
-    IdtSetGate(24, (uint32_t)isr24, 0x08, 0x8e);
-    IdtSetGate(25, (uint32_t)isr25, 0x08, 0x8e);
-    IdtSetGate(26, (uint32_t)isr26, 0x08, 0x8e);
-    IdtSetGate(27, (uint32_t)isr27, 0x08, 0x8e);
-    IdtSetGate(28, (uint32_t)isr28, 0x08, 0x8e);
-    IdtSetGate(29, (uint32_t)isr29, 0x08, 0x8e);
-    IdtSetGate(30, (uint32_t)isr30, 0x08, 0x8e);
-    IdtSetGate(31, (uint32_t)isr31, 0x08, 0x8e);
+    for (int i = 0; i < 256; i ++) {
+        ArchIdtSetGate(i, (archsize_t)ArchIntNone, 0x08, 0x8e);
+    }
 
-    IdtSetGate(32, (uint32_t)irq0 , 0x08, 0x8e);
-    IdtSetGate(33, (uint32_t)irq1 , 0x08, 0x8e);
-    IdtSetGate(34, (uint32_t)irq2 , 0x08, 0x8e);
-    IdtSetGate(35, (uint32_t)irq3 , 0x08, 0x8e);
-    IdtSetGate(36, (uint32_t)irq4 , 0x08, 0x8e);
-    IdtSetGate(37, (uint32_t)irq5 , 0x08, 0x8e);
-    IdtSetGate(38, (uint32_t)irq6 , 0x08, 0x8e);
-    IdtSetGate(39, (uint32_t)irq7 , 0x08, 0x8e);
-    IdtSetGate(40, (uint32_t)irq8 , 0x08, 0x8e);
-    IdtSetGate(41, (uint32_t)irq9 , 0x08, 0x8e);
-    IdtSetGate(42, (uint32_t)irq10, 0x08, 0x8e);
-    IdtSetGate(43, (uint32_t)irq11, 0x08, 0x8e);
-    IdtSetGate(44, (uint32_t)irq12, 0x08, 0x8e);
-    IdtSetGate(45, (uint32_t)irq13, 0x08, 0x8e);
-    IdtSetGate(46, (uint32_t)irq14, 0x08, 0x8e);
-    IdtSetGate(47, (uint32_t)irq15, 0x08, 0x8e);
-    IdtSetGate(48, (uint32_t)irq16, 0x08, 0x8e);
-    IdtSetGate(49, (uint32_t)irq17, 0x08, 0x8e);
-    IdtSetGate(50, (uint32_t)irq18, 0x08, 0x8e);
-    IdtSetGate(51, (uint32_t)irq19, 0x08, 0x8e);
-    IdtSetGate(52, (uint32_t)irq20, 0x08, 0x8e);
-    IdtSetGate(53, (uint32_t)irq21, 0x08, 0x8e);
-    IdtSetGate(54, (uint32_t)irq22, 0x08, 0x8e);
-    IdtSetGate(55, (uint32_t)irq23, 0x08, 0x8e);
+    ArchIdtSetGate( 0, (uint32_t)isr0 , 0x08, 0x8e);
+    ArchIdtSetGate( 1, (uint32_t)isr1 , 0x08, 0x8e);
+    ArchIdtSetGate( 2, (uint32_t)isr2 , 0x08, 0x8e);
+    ArchIdtSetGate( 3, (uint32_t)isr3 , 0x08, 0x8e);
+    ArchIdtSetGate( 4, (uint32_t)isr4 , 0x08, 0x8e);
+    ArchIdtSetGate( 5, (uint32_t)isr5 , 0x08, 0x8e);
+    ArchIdtSetGate( 6, (uint32_t)isr6 , 0x08, 0x8e);
+    ArchIdtSetGate( 7, (uint32_t)isr7 , 0x08, 0x8e);
+    ArchIdtSetGate( 8, (uint32_t)isr8 , 0x08, 0x8e);
+    ArchIdtSetGate( 9, (uint32_t)isr9 , 0x08, 0x8e);
+    ArchIdtSetGate(10, (uint32_t)isr10, 0x08, 0x8e);
+    ArchIdtSetGate(11, (uint32_t)isr11, 0x08, 0x8e);
+    ArchIdtSetGate(12, (uint32_t)isr12, 0x08, 0x8e);
+    ArchIdtSetGate(13, (uint32_t)isr13, 0x08, 0x8e);
+    ArchIdtSetGate(14, (uint32_t)isr14, 0x08, 0x8e);
+    ArchIdtSetGate(15, (uint32_t)isr15, 0x08, 0x8e);
+    ArchIdtSetGate(16, (uint32_t)isr16, 0x08, 0x8e);
+    ArchIdtSetGate(17, (uint32_t)isr17, 0x08, 0x8e);
+    ArchIdtSetGate(18, (uint32_t)isr18, 0x08, 0x8e);
+    ArchIdtSetGate(19, (uint32_t)isr19, 0x08, 0x8e);
+    ArchIdtSetGate(20, (uint32_t)isr20, 0x08, 0x8e);
+    ArchIdtSetGate(21, (uint32_t)isr21, 0x08, 0x8e);
+    ArchIdtSetGate(22, (uint32_t)isr22, 0x08, 0x8e);
+    ArchIdtSetGate(23, (uint32_t)isr23, 0x08, 0x8e);
+    ArchIdtSetGate(24, (uint32_t)isr24, 0x08, 0x8e);
+    ArchIdtSetGate(25, (uint32_t)isr25, 0x08, 0x8e);
+    ArchIdtSetGate(26, (uint32_t)isr26, 0x08, 0x8e);
+    ArchIdtSetGate(27, (uint32_t)isr27, 0x08, 0x8e);
+    ArchIdtSetGate(28, (uint32_t)isr28, 0x08, 0x8e);
+    ArchIdtSetGate(29, (uint32_t)isr29, 0x08, 0x8e);
+    ArchIdtSetGate(30, (uint32_t)isr30, 0x08, 0x8e);
+    ArchIdtSetGate(31, (uint32_t)isr31, 0x08, 0x8e);
 
-    IdtSetGate(100, (uint32_t)isr100, 0x0b, 0x8e|0x60);     // available from user space
+    ArchIdtSetGate(32, (uint32_t)irq0 , 0x08, 0x8e);
+    ArchIdtSetGate(33, (uint32_t)irq1 , 0x08, 0x8e);
+    ArchIdtSetGate(34, (uint32_t)irq2 , 0x08, 0x8e);
+    ArchIdtSetGate(35, (uint32_t)irq3 , 0x08, 0x8e);
+    ArchIdtSetGate(36, (uint32_t)irq4 , 0x08, 0x8e);
+    ArchIdtSetGate(37, (uint32_t)irq5 , 0x08, 0x8e);
+    ArchIdtSetGate(38, (uint32_t)irq6 , 0x08, 0x8e);
+    ArchIdtSetGate(39, (uint32_t)irq7 , 0x08, 0x8e);
+    ArchIdtSetGate(40, (uint32_t)irq8 , 0x08, 0x8e);
+    ArchIdtSetGate(41, (uint32_t)irq9 , 0x08, 0x8e);
+    ArchIdtSetGate(42, (uint32_t)irq10, 0x08, 0x8e);
+    ArchIdtSetGate(43, (uint32_t)irq11, 0x08, 0x8e);
+    ArchIdtSetGate(44, (uint32_t)irq12, 0x08, 0x8e);
+    ArchIdtSetGate(45, (uint32_t)irq13, 0x08, 0x8e);
+    ArchIdtSetGate(46, (uint32_t)irq14, 0x08, 0x8e);
+    ArchIdtSetGate(47, (uint32_t)irq15, 0x08, 0x8e);
+    ArchIdtSetGate(48, (uint32_t)irq16, 0x08, 0x8e);
+    ArchIdtSetGate(49, (uint32_t)irq17, 0x08, 0x8e);
+    ArchIdtSetGate(50, (uint32_t)irq18, 0x08, 0x8e);
+    ArchIdtSetGate(51, (uint32_t)irq19, 0x08, 0x8e);
+    ArchIdtSetGate(52, (uint32_t)irq20, 0x08, 0x8e);
+    ArchIdtSetGate(53, (uint32_t)irq21, 0x08, 0x8e);
+    ArchIdtSetGate(54, (uint32_t)irq22, 0x08, 0x8e);
+    ArchIdtSetGate(55, (uint32_t)irq23, 0x08, 0x8e);
 
-    IdtSetGate(240, (uint32_t)irq240, 0x08, 0x8e);
-    IdtSetGate(241, (uint32_t)irq241, 0x08, 0x8e);
-    IdtSetGate(242, (uint32_t)irq242, 0x08, 0x8e);
-    IdtSetGate(243, (uint32_t)irq243, 0x08, 0x8e);
-    IdtSetGate(244, (uint32_t)irq244, 0x08, 0x8e);
-    IdtSetGate(245, (uint32_t)irq245, 0x08, 0x8e);
-    IdtSetGate(246, (uint32_t)irq246, 0x08, 0x8e);
-    IdtSetGate(247, (uint32_t)irq247, 0x08, 0x8e);
-    IdtSetGate(248, (uint32_t)irq248, 0x08, 0x8e);
-    IdtSetGate(249, (uint32_t)irq249, 0x08, 0x8e);
-    IdtSetGate(250, (uint32_t)irq250, 0x08, 0x8e);
-    IdtSetGate(251, (uint32_t)irq251, 0x08, 0x8e);
-    IdtSetGate(252, (uint32_t)irq252, 0x08, 0x8e);
-    IdtSetGate(253, (uint32_t)irq253, 0x08, 0x8e);
-    IdtSetGate(254, (uint32_t)irq254, 0x08, 0x8e);
-    IdtSetGate(255, (uint32_t)irq255, 0x08, 0x8e);
+    ArchIdtSetGate(100, (uint32_t)isr100, 0x0b, 0x8e|0x60);     // available from user space
+
+    ArchIdtSetGate(240, (uint32_t)irq240, 0x08, 0x8e);
+    ArchIdtSetGate(241, (uint32_t)irq241, 0x08, 0x8e);
+    ArchIdtSetGate(242, (uint32_t)irq242, 0x08, 0x8e);
+    ArchIdtSetGate(243, (uint32_t)irq243, 0x08, 0x8e);
+    ArchIdtSetGate(244, (uint32_t)irq244, 0x08, 0x8e);
+    ArchIdtSetGate(245, (uint32_t)irq245, 0x08, 0x8e);
+    ArchIdtSetGate(246, (uint32_t)irq246, 0x08, 0x8e);
+    ArchIdtSetGate(247, (uint32_t)irq247, 0x08, 0x8e);
+    ArchIdtSetGate(248, (uint32_t)irq248, 0x08, 0x8e);
+    ArchIdtSetGate(249, (uint32_t)irq249, 0x08, 0x8e);
+    ArchIdtSetGate(250, (uint32_t)irq250, 0x08, 0x8e);
+    ArchIdtSetGate(251, (uint32_t)irq251, 0x08, 0x8e);
+    ArchIdtSetGate(252, (uint32_t)irq252, 0x08, 0x8e);
+    ArchIdtSetGate(253, (uint32_t)irq253, 0x08, 0x8e);
+    ArchIdtSetGate(254, (uint32_t)irq254, 0x08, 0x8e);
+    ArchIdtSetGate(255, (uint32_t)irq255, 0x08, 0x8e);
 
 
     // -- Finally we need to load the new GDT
@@ -341,11 +345,11 @@ void ExceptionInit(void)
         uint16_t size;
         uintptr_t loc;
     } __attribute__((packed)) idtRec = {
-        (uint16_t)((sizeof(IdtEntry) * 256) - 1),
+        (uint16_t)((sizeof(IdtEntry_t) * 256) - 1),
         X86_VIRT_IDT,
     };
 
-    LoadIdt(&idtRec);
+    ArchLoadIdt(&idtRec);
 
 
     // -- Register the individual ISR routines

@@ -1187,8 +1187,599 @@ OK, I have both archs working without starting the extra APs.  I am going to com
 
 ---
 
+## Version 0.5.0f
+
+OK, with the Bootstrap Processor working (BSP), I am now able to get into the Redmine work I have have been postponing.
+
+---
+
+### 2020-Jan-14
+
+Today I work on more Redmines.  `CpuNum()` is flawed and either I need to work on my understanding of what is required or my understanding of how to translate it.  See [#445](http://eryjus.ddns.net:3000/issues/445).
+
+So, for [#348](http://eryjus.ddns.net:3000/issues/348) related to the screen size and the number of characters that can be displayed, a character width is 8 pixels and its height is 16 pixels.  So the number of rows is `HEIGHT / 16` and `WIDTH / 8`.
+
+---
+
+### 2020-Jan-16
+
+Working on issues....
+
+* http://eryjus.ddns.net:3000/issues/372
+* http://eryjus.ddns.net:3000/issues/442
+
+---
+
+### 2020-Jan-17
+
+I want to get into [#380](http://eryjus.ddns.net:3000/issues/380).  This one will be intrusive.  So I am going to work on a commit to give me a roll-back point in case a make a holy mess of things.
+
+---
+
+I decided not to push this commit -- no need to do that just yet.  So this is just stored in my local repo.
+
+I want to get into #380, but this is really dependent on #443 (Restart the APs).  I will start with that.  Getting the rpi2b running should be a little easier, so I will start with that arch.
+
+I got this output:
+
+```
+Starting core with message to 0xf900009c
+Starting core with message to 0xf90000ac
+Starting core with message to 0xf90000bc
+the new process stack is located at 0xff801000 (frame 0x00000400)
+the new process stack is located at 0xff802000 (frame 0x00000401)
+.AB
+```
+
+... and then nothing.  So, it makes me wonder if I really have my VBAR working properly.  Let me test that.
+
+```
+Data Exception:
+.. Data Fault Address: 0x00000000
+.. Data Fault Status Register: 0x00000007
+.. Fault status 0x7: Translation fault (Second level)
+.. Fault occurred because of a read
+At address: 0xff800fa8
+ R0: 0x60000113   R1: 0x00000000   R2: 0x80806244
+ R3: 0x00000020   R4: 0x00000000   R5: 0xfffffffc
+ R6: 0x00000000   R7: 0xff801000   R8: 0x00000400
+ R9: 0x00400000  R10: 0x01000000  R11: 0x01007000
+R12: 0xff801000   SP: 0x80803b38   LR_ret: 0x80803b38
+SPSR_ret: 0x60000113     type: 0x17
+
+Additional Data Points:
+User LR: 0xdffb56bf  User SP: 0xdde7ead3
+Svc LR: 0xff800fb8
+```
+
+So that works.  OK, so now what?
+
+Well, after changing `entry.s` I never went back to look at `entryAp.s`.  I probably should start there.
+
+Ok, I did find this:
+
+```
+Data Exception:
+... Data Fault Address: 0xff802ff8
+```
+
+This is in the stack range.  This means my stack is not mapped.  I will need to take care of that from `entryAp.s`, but it will need to call the proper kernel function to work.
+
+---
+
+### 2020-Jan-18
+
+OK, so I have narrowed this down to a stack problem.  Once I get to the mapped stack with paging enabled, things go south on me.  I really want to be able use `StackFind()` so that I can allocate a stack properly.
+
+---
+
+### 2020-Jan-19
+
+I really have 2 choices for how and when to allocated the stacks for APs.  I can to that in `entryAP.s`, which means I will need to de-allocate a stack when I am ready to power off the core.  The risk here is that if a core is powered off due to inactivity, there is a race condition to get it powered back up and allocate a new stack before the stacks run out (there are a finite number of them).  On the other hand, if I allocate one for each possible core starting the APs, then I have them permanently allocated and I am guaranteed to always have a stack available to start the AP.
+
+For this, I probably need to get the per-CPU structures started and figure out how to handle those on an ARM CPU... and it should be defined in the ABI I think.
+
+---
+
+I found this from `lk`: https://github.com/littlekernel/lk/blob/cba9e4798747fed36e4f858965796487bfd0a7c4/arch/arm/include/arch/arch_ops.h#L219
+
+This, then, also led me to this: https://github.com/littlekernel/lk/blob/128890f8a8ce0ff73045af519b007525c76397dc/arch/arm/rules.mk#L263
+
+---
+
+### 2020-Jan-20
+
+I had the following questions that I asked on the `#lk` channel:
+
+```
+i am working on trying to set up/understand some per-cpu data and looking through lk as a reference solution.
 
 
+1) for armv7, i was looking through the ABi to see if a register was used for per-cpu data and it appears it is not.  So, I thought I would look into lk to see how you handled that.  it does not appear you use a register but calculate the cpu number on the fly with the mpidr each time it is needed.  am i correct in this conclusion?
+2) as a result, I would assume that you have an array indexed by the result of your mpidr calculation.  if this is correct, are there heterogeneous cpu configurations that throw a wrench in that or is that something not to be worried about in general?
+3) for x86, it looks like lk is not using the typical gs trick.  Am I missing it or are you just using an array?
+```
 
+Essentially, the answer was to set some compile-time limitations on what can be used.  lk has a limit of 4 CPUs max.  That seems a bit low for me, but OK...
+
+travisg also pointed me to the TPIDR register set.
+
+---
+
+As a side note, another thing I want to keep track of is:
+
+```sh
+i686-elf-gcc -dM -E platform/bcm2836/inc/constants.h | sort | sed 's/#define //'
+```
+
+---
+
+Ok, section B4.1.150 of the ARM ARM has what I need: TPIDRPRW -- a thread ID storage which can be used for a per-CPU structure which is readable/writable from PL1, but inaccessible from PL0.  There is also a TPIDRURO which is read-only from PL0 which I will not use quite yet.  Finally, TPIDRURW has no security and will be left to user mode for usage.
+
+So, it's time for some thinking....
+
+I need an array of per-cpu stuff.  This stuff will also need to contain the ordinal core number and its "location" from mpidr.  The ordinal core number will be its index into the array as well.  The `tpidrprw` will contain the address of the structure for that ordinal core number so that things can be access quickly.
+
+This all then implies that I need to start the cores one at a time and make certain that they are all properly initialized (including this `tpidrprw` register) before the next one starts.
+
+---
+
+Focus, Adam.  Back to the stacks.  [Redmine #449](http://eryjus.ddns.net:3000/issues/449) will circle back to this.
+
+---
+
+### 2020-Jan-21
+
+OK, back to the stack problem.  I need to make a decision here.  And I think the decision is going to combine the 2 problems.  Here's what I think I am going to do:
+
+* During BSP initialization, create the array that for the lesser of discovered CPUs and MAX_CPUS (may just create it for MAX_CPUS and take the loss of memory).
+* Pre-populate the stack locations, having already mapped them in the MMU.
+* Pre-populate the ordinal cpu core number for each CPU.
+* For the BSP, populate the value of `mpidr` (its "location").
+* For the BSP, populate the flag indicating the CPU is running.
+* For each AP, the BSP will in turn:
+  * Increment the count of started APs (starting at 1 since the BSP is 0).
+  * Set a flag that an AP is being started.
+  * Send the message to start the AP.
+  * Wait a reasonable amount of time for the AP to start and if not, mark the cpu as bad.
+* Each started AP will poll the started AP counter and index into the cpu array for the structure address.
+* Set the `tpidtprw` to the address.
+* Populate the value of the `mpidr` for the structure.
+* Clear the flag that the core is started properly.
+
+So, I need to decide what that `perCpuData` structure will look like....
+
+```C++
+struct {
+    int cpuNum;
+    archsize_t location;        // -- such as mpidr or apicid
+    archsize_t stackTop;
+    CpuState_t state;           // -- CPU_STOPPED = 0; CPU_STARTING = 1; CPU_RUNNING = 2; CPU_BAD = 0xffff;
+    //...
+}
+```
+
+OK, I have the code to initialize the `PerCpuData_t` structure.
+
+---
+
+### 2020-Jan-22
+
+Ok, I have having similar situations as I did when I was overwriting the Page Directory.  I think the problem is in `PmmInit()`, since it was originally written to start freeing at frame `0x400` but the early init was changed to go *up* from that frame.
+
+As a result, I need to change the way `PmmInit()` works, and it will need to work based on the value in `earlyFrame`.
+
+---
+
+Back to the task at hand....
+
+---
+
+### 2020-Jan-23
+
+Well I still have some stack problems even after that.
+
+---
+
+### 2020-Jan-24
+
+The deflated me a bit yesterday.  The stack issues should have been resolved.
+
+With rpi2b resolved, I am now back to x86-pc.  I have the following exception which triple faults:
+
+```
+00170144363e[CPU1  ] check_cs(0x0008): not a valid code segment !
+00170144363e[CPU1  ] interrupt(): gate descriptor is not valid sys seg (vector=0x0d)
+00170144363e[CPU1  ] interrupt(): gate descriptor is not valid sys seg (vector=0x08)
+00170144363i[CPU1  ] CPU is in protected mode (active)
+00170144363i[CPU1  ] CS.mode = 16 bit
+00170144363i[CPU1  ] SS.mode = 16 bit
+00170144363i[CPU1  ] EFER   = 0x00000000
+00170144363i[CPU1  ] | EAX=60000011  EBX=00000004  ECX=00000008  EDX=00000000
+00170144363i[CPU1  ] | ESP=00001ff6  EBP=00000000  ESI=00000000  EDI=00000018
+00170144363i[CPU1  ] | IOPL=0 id vip vif ac vm RF nt of df if tf sf zf af PF cf
+00170144363i[CPU1  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00170144363i[CPU1  ] |  CS:0800( 1e00| 0|  0) 00008000 0000ffff 0 0
+00170144363i[CPU1  ] |  DS:0800( 0000| 0|  0) 00008000 0000ffff 0 0
+00170144363i[CPU1  ] |  SS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
+00170144363i[CPU1  ] |  ES:0800( 0000| 0|  0) 00008000 0000ffff 0 0
+00170144363i[CPU1  ] |  FS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
+00170144363i[CPU1  ] |  GS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
+00170144363i[CPU1  ] | EIP=00000089 (00000089)
+00170144363i[CPU1  ] | CR0=0x60000011 CR2=0x00000000
+00170144363i[CPU1  ] | CR3=0x00000000 CR4=0x00000000
+00170144363p[CPU1  ] >>PANIC<< exception(): 3rd (13) exception with no resolution
+```
+
+Ahhhh... this is on CPU1 while I thought it was on CPU0.  Much better.  At least that is the work at hand!
+
+What bothers me is the value at `eip`.  So it appears the cpu is excepting off the face of the earth....
+
+Looking at the bochs logs, I see the following:
+
+```
+00170144338i[APIC1 ] Deliver Start Up IPI
+00170144338i[CPU1  ] CPU 1 started up at 0800:00000000 by APIC
+```
+
+And this looks very un-right.  But in the logs, I never hear anything from CPU1 again (in the logs) until the triple fault.
+
+So, the problem must me in this code:
+
+```C++
+        picControl->PicBroadcastInit(picControl, i);
+        picControl->PicBroadcastSipi(picControl, i, (archsize_t)trampoline);
+```
+
+... and in particular the call to `picControl->PicBroadcaseSipi()`.
+
+OK, hold the phone!!  I think the last time this worked was before I downloaded the latest code and started the instrumentation.  If this is the case, then this may be a bug in Bochs (but then again, I am having some problem in qemu as well).  So the next step here is to turn logging on for qemu and determine if I still have the problem there.
+
+And, qemu actually tells me that it is the `iret` to the new GDT that creates problems.  So, this code is really:
+
+```S
+    pushfd
+    push    0x08
+    push    dword [edi]
+    iretd
+```
+
+OK, I think my clue comes from the Intel manual for the `iret` instruction:
+
+```
+REAL-ADDRESS-MODE;
+    IF OperandSize = 32
+        THEN
+            EIP ← Pop();
+            CS ← Pop(); (* 32-bit pop, high-order 16 bits discarded *)
+            tempEFLAGS ← Pop();
+            EFLAGS ← (tempEFLAGS AND 257FD5H) OR (EFLAGS AND 1A0000H);
+        ELSE (* OperandSize = 16 *)
+            EIP ← Pop(); (* 16-bit pop; clear upper 16 bits *)
+            CS ← Pop(); (* 16-bit pop *)
+            EFLAGS[15:0] ← Pop();
+    FI;
+END;
+```
+
+This says that the pops are all 16-bit for 16-bit mode.  Now, there may be an operand size override that I can check for...
+
+```S
+80808094:       66 cf                   iretw
+```
+
+And, though the opcode says `iretw`, this is really operand size overridden (`0x66`) in 16-bit mode, so I am expecting all the pops to be 32-bit operations.
+
+---
+
+OK, I finally have something I think should work:
+
+```S
+    mov  ax,0x08
+    mov  bx,(tgt_32_bit-entryAp)
+    push word ax
+    push word bx
+    retf
+```
+
+The problem now (which has the same symptom -- triple fault) is that I am not convinced I have a good GDT.
+
+```
+Global Descriptor Table (base=0x0000000000003800, limit=2047):
+GDT[0x0000]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0008]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0010]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0018]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0020]=??? descriptor hi=0x00000000, lo=0x00000000
+...
+```
+
+... and in fact I do not.  Tomorrow.
+
+---
+
+### 2020-Jan-25
+
+OK, bad GDT....
+
+There is a [low memory map](http://eryjus.ddns.net:3000/projects/century-os/wiki/Low_Memory_Usage_Map) where I expect the GDT to be.  In this map, the permanent location of the GDT is starting at `0x10000`.  So, is that where it was placed and is that where I am mapping it?
+
+It looks like I am not creating a new GDT properly and I am still using the boot one.  Nope!  It's in the right place.  But I was not using the right addresses in patching it up.
+
+So, with a couple of quick modifications, I will try it again.
+
+OK, CPU is reporting as running.  I have that working now.
+
+So, what do I need to catch back up here?
+* Need to relocate the GDT and IDT to virtual memory
+* Still on a bad stack; need to clean that up
+* Need to update the current CPU structure (call CpuMyStruct)
+* Set up a `gs` section (along with the proper clean-up there) -- should this be added to the `PerCpuData_t` structure?
+* Need to set up a `tr` for each core (along with the clean-up there)
+* Find and remove all the `while (true) {}` lines
+
+---
+
+### 2020-Jan-26
+
+I think I have some problems still.  I am getting an unresovled `#PF` which is leading to a triple fault.  The instrumentation is, however, picking up the fault.  I may want to try to enhance the instrumantation so that I can get some details automatically when the first `#PF` occurs.  I am not vertain I have access to the registers at that point, so I have some research to do.
+
+---
+
+With that, I was able to get a few errors resolved.  All 4 cores are starting.
+
+---
+
+So for x86-pc, I have all the cores running.  However, each core is trying to reprogram the timer, which I think is a problem -- it probably should only be working on enabling/starting the timer (compare with rpi2b which has a timer per core).  At any rate, I believe that is what is messing up the scheduling on x86-pc.
+
+---
+
+### 2020-Jan-27
+
+OK, I was able to confirm: the x86-pc cannot have the timers initialized multiple times whereas the rpi2b requires it.  With a quick change this works.
+
+---
+
+### 2020-Jan-30
+
+I think I want to spend some time working on how to manage the debug code.  I am honestly struggling *not* to change to a disassembler and start a debugging.  I know this will be related to v0.6.0!
+
+---
+
+### 2020-Jan-31
+
+So, [this section](https://github.com/eryjus/century-old/blob/f95990f1907d92fe56f43d46acf62e66d4b56f5f/include/proc.h#L22) from xv6 shows how the x86 per-cpu structures are set up.  Copying that comment/code here:
+
+```C++
+// Per-CPU variables, holding pointers to the
+// current cpu and to the current process.
+// The asm suffix tells gcc to use "%gs:0" to refer to cpu
+// and "%gs:4" to refer to proc.  seginit sets up the
+// %gs segment register so that %gs refers to the memory
+// holding those two variables in the local cpu's struct cpu.
+// This is similar to how thread-local variables are implemented
+// in thread libraries such as Linux pthreads.
+extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
+extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
+```
+
+In reviewing this code, each CPU has its own structure `cpu` structure.  Each `cpu` structure has its own gdt.  This is different than how I am setting up Century.  What I want to do is make sure the structure is an abstraction of the CPU.  The above structure holds a pointer to the full struture and a pointer to the current process.
+
+Now, this code:
+
+```C++
+  // Map cpu, and curproc
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
+```
+
+Creates the necessary segment mapping -- starting with `&c->cpu` in the structure and a size of `8` bytes.  This works because `c = &cpus[cpunum()];`.
+
+So, from here I need to think about a CPU abstraction structure.  This will obviously need to be arch dependent.
+
+General elements:
+* OS-perspective CPU number
+* top of the startup stack for this CPU
+* the state of this CPU
+* kernel locks held by this CPU
+* reschedule pending on this CPU
+* reschedule postpone depth on this CPU
+* disable interrupts depth on this CPU
+* pointer to this structure on this CPU
+* pointer to the current process on this CPU
+
+x86-specific elements:
+* APIC ID for this CPU
+* `gs` section for this CPU
+* `tss` section for this CPU
+
+armv7-specific elements:
+* CPU location
+
+---
+
+### 2020-Feb-01
+
+I moved `location` into the common elements -- the thought here being that the APIC ID is really a location as well.
+
+---
+
+So, the next steps here are going to be to replace the `cpus` variable structure with the new `ArchCpu_t` structure definition.  Then, I need to initialize the structures and finally decorate each CPU entry as the CPU is starting.
+
+rpi2b is going to be the easier of the 2 to initialize, so I will start there.
+
+---
+
+Well, it turns out that i was able to get x86-pc worted out properly first.  I did manage to move a number of files around and rename several functions to indicate that they are arch-dependent.  The big change here is that I ended up performing the exception initialization here as well -- but that probably will need to be split between a cpu initialization and an exception initialization.
+
+That being the case, I will want to keep the rpi2b exception initialization outside of the cpu initialization.  So, the CPU work is complete.
+
+Now, I currently have a `cpu` folder in `arch/arm`.  This folder is empty and needs to be removed.  However, I will need to revamp the `tup` build to do this.
+
+---
+
+### 2020-Feb-02
+
+Now that I am back home, I have some Redmine work to do.
+
+---
+
+Having resolved server issues (grr!!), I have Redmine caught up and I have finished up the initialization for the CPU.
+
+I think I am ready for a commit to github, but before I go there I really need to make sure things are still working the way I expect -- and debug what is not.
+
+So, I think both are faulting off the face of the earth....  rpi2b is halting when trying to start a new core and x86-pc is triple faulting when trying to start a new core.  Yeah, cleaning that up is required.
+
+So, I think I need to start with the rpi2b.
+
+So, it turns out that the `volatile` keyword is going to be critical to several things.
+
+OK, this is fun:
+
+```
+Starting core 1
+... Releasing another CPU to start.
+Starting core 2
+Finalizing CPU initialization
+... Releasing another CPU to start.
+
+General Protection Fault
+Finalizing CPU initialization
+Starting core 3
+EAX: 0x00000080  EBX: 0x810009c4  ECX: 0x0000001e
+
+General Protection Fault
+... Releasing another CPU to start.
+EDX: 0x00000078  ESI: 0x00000000  EDI: 0x00000000
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+Finalizing CPU initialization
+the new process stack is located at 0xff804000 (frame 0x00001022)
+EBP: 0x00000000  ESP: 0xff801fb8  SS: 0x10
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+
+General Protection Fault
+the new process stack is located at 0xff805000 (frame 0x00001023)
+EIP: 0x808000a4  EFLAGS: 0x00010082
+EBP: 0x00000000  ESP: 0xff802f98  SS: 0x10
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+.CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x78
+EIP: 0x80800004  EFLAGS: 0x00010092
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+ACR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+EBP: 0x00000000  ESP: 0xff803f98  SS: 0x10
+BTrap: 0xd  Error: 0x80
+
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+EIP: 0x80800004  EFLAGS: 0x00010092
+Trap: 0xd  Error: 0x90
+
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x90
+
+BAB
+```
+
+So, it looks like I am successfully getting all 3 cores to start, and then all 3 are subsequently getting a `#GP` -- to the point where all the different elements are getting inter-mixed.  And then core 0 continues to start outputting it's data.
+
+All 3 problems appear to be sourced by the GDT and a bad selector.  Based on the following from the bochs log, I'm betting the latter:
+
+```
+00172955473e[CPU1  ] fetch_raw_descriptor: GDT: index (87) 10 > limit (7f)
+00172988498e[CPU2  ] fetch_raw_descriptor: GDT: index (97) 12 > limit (7f)
+00173080338e[CPU3  ] fetch_raw_descriptor: GDT: index (97) 12 > limit (7f)
+```
+
+Let me see if I can sort this out and determine *why* I am getting a bad GDT selector.
+
+
+#### Core 1
+```
+Starting core 1
+General Protection Fault
+EAX: 0x00000080  EBX: 0x810009c4  ECX: 0x0000001e
+EDX: 0x00000078  ESI: 0x00000000  EDI: 0x00000000
+EBP: 0x00000000  ESP: 0xff801fb8  SS: 0x10
+EIP: 0x808000a4  EFLAGS: 0x00010082
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x78
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x80
+```
+
+#### Core 2
+```
+Starting core 2
+General Protection Fault
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+EBP: 0x00000000  ESP: 0xff802f98  SS: 0x10
+EIP: 0x80800004  EFLAGS: 0x00010092
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x90
+```
+
+#### Core 3
+```
+Starting core 3
+General Protection Fault
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+EBP: 0x00000000  ESP: 0xff803f98  SS: 0x10
+EIP: 0x80800004  EFLAGS: 0x00010092
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x90
+```
+
+And the output of preparing the cpu structure:
+
+```
+Calling per cpu(0)
+!!>> [0]: Setting the gs selector to 0x48 and the tss selector to 0x50
+..back
+Calling per cpu(1)
+!!>> [1]: Setting the gs selector to 0x60 and the tss selector to 0x68
+..back
+Calling per cpu(2)
+!!>> [2]: Setting the gs selector to 0x78 and the tss selector to 0x80
+..back
+Calling per cpu(3)
+!!>> [3]: Setting the gs selector to 0x90 and the tss selector to 0x98
+..back
+```
+
+Now, only one error code matches any of the selectors, so I am not certain that is relevant.
+
+So, the code in each `eip` register:
+
+```S
+808000a0 <ArchTssLoad>:
+808000a0:       8b 44 24 04             mov    0x4(%esp),%eax
+808000a4:       0f 00 d8                ltr    %ax
+808000a7:       c3                      ret
+```
+
+... and ...
+
+```S
+80800000:       8b 44 24 04             mov    0x4(%esp),%eax
+80800004:       8e e8                   mov    %eax,%gs
+80800006:       c3                      ret
+```
+
+So, this makes me wonder if the new GDT is in place properly when I attempt to load this....
+
+This was cleared up and I have 1 remaining `#GP`.  I believe I have a race condition that needs to be cleaned up.
+
+This, then, cleans up the code and it runs for both CPUs.  The next step is to write a commit and advance the micro-version -- a lot has gone one with this iteration.
+
+Tomorrow.
+
+---
+
+### 2020-Feb-03
+
+OK, thinking about this, I want to go through all the new source files and at least I have a proper header comment block in the file.
 
 

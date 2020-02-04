@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  platform.h -- These are the common functions for interacting with the platform
+//  ArchFpuInit.cc -- Initialize the core to handle FPU instructions
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,35 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-05  Initial   0.4.1   ADCL  Initial version
+//  2019-Jun-16  Initial   0.4.6   ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-#define __PLATFORM_H__
-
-
 #include "types.h"
+#include "printf.h"
+#include "platform.h"
+#include "serial.h"
 
-
-//
-// -- This is the early platform initialization function
-//    --------------------------------------------------
-EXTERN_C EXPORT LOADER
-void PlatformEarlyInit(void);
 
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
+// -- Initialize the core to be able to use FPU instructions
+//    ------------------------------------------------------
 EXTERN_C EXPORT LOADER
-void PlatformInit(void);
+void ArchFpuInit(void)
+{
+    //
+    // -- prepare the FPU for accepting commands
+    //    --------------------------------------
+    archsize_t cpacr = READ_CPACR();
+    cpacr |= (0b11<<20);
+    cpacr |= (0b11<<22);
+    WRITE_CPACR(cpacr);
+
+    //
+    // -- and enable the fpu
+    //    ------------------
+    WRITE_FPEXC(1<<30);
+}
 

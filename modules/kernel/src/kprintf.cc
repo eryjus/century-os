@@ -103,6 +103,12 @@ int kprintf(const char *fmt, ...)
                 printed ++;
                 continue;
 
+            case 'c': {
+                int c = va_arg(args, int);
+                SerialPutChar(&debugSerial, c & 0xff);
+                continue;
+            }
+
             case 's': {
                 char *s = va_arg(args, char *);
                 if (!s) s = (char *)"<NULL>";

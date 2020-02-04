@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  platform-cpu.h -- These are the structures and functions for the final CPU initialization
+//  ArchLateCpuInit.cc -- Polish off the CPU structures for the x86 arch
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,26 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2020-Jan-05  Initial  v0.5.0e  ADCL  Initial version
+//  2020-Feb-01  Initial  v0.5.0f  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-
-
-#ifndef __PLATFORM_H__
-#   error "Use #include \"platform.h\" and it will pick up this file; do not #include this file directly."
-#endif
-
-
 #include "types.h"
+#include "printf.h"
+#include "cpu.h"
 
 
 //
-// -- Initialize the GDT to its final location
-//    ----------------------------------------
+// -- Complete the CPU initialization
+//    -------------------------------
 EXTERN_C EXPORT LOADER
-void InitGdt(void);
+void ArchLateCpuInit(int c)
+{
+    kprintf("Finalizing CPU initialization\n");
+    ArchGsLoad(cpus.perCpuData[c].gsSelector);
+    ArchTssLoad(cpus.perCpuData[c].tssSelector);
+}
+
 
 

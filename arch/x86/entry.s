@@ -763,7 +763,6 @@ newGdt:
     mov     ds,ax
     mov     es,ax
     mov     fs,ax
-    mov     gs,ax
     mov     ss,ax
     mov     esp,STACK_LOCATION                  ;; set the stack for the loader
 

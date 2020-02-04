@@ -30,7 +30,7 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
 {
     if (!dev) return;
 
-    if (CpuNum() == 0) {
+    if (thisCpu->cpuNum == 0) {
         IsrRegister(65, dev->TimerCallBack);
         dev->factor = READ_CNTFRQ() / 1000000.0;
         kprintf("IsrHandler registered\n");

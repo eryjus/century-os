@@ -1,6 +1,6 @@
 ;;===================================================================================================================
 ;;
-;;  LoadIdt.s -- Load the final IDT and set the proper section selectors
+;;  ArchLoadIdt.s -- Load the final IDT and set the proper section selectors
 ;;
 ;;        Copyright (c)  2017-2020 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
@@ -21,14 +21,14 @@
 ;;
 ;; -- Expose some labels to other fucntions that the linker can pick up
 ;;    -----------------------------------------------------------------
-    global      LoadIdt
+    global      ArchLoadIdt
 
 
 
 ;;
 ;; -- Load the IDT and set the the segment selectors
 ;;    ----------------------------------------------
-LoadIdt:
+ArchLoadIdt:
     mov         eax,[esp+4]                     ;; get the idtr values
     lidt        [eax]                           ;; load the idt register
     ret

@@ -26,6 +26,46 @@
 
 
 //
+// -- This is the abstraction of the CPU.
+//    -----------------------------------
+typedef struct ArchCpu_t {
+    COMMON_CPU_ELEMENTS
+} ArchCpu_t;
+
+
+//
+// -- Some optimizations for the elements we will get to frequently
+//    -------------------------------------------------------------
+#define thisCpu ((ArchCpu_t *)READ_TPIDRPRW())
+#define currentThread ((Process_t *)READ_TPIDRURO())
+
+
+//
+// -- Perform the Archictecture-Specifc CPU initialization required
+//    -------------------------------------------------------------
+#define ArchEarlyCpuInit()
+
+
+//
+// -- Complete the final initialization for the CPU
+//    ---------------------------------------------
+EXTERN_C EXPORT LOADER
+void ArchLateCpuInit(int c);
+
+
+//
+// -- Complete the initialization for the arch-specific CPU elements
+//    --------------------------------------------------------------
+#define ArchPerCpuInit(...)
+
+
+//
+// -- Arch Specific cpu location determination
+//    ----------------------------------------
+#define ArchCpuLocation()       READ_MPIDR()
+
+
+//
 // -- This is the max IOAPICs that can be defined for this arch
 //    ---------------------------------------------------------
 #define MAX_IOAPIC          1
@@ -38,24 +78,6 @@
 
 
 //
-// -- These are some addresses we need for this CPU architecture
-//    ----------------------------------------------------------
-#define HW_DISCOVERY_LOC            0x00003000
-
-
-//
-// -- This is the location where the stack will be initialized
-//    --------------------------------------------------------
-#define PROCESS_STACK_BUILD 0xff441000
-
-
-//
-// -- This is the location of the frame buffer
-//    ----------------------------------------
-#define FRAME_BUFFER_VADDR  0xfb000000
-
-
-//
 // -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
 //    into the various tables
 //    -----------------------------------------------------------------------------------------------------
@@ -63,12 +85,6 @@
 #define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)ARMV7_TTL1_TABLE_VADDR)[((a) >> 20) & 0xffc])
 #define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)ARMV7_TTL2_MGMT)[(a) >> 22])
 #define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)ARMV7_TTL2_TABLE_VADDR)[(a) >> 12])
-
-
-//
-// -- This is the size of the short exception stacks
-//    ----------------------------------------------
-#define EXCEPTION_STACK_SIZE  512
 
 
 //
@@ -168,6 +184,13 @@ inline void Panic(void) { while (1) HaltCpu(); }
 
 
 //
+// -- Access to the MPIDR (MultiProcessor ID Register)
+//    ------------------------------------------------
+#define MPIDR               "p15, 0, %0, c0, c0, 5"
+#define READ_MPIDR()        MRC(MPIDR)
+
+
+//
 // -- Access to the CLIDR (Cache Level ID Register)
 //    ---------------------------------------------
 #define CLIDR               "p15, 1, %0, c0, c0, 1"
@@ -223,11 +246,27 @@ inline void Panic(void) { while (1) HaltCpu(); }
 
 
 //
+// -- Access to the DFSR (Data Fault Status Register)
+//    -----------------------------------------------
+#define DFSR                "p15, 0, %0, c5, c0, 0"
+#define READ_DFSR()         MRC(DFSR)
+#define WRITE_DFSR(val)     MCR(DFSR,val)
+
+
+//
 // -- Access to the IFSR (Instruction Faulting Status Register)
 //    ---------------------------------------------------------
 #define IFSR                "p15, 0, %0, c5, c0, 1"
 #define READ_IFSR()         MRC(IFSR)
 #define WRITE_IFSR(val)     MCR(IFSR,val)
+
+
+//
+// -- Access to the DFAR (Data Fault Address Register)
+//    ------------------------------------------------
+#define DFAR                "p15, 0, %0, c6, c0, 0"
+#define READ_DFAR()         MRC(DFAR)
+#define WRITE_DFAR(val)     MCR(DFAR,val)
 
 
 //
@@ -244,6 +283,22 @@ inline void Panic(void) { while (1) HaltCpu(); }
 #define VBAR                "p15, 0, %0, c12, c0, 0"
 #define READ_VBAR()         MRC(VBAR)
 #define WRITE_VBAR(val)     MCR(VBAR,val)
+
+
+//
+// -- Access to the TPIDRURO (User Read Only Thread ID Register)
+//    ----------------------------------------------------------
+#define TPIDRURO            "p15, 0, %0, c13, c0, 3"
+#define READ_TPIDRURO()     MRC(TPIDRURO)
+#define WRITE_TPIDRURO(val) MCR(TPIDRURO,val)
+
+
+//
+// -- Access to the TPIDRPRW (PL1 Only Thread ID Register)
+//    ----------------------------------------------------
+#define TPIDRPRW            "p15, 0, %0, c13, c0, 4"
+#define READ_TPIDRPRW()     MRC(TPIDRPRW)
+#define WRITE_TPIDRPRW(val) MCR(TPIDRPRW,val)
 
 
 //
@@ -345,32 +400,12 @@ inline void Panic(void) { while (1) HaltCpu(); }
 
 
 //
-// -- A dummy function to enter system mode, since this is for the ARM
-//    ----------------------------------------------------------------
-EXTERN_C EXPORT LOADER
-void EnterSystemMode(void);
-
-
-//
-// -- Get the Data Fault Address Register (DFAR)
-//    ------------------------------------------
-EXTERN_C EXPORT KERNEL
-archsize_t GetDFAR(void);
-
-
-//
-// -- Get the Data Fault Status Register (DFSR)
-//    ------------------------------------------
-EXTERN_C EXPORT KERNEL
-archsize_t GetDFSR(void);
-
-
-//
 // -- Initialize the core to use the FPU
 //    ----------------------------------
 EXTERN_C EXPORT LOADER
-void FpuInit(void);
+void ArchFpuInit(void);
 
 
-#define CpuTssInit()
+#define GetLocation()   READ_MPIDR()
+#define ApTimerInit(t,f) TimerInit(t, f)
 

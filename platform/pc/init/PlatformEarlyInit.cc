@@ -22,6 +22,7 @@
 #include "hw-disc.h"
 #include "serial.h"
 #include "mmu.h"
+#include "pic.h"
 #include "interrupt.h"
 #include "printf.h"
 #include "platform.h"
@@ -44,7 +45,10 @@ void PlatformEarlyInit(void)
     HwDiscovery();
 
     RSDP_t *rsdp = AcpiFindRsdp();
-    if (rsdp == NULL) return;
+    if (rsdp == NULL) {
+        cpus.cpusDiscovered = 1;
+        goto exit;
+    }
 
     // -- temporarily map the acpi tables
     MmuMapToFrame((archsize_t)rsdp, (frame_t)(((archsize_t)rsdp) >> 12), PG_KRN);
@@ -54,16 +58,17 @@ void PlatformEarlyInit(void)
     } else {
         AcpiReadRsdt(rsdp->rsdtAddress);
         kprintf("The APIC base address is at %p\n", READ_APIC_BASE());
-
     }
+
+    if (cpus.cpusDiscovered > MAX_CPUS) cpus.cpusDiscovered = MAX_CPUS;
+    cpus.cpusRunning = 1;
 
     // -- unmap the acpi tables
     MmuUnmapPage((archsize_t)rsdp);
 
-
+exit:
     // -- Complete the CPU initialization
-    InitGdt();
-    ExceptionInit();
+    CpuInit();
 }
 
 

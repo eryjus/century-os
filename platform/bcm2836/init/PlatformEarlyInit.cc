@@ -19,8 +19,9 @@
 
 #include "types.h"
 #include "serial.h"
-#include "printf.h"
 #include "hw-disc.h"
+#include "cpu.h"
+#include "printf.h"
 #include "platform.h"
 
 
@@ -36,7 +37,10 @@ void PlatformEarlyInit(void)
 
     // -- at some point, this will come from the DTB
     cpus.cpusDiscovered = 4;
-    FpuInit();
+    cpus.cpusRunning = 1;
+    if (cpus.cpusDiscovered > MAX_CPUS) cpus.cpusDiscovered = MAX_CPUS;
+
+    CpuInit();
 }
 
 

@@ -33,6 +33,11 @@
 EXTERN_C EXPORT KERNEL
 void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 {
+//    kprintf("Mapping page %p to frame %x\n", addr, frame);
+//    kprintf("... Kernel: %s\n", flags&PG_KRN?"yes":"no");
+//    kprintf("... Device: %s\n", flags&PG_DEVICE?"yes":"no");
+//    kprintf("... Write.: %s\n", flags&PG_WRT?"yes":"no");
+
     // -- refuse to map frame 0 for security reasons
     if (!frame || !addr) {
         return;
@@ -58,9 +63,11 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     // -- finally we can map the page to the frame as requested
     pte->frame = frame;
     pte->rw = (flags & PG_WRT?1:0);
-    pte->us = (flags & PG_KRN?1:0);
+    pte->us = (flags & PG_KRN?0:1);
     pte->pcd = (flags & PG_DEVICE?1:0);
     pte->pwt = (flags & PG_DEVICE?1:0);
     pte->p = 1;
+
+//    kprintf("... The contents of the PTE is at %p: %p\n", pte, ((*(uint32_t *)pte) & 0xffffffff));
 }
 

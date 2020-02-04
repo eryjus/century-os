@@ -173,6 +173,7 @@ void Mb1Parse(void)
     //    -------------------------------------------------
     archsize_t mb1Page = (archsize_t)mb1Data;
     MmuMapToFrame(mb1Page, mb1Page >> 12, PG_KRN);
+    MmuMapToFrame(mb1Page + PAGE_SIZE, (mb1Page + PAGE_SIZE) >> 12, PG_KRN);
     kprintf("  The flags are: %p\n", mb1Data->flags);
 
     //
@@ -319,4 +320,5 @@ void Mb1Parse(void)
     kprintf("Done parsing MB1 information\n");
 
     MmuUnmapPage(mb1Page);
+    MmuUnmapPage(mb1Page + PAGE_SIZE);
 }

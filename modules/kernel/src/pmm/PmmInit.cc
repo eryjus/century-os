@@ -92,10 +92,10 @@ void PmmInit(void)
         size_t count = (archsize_t)((end - start) >> 12);
 
         // -- skip anything before 4MB
-        if (frame < 0x400 && count < 0x400) continue;
-        if (frame < 0x400) {
-            count -= (0x400 - frame);
-            frame = 0x400;
+        if (frame < earlyFrame && count < earlyFrame) continue;
+        if (frame < earlyFrame) {
+            count -= (earlyFrame - frame);
+            frame = earlyFrame;
         }
 
         kprintf("Releasing block of memory from frame %x for a count of %x frames\n", frame, count);
