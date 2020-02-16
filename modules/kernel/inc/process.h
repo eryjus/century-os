@@ -327,24 +327,24 @@ void ProcessListRemove(Process_t *proc);
 //
 // -- For the scheduler structure, clean the cache pushing the changes to ram
 //    -----------------------------------------------------------------------
-#define CLEAN_SCHEDULER()           CLEAN_CACHE(&scheduler, sizeof(Scheduler_t))
+#define CLEAN_SCHEDULER()           CleanCache((archsize_t)&scheduler, sizeof(Scheduler_t))
 
 
 //
 // -- For the scheduler structure, invalidate the cache forcing a re-read from ram
 //    ----------------------------------------------------------------------------
-#define INVALIDATE_SCHEDULER()      INVALIDATE_CACHE(&scheduler, sizeof(Scheduler_t))
+#define INVALIDATE_SCHEDULER()      InvalidateCache(&scheduler, sizeof(Scheduler_t))
 
 
 //
 // -- for a Process structure, clean the cache pushing the changes to ram
 //    -------------------------------------------------------------------
-#define CLEAN_PROCESS(proc)         CLEAN_CACHE(proc, sizeof(Process_t))
+#define CLEAN_PROCESS(proc)         CleanCache((archsize_t)proc, sizeof(Process_t))
 
 
 //
 // -- for a Process structure, invalidate the cache forcing a re-read from ram
 //    ------------------------------------------------------------------------
-#define INVALIDATE_PROCESS(proc)    INVALIDATE_CACHE(proc, sizeof(Process_t))
+#define INVALIDATE_PROCESS(proc)    InvalidateCache(proc, sizeof(Process_t))
 
 

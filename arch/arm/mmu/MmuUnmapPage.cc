@@ -32,13 +32,13 @@ frame_t MmuUnmapPage(archsize_t addr)
     Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
     Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
 
-    if (ttl1Entry->fault == 0b00) return 0;
-    if (ttl2Entry->fault == 0b00) return 0;
+    if (ttl1Entry->fault == ARMV7_MMU_FAULT) return 0;
+    if (ttl2Entry->fault == ARMV7_MMU_FAULT) return 0;
 
     frame_t rv = ttl2Entry->frame;
     *(uint32_t *)ttl2Entry = 0;
 
-    INVALIDATE_PAGE(ttl2Entry, addr);
+    InvalidatePage((uint32_t)ttl2Entry, addr);
 
     return rv;
 }

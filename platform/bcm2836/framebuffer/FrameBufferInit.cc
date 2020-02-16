@@ -81,10 +81,10 @@ void FrameBufferInit(void)
 
 
     kprintf("The physical address of the buffer at %p is %p\n", mbBuf, MmuVirtToPhys(mbBuf));
-    CLEAN_CACHE(mbBuf, sizeof(mbBuf));
+    CleanCache((archsize_t)mbBuf, sizeof(mbBuf));
     MailboxSend(&kernelMailbox, 8, MmuVirtToPhys(mbBuf));
     MailboxReceive(&kernelMailbox, 8);
-    INVALIDATE_CACHE(mbBuf, sizeof(mbBuf));
+    InvalidateCache((archsize_t)mbBuf, sizeof(mbBuf));
 
 
     fb = (uint16_t *)(mbBuf[24] + ARM_MAILBOX_OFFSET);

@@ -17,7 +17,6 @@
 ## -- Go get some additional information for building the targets
 ##    -----------------------------------------------------------
 include ../../Tupfile.inc
-include $(WS)/arch/$(ARCH)/util/Tupfile.inc
 
 
 ##

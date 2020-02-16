@@ -35,19 +35,19 @@ void MmuClearFrame(frame_t frame)
     //    -----------------------------------------------------------------------------------------------
     Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(frameClearLock) {
-        INVALIDATE_PAGE(ttl2Entry, MMU_CLEAR_FRAME);
+        InvalidatePage((uint32_t)ttl2Entry, MMU_CLEAR_FRAME);
 
         ttl2Entry->frame = frame;
-        ttl2Entry->s = 1;
-        ttl2Entry->apx = 0;
-        ttl2Entry->ap = 0b11;
-        ttl2Entry->tex = 0b001;
-        ttl2Entry->c = 1;
-        ttl2Entry->b = 1;
-        ttl2Entry->nG = 0;
-        ttl2Entry->fault = 0b10;
+        ttl2Entry->s = ARMV7_SHARABLE_TRUE;
+        ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
+        ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
+        ttl2Entry->tex = ARMV7_MMU_TEX_NORMAL;
+        ttl2Entry->c = ARMV7_MMU_CACHED;
+        ttl2Entry->b = ARMV7_MMU_BUFFERED;
+        ttl2Entry->nG = ARMV7_MMU_GLOBAL;
+        ttl2Entry->fault = ARMV7_MMU_DATA_PAGE;
 
-        INVALIDATE_PAGE(ttl2Entry, MMU_CLEAR_FRAME);
+        InvalidatePage((uint32_t)ttl2Entry, MMU_CLEAR_FRAME);
 
         kMemSetB((void *)MMU_CLEAR_FRAME, 0, FRAME_SIZE);
         MmuUnmapPage(MMU_CLEAR_FRAME);

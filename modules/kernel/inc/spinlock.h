@@ -124,12 +124,12 @@ Spinlock_t mmuStackInitLock;
 //
 // -- This macro will clean (flush) the cache for a Spinlock, making changes visible to all
 //    -------------------------------------------------------------------------------------
-#define CLEAN_SPINLOCK(lock) CLEAN_CACHE(lock, sizeof(Spinlock_t))
+#define CLEAN_SPINLOCK(lock) CleanCache(lock, sizeof(Spinlock_t))
 
 
 //
 // -- This macro will invalidate the cache for a Spinlock, forcing it the be re-read from memory
 //    ------------------------------------------------------------------------------------------
-#define INVALIDATE_SPINLOCK(lock) INVALIDATE_CACHE(lock, sizeof(Spinlock_t))
+#define INVALIDATE_SPINLOCK(lock) InvalidateCache(lock, sizeof(Spinlock_t))
 
 

@@ -32,7 +32,7 @@ bool MmuIsMapped(archsize_t addr)
     Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
     Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
 
-    if (ttl1Entry->fault == 0b00) return false;
-    if (ttl2Entry->fault == 0b00) return false;
+    if (ttl1Entry->fault == ARMV7_MMU_FAULT) return false;
+    if (ttl2Entry->fault == ARMV7_MMU_FAULT) return false;
     return true;
 }

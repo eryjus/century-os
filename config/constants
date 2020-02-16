@@ -1,0 +1,77 @@
+##===================================================================================================================
+##
+##  constants -- This file contains the general constants that will be defined in Century-OS.
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file will be processed with `sed` and `awk` to produce the necessary output in the proper format.  This
+##  file is very dependent on the columns and what is in each one.  First of all, any line that starts with a '#'
+##  is a comment and will be ignored.
+##
+##  The columns are as follows:
+##  * The constant name ($1)
+##  * The constant value ($2)
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
+##  2019-Dec-21  Initial  v0.5.0b  ADCL  Initial version
+##
+##===================================================================================================================
+
+
+##
+## -- Some global configurations constants
+##    ------------------------------------
+MAX_DEV_NAME                    128
+MAX_CPUS                        4
+
+
+##
+## -- Some constants related to the initial stack used by the loader
+##    --------------------------------------------------------------
+STACK_SIZE                      0x1000
+STACK_BASE                      0xff800000
+STACK_LOCATION                  (STACK_BASE+STACK_SIZE)
+
+
+##
+## -- Some general MMU constants
+##    --------------------------
+PAGE_SIZE                       0x1000
+FRAME_SIZE                      0x1000
+
+MMU_HEAP_START                  0x90000000
+MMU_FRAMEBUFFER                 0xfb000000
+MMU_CLEAR_FRAME                 0xff400000
+MMU_NEW_TABLE_INIT              0xff408000
+MMU_STACK_INIT_VADDR            0xff40a000
+FRAME_BUFFER_VADDR              0xfb000000
+
+
+##
+## -- Some constants related to MB1, MB2, and VIDEO selection
+##    -------------------------------------------------------
+MAGIC1                          0x1badb002
+MAGIC2                          0xe85250d6
+MBFLAGS                         ((1<<1)|(1<<2))
+MB1SIG                          0x2badb002
+MB2SIG                          0x36d76289
+
+## -- video
+MODE_TYPE                       0
+WIDTH                           1024
+HEIGHT                          768
+DEPTH                           16
+FONT_HEIGHT                     16
+FONT_WIDTH                      8
+
+
+##
+## -- Some constants related to exception/interrupt vectors
+##    -----------------------------------------------------
+EXCEPT_VECTOR_TABLE             0xff401000
+
