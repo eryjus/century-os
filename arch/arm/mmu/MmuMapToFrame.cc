@@ -51,20 +51,20 @@ frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     //    -----------------------------------------------------------------------------------------------
     Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
 
-    INVALIDATE_PAGE(ttl2Entry, addr);
+    InvalidatePage((uint32_t)ttl2Entry, addr);
 
     ttl2Entry = KRN_TTL2_MGMT(addr);
     ttl2Entry->frame = frame;
-    ttl2Entry->s = 1;
-    ttl2Entry->apx = 0;
-    ttl2Entry->ap = 0b11;
-    ttl2Entry->tex = 0b001;
-    ttl2Entry->c = 1;
-    ttl2Entry->b = 1;
-    ttl2Entry->nG = 0;
-    ttl2Entry->fault = 0b10;
+    ttl2Entry->s = ARMV7_SHARABLE_TRUE;
+    ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
+    ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
+    ttl2Entry->tex = ARMV7_MMU_TEX_NORMAL;
+    ttl2Entry->c = ARMV7_MMU_CACHED;
+    ttl2Entry->b = ARMV7_MMU_BUFFERED;
+    ttl2Entry->nG = ARMV7_MMU_GLOBAL;
+    ttl2Entry->fault = ARMV7_MMU_DATA_PAGE;
 
-    INVALIDATE_PAGE(ttl2Entry, addr);
+    InvalidatePage((uint32_t)ttl2Entry, addr);
 
 
     //
@@ -72,7 +72,7 @@ frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
     //    responsibility.  Therefore, the only thing left to do is to return the frame we have allocated
     //    and prepared to be a TTL2 table.
     //    ----------------------------------------------------------------------------------------------
-    BPIALLIS();
+    WriteBPIALLIS();
     DSB();
     return frame;
 }
@@ -99,16 +99,16 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     //    by checking the TTL1 Entry and checking the fault field.
     //    ----------------------------------------------------------------------------------------------------
 //    kprintf("Checking for TTL1 entry (%p; %x)....\n", addr, TTL1_ENTRY(addr, flags)->fault);
-    if (KRN_TTL1_ENTRY(addr)->fault == 0b00) {
+    if (KRN_TTL1_ENTRY(addr)->fault == ARMV7_MMU_FAULT) {
 //        kprintf("TTL1 entry is not mapped to a TTL2 table; creating\n");
         frame_t ttl2 = MmuMakeTtl2Table(addr, flags);
         Ttl1_t *ttl1Entry = KRN_TTL1_ENTRY4(addr);
 
         for (int i = 0; i < 4; i ++) {
             ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
-            ttl1Entry[i].fault = 0b01;
+            ttl1Entry[i].fault = ARMV7_MMU_TTL2;
 
-            INVALIDATE_PAGE(&ttl1Entry[i], &ttl1Entry[i]);
+            InvalidatePage((uint32_t)&ttl1Entry[i], (uint32_t)&ttl1Entry[i]);
             DSB();
         }
     }
@@ -121,23 +121,23 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(addr);
 //    kprintf("ttl2Entry has been set: %p\n", ttl2Entry);
 
-    if (ttl2Entry->fault != 0b00) return;
+    if (ttl2Entry->fault != ARMV7_MMU_FAULT) return;
 
 //    kprintf("mapping the page\n");
 
-    INVALIDATE_PAGE(ttl2Entry, addr);
+    InvalidatePage((uint32_t)ttl2Entry, addr);
 
     ttl2Entry->frame = frame;
-    ttl2Entry->s = 1;
-    ttl2Entry->apx = 0;
-    ttl2Entry->ap = 0b11;
-    ttl2Entry->tex = (flags&PG_DEVICE?0b000:0b001);
-    ttl2Entry->c = (flags&PG_DEVICE?0:1);
-    ttl2Entry->b = (flags&PG_DEVICE?0:1);
-    ttl2Entry->nG = 0;
-    ttl2Entry->fault = 0b10;
+    ttl2Entry->s = ARMV7_SHARABLE_TRUE;
+    ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
+    ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
+    ttl2Entry->tex = (flags&PG_DEVICE?ARMV7_MMU_TEX_DEVICE:ARMV7_MMU_TEX_NORMAL);
+    ttl2Entry->c = (flags&PG_DEVICE?ARMV7_MMU_UNCACHED:ARMV7_MMU_CACHED);
+    ttl2Entry->b = (flags&PG_DEVICE?ARMV7_MMU_UNBUFFERED:ARMV7_MMU_BUFFERED);
+    ttl2Entry->nG = ARMV7_MMU_GLOBAL;
+    ttl2Entry->fault = ARMV7_MMU_CODE_PAGE;
 
-    INVALIDATE_PAGE(ttl2Entry, addr);
+    InvalidatePage((uint32_t)ttl2Entry, addr);
     DSB();
 }
 

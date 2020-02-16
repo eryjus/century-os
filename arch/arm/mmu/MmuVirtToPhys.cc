@@ -34,8 +34,8 @@ archsize_t MmuVirtToPhys(void *addr)
     Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
     Ttl2_t *ttl2Entry = &ttl2Tables[a >> 12];
 
-    if (ttl1Entry->fault == 0b00) return -1;
-    if (ttl2Entry->fault == 0b00) return -1;
+    if (ttl1Entry->fault == ARMV7_MMU_FAULT) return -1;
+    if (ttl2Entry->fault == ARMV7_MMU_FAULT) return -1;
 
     // -- apply the proper offset to the physical frame!
     return (ttl2Entry->frame << 12) | (a & 0xfff);

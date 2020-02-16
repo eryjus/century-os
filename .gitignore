@@ -22,5 +22,6 @@ tuprules.inc
 targets/**/grub.cfg
 targets/**/cfg-file*
 
-platform/**/inc/constants.*
+targets/**/inc/constants.*
+targets/**/config
 

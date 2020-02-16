@@ -31,10 +31,10 @@ void ArchFpuInit(void)
     //
     // -- prepare the FPU for accepting commands
     //    --------------------------------------
-    archsize_t cpacr = READ_CPACR();
+    archsize_t cpacr = ReadCPACR();
     cpacr |= (0b11<<20);
     cpacr |= (0b11<<22);
-    WRITE_CPACR(cpacr);
+    WriteCPACR(cpacr);
 
     //
     // -- and enable the fpu

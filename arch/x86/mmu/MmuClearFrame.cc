@@ -32,9 +32,9 @@ void MmuClearFrame(frame_t frame)
 
         if (!pte->p) {
             pte->frame = frame;
-            pte->rw = 1;
-            pte->us = 1;
-            pte->p = 1;
+            pte->rw = X86_MMU_WRITE;
+            pte->us = X86_MMU_USER;
+            pte->p = X86_MMU_PRESENT_TRUE;
             InvalidatePage(MMU_CLEAR_FRAME);
         }
 

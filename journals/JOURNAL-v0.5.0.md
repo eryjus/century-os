@@ -1782,4 +1782,107 @@ Tomorrow.
 
 OK, thinking about this, I want to go through all the new source files and at least I have a proper header comment block in the file.
 
+---
+
+## v0.5.0g -- Continue to work on the Redmine issues
+
+I'm not quite certain what I want to work on next....  I think I may take on the build system and configuration changes next.  I think I also want to get into the way that the low-level register reads are taking place.
+
+---
+
+OK, I totally broke the build system!
+
+---
+
+### 2020-Feb-04
+
+The build system....  I have something crossed.
+
+---
+
+### 2020-Feb-05
+
+OK, I had to restore my changes from git.  Thank God for a good change management system!!!
+
+So, let's break this down into smaller steps.  Step 1 is to make sure that the target `Tupfile.inc` includes the arch and platform `Tupfile.inc`s.  This, then, should give me the ability to have every `Tupfile` the ability to only include the specific target's `Tupfile.inc` as appropriate.
+
+This is done.
+
+So, the next step is to relocate `constants` to be `config/constants`.
+
+OK, that is done.
+
+The next step is to create dummy constants files for every arch and every platform.  Then use those files to create an aggregated config file in each target's folder.
+
+OK, this is also done.
+
+Now, to change the creation of constants.h to be from targets/$(TGT)/config.  Make that $(TARGET).
+
+The final step is to move the resulting constants.h file to the target/$(TARGET)/inc folder.
+
+---
+
+### 2020-Feb-08
+
+Now I need to start moving some of these constants into the proper files -- depending on platform or arch.  Which is done.
+
+---
+
+### 2020-Feb-09
+
+Today I am working a little bit on the MMU constants for rpi2b.
+
+I have a good number of the Redmines cleared up properly.  So the next step here is going to be to move the arch-spcific CPU instructions into its own file.  In particular, these will be the rpi2b CP registers (though x86-pc has several candidates as well).  This will be a big change in the build system (since I also want to make these inline functions).
+
+One of the thing I am worried about is the size increase of the kernel as a result of these new inline functions.  So, for the record, before I start the binary size is 602196 bytes.
+
+---
+
+### 2020-Feb-12
+
+Working on moving the inline assembly into its own header file as static inline functions....  rpi2b is nearly done, but I still have some platform work to do.
+
+I also have significantly increased the size of the resulting binary -- to 614484 bytes just by changing these `#define`s to inline functions.  This is a 12K increase.  I'm not pleased with this and it is what I was afraid of.  Now, it would not be as big of a problem if I had a dozen source files or so, but with 1 function per file, it's a mess.
+
+---
+
+### 2020-Feb-15
+
+Today, I want to look at how these functions are being placed into the .o files and then how that is translating to the size of the resulting binary -- if this thing grew that much as a result of this, I will be going back to defines rather than inline functions.
+
+From 24-Dec, it appears that the `.stab` section has grown significantly (0x68000 to 0x7b000).  This section holds all the strings in the kernel.  This has has grown since I changed the functions from `#define`s to `inline`s.  Here's how this goes:
+* When a `#define` macro is used, the code is only emitted into the source when it is referenced.  This is done by the C Pre-Processor (CPP, not C++).  Therefore, only when a particular function is referenced will the necessary strings be emitted into code.
+* When an `inline` is used, the code is there by default, whether it is referenced or not.  Therefore, the string is also emitted.  Only when the `inline` is referenced do we get code in the `.text` section, but the strings are emitted into `.stab` regardless.
+
+This explains the increase in size of the kernel.
+
+But, what do I do about it?
+
+---
+
+So, I think what I am going to do is comment out the lined I am not using, as an example:
+
+```C++
+//
+// -- C0 :: Identification Registers
+//    ------------------------------
+CP_REG_RO(CTR,  p15,c0,0,c0,1)          // Cache Type Register
+CP_REG_RO(MPIDR,p15,c0,0,c0,5)          // Multiprocessor-Affinity Register
+CP_REG_RO(CLIDR,p15,c0,1,c0,1)          // Cache Level ID Register
+```
+
+... and let the compiler complain about things not being there.  When I uncomment the required elements, I should have a smaller executable (I hope anyway).  And that made no difference in the file.
+
+Well, this really looks like a lot of debugging data, so I am going to just suck it up and deal with it.  Since my next version is going to be more of an integrated debugger, I will make use of that information and determine if that is really what I am looking at.  Right now, I do not know enough to be certain and I am not going to spend time on that since I never come back to this if I do.  I will uncomment this code and leave it alone.
+
+---
+
+### 2020-Feb-16
+
+Today I finished up the `arch-cpu-ops.h` files for both targets.  There are quite a few changes, so I will go through some tests.
+
+With those working, I think it is time to cycle the micro-version
+
+---
+
 

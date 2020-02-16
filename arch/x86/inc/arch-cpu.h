@@ -406,62 +406,6 @@ void MmuSwitchPageDir(archsize_t physAddr);
 
 
 //
-// -- a lightweight function to halt the cpu
-//    --------------------------------------
-EXPORT KERNEL INLINE
-void HaltCpu(void) { __asm("hlt"); }
-
-
-//
-// -- Panic the kernel, dumping the register state
-//    --------------------------------------------
-EXPORT KERNEL INLINE
-void Panic(void) { __asm("int3"); }
-
-
-//
-// -- cache maintenance functions
-//    ---------------------------
-#if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
-#   define CLEAN_CACHE(mem,len)         WBINVD()
-#   define INVALIDATE_CACHE(mem,len)    WBINVD()
-#   define WBINVD()                     __asm volatile("wbinvd")
-#else
-#   define CLEAN_CACHE(mem,len)
-#   define INVALIDATE_CACHE(mem,len)
-#   define WBINVD()
-#endif
-
-
-//
-// -- CPUID function -- lifted from: https://wiki.osdev.org/CPUID
-//    issue a single request to CPUID. Fits 'intel features', for instance note that even if only "eax" and "edx"
-//    are of interest, other registers will be modified by the operation, so we need to tell the compiler about it.
-//    -------------------------------------------------------------------------------------------------------------
-EXPORT LOADER INLINE
-void CPUID(int code, uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
-    __asm volatile("cpuid\n" : "=a"(*a),"=b"(*b),"=c"(*c),"=d"(*d) : "a"(code)); }
-
-
-//
-// -- Model Specific Registers
-//    ------------------------
-EXPORT LOADER INLINE
-uint64_t RDMSR(uint32_t r) {
-    uint32_t _lo, _hi;
-    __asm volatile("rdmsr\n" : "=a"(_lo),"=d"(_hi) : "c"(r) : "%ebx");
-    return (((uint64_t)_hi) << 32) | _lo;
-}
-
-EXPORT LOADER INLINE
-void WRMSR(uint32_t r, uint64_t v) {
-    uint32_t _lo = (uint32_t)(v & 0xffffffff);
-    uint32_t _hi = (uint32_t)(v >> 32);
-    __asm volatile("wrmsr\n" : : "c"(r),"a"(_lo),"d"(_hi));
-}
-
-
-//
 // -- Access macros for the APIC
 //    --------------------------
 #define APIC_BASE               (0x1b)
@@ -511,5 +455,11 @@ EXTERN_C EXPORT KERNEL
 void ArchLoadIdt(void *);
 
 
-#define GetLocation() MmioRead(LAPIC_MMIO + LAPIC_ID)
 #define ApTimerInit(t,f)
+
+
+//
+// -- Inlcude the arch-specific CPU operations
+//    ----------------------------------------
+#include "arch-cpu-ops.h"
+

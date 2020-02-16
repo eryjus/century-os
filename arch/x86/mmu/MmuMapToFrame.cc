@@ -49,9 +49,9 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         frame_t fr = PmmAllocateFrame();
         MmuClearFrame(fr);
         pde->frame = fr;
-        pde->rw = 1;
-        pde->us = 1;
-        pde->p = 1;
+        pde->rw = X86_MMU_WRITE;
+        pde->us = X86_MMU_USER;
+        pde->p = X86_MMU_PRESENT_TRUE;
     }
 
     PageEntry_t *pte = PT_ENTRY(addr);
@@ -62,11 +62,11 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     // -- finally we can map the page to the frame as requested
     pte->frame = frame;
-    pte->rw = (flags & PG_WRT?1:0);
-    pte->us = (flags & PG_KRN?0:1);
-    pte->pcd = (flags & PG_DEVICE?1:0);
-    pte->pwt = (flags & PG_DEVICE?1:0);
-    pte->p = 1;
+    pte->rw = (flags & PG_WRT?X86_MMU_WRITE:X86_MMU_READ);
+    pte->us = (flags & PG_KRN?X86_MMU_SUPERVISOR:X86_MMU_USER);
+    pte->pcd = (flags & PG_DEVICE?X86_MMU_PCD_TRUE:X86_MMU_PCD_FALSE);
+    pte->pwt = (flags & PG_DEVICE?X86_MMU_PWT_ENABLED:X86_MMU_PWT_DISABLED);
+    pte->p = X86_MMU_PRESENT_TRUE;
 
 //    kprintf("... The contents of the PTE is at %p: %p\n", pte, ((*(uint32_t *)pte) & 0xffffffff));
 }

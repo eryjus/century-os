@@ -28,6 +28,6 @@ EXTERN_C EXPORT LOADER
 void ArchLateCpuInit(int c)
 {
     ArchFpuInit();
-    WRITE_TPIDRPRW(cpus.perCpuData[c].cpu);
+    WriteTPIDRPRW((uint32_t)cpus.perCpuData[c].cpu);
 }
 

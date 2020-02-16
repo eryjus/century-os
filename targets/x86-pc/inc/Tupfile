@@ -22,5 +22,5 @@ include $(WS)/arch/$(ARCH)/util/Tupfile.inc
 ##
 ## -- The rules to make the bootable targets in this folder
 ##    -----------------------------------------------------
-: $(WS)/modules/kernel/inc/constants |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> constants.h
-: $(WS)/modules/kernel/inc/constants |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "      .equ "$1","$2 }' %f > %o |> constants.inc
+: $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> constants.h
+: $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print $1"  equ  "$2 }' %f > %o |> constants.inc

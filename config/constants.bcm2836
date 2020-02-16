@@ -1,0 +1,45 @@
+##===================================================================================================================
+##
+##  constants.arm -- This file contains the bcm2836 constants that will be defined in Century-OS.
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file will be processed with `sed` and `awk` to produce the necessary output in the proper format.  This
+##  file is very dependent on the columns and what is in each one.  First of all, any line that starts with a '#'
+##  is a comment and will be ignored.
+##
+##  The columns are as follows:
+##  * The constant name ($1)
+##  * The constant value ($2)
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
+##  2020-Feb-05  Initial  v0.5.0g  ADCL  Initial version
+##
+##===================================================================================================================
+
+
+##
+## -- Some bcm2836 specific constants
+##    -------------------------------
+KRN_GPIO_BASE                   (MMIO_VADDR+0x200000)
+KRN_MAILBOX_BASE                (MMIO_VADDR+0xb880)
+BCM2835_PIC                     (MMIO_VADDR+0x00b000)
+IPI_MAILBOX_BASE                (MMIO_VADDR+0x01000080)
+KRN_SERIAL_BASE                 (MMIO_VADDR+0x215000)
+BCM2835_TIMER                   (MMIO_VADDR+0x01003000)
+ARM_MAILBOX_OFFSET              0x40000000
+
+
+##
+## -- These constants are related to the RPI2B MMIO addresses
+##    -------------------------------------------------------
+MMIO_VADDR                      0xf8000000
+MMIO_LOADER_LOC                 0x3f000
+MMIO_LOADER_END                 0x40040
+
+

@@ -25,4 +25,6 @@ PLAT = bcm2836
 ## -- Now, we get all the rules needed for building the target applications
 ##    ---------------------------------------------------------------------
 include_rules
+include $(WS)/arch/$(ARCH)/util/Tupfile.inc
+include $(WS)/platform/$(PLAT)/Tupfile.inc
 

@@ -28,7 +28,6 @@ ASDEFINE += -defsym ENABLE_CACHE=1
 ## -- Go get some additional information for building the targets
 ##    -----------------------------------------------------------
 include ../../Tupfile.inc
-include $(WS)/arch/$(ARCH)/util/Tupfile.inc
 include $(WS)/modules/kernel/util/Tupfile.inc
 
 

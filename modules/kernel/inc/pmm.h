@@ -178,13 +178,13 @@ frame_t NextEarlyFrame(void);
 //
 // -- Clean/Invalidate PMM Manager structure
 //    --------------------------------------
-#define CLEAN_PMM()                 CLEAN_CACHE(&pmm, sizeof(PmmManager_t))
-#define INVALIDATE_PMM()            INVALIDATE_CACHE(&pmm, sizeof(PmmManager_t))
+#define CLEAN_PMM()                 CleanCache((archsize_t)&pmm, sizeof(PmmManager_t))
+#define INVALIDATE_PMM()            InvalidateCache(&pmm, sizeof(PmmManager_t))
 
 
 //
 // -- Clean/Invalidate PMM Block Structure
 //    ------------------------------------
-#define CLEAN_PMM_BLOCK(blk)        CLEAN_CACHE(blk, sizeof(PmmBlock_t))
-#define INVALIDATE_PMM_BLOCK(blk)   INVALIDATE_CACHE(blk, sizeof(PmmBlock_t))
+#define CLEAN_PMM_BLOCK(blk)        CleanCache((archsize_t)blk, sizeof(PmmBlock_t))
+#define INVALIDATE_PMM_BLOCK(blk)   InvalidateCache(blk, sizeof(PmmBlock_t))
 

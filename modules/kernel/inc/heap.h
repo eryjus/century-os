@@ -313,13 +313,13 @@ void HeapError(const char *from, const char *desc);
 //
 // -- manage cache for the heap
 //    -------------------------
-#define CLEAN_HEAP()                    CLEAN_CACHE(kHeap, sizeof(KHeap_t))
-#define INVALIDATE_HEAP()               INVALIDATE_CACHE(kHeap, sizeof(KHeap_t))
+#define CLEAN_HEAP()                    CleanCache((archsize_t)kHeap, sizeof(KHeap_t))
+#define INVALIDATE_HEAP()               InvalidateCache(kHeap, sizeof(KHeap_t))
 
 
 //
 // -- manage cache for an entry
 //    -------------------------
-#define CLEAN_ENTRY(ent)                CLEAN_CACHE(ent, sizeof(OrderedList_t))
-#define INVALIDATE_ENTRY(ent)           INVALIDATE_CACHE(ent, sizeof(OrderedList_t))
+#define CLEAN_ENTRY(ent)                CleanCache((archsize_t)ent, sizeof(OrderedList_t))
+#define INVALIDATE_ENTRY(ent)           InvalidateCache(ent, sizeof(OrderedList_t))
 

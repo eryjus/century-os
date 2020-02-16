@@ -29,7 +29,7 @@ archsize_t CpuMyStruct(void)
 {
     int idx = cpus.cpuStarting;
     volatile ArchCpu_t *rv = &cpus.perCpuData[idx];
-    rv->location = GetLocation();
+    rv->location = ArchCpuLocation();
     cpus.cpusRunning ++;
 
     return (archsize_t)rv;
