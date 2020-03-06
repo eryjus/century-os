@@ -40,20 +40,6 @@ struct PicDevice_t picBcm2835;
 
 
 //
-// -- BCM2835 defines IRQs 0-63, plus a handfull of additional IRQs.  These additional ones are being placed
-//    starting at IRQ64 and up.
-//    ------------------------------------------------------------------------------------------------------
-#define IRQ_ARM_TIMER       64
-#define IRQ_ARM_MAILBOX     65
-#define IRQ_ARM_DOORBELL0   66
-#define IRQ_ARM_DOORBALL1   67
-#define IRQ_GPU0_HALTED     68
-#define IRQ_GPU1_HALTED     69
-#define IRQ_ILLEGAL_ACCESS1 70
-#define IRQ_ILLEGAL_ACCESS0 71
-
-
-//
 // -- Define the pic data we need to keep track of
 //    --------------------------------------------
 typedef struct Bcm2835Pic_t {
@@ -61,6 +47,27 @@ typedef struct Bcm2835Pic_t {
     PicBase_t picLoc;
     archsize_t timerLoc;
 } Bcm2835Pic_t;
+
+
+//
+// -- This is the handler for a mailbox ipi message
+//    ---------------------------------------------
+typedef void (*MbHandler_t)(isrRegs_t *);
+
+
+//
+// -- And an array of handlers
+//    ------------------------
+EXTERN EXPORT KERNEL_DATA
+MbHandler_t mbHandlers[MAX_IPI];            // limit to 100 messages for now
+
+
+//
+// -- Handle messaged to mailbox 0
+//    ----------------------------
+EXTERN_C EXPORT KERNEL
+void PicMailbox0Handler(isrRegs_t *regs);
+
 
 
 //

@@ -19,6 +19,7 @@
 #include "types.h"
 #include "interrupt.h"
 #include "printf.h"
+#include "pic.h"
 #include "timer.h"
 
 
@@ -31,14 +32,13 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     if (!dev) return;
 
     if (thisCpu->cpuNum == 0) {
-        IsrRegister(65, dev->TimerCallBack);
+        IsrRegister(BCM2836_CORE_CNTPNSIRQ, dev->TimerCallBack);
         dev->factor = READ_CNTFRQ() / 1000000.0;
         kprintf("IsrHandler registered\n");
     }
 
     if (READ_CNTFRQ() == 0) {
-        kprintf("PANIC: Unable to determine the clock frequency (read as 0)\n");
-        Halt();
+        CpuPanicPushRegs("PANIC: Unable to determine the clock frequency (read as 0)\n");
     }
 
 
@@ -53,7 +53,7 @@ void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
     WRITE_CNTP_TVAL(dev->reloadValue);
     WRITE_CNTP_CTL(1);                          // enable the timer
 
-    PicUnmaskIrq(dev->pic, IRQ_ARM_TIMER);
+    PicUnmaskIrq(dev->pic, BCM2836_CORE_CNTPNSIRQ);
     kprintf("Timer Initialized\n");
 }
 

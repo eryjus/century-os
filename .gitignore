@@ -24,4 +24,5 @@ targets/**/cfg-file*
 
 targets/**/inc/constants.*
 targets/**/config
+targets/**/debug
 

@@ -78,6 +78,20 @@ void Halt(void) __attribute__((noreturn));
 
 
 //
+// -- Panic-halt the OS, reporting the problems and the system state
+//    --------------------------------------------------------------
+EXTERN_C EXPORT NORETURN KERNEL
+void CpuPanic(const char *reason, isrRegs_t *regs);
+
+
+//
+// -- Panic-halt the OS, pushing the registers onto the stack
+//    -------------------------------------------------------
+EXTERN_C EXPORT NORETURN KERNEL
+void CpuPanicPushRegs(const char *reason);
+
+
+//
 // -- Enable interrupts if they are disabled; assembly language function
 //    ------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
@@ -145,6 +159,13 @@ void CoresStart(void);
 //    ----------------------------------------------------
 EXTERN_C EXPORT LOADER
 void CpuInit(void);
+
+
+//
+// -- A do-nothing function for use with drivers
+//    ------------------------------------------
+EXTERN_C EXPORT KERNEL
+void EmptyFunction(void);
 
 
 //

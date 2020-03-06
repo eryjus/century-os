@@ -26,5 +26,4 @@ extern "C" void UndefinedHandler(isrRegs_t *regs)
 {
     kprintf("Undefined Instruction:\n");
     IsrDumpState(regs);
-    Halt();
 }

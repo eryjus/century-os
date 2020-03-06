@@ -18,9 +18,11 @@
 #include "types.h"
 #include "printf.h"
 #include "cpu.h"
+#include "platform.h"
 #include "timer.h"
 #include "process.h"
 #include "heap.h"
+#include "pic.h"
 #include "serial.h"
 
 
@@ -31,13 +33,11 @@ extern "C" EXPORT KERNEL
 void kInitAp(void)
 {
     ArchLateCpuInit(cpus.cpuStarting);
-    NextCpu(cpus.cpuStarting);
+    PlatformApInit();
 
     ApTimerInit(timerControl, 1000);
 
-    // -- TODO: this may not work now!
     kprintf("CPU %x running...\n", thisCpu->cpuNum);
-while (true) {}
     Process_t *proc = NEW(Process_t);
     assert(proc != NULL);
 
@@ -52,8 +52,12 @@ while (true) {}
     proc->ssAddr = 0;
 
     // -- Now we immediately self-terminate to give the scheduler to something else
+    kprintf("Enabling interrupts on CPU %d\n",  thisCpu->cpuNum);
     EnableInterrupts();
+    NextCpu(cpus.cpuStarting);
+while (true) {}
     ProcessTerminate(proc);
 
+    assert(false);
     while (true) {}
 }

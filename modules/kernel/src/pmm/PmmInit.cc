@@ -72,8 +72,7 @@ void PmmInit(void)
 
     // -- Sanity check -- we cannot continue without a memory map
     if (!HaveMMapData()) {
-        kprintf("PANIC: Unable to determine memory map; Century OS cannot initialize\n\n");
-        HaltCpu();
+        CpuPanicPushRegs("PANIC: Unable to determine memory map; Century OS cannot initialize\n\n");
     }
 
 

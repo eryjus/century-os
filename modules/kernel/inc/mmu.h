@@ -47,6 +47,23 @@ enum {
 
 
 //
+// -- This structure is used to trigger TLB flushes across multiple cores
+//    -------------------------------------------------------------------
+typedef struct TlbFlush_t {
+    Spinlock_t lock;
+    volatile archsize_t addr;
+    AtomicInt_t count;
+} TlbFlush_t;
+
+
+//
+// -- this is the structure to control the TLB flushes
+//    ------------------------------------------------
+EXTERN EXPORT KERNEL_BSS
+TlbFlush_t tlbFlush;
+
+
+//
 // -- With the page table structures given, map a virtual address to a physical frame
 //    -------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL

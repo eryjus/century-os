@@ -23,6 +23,7 @@
 
 
 #include "cpu.h"
+#include "pic.h"
 #include "printf.h"
 #include "mmu.h"
 
@@ -33,9 +34,26 @@
 EXTERN_C EXPORT KERNEL
 frame_t MmuUnmapPage(archsize_t addr)
 {
-    frame_t rv = PT_ENTRY(addr)->frame;
-    *(uint32_t *)PT_ENTRY(addr) = 0;
-    InvalidatePage(addr);
+    frame_t rv;
+
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
+        tlbFlush.addr = -1;
+        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
+
+        rv = PT_ENTRY(addr)->frame;
+        *(uint32_t *)PT_ENTRY(addr) = 0;
+        InvalidatePage(addr);
+
+        //
+        // -- Finally, wait for all the CPUs to complete the flush before continuing
+        //   -----------------------------------------------------------------------
+        AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
+        tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
+
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {}
+
+        SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);
+    }
 
     return rv;
 }

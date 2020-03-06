@@ -1885,4 +1885,769 @@ With those working, I think it is time to cycle the micro-version
 
 ---
 
+## v0.5.0h
+
+Most of what is left should be relatively easy to complete.  Not all will be like this.  However, at the moment I am feeling more like quick wins than taking on hard tasks.  I really want to get this version done so I can get into an integrated debugger.
+
+---
+
+So, let's get into the thougts of barriers.  As I am understanding, there are several types of barriers:
+* Software barriers -- where it controls whether the compiler can optimize memory access (read or write) across a particular line of code.  In this case, there is no opcodes emitted and the hardware knows nothing of this, but is a method to communicate with GCC on how it is allowed to optimize code.  This is also relevant in a single CPU system.
+* Hardware read barriers -- for an Out Of Order (OOO) CPU, controls whether memory reads can be moved across this place in code execution.
+* Hardware write barriers -- for an Out Of Order (OOO) CPU, controls whether memory writes can be moved across this place in code execution.
+* Hardware full barriers -- for an Out Of Order (OOO) CPU, controls whether memory reads or writes can be moved across this place in code execution.  Of the 3 hardware barriers, this one makes the most sense to me.
+
+What I really need to do is figure out what code is emitted for this barrier and compare it to what I am doing.  I think this is going to get interesting.  I started with this code:
+
+```C++
+int testVal = 0;
+
+void test (void)
+{
+    testVal ++;
+    testVal ++;
+}
+```
+
+and the resulting (arm) code was:
+
+```S
+   0:   e3003000        movw    r3, #0
+   4:   e3403000        movt    r3, #0
+   8:   e5932000        ldr     r2, [r3]
+   c:   e2822002        add     r2, r2, #2
+  10:   e5832000        str     r2, [r3]
+  14:   e12fff1e        bx      lr
+```
+
+Notice that the add opcode has been optimized to be effectively `testVal += 2`.
+
+Now, if I add the `volatile` keyword, I get the following:
+
+```S
+   0:   e3003000        movw    r3, #0
+   4:   e3403000        movt    r3, #0
+   8:   e5932000        ldr     r2, [r3]
+   c:   e2822001        add     r2, r2, #1
+  10:   e5832000        str     r2, [r3]
+  14:   e5932000        ldr     r2, [r3]
+  18:   e2822001        add     r2, r2, #1
+  1c:   e5832000        str     r2, [r3]
+  20:   e12fff1e        bx      lr
+```
+
+Which is effectively a read-update-store operation for each line.
+
+Removing the `volatile` keyword and adding a software memory barrier:
+
+```C++
+int testVal = 0;
+
+void test (void)
+{
+    testVal ++;
+    asm volatile("": : :"memory");
+    testVal ++;
+}
+```
+
+I get the exact same result as above, and this would make sense to me.  I get that the software barrier can be a bit more complicated that this and I have completely trivialized it, but the point I am trying to figure out is: what happens with a full synchronization hardware barrier?
+
+This code:
+
+```C++
+int testVal = 0;
+
+void test (void)
+{
+    testVal ++;
+    __sync_synchronize();
+    testVal ++;
+}
+```
+
+Now emits this code:
+
+```S
+   0:   e3003000        movw    r3, #0
+   4:   e3403000        movt    r3, #0
+   8:   e5932000        ldr     r2, [r3]
+   c:   e2822001        add     r2, r2, #1
+  10:   e5832000        str     r2, [r3]
+  14:   f57ff05b        dmb     ish
+  18:   e5932000        ldr     r2, [r3]
+  1c:   e2822001        add     r2, r2, #1
+  20:   e5832000        str     r2, [r3]
+  24:   e12fff1e        bx      lr
+```
+
+In particular, the `dmb ish` is now included.  To the ARM ARM I go!  Hmmm...  the "Inner Sharable" domain.  What if I now add `volatile` back in?  No change.
+
+So, from the ARM community, I read:
+
+> There isn't an exact definition of what is in the outer shareable domain. It depends on how the system was built. Basically Inner and Outer shareability define three sets of devices which have a coherent view of memory:
+>
+> 1. Those inside the inner shareabiltiy domain
+> 2. Those inside both the inner and outer shareability domain
+> 3. Those outside both shareability domains
+>
+> Data marked as "inner shareable" is only guaranteed to be visible to (1), data marked as "outer shareable" is only guaranteed to be visible to (1) and (2). Anything else (making inner shareable data visible to an outer shareable master, or making any data visible to a device in set (3)) will require manual cache maintenance.
+
+Interesting: `__sync_synchronize()` only emits a trivial instruction to lock the bus -- presumably to make everything visible:
+
+```S
+   0:   a1 00 00 00 00          mov    0x0,%eax
+   5:   40                      inc    %eax
+   6:   a3 00 00 00 00          mov    %eax,0x0
+   b:   f0 83 0c 24 00          lock orl $0x0,(%esp)
+  10:   8b 15 00 00 00 00       mov    0x0,%edx
+  16:   42                      inc    %edx
+  17:   89 15 00 00 00 00       mov    %edx,0x0
+  1d:   c3                      ret
+```
+
+[This link](https://godbolt.org/z/pRxnFC) illustrates the hardware synchronization behavior.
+
+Some thoughts from `#osdev`:
+
+```
+[13:32:26] <eryjus> interesting... for gcc armv7 i would have expected `__sync_synchronize()` to emit a `dmb sy` and instead gcc emits `dmb ish` (https://godbolt.org/z/pRxnFC).  Am I expecting a heavier hand than I need?  or perhaps I am missing a compiler option?
+[13:36:11] <geist> eryjus: yeah i was talking about that earlier
+[13:36:25] <geist> but thats probably right. again, i dont like trusting compilers to generate the right thing
+[13:36:41] <geist> dmb ish is what you use for the purposes of memory barriers with other cpus/threads
+[13:36:52] <eryjus> geist, was this today?
+[13:36:55] <geist> which is where the compilers' built in notion of synchronization stop
+[13:37:05] <geist> well, within 24h. clever was looking at something similar
+[13:37:18] <geist> anyway, i would be highly surprised if there's *any* builtins that generate stronger than ish
+[13:37:29] <geist> if you want to synchronize with hardware you should write your own inline asm macro
+[13:38:15] <geist> but anyway, question is what do you want to use sync_synchronize for?
+[13:38:58] <eryjus> ha!  good question.. not sure I can really answer it and if you pressed me I would crumble
+[13:39:45] <eryjus> im looking at overall barriers in the code and i'm trying to strengthen my understanding all around.
+[13:40:08] <geist> a bit of background: ish is the inner sharability domain, which is somewhat vague in arms world (vs outer sharability) except it is stated at least in the v8 manual that 'inner' must at least cover all of the cores/actors that participate in a single OS instance
+[13:40:24] <geist> ie, the other symmetric cores and things like MMU hardware page table walkers
+[13:40:58] <clever> my rough understanding, is that the SMP bit i had to enable int he aux control, allows L1/L2 to talk between cores, and maintain coherency?
+[13:41:07] <geist> so... dmb ish means that as far as all the cores/tlbs are concerned the memory accesses before are visible to other cores
+[13:41:13] <clever> or, does it still rely on `dmb ish` to force it?
+[13:41:39] <geist> okay... let me regroup my thinking here
+[13:42:09] <geist> so... all of the cores/actors/participants on the 'bus' that are part of an inner sharability domain are part of a symmetric system
+[13:42:47] <geist> caches that are part of that (which in practice means L1-L3 at least) are also part of the same domain
+[13:43:19] <geist> so... when you dmb ish you're not pushing out to memory or anything, you're merely making sure the cpu has synchronized with the caches that are part of the inner domain
+[13:43:57] <geist> in practice this means makiung sure the write buffers (think of it as a L0 cache private to the cpu, outstanding transactions that are being coalesced) are pushed into the L1 caches and below so the other cpus can 'see' it
+[13:44:19] <geist> and also specifically making sure the out of order memory accesses (reads/writes) are barriered before and after
+[13:44:23] <geist> make sense?
+[13:44:44] <clever> ah, so it deals with getting stuff out of the pipeline, and into L1, where normal coherency logic can deal with it from there?
+[13:45:00] <geist> exactly, and ordering memory operations that have done so before and after
+[13:45:13] <clever> yeah, so the pipeline doesnt re-order actions
+[13:45:17] <geist> right
+[13:45:40] <clever> so ish is mostly a pipeline level thing, and the SMP bit i asked about, is about L1's and L2 remaining coherent with eachother
+[13:45:43] <geist> hence why the compiler eits a dmb ish for sync_synchronize, which is basically acting as a usual programming model barrier with respect to other threads and cores
+[13:46:03] <geist> more than a pipeline, it also orders outstanding load/stores
+[13:46:08] <geist> wont prefetch arond it, etc
+[13:46:33] <geist> well... a full dmb that is. there are read and write barrier variants of it, which only affect in particular directions, but a full barrier works in both directions
+[13:46:49] <geist> but a dmb doesn't really dump the pipeline per se, it just orders all the outstanding read/writes
+[13:46:58] <geist> if the cpu has a bunch of meaty math it's working on it can keep going
+[13:47:44] <geist> the SMP bit you're talking about is on that core basically enabling the coherency logic with the other cores. why they have the bit so you can turn it off i dont know. later cores dont have a bit, but the a7 and whatnot is about 10 years old now
+[13:47:51] <geist> back when SMP was maybe more exotic and new to ARM
+[13:48:02] <geist> and maybe there's a bit of a cost associated with it
+[13:48:16] <geist> anyway, eryjus did you get this? dont want to get off on a clever tangent befor eyou got what you were looking for
+[13:48:20] <geist> as clever tends to do
+[13:48:45] <clever> was going to tangent off on gpio, but i held back :P
+[13:49:02] <geist> good
+[13:49:11] <eryjus> 1 follow-up question: what then is the difference between dmb ish and dmb sy?  heterogeneous cpus/caches?
+[13:49:39] <geist> eryjus: ah okay. so the 'sy' also orders relative to transactions that are going out to things in the outer domain
+[13:49:54] <geist> so there's inner domain, outer domain (which is rarely used) and 'system' which includes everything not in the above
+[13:50:21] <geist> so the canonical usage of it is you have posted some memory writes to pages mapped with device memory
+[13:50:55] <geist> say a register interface. it's not part of the inner sharability domain so if you write to a register it will just put it out on the bus, track the transaction (all AXI transactions have an ID) but move on
+[13:51:07] <eryjus> geist, for system: "everything" or is "everything else"
+[13:51:08] <geist> the dmb sy waits for it to complete (in addition to inner and outer sharability)
+[13:51:13] <geist> everything
+[13:51:24] <geist> including the inner layers. i'm fairly certain outer works that way too, it includes inner
+[13:51:28] <geist> like a ring of layers
+[13:52:08] <geist> note you should also read the manual with regards to this stuff once you get my basic description and then fill in the gaps based on that
+[13:52:33] <geist> it's very complicated and lists a bunch of other things that can be in the inner/outer/system domain, and it's up to the SoC vendor to put things here or there with a lot of limitations
+[13:52:39] <eryjus> geist, i have been -- needed another perspective.  thank you.  I need to digest this a bit to be sure
+[13:52:49] <geist> it gets complicated when you have other bus masters like GPUs and whatnot that are coherent with the cpu. are they inner or outer domain?
+[13:52:58] <geist> that sort of thing
+[13:53:07] * eryjus nods
+[13:53:14] <geist> iirc 'outer' is basically deprecated, i think
+[13:53:38] <geist> the idea would be probably to have other clusters of cpus in an outer domain so they can play in their own pool. so your cluster will be outer to them, their cluster is outer to you, etc
+[13:54:02] <geist> not quite numa, more like some other OS runs on those. which is not uncommon actually
+[13:54:16] <geist> but usually they're just incoherent with you
+[13:54:46] <geist> anyway so the general short rule i operate is: inner to sync with SMP cpus, system for syncing with devices
+[13:55:01] <geist> and then you use 'dsb' vs 'dmb' as a stronger version when synchronizing the pipeline or other outstanding transactions
+[13:55:35] <eryjus> dsb is the 'bigger hammer'
+[13:55:36] <geist> there's a list in the manual where dsb is used as a stronger dmb. usually synchronizing with TLB flusehs and other cache operations, which act like pending memory transactions basically. TLB flushes are out of order on ARM too
+[13:56:04] <geist> really cool that you can fire a bunch of them off, and then dsb at the end, but its a different model from x86
+[13:56:58] <geist> anyway... thanks for listening
+[13:57:03] <eryjus> geist, thanks for your time
+```
+
+I guess this isn't simple after all.
+
+But there are a few takeaways (is a pseudo-order of the size of the hammer):
+1. `dmb ish` is likely to be all I ever need on the rpi2b
+1. `dmb sy` for my so far is only really likely to be needed for the vpu -- if at all
+1. `dsb` is used to 'reset all memory transactions', save the instruction pipeline
+1. `isb` is used to deal with the instruction pipeline, and is the only instruction to affect that
+
+So, the things I think I need are these 5:
+| Function Name                     | armv7 instruction                   | x86 instruction |
+|:----------------------------------|:------------------------------------|:----------------|
+| `SoftwareBarrier()`               | `asm volatile("":::"memory")`       | `asm volatile("":::"memory")` |
+| `MemoryBarrier()`                 | `__sync_synchronize()`              | `__sync_synchronize()` |
+| `EntireSystemMemoryBarrier()`     | `asm volatile("dmb sy":::"memory")` | `asm volatile("wbinvd":::"memory")` |
+| `MemoryResynchronization()`       | `asm volatile("dsb":::"memory")`    | `asm volatile("wbinvd":::"memory")` |
+| `ClearInsutructionPipeline()`     | `asm volatile("isb":::"memory")`    | `asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")` |
+
+So, it looks like I am going to have to spend a little time looking at different IPI requirements.  One will end up being page structure maintenance, which will need to understand when a private or shared page is updated and inform the other CPUs to flush TLB information.
+
+---
+
+### 2020-Feb-19
+
+So, based on the [documentation here](http://www.osdever.net/tutorials/view/multiprocessing-support-for-hobby-oses-explained), it looks like I can set up any interrupt to be an IPI, and whatever I do with that info is up to me.  Therefore, for any core, I should be able to send an IPI whenever I map/unmap a page.  This, of course, is x86 in nature.
+
+For bcm2836, I need to find a different solution.  In that case, each core explicitly has 4 mailboxes for use. Each mailbox write should trigger an interrupt for the associated core where the value can be read and acted upon.  Each Mailbox has its own interrupt source on each core and each value is 32-bits long.  Therefore, I could have a theroretical 17,179,869,184 different messages that can be sent around the rpi2b.  I would spend more time decoding the message than responding to it....
+
+So, the problem now becomes one of IPI acknowledgement.  For example, an IPI to clear a page from the TLB can be handled in the following way with rpi2b:
+* The need to clear the TLB for page `pg` is identified
+* The value of `-1` is written to Mailbox 0 for each core except self
+* Each core is interrupted, which reads the value from the mailbox
+* Each core writes `-1` back to the mailbox to indicate it is ready
+* Each core then enters a wait state -- not processing anything until the second message comes through
+* Once all the signals are acknowledged, the value of `pg` is written to each of the core mailboxes except self
+* Each core is interrupted, which reads the value from the mailbox
+* Each core clears its TLB for the `pg` address just read
+* Each core acknowledges the clear with a write back to the mailbox
+* Each core then resumes normal operation
+
+However, with x86, there is no 'message' that can be delivered like that -- the interrupt is the message.  So we need some other method to pass that data.
+
+So, I asked the following on `#osdev`:
+
+> I am working on my first practical IPI for shared paging tables and TLB flushes.  I read recommendations to IPI to stop normal processing and put other cores into a busy loop until the mapping can be changed and then signal the other cores to flush the TLB for that page in quesion.  So (since I tend to over-engineer things), should I be building waits for acknowledgements into this process or is it good enough to say, "IPI!: I'm gonna do this, catch up!"
+
+The responses were:
+
+```
+[16:45:25] <bcos> eryjus: Sender aquires some sort of lock (to prevent others modifying same page table entry at same time); modifies page table entry; sets "count = how many CPUs should respond to IPI"; sends the IPI; then waits for "count = 0"
+[16:45:44] <bcos> eryjus: IPI receivers invalidate the TLB; then decrement count
+[16:46:14] <bcos> Hrm - will want an "address to invalidate" there too I guess
+[16:46:47] <bcos> ..so IPI handler is like "push rax; mov rax,[address_to_invalidate]; invlpg [rax]; lock dec [count]; pop rax; iret"
+[16:47:21] <bcos> D'oh
+[16:47:47] <bcos> ..Sender should probably also release the lock it acquired at the start too - might cause problems if it doesn't ;-)
+[16:48:09] <bcos> (after "count = 0")
+[16:49:05] <bcos> ..and might also want some kind of "IPI user lock" if you can't find a way to avoid multiple CPUs trying to send same IPI at same time
+[16:50:42] <eryjus> bcos, well it's not just updates..  it's reads against that page as well.  will need the IPI to "stop what I am doing and wait until I know I can flush the TLB"
+[16:51:13] <eryjus> but you answered my question about the acknowledgment
+```
+
+So, this then allows me to take the IPI as a lock, where the sender would do something like this:
+
+```C++
+{
+    Lock();
+    addressToFlush = -1;
+    IPI();
+    MapPage(addr);
+    INVLPG(addressToFlush);
+    coresToFlush = GetRunningCoreCount() - 1;   // we are one of the cores and we just flushed ourselves
+    addressToFlush = (addr & ~(PAGE_SIZE - 1));
+
+    while (coresToFlush != 0) {}
+    Unlock();
+}
+```
+
+With that, the handler on the other cores would look like:
+
+```C++
+{
+    while (addressToFlush == -1) {}
+
+    INVLPG(addressToFlush);
+    AtomicDec(coresToFlush);
+}
+```
+
+Well..., there was a race condition in there where core 1 could complete the flush and then try to change another mapping before the other cores (2 & 3) could respond.  So I ended up adding a lock anyway.
+
+Another thing I like about this logic is that when only one core is running, this does nothing really different -- nothing to wait for since `coresToFlush` is 0.  `IPI()` should do nothing since no other cores are running.
+
+Now, the thing to keep in mind is that from what I see the page mapping functionality is arch-specific but the TLB flush for the other cores should be platform-specific (while the actual flush itself is arch-specific).
+
+So, the other thing I realize as I am coding this is that I will really need to take care of the management addresses while I am in the handler, not as individual flushes.
+
+---
+
+### 2020-Feb-22
+
+I was able to get enough of the IPI work completed to compile and test.  Both archs end up with their version of a fatal error.  Bochs reveals the following:
+
+```
+00168234693e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234723e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234758e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234788e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234818e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234848e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234878e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234913e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234943e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234973e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235003e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235033e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235068e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235098e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235128e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235158e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235188e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235223e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235253e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235283e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235313e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235343e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235378e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235408e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235438e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235468e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235498e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235533e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235563e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235593e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235623e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235653e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235688e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235718e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235748e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235778e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235808e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235843e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235873e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235903e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235933e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235963e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235998e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168236028e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168236058e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168236063i[CPU0  ] CPU is in protected mode (active)
+00168236063i[CPU0  ] CS.mode = 32 bit
+00168236063i[CPU0  ] SS.mode = 32 bit
+00168236063i[CPU0  ] EFER   = 0x00000000
+00168236063i[CPU0  ] | EAX=00000028  EBX=00200006  ECX=00000000  EDX=81004be4
+00168236063i[CPU0  ] | ESP=ff800000  EBP=03000000  ESI=ff401000  EDI=3ffff401
+00168236063i[CPU0  ] | IOPL=0 ID vip vif ac vm RF nt of df if tf sf ZF af PF cf
+00168236063i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00168236063i[CPU0  ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  GS:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] | EIP=80801805 (80801805)
+00168236063i[CPU0  ] | CR0=0xe0000011 CR2=0xff7ffffc
+00168236063i[CPU0  ] | CR3=0x01001000 CR4=0x00000000
+00168236063p[CPU0  ] >>PANIC<< exception(): 3rd (14) exception with no resolution
+```
+
+Address `0x80801805` is the target `IsrCommonStub`, meaning that I am having problems with the interrupts.  In particular, the segment selectors are those from before the GDT is replaced with the final version.  Ultimately, the recursive faults end in a stack overflow or essentially a `#PF`.
+
+So, I need to be able to disable the IPI before the system has the final proper GDT in place.
+
+What I am considering is whether it is work retrieving the existing GDT and checking its length.  If it is too short, then I would return before entering the actual ISR code...,  or just set a global variable and check it.
+
+I'm thinking the global variable.  But where to put it?  In the PIC structure?  or just a plain global variable?
+
+---
+
+### 2020-Feb-23
+
+So, ultimately, I decided to put the flag into the `pic` structure.
+
+But, I still have problems -- but now on x86 acting more like a deadlock than anything.  I think the time might be right to start working on the debugging enabling CPP directives at the file/function level.
+
+---
+
+So, I have come up with a methodology like this:
+
+```C++
+#define DEBUG_TOKEN_PASTE(x)        DEBUG_##x
+#define DEBUG_ENABLED(func)         DEBUG_TOKEN_PASTE(func)>0
+#define Debug_SomeFunction          1
+
+void SomeFunction(void)
+{
+#if DEBUG_ENABLED(SomeFunction)
+    kprintf("Some important debugging information\n");
+#endif
+}
+```
+
+Now, should I replace this with something like this:
+
+```C++
+#define Debug_SomeFunction          2
+
+void SomeFunction(void)
+{
+#if DEBUG_SomeFunction >= 2
+    kprintf("Some important debugging information\n");
+#endif
+}
+```
+
+The latter would allow me to specify "levels" of debugging information for each function.  But then again, I tend to over-engineer.  As it is I am function-specific on my debugging...., isn't that enough?  For now, I think I will leave that at the file level.
+
+---
+
+So after that, and setting up some debugging code:
+
+```
+Mapping page 0xff401000 to frame 0x1003000
+... Kernel: yes
+... Device: no
+... Write.: yes
+.. Qualified
+About to flush TLB via IPI....
+```
+
+... it appears that this block has problems...:
+
+```C++
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf("About to flush TLB via IPI....\n");
+#endif
+
+        tlbFlush.addr = -1;
+        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
+
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf(".. Completed\n");
+#endif
+```
+
+... which indicate that `picControl` or `picControl->PicBroadcastIpi` may be `NULL`.  I know I am not checking this.  And, as a matter of fact, I am setting up the x86 PIC to start with the default 8259 PIC which will not have such a function.  So, either I am going to have to check for `NULL`, or I am going to have to include a dummy function.
+
+---
+
+### 2020-Feb-24
+
+So, I ended up creating an `EmptyFunction()` for both archs (in assembly so that it could not be optimized away) and including that for all the 8269 PIC `PicBroadcastIpi` member.  I am barely getting any farther.  So, I am still thinking deadlock.
+
+And, yes, it is a deadlock, but not for what I was thinking (x86):
+
+```
+Starting core 1
+Finalizing CPU initialization
+CPU 0x1 running...
+Starting core 2
+Finalizing CPU initialization
+CPU 0x2 running...
+Starting core 3
+Finalizing CPU initialization
+CPU 0x3 running...
+Mapping page 0xff40a000 to frame 0x1022
+... Kernel: yes
+... Device: no
+... Write.: yes
+.. Qualified
+About to flush TLB via IPI....
+Entered _LApicBroadcastIpi
+.. Completed
+... The contents of the PTE is at 0xffffd028: 0x01022003
+Entered _LApicBroadcastIpi
+```
+
+So, all the cores are started and I am really trying to send out an IPI to get the other cores to flush the TLB properly.
+
+At this point, the actual handler has not been registered.  So, let's trace this:
+
+Yeah, no point!  I tried to look for the code I would have written for this and I could not find it.
+
+So, I need a few things:
+* An interrupt handler that will perform the pseudo-code I wrote on 19-Feb
+* Register this handler to the proper interrupt/IRQ function (depending on arch)
+* ... and a decision on where to put this code -- with interrupts, with the kernel, or with the PIC
+
+For rpi2b, there needs to be a mailbox interrupt handler written and registered.  In addition, there needs to be a TLB-specific flush handler written.  All of those need to be integrated into the system.
+
+Part of this will need to create an interrupts folder for the rpi2b arch and relocate the right stuff there.
+
+... and this brings me to another problem:  `InvalidatePage()` has 2 different prototypes based on the arch.  Not good.
+
+---
+
+### 2020-Feb-25
+
+OK, issue with 2 separate prototypes for different archs is a problem.  I have added it to the list to check for other instances and to clean those up.  However, `InvalidatePage()` is blocking at the moment.
+
+The armv7 function looks like this:
+
+```C++
+void InvalidatePage(uint32_t ent, uint32_t vma) {
+    WriteDCCMVAC(ent);
+    MemoryBarrier();
+    WriteTLBIMVAA(vma & 0xfffff000);
+    WriteBPIALL();
+    MemoryBarrier();
+    ClearInsutructionPipeline();
+}
+```
+
+and in particular the `WriteDCCMVAC(ent)` is really the problem statement.  Tracing back, I need to figure out again what the `DCCMVAC` register is (cache maintenance?).  And it is a cache line cleanout.  Can I move that into `MmuMapToPage()`?
+
+---
+
+Back to x86 -- I'm entering an infinite loop waiting for an interrupt to fire.  It looks like interrupts are enabled on the target CPU, and I have a good IDT mapping on the target CPU.  So, likely something with the LocalAPIC which is getting in the way.
+
+---
+
+OK, I think I figured this out....  I believe the LAPIC needs an EOI after handling the IPI.  I can pick that up tomorrow.
+
+---
+
+### 2020-Feb-26
+
+So, that was quick cleanup on x86.  Now to clean up the rpi2b.
+
+Ahhh...  I never created the Mailbox handler with the jump table for the specific message....
+
+Hmmm... with `DEBUG_PicBroadcastIpi` set to 0, the rpi2b kernel boots to the point of trying to start the test processes.  When it set to 1, it dies without any indication given.  I'm not sure if this is a code bug, or a size problem.
+
+Well, crap!  The BCM2835 SoC sets several simple IRQs for masking/unmasking.  However, the BCM2836 SoC maps them in a many-to-one arrangement.  This means that several IRQs that can be triggered are all masked by a single IRQ enable bit.
+
+I'm beginning to think the whole of the interrupt controller for the rpi2b needs a do-over.  And I am not really interested in taking that on right now!
+
+---
+
+### 2020-Feb-27
+
+Ok, rpi2b interrupts.  Let's think this through a bit....
+
+I really only need to be concerned with FIQ and IRQ types at this point in time -- the rest of the exceptions are just that: exceptions and more closely described as errors than requests.
+
+So, requests.  There are 2 types: regular interrupt requests (IRQ) and fast interrupt requests (FIQ).  To date, I have not routed anything to the fast interrupts, but I think I am considering making either the IPI or the Timer as a fast interrupt.  However, for now, I will keep them all as IRQs (regular interrupt requests).
+
+So, the bcm2835 has an interrupt source chart, such as the following (in the Basic Pendnig Register):
+
+| Index | Source |
+|:-----:|:-------|
+| 0-63  | GPU Interrupts (1:1) |
+| 64    | ARM Timer Interrupt |
+| 65    | ARM Mailbox Interrupt |
+| 66    | ARM Doorbell 0 Interrupt |
+| 67    | ARM Doorbell 1 Interrupt |
+| 68    | GPU0 Halted Interrupt |
+| 69    | GPU1 Halted Interrupt |
+| 70    | Illegal Access Type-1 Interrupt |
+| 71    | Illegal Access Type-0 Interrupt |
+
+On the other hand, the bcm2836 (with the extensions for rpi2b), have the following core interrupt sources:
+
+| Bit | Source |
+|:---:|:-------|
+| 0   | CNTPSIRQ Timer Interrupt |
+| 1   | CNTPNSIRQ Timer Interrupt |
+| 2   | CNTHPIRQ Timer Interrupt |
+| 3   | CNTVIRQ Timer Interrupt |
+| 4   | Mailbox 0 Interrupt |
+| 5   | Mailbox 1 Interrupt |
+| 6   | Mailbox 2 Interrupt |
+| 7   | Mailbox 3 Interrupt |
+| 8   | GPU Interrupt |
+| 9   | PMU Interrupt |
+| 10  | AXI-ountstanting interrupt (only for core 0) |
+| 11  | Local timer interrupt |
+
+So, the question I have is does the bcm2836 structures override the bcm2835 structs?  Or work in conjunction.  So, I look at lk.
+
+Actually, I think [this](https://github.com/littlekernel/lk/blob/cba9e4798747fed36e4f858965796487bfd0a7c4/platform/bcm28xx/include/platform/bcm28xx.h#L67) answers my question.  I need to take them as a union of the 2 sets of interrupts.  Aalso, [this line](https://github.com/littlekernel/lk/blob/master/platform/bcm28xx/intc.c#L171) is taking bit 8 out of play, which appears to indicate that there is something important to look at in the other 2 banks of interrupts.
+
+Effectively, this needs to become 4 banks of interrupts registers (of which for `lk` 1 of the banks is commented out in code).
+
+So, ultimately, I need to revisit this design.  But it is not as bad as I had expected.
+
+---
+
+### 2020-Feb-29
+
+OK, so the first order of business is going to be to redo the interrupt numbers for the interrupt table.
+
+`lk` first checks the Local CPU PIC interrupts first.  In there is a bit to indicate you have a GPU interrupts to handle, which `lk` masks out.  All the rest are of interest.
+
+Then, which is commented out, `lk` would check the basic pending interrupts next.  And then finally the GPU interrupts.
+
+Now, that is the order in which they are checked, not the ordinal interrupt number.  That is really simple enough.
+
+---
+
+With that done, I am now back to the original point -- looking for a handler for the IPIs.  I should have an unhandled interrupt for the IPI and I do not.  So, I need to get the the bottom of that.
+
+---
+
+### 2020-Mar-01
+
+I am continuing to debug the mailbox IRQs.  In short, I am unable to get mailbox0 to fire in interrupt.
+
+There is definitely something wrong in how the PIC is programmed.  No mailbox interrupts are making it through.
+
+> A mailbox generates and interrupt as long as it is non-zero.
+
+Hmmm...  guess what!!
+
+
+```
+##
+## -- Some IPI interrupts that will get triggered
+##    -------------------------------------------
+IPI_TLB_FLUSH                   0x00
+```
+
+This is not going to work.  Making that `0x0001` worked!  I'm a dumb-ass!
+
+OK, I finally have the rpi2b working properly again.  But I have a problem with x86-pc again.  Ok, CRAP!!!  x86 works in bochs but not qemu.
+
+---
+
+### 2020-Mar-02
+
+The task at hand today is to figure out why bochs works while qemu does not.  So, the first order of business is to determine where qemu does differently.  It looks like the IPI is not happening, or the interrupt is not firing.
+
+```
+About to flush TLB via IPI....
+Entered _LApicBroadcastIpi on CPU 0
+.. Qualified on CPU 0
+.. Completed on CPU 0
+.. Completed TLB flush
+CPU 0: Current response count is 3 of 3
+CPU 0: Current response count is 3 of 3
+CPU 0: Current response count is 3 of 3
+```
+
+So, let's see what the debugging output says....
+
+What bothers me is that it appears to be a cache coherence problem, but qemu does not emulate cache....  Or, maybe its a race condition that always works my way for Bochs and never for qemu....
+
+Well, the ESR checking code:
+
+```C++
+#if DEBUG_ENABLED(LApicBroadcastIpi)
+    kprintf(".. The ESR report %p\n", MmioRead(LAPIC_MMIO + LAPIC_ESR));
+
+    kprintf(".. Completed on CPU %d\n", thisCpu->cpuNum);
+#endif
+```
+
+reports...
+
+```
+.. The ESR report 0x00000000
+.. Completed on CPU 0
+```
+
+All of which seem normal.
+
+OK, so the initialization seems reasonable; the IPI seems reasonable; the error conditions seem reasonable.  Do I need to enable the local APIC on each core individually?
+
+So, bochs is configured for the following system:
+
+```
+cpuid: level=6, stepping=3, model=3, family=6
+```
+
+and qemu is configured for the following:
+
+```
+pc                   Standard PC (i440FX + PIIX, 1996) (alias of pc-i440fx-3.1)
+pc-i440fx-3.1        Standard PC (i440FX + PIIX, 1996) (default)
+```
+
+So, I wonder if I change the qemu system to x86_64 if that will work....??  Nope.  No change in behavior.
+
+Hmmm...  This command line works properly:
+
+```
+qemu-system-i386 -smp cpus=1,cores=4 -m 3584 -serial stdio -cdrom img/x86-pc.iso
+```
+
+but I get issued this warning:
+
+```
+qemu-system-i386: warning: Invalid CPU topology deprecated: sockets (0) * cores (4) * threads (1) != maxcpus (1)
+```
+
+Except the other cores don't exist!  Grrr....
+
+---
+
+### 2020-Mar-03
+
+OK, I think I have the qemu command line sorted..., I hope so anyway.
+
+I think I am going to try this on real hardware just for kicks.  Same behavior as qemu.
+
+---
+
+### 2020-Mar-04
+
+So, it dawns on me today that I may yet still need to enable the Local APIC on the other cores by setting the flag for the spurious interrupt.  A little debug code should be able to check that.
+
+And this is correct (and hopefully the final answer!).
+
+So for CPU 0, the initialization looks like this:
+
+```
+.. Before setting the spurious interrupt at 0xfee000f0, the value is 0x000001ff
+.. After setting the spurious interrupt at 0xfee000f0, the value is 0x00000127
+```
+
+while the other CPUs look like this:
+
+```
+on CPU 3, the spurious interrupt at 0xfee000f0, the value is 0x000000ff
+```
+
+In particular, bit 8 `(1<<8)` needs to be set to enable the Local APIC.
+
+Also, I realized I have been calling the IOAPIC init function rather than the LAPIC init function.
+
+I finally have some progress:
+
+```
+CPU 0: Current response count is 3 of 3 at 0x81000080
+
+Page Fault
+EAX: 0x00000000  EBX: 0xffffffff  ECX: 0xffffffff
+EDX: 0x00000000  ESI: 0x007e6b48  EDI: 0x00000000
+EBP: 0x00000003  ESP: 0xff800f2c  SS: 0x10
+EIP: 0x80803144  EFLAGS: 0x00200013
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x48
+CR0: 0xe0000011  CR2: 0x0000002c  CR3: 0x01001000
+Trap: 0xe  Error: 0x2
+```
+
+So, I need to figure out which CPU this is happening on!  OK, so it is on CPU0 and it is in the Sleep function.  For the moment, I will save that for later.
+
+While I am on the topic, I think I will work out the `Panic()` function to halt all the other cores.
+
+Part of what `Panic()` needs to accomplish is to dump the registers for the current CPU.  Sometimes this will be called from an exception handler and sometimes this will be called from the mainstream kernel code.  So, I need 2 versions.
+
+* `Panic()` -- which has the registers already available and will dump their contents.
+* `PanicPushRegs()` -- to push the registers onto the stack as if it was from an ISR and then call the `Panic()` function.
+
+The implementation of `Panic()` can be general kernel code (non-arch-specific).  The implementation of `PanicPushRegs()` will need to be arch-specific.
+
+Once this is done, `Halt()` and `HaltCpu()` should be able to be replaced in most cases.
+
+Done.
+
+---
+
+### 2020-Mar-05
+
+Today, I am working on some additional cleanup from the changes yesterday.  Several Redmines should be about ready to close.
+
+I still have something that is not right on x86....  I will need to get to the bottom of that.  Pretty simple fix -- I moved the IRQ number for the `Panic()` functions and did not get everything lined up again.
+
+This even works on real x86 hardware.  Time for a commit and a version change.
 

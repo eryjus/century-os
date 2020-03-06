@@ -1,36 +1,44 @@
 //===================================================================================================================
 //
-//  PlatformInit.cc -- Handle the initialization for the rpi2b platform
+//  IpiHandleTlbFlush.cc -- Handle the actual TLB flush for an address
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Complete the platform initialization.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
+//  2020-Feb-24  Initial  v0.3.0h  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
+#include "atomic.h"
+#include "mmu.h"
 #include "pic.h"
-#include "interrupt.h"
-#include "platform.h"
-
+#include "printf.h"
+#include "debug.h"
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
-EXTERN_C EXPORT LOADER
-void PlatformInit(void)
+// -- Handle the actual TLB flush, waiting for the address to flush
+//    -------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void IpiHandleTlbFlush(isrRegs_t *regs)
 {
-    PicUnmaskIrq(picControl, BCM2836_CORE_MAILBOX0);
-    IsrRegister(0x64, PicMailbox0Handler);
+    // -- wait for the address to be given to the CPU
+    while (tlbFlush.addr == (archsize_t)-1) {}
+
+#if DEBUG_ENABLED(IpiHandleTlbFlush)
+    kprintf("Flushing TLB on CPU %d\n", thisCpu->cpuNum);
+#endif
+
+    InvalidatePage(tlbFlush.addr);
+    AtomicDec(&tlbFlush.count);
+
+    PicEoi(picControl, (Irq_t)0);
 }
+
 

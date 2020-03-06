@@ -35,3 +35,10 @@ void PlatformEarlyInit(void);
 EXTERN_C EXPORT LOADER
 void PlatformInit(void);
 
+
+//
+// -- Complete the platform-specific initialization for the AP
+//    --------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void PlatformApInit(void);
+

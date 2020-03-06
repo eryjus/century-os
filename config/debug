@@ -1,6 +1,6 @@
 ##===================================================================================================================
 ##
-##  constants.arm -- This file contains the pc constants that will be defined in Century-OS.
+##  debug -- This file contains the functions that are set to emit debugging output
 ##
 ##        Copyright (c)  2017-2019 -- Adam Clark
 ##        Licensed under "THE BEER-WARE LICENSE"
@@ -11,33 +11,48 @@
 ##  is a comment and will be ignored.
 ##
 ##  The columns are as follows:
-##  * The constant name ($1)
-##  * The constant value ($2)
+##  * The debugged function ($1)
+##  * The debugging state ($2) [0 is disabled, any value >= 1 is enabled]
 ##
 ## ------------------------------------------------------------------------------------------------------------------
 ##
 ##     Date      Tracker  Version  Pgmr  Description
 ##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
-##  2020-Feb-05  Initial  v0.5.0g  ADCL  Initial version
+##  2020-Feb-23  Initial  v0.5.0h  ADCL  Initial version
 ##
 ##===================================================================================================================
 
 
 ##
-## -- Some pc specific constants
-##    --------------------------
-ACPI_HDR_SIZE                   36
-ACPI_LO                         (0xb0000000)
-ACPI_HI                         (0xbfffffff)
-LAPIC_MMIO                      (0xfee00000)
-PC_TIMER                        0x40
+## -- These are the macros that enable the whole thing!!
+##    --------------------------------------------------
+DEBUG_TOKEN_PASTE(x)        DEBUG_##x
+DEBUG_ENABLED(func)         DEBUG_TOKEN_PASTE(func)>0
+
+
+##
+## -- MMU-related debugging
+##    ---------------------
+DEBUG_MmuMapToFrame         1
+
 
 
 
 ##
-## -- Some IPI interrupts that will get triggered
-##    -------------------------------------------
-IPI_PANIC                       0xf0
-IPI_TLB_FLUSH                   0xf1
+## -- PIC-related debugging
+##    ---------------------
+DEBUG_LApicBroadcastIpi     1
+DEBUG_IpiHandleTlbFlush     1
+DEBUG_PicBroadcastIpi       1
+DEBUG_PicMaskIrq            1
+DEBUG_PicUnmaskIrq          1
+
+
+
+##
+## -- Interrupt debugging
+##    -------------------
+DEBUG_IsrHandler            1
+
 
 

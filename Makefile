@@ -211,7 +211,7 @@ x86-pc: init
 ##    ----------------------
 .PHONY: run-x86-pc
 run-x86-pc: x86-pc
-	qemu-system-i386 -smp 4 -m 3584 -serial stdio -cdrom img/x86-pc.iso
+	qemu-system-i386 -smp sockets=1,cores=4 -m 3584 -serial stdio -cdrom img/x86-pc.iso
 
 
 ##
@@ -227,7 +227,7 @@ bochs-x86-pc: x86-pc
 ##    ------------------------
 .PHONY: debug-x86-pc
 debug-x86-pc: x86-pc
-	qemu-system-i386 -smp 4 -no-reboot -no-shutdown -m 3584 -serial mon:stdio -cdrom img/x86-pc.iso -S -s
+	qemu-system-i386 -smp sockets=1,cores=4 -no-reboot -no-shutdown -m 3584 -serial mon:stdio -cdrom img/x86-pc.iso -S -s
 
 
 ##

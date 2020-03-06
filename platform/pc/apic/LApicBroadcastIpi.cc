@@ -20,6 +20,7 @@
 #include "timer.h"
 #include "hardware.h"
 #include "pic.h"
+#include "debug.h"
 
 
 //
@@ -28,11 +29,33 @@
 EXTERN_C EXPORT KERNEL
 void _LApicBroadcastIpi(PicDevice_t *dev, int ipi)
 {
-    if (ipi < 0 || ipi > 31) return;
+#if DEBUG_ENABLED(LApicBroadcastIpi)
+    kprintf("Entered %s on CPU %d for dev %p\n", __func__, thisCpu->cpuNum, dev);
+#endif
+
     if (!dev) return;
+    if (!dev->ipiReady) {
+#if DEBUG_ENABLED(LApicBroadcastIpi)
+    kprintf("IPI still not ready at %p\n", dev);
+#endif
 
-    uint32_t icr = (0b11<<18) | (1<<14) | ipi;
+        return;
+    }
 
-    MmioWrite(LAPIC_ICR_HI, 0x00);
-    MmioWrite(LAPIC_ICR_LO, icr);
+#if DEBUG_ENABLED(LApicBroadcastIpi)
+    kprintf(".. Qualified on CPU %d\n", thisCpu->cpuNum);
+#endif
+
+//    uint32_t icr = (0b11<<18) | (1<<14) | ipi;      // all except self | Assert | vector
+    uint32_t icr = (0b11<<18) | ipi;      // all except self | vector
+
+    MmioWrite(LAPIC_MMIO + LAPIC_ICR_HI, 0x00);
+    MmioWrite(LAPIC_MMIO + LAPIC_ICR_LO, icr);
+
+#if DEBUG_ENABLED(LApicBroadcastIpi)
+    kprintf(".. The ESR report %p\n", MmioRead(LAPIC_MMIO + LAPIC_ESR));
+    kprintf(".. Delivery status reports %p\n", MmioRead(LAPIC_MMIO + LAPIC_ICR_LO));
+
+    kprintf(".. Completed on CPU %d\n", thisCpu->cpuNum);
+#endif
 }

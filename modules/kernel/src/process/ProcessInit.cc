@@ -41,7 +41,7 @@ void ProcessInit(void)
 
     scheduler.currentProcess = NEW(Process_t);
     if (!assert_msg(scheduler.currentProcess != NULL, "Unable to allocate Current Process structure")) {
-        HaltCpu();
+        CpuPanicPushRegs("Unable to allocate Current Process structure");
     }
 
     scheduler.currentProcess->topOfStack = 0;

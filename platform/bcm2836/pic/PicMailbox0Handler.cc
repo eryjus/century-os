@@ -1,36 +1,45 @@
 //===================================================================================================================
 //
-//  PlatformInit.cc -- Handle the initialization for the rpi2b platform
+//  PicMailboxHandler0.cc -- Handle a mailbox0 interrupt, decoding it and acking it
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Complete the platform initialization.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
+//  2020-Mar-01  Initial  v0.5.0h  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
+#include "printf.h"
 #include "pic.h"
-#include "interrupt.h"
-#include "platform.h"
+#include "debug.h"
 
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
-EXTERN_C EXPORT LOADER
-void PlatformInit(void)
+// -- Decode and handle a mailbox0 interrupt
+//    --------------------------------------
+void PicMailbox0Handler(UNUSED(isrRegs_t *))
 {
-    PicUnmaskIrq(picControl, BCM2836_CORE_MAILBOX0);
-    IsrRegister(0x64, PicMailbox0Handler);
+    int msg = MmioRead(IPI_MAILBOX_ACK + ((thisCpu->cpuNum) * 0x10));
+    MbHandler_t handler = NULL;
+
+    if (msg < 0 || msg >= MAX_IPI) goto exit;
+
+    handler = mbHandlers[msg];
+    if (handler == NULL) {
+        kprintf("PANIC: Unhandled Mailbox message %d\n", msg);
+        CpuPanicPushRegs("");
+    }
+
+    handler(NULL);
+
+exit:
+    MmioWrite(IPI_MAILBOX_ACK + (thisCpu->cpuNum * 0x10), 0xffffffff);
 }
 

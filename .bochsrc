@@ -40,8 +40,8 @@ clock: sync=none, time0=local, rtc_sync=0
 # no loader
 log: bochs.log
 logprefix: %t%e%d
-debug: action=ignore
-#debug: action=ignore, cpu0=report
+#debug: action=ignore
+debug: action=ignore, cpu1=report
 info: action=report
 error: action=report
 panic: action=ask

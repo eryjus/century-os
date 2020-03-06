@@ -61,22 +61,22 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
     outb(PIC1 + PIC_MASTER_DATA, 0xff);            // Disable all IRQs
     outb(PIC2 + PIC_SLAVE_DATA, 0xff);             // Disable all IRQs
 
-    IsrRegister(240, SpurriousPic);
-    IsrRegister(241, SpurriousPic);
-    IsrRegister(242, SpurriousPic);
-    IsrRegister(243, SpurriousPic);
-    IsrRegister(244, SpurriousPic);
-    IsrRegister(245, SpurriousPic);
-    IsrRegister(246, SpurriousPic);
-    IsrRegister(247, SpurriousPic);
-    IsrRegister(248, SpurriousPic);
-    IsrRegister(249, SpurriousPic);
-    IsrRegister(250, SpurriousPic);
-    IsrRegister(251, SpurriousPic);
-    IsrRegister(252, SpurriousPic);
-    IsrRegister(253, SpurriousPic);
-    IsrRegister(254, SpurriousPic);
-    IsrRegister(255, SpurriousPic);
+    IsrRegister(IPI_PANIC, (isrFunc_t)Halt);
+    IsrRegister(IPI_TLB_FLUSH, IpiHandleTlbFlush);
+    IsrRegister(0xf2, SpurriousPic);
+    IsrRegister(0xf3, SpurriousPic);
+    IsrRegister(0xf4, SpurriousPic);
+    IsrRegister(0xf5, SpurriousPic);
+    IsrRegister(0xf6, SpurriousPic);
+    IsrRegister(0xf7, SpurriousPic);
+    IsrRegister(0xf8, SpurriousPic);
+    IsrRegister(0xf9, SpurriousPic);
+    IsrRegister(0xfa, SpurriousPic);
+    IsrRegister(0xfb, SpurriousPic);
+    IsrRegister(0xfc, SpurriousPic);
+    IsrRegister(0xfd, SpurriousPic);
+    IsrRegister(0xfe, SpurriousPic);
+    IsrRegister(0xff, SpurriousPic);
 
 
     IoApicDeviceData_t *data = (IoApicDeviceData_t*)dev->device.deviceData;

@@ -6,6 +6,10 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Note that this function does not need to trigger a TLB flush on other cores since this is not a shared mapping.
+//  Only one CPU can get a lock to perform this function at a time, so by definition, no other cores require a TLB
+//  flush -- the state when the lock is released is the same as it was when the lock was obtained: nothing is mapped.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
@@ -35,7 +39,8 @@ void MmuClearFrame(frame_t frame)
     //    -----------------------------------------------------------------------------------------------
     Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(frameClearLock) {
-        InvalidatePage((uint32_t)ttl2Entry, MMU_CLEAR_FRAME);
+        WriteDCCMVAC((uint32_t)ttl2Entry);
+        InvalidatePage(MMU_CLEAR_FRAME);
 
         ttl2Entry->frame = frame;
         ttl2Entry->s = ARMV7_SHARABLE_TRUE;
@@ -47,7 +52,8 @@ void MmuClearFrame(frame_t frame)
         ttl2Entry->nG = ARMV7_MMU_GLOBAL;
         ttl2Entry->fault = ARMV7_MMU_DATA_PAGE;
 
-        InvalidatePage((uint32_t)ttl2Entry, MMU_CLEAR_FRAME);
+        WriteDCCMVAC((uint32_t)ttl2Entry);
+        InvalidatePage(MMU_CLEAR_FRAME);
 
         kMemSetB((void *)MMU_CLEAR_FRAME, 0, FRAME_SIZE);
         MmuUnmapPage(MMU_CLEAR_FRAME);

@@ -24,6 +24,13 @@
 //
 // -- This spinlock is used to control access to the address space to clear the frame
 //    -------------------------------------------------------------------------------
-EXPORT KERNEL_DATA
-Spinlock_t frameClearLock = {0};
+EXPORT KERNEL_BSS
+Spinlock_t frameClearLock;
+
+
+//
+// -- This is used to control the flushes for the TLB buffer
+//    ------------------------------------------------------
+EXPORT KERNEL_BSS
+TlbFlush_t tlbFlush;
 

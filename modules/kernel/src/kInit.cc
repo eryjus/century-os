@@ -115,6 +115,8 @@ void kInit(void)
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
     CoresStart();
+    picControl->ipiReady = true;
+    kprintf("Starting processes\n");
 
     A = ProcessCreate(StartA);
     B = ProcessCreate(StartB);
