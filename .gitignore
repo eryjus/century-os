@@ -25,4 +25,5 @@ targets/**/cfg-file*
 targets/**/inc/constants.*
 targets/**/config
 targets/**/debug
+targets/**/inc/debug.h
 
