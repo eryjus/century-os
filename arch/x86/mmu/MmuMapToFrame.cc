@@ -24,7 +24,10 @@
 #include "cpu.h"
 #include "printf.h"
 #include "pmm.h"
+#include "pic.h"
 #include "mmu.h"
+#include "process.h"
+#include "debug.h"
 
 
 //
@@ -33,15 +36,21 @@
 EXTERN_C EXPORT KERNEL
 void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 {
-//    kprintf("Mapping page %p to frame %x\n", addr, frame);
-//    kprintf("... Kernel: %s\n", flags&PG_KRN?"yes":"no");
-//    kprintf("... Device: %s\n", flags&PG_DEVICE?"yes":"no");
-//    kprintf("... Write.: %s\n", flags&PG_WRT?"yes":"no");
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf("Mapping page %p to frame %x\n", addr, frame);
+    kprintf("... Kernel: %s\n", flags&PG_KRN?"yes":"no");
+    kprintf("... Device: %s\n", flags&PG_DEVICE?"yes":"no");
+    kprintf("... Write.: %s\n", flags&PG_WRT?"yes":"no");
+#endif
 
     // -- refuse to map frame 0 for security reasons
     if (!frame || !addr) {
         return;
     }
+
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf(".. %s sanity checks passed\n", __func__);
+#endif
 
     PageEntry_t *pde = PD_ENTRY(addr);
 
@@ -60,14 +69,46 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         return;
     }
 
-    // -- finally we can map the page to the frame as requested
-    pte->frame = frame;
-    pte->rw = (flags & PG_WRT?X86_MMU_WRITE:X86_MMU_READ);
-    pte->us = (flags & PG_KRN?X86_MMU_SUPERVISOR:X86_MMU_USER);
-    pte->pcd = (flags & PG_DEVICE?X86_MMU_PCD_TRUE:X86_MMU_PCD_FALSE);
-    pte->pwt = (flags & PG_DEVICE?X86_MMU_PWT_ENABLED:X86_MMU_PWT_DISABLED);
-    pte->p = X86_MMU_PRESENT_TRUE;
+    archsize_t flg = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf("About to flush TLB via IPI....\n");
+#endif
 
-//    kprintf("... The contents of the PTE is at %p: %p\n", pte, ((*(uint32_t *)pte) & 0xffffffff));
+        tlbFlush.addr = -1;
+        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
+
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf(".. Completed TLB flush\n");
+#endif
+
+
+        // -- finally we can map the page to the frame as requested
+        pte->frame = frame;
+        pte->rw = (flags & PG_WRT?X86_MMU_WRITE:X86_MMU_READ);
+        pte->us = (flags & PG_KRN?X86_MMU_SUPERVISOR:X86_MMU_USER);
+        pte->pcd = (flags & PG_DEVICE?X86_MMU_PCD_TRUE:X86_MMU_PCD_FALSE);
+        pte->pwt = (flags & PG_DEVICE?X86_MMU_PWT_ENABLED:X86_MMU_PWT_DISABLED);
+        pte->p = X86_MMU_PRESENT_TRUE;
+
+
+        //
+        // -- Finally, wait for all the CPUs to complete the flush before continuing
+        //   -----------------------------------------------------------------------
+        int expected = cpus.cpusRunning - 1;
+        AtomicSet(&tlbFlush.count, expected);
+        tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
+
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
+#if DEBUG_ENABLED(MmuMapToFrame)
+            kprintf("CPU %d: Current response count is %d of %d at %p\n", thisCpu->cpuNum,
+                    AtomicRead(&tlbFlush.count), expected, picControl);
+#endif
+        }
+
+        SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flg);
+    }
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf("... The contents of the PTE is at %p: %p\n", pte, ((*(uint32_t *)pte) & 0xffffffff));
+#endif
 }
 

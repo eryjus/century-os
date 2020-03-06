@@ -1,36 +1,33 @@
 //===================================================================================================================
 //
-//  PlatformInit.cc -- Handle the initialization for the rpi2b platform
+//  PlatformApInit.cc -- Perform any AP core specific initialization for the platform
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  Complete the platform initialization.
-//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Apr-18  Initial   0.4.1   ADCL  Initial version
+//  2020-Feb-29  Initial  v0.5.0h  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
-#include "pic.h"
-#include "interrupt.h"
+#include "printf.h"
 #include "platform.h"
+#include "serial.h"
+#include "pic.h"
+#include "cpu.h"
 
 
 //
-// -- Complete the platform initialization
-//    ------------------------------------
-EXTERN_C EXPORT LOADER
-void PlatformInit(void)
+// -- Complete the platform initialization for the AP
+//    -----------------------------------------------
+EXTERN_C EXPORT KERNEL
+void PlatformApInit(void)
 {
-    PicUnmaskIrq(picControl, BCM2836_CORE_MAILBOX0);
-    IsrRegister(0x64, PicMailbox0Handler);
+    TimerInit(timerControl, 1000);
 }
-

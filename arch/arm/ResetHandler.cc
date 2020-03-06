@@ -26,5 +26,4 @@ extern "C" void ResetHandler(isrRegs_t *regs)
 {
     kprintf("Reset:\n");
     IsrDumpState(regs);
-    Halt();
 }

@@ -42,7 +42,7 @@ void IsrHandler(isrRegs_t regs)
         isrFunc_t handler = isrHandlers[regs.intno];
         handler(&regs);
     } else {
-        kprintf("Unhandled Interrupt #%x\n", regs.intno);
-        Halt();
+        kprintf("PANIC: Unhandled Interrupt #%x\n", regs.intno);
+        CpuPanic("", &regs);
     }
 }

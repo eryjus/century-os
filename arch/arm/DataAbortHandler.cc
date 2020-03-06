@@ -69,5 +69,4 @@ extern "C" void DataAbortHandler(isrRegs_t *regs)
     kprintf(".. Fault occurred because of a %s\n", (dfsr&(1<<11)?"write":"read"));
 
     IsrDumpState(regs);
-    Halt();
 }

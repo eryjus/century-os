@@ -20,5 +20,6 @@ include ./Tupfile.inc
 ## -- Create a consolidated config file
 ##    ---------------------------------
 : $(WS)/config/constants $(WS)/config/constants.$(ARCH) $(WS)/config/constants.$(PLAT) |> cat %f > %o |> config
+: $(WS)/config/debug |> cp %f %o |> debug
 
 

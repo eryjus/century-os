@@ -64,6 +64,7 @@ PicDevice_t ioapicDriver = {
         .name = {'a', 'p', 'i', 'c', '\0'},
         .deviceData = (DeviceData_t)&ioapicData,
     },
+    .ipiReady = false,
     .PicInit = _IoApicInit,
     .PicRegisterHandler = _IoApicRegisterHandler,
     .PicMaskIrq = _IoApicMaskIrq,

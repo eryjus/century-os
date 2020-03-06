@@ -35,8 +35,7 @@
 EXPORT LOADER INLINE
 void CheckAcpi(archsize_t loc) {
     if (!((loc) >= ACPI_LO) && ((loc) <= ACPI_HI)) {
-        kprintf("ACPI is not is a supported location: %p\n", loc);
-        HaltCpu();
+        CpuPanicPushRegs("PANIC: ACPI is not is a supported");
     } else {
         MmuMapToFrame(loc & 0xfffff000, loc >> 12, PG_KRN);
     }

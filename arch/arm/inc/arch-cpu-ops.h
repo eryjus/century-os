@@ -177,11 +177,12 @@ CP_REG_RW(TPIDRPRW,p15,c13,0,c0,4)      // Privilege Read-Write Thread ID Regist
 //
 // -- Synchronization Barriers
 //    ------------------------
-EXTERN_C INLINE
-void DSB(void) { __asm volatile("dsb"); }
+#define SoftwareBarrier() __asm volatile("":::"memory")
+#define MemoryBarrier() __sync_synchronize()
+#define EntireSystemMemoryBarrier() __asm volatile("dmb sy":::"memory")
+#define MemoryResynchronization() __asm volatile("dsb":::"memory")
+#define ClearInsutructionPipeline() __asm volatile("isb":::"memory")
 
-EXTERN_C INLINE
-void ISB(void) { __asm volatile("isb"); }
 
 EXTERN_C INLINE
 void SEV(void) { __asm volatile("dsb\nsev\n"); }
@@ -192,13 +193,6 @@ void SEV(void) { __asm volatile("dsb\nsev\n"); }
 //    --------------------------------------
 EXTERN_C INLINE
 void HaltCpu(void) { __asm("wfi"); }
-
-
-//
-// -- Panic the kernel, dumping the register state
-//    --------------------------------------------
-EXTERN_C INLINE
-void Panic(void) { while (1) HaltCpu(); }
 
 
 //
@@ -223,13 +217,13 @@ void Panic(void) { while (1) HaltCpu(); }
 //    -------------------------------------
 EXTERN_C INLINE
 void CleanCache(archsize_t mem, size_t len) {
-    DSB();
+    MemoryBarrier();
     archsize_t loc = mem & ~(CACHE_LINE_SIZE - 1);
     archsize_t end = mem + len;
     for ( ; loc <= end; loc += CACHE_LINE_SIZE) {
         WriteDCCMVAC(loc);
     }
-    DSB();
+    MemoryBarrier();
 }
 
 
@@ -239,13 +233,13 @@ void CleanCache(archsize_t mem, size_t len) {
 EXTERN_C INLINE
 void InvalidateCache(archsize_t mem, size_t len)
 {
-    DSB();
+    MemoryBarrier();
     archsize_t loc = mem & ~(CACHE_LINE_SIZE - 1);
     archsize_t end = mem + len;
     for ( ; loc <= end; loc += CACHE_LINE_SIZE) {
         WriteDCIMVAC(loc);
     }
-    DSB();
+    MemoryBarrier();
 }
 
 #else
@@ -270,13 +264,12 @@ void InvalidateCache(archsize_t mem, size_t len)
 // -- This is a well-defined sequence to clean up after changing the translation tables
 //    ---------------------------------------------------------------------------------
 EXTERN_C INLINE
-void InvalidatePage(uint32_t ent, uint32_t vma) {
-    WriteDCCMVAC(ent);
-    DSB();
+void InvalidatePage(archsize_t vma) {
+    MemoryBarrier();
     WriteTLBIMVAA(vma & 0xfffff000);
     WriteBPIALL();
-    DSB();
-    ISB();
+    MemoryBarrier();
+    ClearInsutructionPipeline();
 }
 
 

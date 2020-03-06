@@ -19,6 +19,7 @@
 #include "printf.h"
 #include "platform.h"
 #include "serial.h"
+#include "pic.h"
 #include "cpu.h"
 
 

@@ -46,7 +46,7 @@ isrFunc_t IsrRegister(uint8_t interrupt, isrFunc_t func);
 //
 // -- Dump the CPU state
 //    ------------------
-EXTERN_C EXPORT KERNEL
+EXTERN_C EXPORT NORETURN KERNEL
 void IsrDumpState(isrRegs_t *regs);
 
 
@@ -55,5 +55,12 @@ void IsrDumpState(isrRegs_t *regs);
 //    -----------------------
 EXTERN_C EXPORT SYSCALL
 void SyscallHandler(isrRegs_t *regs);
+
+
+//
+// -- An interrupt to handle TLB Flushes
+//    ----------------------------------
+EXTERN_C EXPORT KERNEL
+void IpiHandleTlbFlush(UNUSED(isrRegs_t *regs));
 
 

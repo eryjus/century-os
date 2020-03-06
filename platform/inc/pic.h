@@ -51,6 +51,7 @@ struct PicDevice_t;
 typedef struct PicDevice_t {
     GenericDevice_t device;
 
+    volatile bool ipiReady;
     void (*PicInit)(PicDevice_t *, const char *);
     isrFunc_t (*PicRegisterHandler)(PicDevice_t *, Irq_t, int, isrFunc_t);
     void (*PicMaskIrq)(PicDevice_t *, Irq_t);

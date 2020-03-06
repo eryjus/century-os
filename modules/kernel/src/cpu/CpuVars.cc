@@ -25,6 +25,8 @@
 //
 // -- This data will be uninitialized by the compiler
 //    -----------------------------------------------
-EXPORT KERNEL_BSS
-Cpu_t cpus;
+EXPORT KERNEL_DATA
+Cpu_t cpus = {
+    .cpusRunning = 1,
+};
 

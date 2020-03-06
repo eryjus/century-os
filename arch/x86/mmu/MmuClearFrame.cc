@@ -6,6 +6,10 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Note that this function does not need to trigger a TLB flush on other cores since this is not a shared mapping.
+//  Only one CPU can get a lock to perform this function at a time, so by definition, no other cores require a TLB
+//  flush -- the state when the lock is released is the same as it was when the lock was obtained: nothing is mapped.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description

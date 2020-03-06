@@ -18,6 +18,7 @@
 
 #include "cpu.h"
 #include "printf.h"
+#include "pic.h"
 #include "mmu.h"
 
 
@@ -27,18 +28,38 @@
 EXTERN_C EXPORT KERNEL
 frame_t MmuUnmapPage(archsize_t addr)
 {
-    Ttl1_t *ttl1Table = (Ttl1_t *)(ARMV7_TTL1_TABLE_VADDR);
-    Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];
-    Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
-    Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
+    frame_t rv = 0;
 
-    if (ttl1Entry->fault == ARMV7_MMU_FAULT) return 0;
-    if (ttl2Entry->fault == ARMV7_MMU_FAULT) return 0;
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
+        tlbFlush.addr = -1;
+        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
 
-    frame_t rv = ttl2Entry->frame;
-    *(uint32_t *)ttl2Entry = 0;
+        Ttl1_t *ttl1Table = (Ttl1_t *)(ARMV7_TTL1_TABLE_VADDR);
+        Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];
+        Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
+        Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
 
-    InvalidatePage((uint32_t)ttl2Entry, addr);
+        if (ttl1Entry->fault == ARMV7_MMU_FAULT) goto exit;
+        if (ttl2Entry->fault == ARMV7_MMU_FAULT) goto exit;
+
+        rv = ttl2Entry->frame;
+        *(uint32_t *)ttl2Entry = 0;
+
+exit:
+        WriteDCCMVAC((uint32_t)ttl2Entry);
+        InvalidatePage(addr);
+
+
+        //
+        // -- Finally, wait for all the CPUs to complete the flush before continuing
+        //   -----------------------------------------------------------------------
+        AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
+        tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
+
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {}
+
+        SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);
+    }
 
     return rv;
 }

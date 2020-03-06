@@ -31,7 +31,7 @@ int _PicDetermineIrq(PicDevice_t *dev)
 
     Bcm2835Pic_t *picData = (Bcm2835Pic_t *)dev->device.deviceData;
 
-    int core = 0;
+    int core = thisCpu->cpuNum;
     archsize_t rv;
 
 
@@ -40,7 +40,7 @@ int _PicDetermineIrq(PicDevice_t *dev)
     //    ---------------------------------------
     archsize_t irq = MmioRead(picData->timerLoc + TIMER_IRQ_SOURCE + (core * 4)) & 0xff; // mask out the relevant ints
     rv = __builtin_ffs(irq);
-    if (rv != 0) return 64 + (rv - 1);
+    if (rv != 0) return BCM2836_CORE_BASE + (rv - 1);
 
 
     //
@@ -48,15 +48,15 @@ int _PicDetermineIrq(PicDevice_t *dev)
     //    --------------------------------------------------
     irq = MmioRead(picData->picLoc + INT_IRQPEND1);
     rv = __builtin_ffs(irq);
-    if (rv != 0) return rv - 1;
+    if (rv != 0) return BCM2835_GPU_BASE0 + (rv - 1);
 
 
     //
     // -- now, if we make it here, try ints 32-63
     //    ---------------------------------------
-    irq = MmioRead(picData->picLoc + INT_IRQPEND0);
+    irq = MmioRead(picData->picLoc + INT_IRQPEND2);
     rv = __builtin_ffs(irq);
-    if (rv != 0) return 32 + (rv - 1);
+    if (rv != 0) return BCM2835_GPU_BASE1 + (rv - 1);
 
 
     //

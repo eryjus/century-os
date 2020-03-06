@@ -52,6 +52,16 @@ void WRMSR(uint32_t r, uint64_t v) {
 
 
 //
+// -- Synchronization Barriers
+//    ------------------------
+#define SoftwareBarrier() __asm volatile("":::"memory")
+#define MemoryBarrier() __sync_synchronize()
+#define EntireSystemMemoryBarrier() __asm volatile("wbinvd":::"memory")
+#define MemoryResynchronization() __asm volatile("wbinvd":::"memory")
+#define ClearInsutructionPipeline() __asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")
+
+
+//
 // -- a lightweight function to halt the cpu
 //    --------------------------------------
 EXPORT KERNEL INLINE
@@ -59,23 +69,14 @@ void HaltCpu(void) { __asm("hlt"); }
 
 
 //
-// -- Panic the kernel, dumping the register state
-//    --------------------------------------------
-EXPORT KERNEL INLINE
-void Panic(void) { __asm("int3"); }
-
-
-//
 // -- cache maintenance functions
 //    ---------------------------
 #if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
-#   define CleanCache(mem,len)         WBINVD()
-#   define InvalidateCache(mem,len)    WBINVD()
-#   define WBINVD()                    __asm volatile("wbinvd")
+#   define CleanCache(mem,len)         MemoryResynchronization()
+#   define InvalidateCache(mem,len)    MemoryResynchronization()
 #else
 #   define CleanCache(mem,len)
 #   define InvalidateCache(mem,len)
-#   define WBINVD()
 #endif
 
 

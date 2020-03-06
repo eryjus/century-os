@@ -69,7 +69,7 @@ LDFLAGS += -O2
 ## -- Create the !macros
 ##    ------------------
 !ar =       |> $(AR) crs %o %f                          |>
-!cc =       | $(WS)/targets/$(TARGET)/inc/constants.h |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f     |> %B.o
+!cc =       | $(WS)/targets/$(TARGET)/inc/constants.h $(WS)/targets/$(TARGET)/inc/debug.h |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f     |> %B.o
 !dump =     |> $(DUMP) -D %f > %o                       |> %B.map
 
 ifeq ($(ARCH),x86)

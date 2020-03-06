@@ -24,3 +24,7 @@ include $(WS)/arch/$(ARCH)/util/Tupfile.inc
 ##    -----------------------------------------------------
 : $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> constants.h
 : $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print $1"  equ  "$2 }' %f > %o |> constants.inc
+
+
+: $(WS)/targets/$(TARGET)/debug |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> debug.h
+

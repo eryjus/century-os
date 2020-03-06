@@ -34,4 +34,8 @@ void IsrDumpState(isrRegs_t *regs)
     kprintf("\nAdditional Data Points:\n");
     kprintf("User LR: %p  User SP: %p\n", regs->lr_usr, regs->sp_usr);
     kprintf("Svc LR: %p\n", regs->lr_svc);
+
+    while (true) {
+        Halt();
+    }
 }

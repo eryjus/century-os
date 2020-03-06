@@ -30,8 +30,7 @@ void PmmReleaseFrameRange(const frame_t frame, const size_t count)
     PmmBlock_t *block = NEW(PmmBlock_t);        // this may deadlock and will be addressed in PmmAllocateFrame()
 
     if (!block) {
-        kprintf("PANIC: unable to allocate memory for freeing a frame\n");
-        Halt();
+        CpuPanicPushRegs("PANIC: unable to allocate memory for freeing a frame\n");
     }
 
     ListInit(&block->list);
