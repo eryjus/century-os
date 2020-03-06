@@ -15,6 +15,16 @@
 @@===================================================================================================================
 
 
+.include "constants.inc"
+
+@@
+@@ -- make sure we have a value for whether we include debug code
+@@    -----------------------------------------------------------
+.ifndef ENABLE_DEBUG_ENTRY
+    .equ        ENABLE_DEBUG_ENTRY,0
+.endif
+
+
 @@
 @@ -- make sure that if the required symbols are defined; Branch Predictor
 @@    --------------------------------------------------------------------
@@ -40,7 +50,7 @@
 @@
 @@ -- This is the loader text section.  This section will be reclaimed once initialization is complete.
 @@    -------------------------------------------------------------------------------------------------
-    .section    .ldrtext,"ax"
+    .section    .text.entry,"ax"
 
 
 @@
@@ -67,11 +77,6 @@ entryApHold:
 @@    ------------------------------------------------------------------------------------------------
 entryAp:
 @@
-@@ -- Give a temporary stack (reused by all cores, so we can only start 1 at a time)
-@@    ------------------------------------------------------------------------------
-    mov     sp,#0x8000                  @@ set the stack
-
-@@
 @@ -- make sure this core is in svc mode -- may be in hyp mode
 @@    --------------------------------------------------------
     mrs     r0,cpsr                     @@ get the current program status register
@@ -88,7 +93,6 @@ hyp:
     orr     r0,#0x013                   @@ set the mode for svc
     orr     r0,#1<<6|1<<7|1<<8          @@ disable interrupts as well
     msr     spsr_cxsf,r0                @@ and save that in the spsr
-
     ldr     r0,=cont                    @@ get the address where we continue
     msr     elr_hyp,r0                  @@ store that in the elr register
 
@@ -98,19 +102,18 @@ hyp:
 @@ -- some early CPU initialization
 @@    -----------------------------
 cont:
-.if ENABLE_BRANCH_PREDICTOR
     mrc     p15,0,r0,c1,c0,0            @@ get the SCTLR
+.if ENABLE_BRANCH_PREDICTOR
     orr     r0,#(1<<11)                 @@ set the Z bit for branch prediction (may be forced on by HW!)
-    mcr     p15,0,r0,c1,c0,0            @@ write the SCTLR back with the branch predictor guaranteed enabled
 .endif
 
 .if ENABLE_CACHE
-    mrc     p15,0,r0,c1,c0,0            @@ get the SCTLR
     orr     r0,#(1<<2)                  @@ set the data cache enabled
     orr     r0,#(1<<12)                 @@ set the instruction cache enabled
-    mcr     p15,0,r0,c1,c0,0            @@ write the SCTLR back with the caches enabled
 .endif
+    mcr     p15,0,r0,c1,c0,0            @@ write the SCTLR back with the caches enabled
 
+    ldr     sp,=stack_top                       @@ set the stack
 
 @@ -- Set up the VBAR to use an absolute address
     ldr     r0,=intTableAddr            @@ get the location we will share the vbar frame
@@ -154,21 +157,11 @@ cont:
 
 
 @@
-@@ -- OK, we are able to continue, we need a stack
-@@    --------------------------------------------
-    bl      NextEarlyFrame              @@ Get a frame for out stack
-    mov     r2,r0                       @@ Save for later
-
-    mov     r1,#0xff8                   @@ This will load value 0xff800000
-    lsl     r1,#20                      @@ ... as a strarting address
-
-    mrc     p15,0,r0,c0,c0,5            @@ Read Multiprocessor Affinity Register
-    and     r0,r0,#0x3                  @@ Extract CPU ID bits
-    add     r0,#1                       @@ add 1 to the cpu number, which will set to the top stack address
-    lsl     r0,#12                      @@ convert the cpu number to a page offset
-
-    add     sp,r1,r0                    @@ we now have a good stack
-
+@@ -- Now, we need to set the address of the cpu structure
+@@    ----------------------------------------------------
+    bl      CpuMyStruct                 @@ perform the initalization and get the address of this cpu struct
+    mcr     p15,0,r0,c13,c0,4           @@ save this address in the tpidrprw register
+    ldr     sp,[r0,#4]                  @@ get the new stack
     b       kInitAp                     @@ jump to the AP initialization code
 
 

@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __TIMER_H__
 #   error "Use #include \"timer.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -33,13 +36,9 @@ typedef archsize_t TimerBase_t;
 // -- Read the low level timer value
 //    ------------------------------
 struct TimerDevice_t;
-extern "C" uint64_t SysTimerCount(struct TimerDevice_t *);
 
-
-//
-// -- This is the base location where we will find the pit Timer
-//    ----------------------------------------------------------
-#define TIMER           (MMIO_VADDR + 0x01003000)
+EXTERN_C EXPORT KERNEL
+uint64_t SysTimerCount(struct TimerDevice_t *);
 
 
 //
@@ -80,7 +79,4 @@ extern "C" uint64_t SysTimerCount(struct TimerDevice_t *);
 #define CNTP_CVAL   "p15, 2, %0, %1, c14"
 #define READ_CNTP_CVAL()        MRRC(CNTP_CVAL)
 #define WRITE_CNTP_CVAL(val)    MCRR(CNTP_CVAL,val)
-
-
-
 

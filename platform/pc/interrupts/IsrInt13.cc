@@ -26,6 +26,7 @@
 //
 // -- This is the ISR Handler routine
 //    -------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt13(isrRegs_t *regs)
 {
     kprintf("\nSIMD Floating Point Exception\n");

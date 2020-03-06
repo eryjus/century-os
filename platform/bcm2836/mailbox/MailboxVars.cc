@@ -15,24 +15,15 @@
 //===================================================================================================================
 
 
-#include "loader.h"
+#include "types.h"
 #include "hardware.h"
-
-
-//
-// -- This is the device structure that will be used for the loader to access the gpio
-//    --------------------------------------------------------------------------------
-__ldrdata MailboxDevice_t loaderMailbox = {
-    .base = LDR_MAILBOX_BASE,
-    .MailboxSend = (void (*)(struct MailboxDevice_t *, archsize_t, archsize_t))PHYS_OF(_MailboxSend),
-    .MailboxReceive = (archsize_t (*)(struct MailboxDevice_t *, archsize_t))PHYS_OF(_MailboxReceive),
-};
 
 
 //
 // -- This is the device structure that will be used for the kernel to access the gpio
 //    --------------------------------------------------------------------------------
-__krndata MailboxDevice_t kernelMailbox = {
+EXPORT KERNEL_DATA
+MailboxDevice_t kernelMailbox = {
     .base = KRN_MAILBOX_BASE,
     .MailboxSend = _MailboxSend,
     .MailboxReceive = _MailboxReceive,

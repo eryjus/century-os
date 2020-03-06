@@ -19,16 +19,15 @@
 
 #include "types.h"
 #include "printf.h"
-#include "platform.h"
 #include "pic.h"
 
 
 //
 // -- Complete the platform initialization
 //    ------------------------------------
+EXTERN_C EXPORT LOADER
 void PlatformInit(void)
 {
-    UpdateKprintfPort();
     PicPick();
     TimerPick();
 

@@ -15,16 +15,16 @@
 //===================================================================================================================
 
 
-#include "loader.h"
-#include "pic.h"
+#include "types.h"
 #include "timer.h"
 
 
 //
 // -- This is the device description that is used to output data to the serial port during loader initialization
 //    ----------------------------------------------------------------------------------------------------------
-__krndata TimerDevice_t _timerControl = {
-    .base = TIMER,
+EXPORT KERNEL_DATA
+TimerDevice_t _timerControl = {
+    .base = BCM2835_TIMER,
     .pic = &picBcm2835,
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
@@ -37,4 +37,5 @@ __krndata TimerDevice_t _timerControl = {
 //
 // -- This is the pointer to the structure we will really use
 //    -------------------------------------------------------
-__krndata TimerDevice_t *timerControl = &_timerControl;
+EXPORT KERNEL_DATA
+TimerDevice_t *timerControl = &_timerControl;

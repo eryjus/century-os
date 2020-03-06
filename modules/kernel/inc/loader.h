@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  loader.h -- These are the prototypes for function renames for the loader to call at physical locations
+//  loader.h -- These are functions that used to perform the loader functions
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,84 +10,48 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-10  Initial   0.3.0   ADCL  Initial version
+//  2019-Dec-16  Initial   0.5.0   ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #pragma once
 
-#include "cpu.h"
+
+#include "types.h"
 
 
 //
-// -- these 2 variable are provided by the linker
-//    -------------------------------------------
-EXTERN archsize_t phys_loc;
-EXTERN archsize_t kern_loc;
-EXTERN uint8_t *_loaderEnd;
-EXTERN uint8_t *_loaderStart;
-EXTERN frame_t pmmEarlyFrame;
-EXTERN frame_t pmmEarlyFrameSave;
-EXTERN archsize_t mmuLvl1Table;
-EXTERN frame_t intTableAddr;
+// -- this function will call the global initialization functions
+//    -----------------------------------------------------------
+EXTERN_C EXPORT LOADER
+void LoaderFunctionInit(void);
 
 
 //
-// -- This is a call to kMemSetB
-//    --------------------------
-typedef void (*kMemSetB_t)(void *buf, uint8_t wrd, size_t cnt);
-EXTERN kMemSetB_t lMemSetB;
+// -- Complete the initialization of the MMU
+//    --------------------------------------
+EXTERN_C EXPORT LOADER
+void MmuInit(void);
 
 
 //
-// -- This macro is intended to generic enough to convert a virtual address to a physical one.  However,
-//    keep in mind that this works on one address only.  Therefore if a function calls another function,
-//    this macro will fix the first one, but not the deeper call.
-//    --------------------------------------------------------------------------------------------------
-#define PHYS_OF(f)  ((archsize_t)(f) - kern_loc + phys_loc + ((archsize_t)&_loaderEnd - (archsize_t)&_loaderStart))
+// -- This is the prototype for the loader main entry point
+//    -----------------------------------------------------
+EXTERN_C EXPORT LOADER NORETURN
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2);
 
 
 //
-// -- This is a special-case macro to print a string to the serial port during early initialization
-//    ---------------------------------------------------------------------------------------------
-#define LoaderSerialPutS(x)     SerialPutS(&loaderSerial, (char *)PHYS_OF(x))
-#define LoaderSerialPutHex(x)   SerialPutHex(&loaderSerial, x)
-#define LoaderSerialPutChar(c)  SerialPutChar(&loaderSerial, c)
+// -- This is the prototype function to jump into the kernel proper
+//    -------------------------------------------------------------
+EXTERN_C EXPORT LOADER NORETURN
+void JumpKernel(void (*addr)(), archsize_t stack) __attribute__((noreturn));
 
 
 //
-// -- Function prototypes
-//    -------------------
-extern "C" {
+// -- This is the kernel function that will gain control (kernel entry point)
+//    -----------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL NORETURN
+void kInit(void);
 
-
-    //
-    // -- This is the function that will allocate a frame during early initialization (< 4MB)
-    //    -----------------------------------------------------------------------------------
-    EXPORT LOADER frame_t NextEarlyFrame(void);
-
-    //
-    // -- function to initialize the loader functions
-    //    -------------------------------------------
-    EXPORT LOADER void LoaderFunctionInit(void);
-
-
-    //
-    // -- Early Initialization function to handle this initialization by architecture
-    //    ---------------------------------------------------------------------------
-    EXPORT LOADER void EarlyInit(void);
-
-
-    //
-    // -- Perform the MMU Early Initialization so that we can use the whole kernel
-    //    source no matter where it is located
-    //    ------------------------------------------------------------------------
-    EXPORT LOADER void MmuEarlyInit(void);
-
-
-    //
-    // -- This is the loader main entry point
-    //    -----------------------------------
-    EXPORT LOADER void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2);
-}

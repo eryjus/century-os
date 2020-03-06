@@ -20,6 +20,7 @@
 #include "types.h"
 #include "cpu.h"
 #include "hw-disc.h"
+#include "printf.h"
 #include "fb.h"
 
 
@@ -34,8 +35,12 @@ void FrameBufferClear(void)
     size_t cnt = GetFrameBufferHeight() * GetFrameBufferWidth();
     uint16_t *b = (uint16_t *)GetFrameBufferAddr();
 
+    kprintf("Attempting the clear the monitor screen at address %p\n", b);
+
     kMemSetW(b, GetBgColor(), cnt);
 
     SetRowPos(0);
     SetColPos(0);
+
+    kprintf(".. Done!\n");
 }

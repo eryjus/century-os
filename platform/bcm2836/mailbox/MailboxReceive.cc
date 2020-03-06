@@ -19,7 +19,6 @@
 
 
 #include "types.h"
-#include "cpu.h"
 #include "printf.h"
 #include "hardware.h"
 
@@ -27,6 +26,7 @@
 //
 // -- Receive a message from the mailbox
 //    ----------------------------------
+EXTERN_C EXPORT KERNEL
 archsize_t _MailboxReceive(MailboxDevice_t *dev, uint32_t mailbox)
 {
     if (!dev) return -1;
@@ -41,7 +41,7 @@ archsize_t _MailboxReceive(MailboxDevice_t *dev, uint32_t mailbox)
 
         if ((msg & 0x0f) == mailbox) {
             kprintf(".. Data received\n");
-            return ((msg & 0xfffffff0) + 0x40000000);
+            return ((msg & 0xfffffff0) + ARM_MAILBOX_OFFSET);
         }
     }
 }

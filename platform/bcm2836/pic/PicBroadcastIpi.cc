@@ -15,21 +15,35 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
-#include "timer.h"
-#include "hardware.h"
 #include "pic.h"
+#include "debug.h"
 
 
 //
 // -- Broadcast an IPI to all CPUs (including myself)
 //    -----------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
 {
-    if (ipi < 0 || ipi > 31) return;
     if (!dev) return;
+    if (!dev->ipiReady) return;
 
-    for (int i = 0; i < 1; i ++) {
-        MmioWrite(IPI_MAILBOX_BASE + (0x10 * i), (1<<ipi));
+#if DEBUG_ENABLED(PicBroadcastIpi)
+    kprintf("For IPI broadcast Qualified on CPU %d\n", thisCpu->cpuNum);
+#endif
+
+    for (int i = 0; i < cpus.cpusRunning; i ++) {
+        if (i != thisCpu->cpuNum) {
+#if DEBUG_ENABLED(PicBroadcastIpi)
+            kprintf("Sending to mailbox for cpu %d\n", i);
+#endif
+            MmioWrite(IPI_MAILBOX_BASE + (0x10 * i), (archsize_t)ipi);
+        }
     }
+
+#if DEBUG_ENABLED(PicBroadcastIpi)
+    kprintf(".. Completed on CPU %d\n", thisCpu->cpuNum);
+#endif
 }

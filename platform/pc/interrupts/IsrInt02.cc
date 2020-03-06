@@ -26,6 +26,7 @@
 //
 // -- An NMI handler
 //    --------------
+EXTERN_C EXPORT KERNEL
 void IsrInt02(isrRegs_t *regs)
 {
     kprintf("\nNMI\n");

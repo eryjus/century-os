@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __PIC_H__
 #   error "Use #include \"pic.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -61,11 +64,16 @@ typedef enum {
 } Irq_t;
 
 
+
 //
 // -- These are the possible pic drivers for the computer
 //    ---------------------------------------------------
-extern struct PicDevice_t pic8259;
-extern struct PicDevice_t ioapicDriver;
+EXTERN KERNEL_DATA
+struct PicDevice_t pic8259;
+
+EXTERN KERNEL_DATA
+struct PicDevice_t ioapicDriver;
+
 
 //
 // -- This is the base location of the timer on x86
@@ -86,11 +94,20 @@ extern struct PicDevice_t ioapicDriver;
 //
 // -- Here are the function prototypes that the operation functions need to conform to
 //    --------------------------------------------------------------------------------
-__CENTURY_FUNC__ void _PicInit(PicDevice_t *dev, const char *name);
-__CENTURY_FUNC__ isrFunc_t _PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler);
-__CENTURY_FUNC__ void _PicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _PicMaskIrq(PicDevice_t *dev, Irq_t irq);
-__CENTURY_FUNC__ void _PicEoi(PicDevice_t *dev, Irq_t irq);
+EXTERN_C EXPORT KERNEL
+void _PicInit(PicDevice_t *dev, const char *name);
+
+EXTERN_C EXPORT KERNEL
+isrFunc_t _PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler);
+
+EXTERN_C EXPORT KERNEL
+void _PicUnmaskIrq(PicDevice_t *dev, Irq_t irq);
+
+EXTERN_C EXPORT KERNEL
+ void _PicMaskIrq(PicDevice_t *dev, Irq_t irq);
+
+EXTERN_C EXPORT KERNEL
+ void _PicEoi(PicDevice_t *dev, Irq_t irq);
 
 
 

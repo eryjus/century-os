@@ -15,9 +15,15 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __PMM_H__
 #   error "Do not include 'pmm-msg.h' directly.  It can be included through 'pmm.h'"
 #endif
+
+
+#include "types.h"
 
 
 //

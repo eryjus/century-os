@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "printf.h"
 #include "mmu.h"
 #include "hardware.h"
@@ -24,10 +25,11 @@
 //
 // -- read the rsdt table
 //    -------------------
-bool __ldrtext AcpiReadRsdt(archsize_t loc)
+EXTERN_C EXPORT LOADER
+bool AcpiReadRsdt(archsize_t loc)
 {
     kprintf("Reading the RSDT\n");
-    CHK_ACPI(loc);
+    CheckAcpi(loc);
 
     if (!AcpiCheckTable(loc, MAKE_SIG("RSDT"))) {
         kprintf("The RSDT does not match the required checks\n");

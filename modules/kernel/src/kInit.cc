@@ -81,7 +81,7 @@ void StartB(void)
 //
 // -- This is the main entry point for the kernel, starting with initialization
 //    -------------------------------------------------------------------------
-EXPORT KERNEL
+EXTERN_C EXPORT KERNEL NORETURN
 void kInit(void)
 {
     //
@@ -115,6 +115,8 @@ void kInit(void)
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
     CoresStart();
+    picControl->ipiReady = true;
+    kprintf("Starting processes\n");
 
     A = ProcessCreate(StartA);
     B = ProcessCreate(StartB);
@@ -199,13 +201,4 @@ void kInit(void)
     }
 #endif
 }
-
-
-//
-// -- This is the structure with info about the cpus
-//    ----------------------------------------------
-Cpu_t cpus = {
-    .cpusDiscovered = 0,
-    .cpusRunning = 1,
-};
 

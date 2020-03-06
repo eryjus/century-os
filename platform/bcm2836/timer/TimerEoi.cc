@@ -17,8 +17,6 @@
 
 
 #include "types.h"
-#include "hardware.h"
-#include "printf.h"
 #include "timer.h"
 
 

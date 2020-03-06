@@ -74,12 +74,12 @@ typedef struct isrRegs_t {
 //
 // -- The Interrupt Descriptor Table Entry
 //    ------------------------------------
-typedef struct IdtEntry {
+typedef struct IdtEntry_t {
     uint16_t baseLow;
     uint16_t sel;
     uint8_t always0;
     uint8_t flags;
     uint16_t baseHigh;
-} __attribute__((packed)) IdtEntry;
+} __attribute__((packed)) IdtEntry_t;
 
 

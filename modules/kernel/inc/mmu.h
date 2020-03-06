@@ -22,7 +22,9 @@
 //===================================================================================================================
 
 
-#ifndef __MMU_H__
+#pragma once
+
+
 #define __MMU_H__
 
 #include <stdint.h>
@@ -30,6 +32,7 @@
 #include <stdbool.h>
 
 #include "types.h"
+#include "spinlock.h"
 #include "arch-mmu.h"
 
 
@@ -43,60 +46,81 @@ enum {
 };
 
 
-#define MMU_CLEAR_FRAME         0xff400000
-#define MMU_FRAMEBUFFER         0xfb000000
-#define MMU_HEAP_START          0x90000000
+//
+// -- This structure is used to trigger TLB flushes across multiple cores
+//    -------------------------------------------------------------------
+typedef struct TlbFlush_t {
+    Spinlock_t lock;
+    volatile archsize_t addr;
+    AtomicInt_t count;
+} TlbFlush_t;
 
-#define MMU_NEW_TABLE_INIT      0xff408000
 
-#define MMU_STACK_INIT_VADDR    0xff40a000
+//
+// -- this is the structure to control the TLB flushes
+//    ------------------------------------------------
+EXTERN EXPORT KERNEL_BSS
+TlbFlush_t tlbFlush;
 
 
 //
 // -- With the page table structures given, map a virtual address to a physical frame
 //    -------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void MmuMapToFrame(archsize_t addr, frame_t frame, int flags);
 
 
 //
 // -- Unmap a page from the page table
 //    --------------------------------
+EXTERN_C EXPORT KERNEL
 frame_t MmuUnmapPage(archsize_t addr);
 
 
 //
 // -- Clear a frame before formally adding it to the paging tables
 //    ------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void MmuClearFrame(frame_t frame);
 
 
 //
 // -- Check of the address is mapped
 //    ------------------------------
-__CENTURY_FUNC__ bool MmuIsMapped(archsize_t addr);
-
-
-//
-// -- Complete the initialization of the MMU
-//    --------------------------------------
-void MmuInit(void);
+EXTERN_C EXPORT KERNEL
+bool MmuIsMapped(archsize_t addr);
 
 
 //
 // -- Create a new set of paging tables for a new process
 //    ---------------------------------------------------
-__CENTURY_FUNC__ frame_t MmuNewVirtualSpace(frame_t stack);
+EXTERN_C EXPORT KERNEL
+frame_t MmuNewVirtualSpace(frame_t stack);
+
+
+//
+// -- Convert a virtual address to physical for the current paging tables
+//    returns -1 if not mapped, which should be an invalid (unaligned) address for most archs
+//    ---------------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t MmuVirtToPhys(void *addr);
 
 
 //
 // -- Check a structure to see if it is fully mapped
 //    ----------------------------------------------
-#define IS_MAPPED(a,z) ({                                                                                   \
-        bool __rv = true;                                                                                   \
-        for (archsize_t __va = ((archsize_t)a) & ~0x0fff; __va <= (((archsize_t)a) + z); __va += 1024) {    \
-            __rv = __rv && MmuIsMapped(__va);                                                               \
-        }                                                                                                   \
+#define IS_MAPPED(a,z) ({                                                                                       \
+        bool __rv = true;                                                                                       \
+        for (archsize_t __va = ((archsize_t)a) & ~0x0fff; __va <= (((archsize_t)a) + z); __va += PAGE_SIZE) {   \
+            __rv = __rv && MmuIsMapped(__va);                                                                   \
+        }                                                                                                       \
         __rv; })
 
 
-#endif
+//
+// -- The spinlock for clearing a page before giving it to the MMU
+//    ------------------------------------------------------------
+EXTERN EXPORT KERNEL_DATA
+Spinlock_t frameClearLock;
+
+

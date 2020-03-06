@@ -19,7 +19,15 @@
 
 
 //
+// -- Has the PMM been initialized properly for use?
+//    ----------------------------------------------
+EXPORT KERNEL_DATA
+bool pmmInitialized = false;
+
+
+//
 // -- This is the structure for managing the PMM
 //    ------------------------------------------
-__krndata PmmManager_t pmm = {0};
+EXPORT KERNEL_DATA
+PmmManager_t pmm = {0};
 

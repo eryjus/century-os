@@ -17,7 +17,9 @@
 //===================================================================================================================
 
 
-#ifndef __PMM_H__
+#pragma once
+
+
 #define __PMM_H__
 
 
@@ -52,44 +54,65 @@ typedef struct PmmManager_t {
 //
 // -- This variable is the actual Physical Memory Manager data
 //    --------------------------------------------------------
-extern PmmManager_t pmm;
+EXTERN EXPORT KERNEL_DATA
+PmmManager_t pmm;
+
+
+//
+// -- Has the PMM been initialized properly for use?
+//    ----------------------------------------------
+EXTERN EXPORT KERNEL_DATA
+bool pmmInitialized;
+
+
+//
+// -- The early frame initialization
+//    ------------------------------
+EXTERN EXPORT LOADER_DATA
+archsize_t earlyFrame;
 
 
 //
 // -- add the frames to an existing block if possible, returning if the operation was successful
 //    ------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ bool _PmmAddToStackNode(StackHead_t *stack, frame_t frame, size_t count);
+EXTERN_C EXPORT KERNEL
+bool _PmmAddToStackNode(StackHead_t *stack, frame_t frame, size_t count);
 
 
 //
 // -- This is the worker function to find a block and allocate it
 //    -----------------------------------------------------------
-__CENTURY_FUNC__ frame_t _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment);
+EXTERN_C EXPORT KERNEL
+frame_t _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment);
 
 
 //
 // -- This is the worker function to find a block and allocate it
 //    -----------------------------------------------------------
-__CENTURY_FUNC__ frame_t _PmmDoRemoveFrame(StackHead_t *stack, bool scrub);
+EXTERN_C EXPORT KERNEL
+frame_t _PmmDoRemoveFrame(StackHead_t *stack, bool scrub);
 
 
 //
 // -- Allocate a frame from the pmm
 //    -----------------------------
-__CENTURY_FUNC__ frame_t PmmAllocateFrame(void);
+EXTERN_C EXPORT KERNEL
+frame_t PmmAllocateFrame(void);
 
 
 //
 // -- Allocate a frame from low memory in the pmm
 //    -------------------------------------------
-__CENTURY_FUNC__ inline frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, false); }
+EXTERN_C EXPORT KERNEL
+inline frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, false); }
 
 
 
 //
 // -- Allocate a block of aligned frames; bitAlignment is the significance of the alignment (min is 12 bits)
 //    ------------------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ inline frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
+EXTERN_C EXPORT KERNEL
+inline frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
     return _PmmDoAllocAlignedFrames(&pmm.normalStack, count, bitAlignment);
 }
 
@@ -97,7 +120,8 @@ __CENTURY_FUNC__ inline frame_t PmmAllocAlignedFrames(const size_t count, const 
 //
 // -- Same as above but from low mem; bitAlignment is significance of the alignment (min is 12 bits)
 //    ----------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ inline frame_t PmmAllocAlignedLowFrames(const size_t count, const size_t bitAlignment) {
+EXTERN_C EXPORT KERNEL
+inline frame_t PmmAllocAlignedLowFrames(const size_t count, const size_t bitAlignment) {
     return _PmmDoAllocAlignedFrames(&pmm.lowStack, count, bitAlignment);
 }
 
@@ -105,51 +129,62 @@ __CENTURY_FUNC__ inline frame_t PmmAllocAlignedLowFrames(const size_t count, con
 //
 // -- Release a block of frames (very useful during initialization)
 //    -------------------------------------------------------------
-__CENTURY_FUNC__ void PmmReleaseFrameRange(const frame_t frame, const size_t count);
+EXTERN_C EXPORT KERNEL
+void PmmReleaseFrameRange(const frame_t frame, const size_t count);
 
 
 //
 // -- Release a single frame
 //    ----------------------
-__CENTURY_FUNC__ inline void PmmReleaseFrame(const frame_t frame) { return PmmReleaseFrameRange(frame, 1); }
+EXTERN_C EXPORT KERNEL
+inline void PmmReleaseFrame(const frame_t frame) { return PmmReleaseFrameRange(frame, 1); }
 
 
 //
 // -- Scrub a frame in preparation the next allocation (includes clearing the frame)
 //    ------------------------------------------------------------------------------
-__CENTURY_FUNC__ inline void PmmScrubFrame(const frame_t frame) { MmuClearFrame(frame); }
+EXTERN_C EXPORT KERNEL
+inline void PmmScrubFrame(const frame_t frame) { MmuClearFrame(frame); }
 
 
 //
 // -- This is the function to scrub a single block from the scrubStack
 //    ----------------------------------------------------------------
-__CENTURY_FUNC__ void __krntext PmmScrubBlock(void);
+EXTERN_C EXPORT KERNEL
+void PmmScrubBlock(void);
 
 
 //
 // -- Initialize the PMM
 //    ------------------
-__CENTURY_FUNC__ void PmmInit(void);
+EXTERN_C EXPORT LOADER
+void PmmInit(void);
 
 
 //
 // -- For debugging purposes, dump the state of the PMM manager
 //    ---------------------------------------------------------
-__CENTURY_FUNC__ void PmmDumpState(void);
+EXTERN_C EXPORT KERNEL
+void PmmDumpState(void);
+
+
+//
+// -- Allocate an early frame before the PMM is put in charge
+//    -------------------------------------------------------
+EXTERN_C EXPORT ENTRY
+frame_t NextEarlyFrame(void);
 
 
 //
 // -- Clean/Invalidate PMM Manager structure
 //    --------------------------------------
-#define CLEAN_PMM()                 CLEAN_CACHE(&pmm, sizeof(PmmManager_t))
-#define INVALIDATE_PMM()            INVALIDATE_CACHE(&pmm, sizeof(PmmManager_t))
+#define CLEAN_PMM()                 CleanCache((archsize_t)&pmm, sizeof(PmmManager_t))
+#define INVALIDATE_PMM()            InvalidateCache(&pmm, sizeof(PmmManager_t))
 
 
 //
 // -- Clean/Invalidate PMM Block Structure
 //    ------------------------------------
-#define CLEAN_PMM_BLOCK(blk)        CLEAN_CACHE(blk, sizeof(PmmBlock_t))
-#define INVALIDATE_PMM_BLOCK(blk)   INVALIDATE_CACHE(blk, sizeof(PmmBlock_t))
+#define CLEAN_PMM_BLOCK(blk)        CleanCache((archsize_t)blk, sizeof(PmmBlock_t))
+#define INVALIDATE_PMM_BLOCK(blk)   InvalidateCache(blk, sizeof(PmmBlock_t))
 
-
-#endif

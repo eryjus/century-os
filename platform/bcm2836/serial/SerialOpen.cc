@@ -17,6 +17,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
 #include "serial.h"
 
@@ -24,7 +25,8 @@
 //
 // -- Initialize the UART Serial Port
 //    -------------------------------
-void __ldrtext _SerialOpen(SerialDevice_t *dev)
+EXTERN_C EXPORT KERNEL
+void _SerialOpen(SerialDevice_t *dev)
 {
     if (!dev) return;
 
@@ -40,7 +42,7 @@ void __ldrtext _SerialOpen(SerialDevice_t *dev)
     MmioWrite(base + AUX_MU_CNTL_REG, 0);
 
     // -- Program the Line Control Register -- 8 bits, please
-    MmioWrite(base + AUX_MU_LCR_REG, 3);
+    MmioWrite(base + AUX_MU_LCR_REG, 3); //
 
     // -- Program the Modem Control Register -- reset
     MmioWrite(base + AUX_MU_MCR_REG, 0);
@@ -66,3 +68,4 @@ void __ldrtext _SerialOpen(SerialDevice_t *dev)
     // -- clear the input buffer
     while ((MmioRead(base + AUX_MU_LSR_REG) & (1<<0)) != 0) MmioRead(base + AUX_MU_IO_REG);
 }
+

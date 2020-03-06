@@ -15,22 +15,21 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __SERIAL_H__
 #   error "Use #include \"serial.h\" and it will pick up this file; do not #include this file directly."
 #endif
+
+
+#include "types.h"
 
 
 //
 // -- on bcm2835 SoC, this is the type we use to refer to the serial port
 //    -------------------------------------------------------------------
 typedef archsize_t SerialBase_t;
-
-
-//
-// -- These are the base addresses for the serial port depending on the loader or kernel addressing
-//    ---------------------------------------------------------------------------------------------
-#define LDR_SERIAL_BASE     (MMIO_LOADER_LOC + 0x215000)
-#define KRN_SERIAL_BASE     (MMIO_VADDR + 0x215000)
 
 
 //
@@ -63,7 +62,7 @@ typedef archsize_t SerialBase_t;
 #define AUX_MU_IER_REG      (0x44)                      // Mini UART Interrupt Enable
 //-------------------------------------------------------------------------------------------------------------------
 #define AUXMUIER_RXENB      (1<<1)                      // Generate interrupt when RX FIFO queue has data
-#define AUXMUIER_TXENB      (1<<1)                      // Generate interrupt when TX FIFO queue is empty
+#define AUXMUIER_TXENB      (1<<0)                      // Generate interrupt when TX FIFO queue is empty
 
 
 #define AUX_MU_IIR_REG      (0x48)                      // Mini UART Interrupt Identify

@@ -15,8 +15,12 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __PIC_H__
-#define __PIC_H__
+#   define __PIC_H__
+#endif
 
 
 #include "types.h"
@@ -47,6 +51,7 @@ struct PicDevice_t;
 typedef struct PicDevice_t {
     GenericDevice_t device;
 
+    volatile bool ipiReady;
     void (*PicInit)(PicDevice_t *, const char *);
     isrFunc_t (*PicRegisterHandler)(PicDevice_t *, Irq_t, int, isrFunc_t);
     void (*PicMaskIrq)(PicDevice_t *, Irq_t);
@@ -60,31 +65,42 @@ typedef struct PicDevice_t {
 
 
 //
-// -- The global PIC control structure holding pointers to all the proper functions.  Before we reference this
-//    global variable, we are already in the kernel.  There is no need for a loader version of this device.
-//    ----------------------------------------------------------------------------------------------------------
-extern PicDevice_t *picControl;
+// -- The global PIC control structure holding pointers to all the proper functions.
+//    ------------------------------------------------------------------------------
+EXTERN KERNEL_DATA
+PicDevice_t *picControl;
 
 
 //
 // -- These are the common interface functions we will use to interact with the PIC.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    ------------------------------------------------------------------------------------------------------
-inline void PicInit(PicDevice_t *dev, const char *name) { dev->PicInit(dev, name); }
-inline isrFunc_t PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler) {
+EXPORT KERNEL INLINE
+void PicInit(PicDevice_t *dev, const char *name) { dev->PicInit(dev, name); }
+
+EXPORT KERNEL INLINE
+isrFunc_t PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler) {
                     return dev->PicRegisterHandler(dev, irq, vector, handler); }
-inline void PicUnmaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicUnmaskIrq(dev, irq); }
-inline void PicMaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicMaskIrq(dev, irq); }
-inline void PicEoi(PicDevice_t *dev, Irq_t irq) { dev->PicEoi(dev, irq); }
-inline archsize_t PicDetermineIrq(PicDevice_t *dev) { return dev->PicDetermineIrq(dev); }
-inline void PicBroadcastIpi(PicDevice_t *dev, int ipi) { return dev->PicBroadcastIpi(dev, ipi); }
+
+EXPORT KERNEL INLINE
+void PicUnmaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicUnmaskIrq(dev, irq); }
+
+EXPORT KERNEL INLINE
+void PicMaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicMaskIrq(dev, irq); }
+
+EXPORT KERNEL INLINE
+void PicEoi(PicDevice_t *dev, Irq_t irq) { dev->PicEoi(dev, irq); }
+
+EXPORT KERNEL INLINE
+archsize_t PicDetermineIrq(PicDevice_t *dev) { return dev->PicDetermineIrq(dev); }
+
+EXPORT KERNEL INLINE
+void PicBroadcastIpi(PicDevice_t *dev, int ipi) { return dev->PicBroadcastIpi(dev, ipi); }
 
 
 //
 // -- Pick the correct PIC given what we have available
 //    -------------------------------------------------
-__CENTURY_FUNC__ PicDevice_t *PicPick(void);
-
-
-#endif
+EXTERN_C EXPORT LOADER
+PicDevice_t *PicPick(void);
 

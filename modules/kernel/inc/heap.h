@@ -60,7 +60,6 @@
 
 
 #include "types.h"
-#include "cpu.h"
 
 
 //
@@ -168,129 +167,140 @@ typedef struct KHeap_t {
 //
 // -- Global heap variable
 //    --------------------
-EXTERN KERNEL_DATA KHeap_t *kHeap;
+EXTERN KERNEL_DATA
+KHeap_t *kHeap;
 
 
 //
-// -- Function prototypes
+// -- Add an entry of available memory to the ordered list of free memory by size
+//    ---------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void HeapAddToList(OrderedList_t *entry);
+
+
+//
+// -- Align an ordered list free memory block to a page boundary,
+//    creating a free block ahead of the aligned block
+//    -----------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+OrderedList_t *HeapAlignToPage(OrderedList_t *entry);
+
+
+//
+// -- Allocate  memory from the heap
+//    ------------------------------
+EXTERN_C EXPORT KERNEL
+void *HeapAlloc(size_t size, bool align);
+
+
+//
+// -- Calculate how to adjust a block to align it to the frame
+//    --------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+size_t HeapCalcPageAdjustment(OrderedList_t *entry);
+
+
+//
+// -- Find a hole of the appropriate size (best fit method)
+//    -----------------------------------------------------
+EXTERN_C EXPORT KERNEL
+OrderedList_t *HeapFindHole(size_t adjustedSize, bool align);
+
+
+//
+// -- Free a block of memory
+//    ----------------------
+EXTERN_C EXPORT KERNEL
+void HeapFree(void *mem);
+
+
+//
+// -- Initialize the Heap
 //    -------------------
-extern "C" {
+EXTERN_C EXPORT LOADER
+void HeapInit(void);
 
 
-    //
-    // -- Add an entry of available memory to the ordered list of free memory by size
-    //    ---------------------------------------------------------------------------
-    EXPORT KERNEL void HeapAddToList(OrderedList_t *entry);
+//
+// -- Insert a newly freed block into the ordered list
+//    ------------------------------------------------
+EXTERN_C EXPORT KERNEL
+OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add);
 
 
-    //
-    // -- Align an ordered list free memory block to a page boundary,
-    //    creating a free block ahead of the aligned block
-    //    -----------------------------------------------------------
-    EXPORT KERNEL OrderedList_t *HeapAlignToPage(OrderedList_t *entry);
+//
+// -- Merge a free block with a free block on the immediate left if it is really free
+//    -------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr);
 
 
-    //
-    // -- Allocate  memory from the heap
-    //    ------------------------------
-    EXPORT KERNEL void *HeapAlloc(size_t size, bool align);
+//
+// -- Merge a free block with a free block on the immediate right if it is really free
+//    --------------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr);
 
 
-    //
-    // -- Calculate how to adjust a block to align it to the frame
-    //    --------------------------------------------------------
-    EXPORT KERNEL size_t HeapCalcPageAdjustment(OrderedList_t *entry);
+//
+// -- Release a entry from the ordered list
+//    -------------------------------------
+EXTERN_C EXPORT KERNEL
+void HeapReleaseEntry(OrderedList_t *entry);
 
 
-    //
-    // -- Find a hole of the appropriate size (best fit method)
-    //    -----------------------------------------------------
-    EXPORT KERNEL OrderedList_t *HeapFindHole(size_t adjustedSize, bool align);
+//
+// -- Remove an entry from the list
+//    -----------------------------
+EXTERN_C EXPORT KERNEL
+void HeapRemoveFromList(OrderedList_t *entry);
 
 
-    //
-    // -- Free a block of memory
-    //    ----------------------
-    EXPORT KERNEL void HeapFree(void *mem);
+//
+// -- Split a block into 2 blocks, creating ordered list entries for each
+//    -------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize);
 
 
-    //
-    // -- Initialize the Heap
-    //    -------------------
-    EXPORT KERNEL void HeapInit(void);
-
-
-    //
-    // -- Insert a newly freed block into the ordered list
-    //    ------------------------------------------------
-    EXPORT KERNEL OrderedList_t *HeapNewListEntry(KHeapHeader_t *hdr, bool add);
-
-
-    //
-    // -- Merge a free block with a free block on the immediate left if it is really free
-    //    -------------------------------------------------------------------------------
-    EXPORT KERNEL OrderedList_t *HeapMergeLeft(KHeapHeader_t *hdr);
-
-
-    //
-    // -- Merge a free block with a free block on the immediate right if it is really free
-    //    --------------------------------------------------------------------------------
-    EXPORT KERNEL OrderedList_t *HeapMergeRight(KHeapHeader_t *hdr);
-
-
-    //
-    // -- Release a entry from the ordered list
-    //    -------------------------------------
-    EXPORT KERNEL void HeapReleaseEntry(OrderedList_t *entry);
-
-
-    //
-    // -- Remove an entry from the list
-    //    -----------------------------
-    EXPORT KERNEL void HeapRemoveFromList(OrderedList_t *entry);
-
-
-    //
-    // -- Split a block into 2 blocks, creating ordered list entries for each
-    //    -------------------------------------------------------------------
-    EXPORT KERNEL KHeapHeader_t *HeapSplitAt(OrderedList_t *entry, size_t adjustToSize);
-
-
-    //
-    // -- Debugging functions to validate the header of a block
-    //    -----------------------------------------------------
+//
+// -- Debugging functions to validate the header of a block
+//    -----------------------------------------------------
 #if DEBUG_HEAP == 1
-    EXPORT KERNEL void HeapValidateHdr(KHeapHeader_t *hdr, const char *from);
+EXTERN_C EXPORT KERNEL
+void HeapValidateHdr(KHeapHeader_t *hdr, const char *from);
 #else
 #   define HeapValidateHdr(h,f)     (void)0
 #endif
 
 
-    //
-    // -- Debugging function to validate the heap structure itself
-    //    --------------------------------------------------------
+//
+// -- Debugging function to validate the heap structure itself
+//    --------------------------------------------------------
 #if DEBUG_HEAP == 1
-    EXPORT KERNEL void HeapValidatePtr(const char *from);
+EXTERN_C EXPORT KERNEL
+void HeapValidatePtr(const char *from);
 #else
 #   define HeapValidatePtr(f)       (void)0
 #endif
-}
 
 
-    //
-    // -- Debugging function to monitor the health of the heap
-    //    ----------------------------------------------------
+//
+// -- Debugging function to monitor the health of the heap
+//    ----------------------------------------------------
 #if DEBUG_HEAP == 1
-    EXPORT KERNEL void HeapCheckHealth(void);
+EXTERN_C EXPORT KERNEL
+void HeapCheckHealth(void);
 #else
 #   define HeapCheckHealth()        (void)0
 #endif
 
 
-    //
-    // -- Panic error function when the heap has a problem
-    //    ------------------------------------------------
-    EXPORT KERNEL void __attribute__((noreturn)) HeapError(const char *from, const char *desc);
+//
+// -- Panic error function when the heap has a problem
+//    ------------------------------------------------
+EXTERN_C EXPORT KERNEL NORETURN
+void HeapError(const char *from, const char *desc);
 
 
 //
@@ -303,13 +313,13 @@ extern "C" {
 //
 // -- manage cache for the heap
 //    -------------------------
-#define CLEAN_HEAP()                    CLEAN_CACHE(kHeap, sizeof(KHeap_t))
-#define INVALIDATE_HEAP()               INVALIDATE_CACHE(kHeap, sizeof(KHeap_t))
+#define CLEAN_HEAP()                    CleanCache((archsize_t)kHeap, sizeof(KHeap_t))
+#define INVALIDATE_HEAP()               InvalidateCache(kHeap, sizeof(KHeap_t))
 
 
 //
 // -- manage cache for an entry
 //    -------------------------
-#define CLEAN_ENTRY(ent)                CLEAN_CACHE(ent, sizeof(OrderedList_t))
-#define INVALIDATE_ENTRY(ent)           INVALIDATE_CACHE(ent, sizeof(OrderedList_t))
+#define CLEAN_ENTRY(ent)                CleanCache((archsize_t)ent, sizeof(OrderedList_t))
+#define INVALIDATE_ENTRY(ent)           InvalidateCache(ent, sizeof(OrderedList_t))
 

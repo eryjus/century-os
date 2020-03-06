@@ -1,0 +1,58 @@
+##===================================================================================================================
+##
+##  debug -- This file contains the functions that are set to emit debugging output
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file will be processed with `sed` and `awk` to produce the necessary output in the proper format.  This
+##  file is very dependent on the columns and what is in each one.  First of all, any line that starts with a '#'
+##  is a comment and will be ignored.
+##
+##  The columns are as follows:
+##  * The debugged function ($1)
+##  * The debugging state ($2) [0 is disabled, any value >= 1 is enabled]
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
+##  2020-Feb-23  Initial  v0.5.0h  ADCL  Initial version
+##
+##===================================================================================================================
+
+
+##
+## -- These are the macros that enable the whole thing!!
+##    --------------------------------------------------
+DEBUG_TOKEN_PASTE(x)        DEBUG_##x
+DEBUG_ENABLED(func)         DEBUG_TOKEN_PASTE(func)>0
+
+
+##
+## -- MMU-related debugging
+##    ---------------------
+DEBUG_MmuMapToFrame         1
+
+
+
+
+##
+## -- PIC-related debugging
+##    ---------------------
+DEBUG_LApicBroadcastIpi     1
+DEBUG_IpiHandleTlbFlush     1
+DEBUG_PicBroadcastIpi       1
+DEBUG_PicMaskIrq            1
+DEBUG_PicUnmaskIrq          1
+
+
+
+##
+## -- Interrupt debugging
+##    -------------------
+DEBUG_IsrHandler            1
+
+
+

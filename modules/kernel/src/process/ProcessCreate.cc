@@ -32,7 +32,7 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
 
     Process_t *rv = NEW(Process_t);
     if (!assert_msg(rv != NULL, "Out of memory allocating a new Process_t")) {
-        HaltCpu();
+        CpuPanicPushRegs("Out of memory allocating a new Process_t");
     }
 
     rv->pid = scheduler.nextPID ++;

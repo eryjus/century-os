@@ -1,0 +1,30 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to 'make` build system -- build the object files for the kernel
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2019-Dec-21  Initial  v0.5.0b  ADCL  Initial version
+##
+#####################################################################################################################
+
+##
+## -- Go get some additional information for building the targets
+##    -----------------------------------------------------------
+include ../Tupfile.inc
+include $(WS)/arch/$(ARCH)/util/Tupfile.inc
+
+
+##
+## -- The rules to make the bootable targets in this folder
+##    -----------------------------------------------------
+: $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> constants.h
+: $(WS)/targets/$(TARGET)/config |> awk '{if (substr($0,1,1) != "#" && $1 != "") print $1"  equ  "$2 }' %f > %o |> constants.inc
+
+
+: $(WS)/targets/$(TARGET)/debug |> awk '{if (substr($0,1,1) != "#" && $1 != "") print "#define " $1" "$2 }' %f > %o |> debug.h
+

@@ -17,9 +17,7 @@
 //===================================================================================================================
 
 
-#ifndef __ELF_H__
-#define __ELF_H__
-
+#pragma once
 
 #include "types.h"
 
@@ -203,4 +201,3 @@ typedef struct Elf64PHdr_t {
 } __attribute__((packed)) Elf64PHdr_t;
 
 
-#endif

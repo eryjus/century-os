@@ -15,6 +15,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
 #include "serial.h"
 
@@ -22,7 +23,8 @@
 //
 // -- does the serial port have room for a character to be added?
 //    -----------------------------------------------------------
-bool __krntext _SerialHasRoom(SerialDevice_t *dev)
+EXTERN_C EXPORT KERNEL
+bool _SerialHasRoom(SerialDevice_t *dev)
 {
     if (!dev) return false;
 

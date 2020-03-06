@@ -23,7 +23,7 @@
 //===================================================================================================================
 
 
-#ifndef __HARDWARE_H__
+#pragma once
 #define __HARDWARE_H__
 
 
@@ -32,38 +32,31 @@
 
 
 //
-// == First take care of some of the more common macros that will be leveraged across all platforms
-//    =============================================================================================
-
-
-//
-// -- This is he maximum size of the name of the device (which will probably be used in a vfs somewhere)
-//    --------------------------------------------------------------------------------------------------
-#define MAX_DEV_NAME        128
-
-
-//
 // -- Write to a Memory Mapped I/O Register
 //    -------------------------------------
-#define MmioWrite(regLocation,data) (*((volatile archsize_t *)(regLocation)) = (data))
+EXPORT KERNEL INLINE
+void MmioWrite(archsize_t regLocation, uint32_t data) { (*((volatile uint32_t *)(regLocation)) = (data)); }
 
 
 //
 // -- Write to a 64-bit Memory Mapped I/O Register
 //    --------------------------------------------
-#define MmioWrite64(regLocation,data) (*((volatile uint64_t *)(regLocation)) = (data))
+EXPORT KERNEL INLINE
+void MmioWrite64(archsize_t regLocation, uint64_t data) { (*((volatile uint64_t *)(regLocation)) = (data)); }
 
 
 //
 // -- Read from a Memory Mapped I/O Register
 //    --------------------------------------
-#define MmioRead(regLocation) (*((volatile archsize_t *)(regLocation)))
+EXPORT KERNEL INLINE
+uint32_t MmioRead(archsize_t regLocation) { return (*((volatile uint32_t *)(regLocation))); }
 
 
 //
 // -- Read from a 64-bit Memory Mapped I/O Register
 //    ---------------------------------------------
-#define MmioRead64(regLocation) (*((volatile uint64_t *)(regLocation)))
+EXPORT KERNEL INLINE
+uint64_t MmioRead64(archsize_t regLocation) { return (*((volatile uint64_t *)(regLocation))); }
 
 
 //
@@ -105,12 +98,3 @@ typedef struct GenericDevice_t {
 #   include "platform-mailbox.h"
 #endif
 
-
-//
-// -- Include the different architectures' hardware definitions
-//    ---------------------------------------------------------
-
-
-
-
-#endif

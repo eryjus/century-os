@@ -15,13 +15,14 @@
 //===================================================================================================================
 
 
-#include "loader.h"
+#include "types.h"
 #include "hardware.h"
 
 
 //
 // -- Select the alternate function for a Gpio pin
 //    --------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _GpioSelectAlt(GpioDevice_t *dev, GpioPin_t pin, GpioAlt_t alt)
 {
     if (!dev) return;

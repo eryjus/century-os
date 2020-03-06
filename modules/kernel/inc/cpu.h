@@ -18,84 +18,154 @@
 //===================================================================================================================
 
 
-#ifndef __CPU_H__
+#pragma once
 #define __CPU_H__
 
 
 #include "types.h"
-#include "arch-cpu.h"
+
+
+//
+// -- This is the state of a CPU
+//    --------------------------
+typedef enum {
+    CPU_STOPPED = 0,
+    CPU_STARTING = 1,
+    CPU_STARTED = 2,
+    CPU_BAD = 0xffff,
+} CpuState_t;
+
+
+
+//
+// -- forward declare the process structure
+//    -------------------------------------
+struct Process_t;
+
+
+//
+// -- Set up the common CPU elements across all archs.  The actual ArchCpu_t structure will be defined
+//    in the arch-cpu.h include.
+//    ------------------------------------------------------------------------------------------------
+#define COMMON_CPU_ELEMENTS                 \
+    int cpuNum;                             \
+    archsize_t stackTop;                    \
+    archsize_t location;                    \
+    SMP_UNSTABLE CpuState_t state;          \
+    int kernelLocksHeld;                    \
+    bool reschedulePending;                 \
+    int disableIntDepth;                    \
+    ArchCpu_t *cpu;                         \
+    INT_UNSTABLE struct Process_t *process;
+
+
+#if __has_include("arch-cpu.h")
+#   include "arch-cpu.h"
+#endif
+
+
+//
+// -- Mark this CPU as started so the next one can be released
+//    --------------------------------------------------------
+#define NextCpu(c) cpus.perCpuData[c].state = CPU_STARTED
 
 
 //
 // -- Halt the CPU
 //    ------------
-extern "C" void Halt(void) __attribute__((noreturn));
+EXTERN_C EXPORT KERNEL
+void Halt(void) __attribute__((noreturn));
+
+
+//
+// -- Panic-halt the OS, reporting the problems and the system state
+//    --------------------------------------------------------------
+EXTERN_C EXPORT NORETURN KERNEL
+void CpuPanic(const char *reason, isrRegs_t *regs);
+
+
+//
+// -- Panic-halt the OS, pushing the registers onto the stack
+//    -------------------------------------------------------
+EXTERN_C EXPORT NORETURN KERNEL
+void CpuPanicPushRegs(const char *reason);
 
 
 //
 // -- Enable interrupts if they are disabled; assembly language function
 //    ------------------------------------------------------------------
-extern "C" void EnableInterrupts(void);
+EXTERN_C EXPORT KERNEL
+void EnableInterrupts(void);
 
 
 //
 // -- Disable interrupts and return the current flags state; assembly language function
 //    ---------------------------------------------------------------------------------
-extern "C" archsize_t DisableInterrupts(void);
+EXTERN_C EXPORT KERNEL
+archsize_t DisableInterrupts(void);
 
 
 //
 // -- Restore the flags state back to the provided state; note all flags are updates; assembly language function
 //    ----------------------------------------------------------------------------------------------------------
-extern "C" void RestoreInterrupts(archsize_t flg);
+EXTERN_C EXPORT KERNEL
+void RestoreInterrupts(archsize_t flg);
 
 
 //
 // -- Set a block of memory to the specified byte
 //    -------------------------------------------
-extern "C" void kMemSetB(void *buf, uint8_t wrd, size_t cnt);
+EXTERN_C EXPORT KERNEL
+void kMemSetB(void *buf, uint8_t wrd, size_t cnt);
 
 
 //
 // -- Set a block of memory to the specified word
 //    -------------------------------------------
-extern "C" void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
+EXTERN_C EXPORT KERNEL
+void kMemSetW(void *buf, uint16_t wrd, size_t cnt);
 
 
 //
 // -- Move a block of memory from one location to another
 //    ---------------------------------------------------
-extern "C" void kMemMove(void *tgt, void *src, size_t cnt);
+EXTERN_C EXPORT KERNEL
+void kMemMove(void *tgt, void *src, size_t cnt);
 
 
 //
 // -- Copy a string from one location to another
 //    ------------------------------------------
-extern "C" void kStrCpy(char *dest, char *src);
+EXTERN_C EXPORT KERNEL
+void kStrCpy(char *dest, char *src);
 
 
 //
 // -- Get the length of a string
 //    --------------------------
-extern "C" size_t kStrLen(const char *s);
-
-
-//
-// -- Get the CPU capabilities list for CenturyOS
-//    -------------------------------------------
-void CpuGetCapabilities(void);
-
-
-//
-// -- Get the CPU number of the current process
-//    -----------------------------------------
-__CENTURY_FUNC__ int CpuNum(void);
+EXTERN_C EXPORT KERNEL
+size_t kStrLen(const char *s);
 
 
 //
 // -- Start any APs that need to be started
 //    -------------------------------------
-__CENTURY_FUNC__ void CoresStart(void);
+EXTERN_C EXPORT KERNEL
+void CoresStart(void);
+
+
+//
+// -- Perform the initialization of the cpu data structure
+//    ----------------------------------------------------
+EXTERN_C EXPORT LOADER
+void CpuInit(void);
+
+
+//
+// -- A do-nothing function for use with drivers
+//    ------------------------------------------
+EXTERN_C EXPORT KERNEL
+void EmptyFunction(void);
 
 
 //
@@ -104,20 +174,22 @@ __CENTURY_FUNC__ void CoresStart(void);
 typedef struct Cpu_t {
     int cpusDiscovered;
     int cpusRunning;
+    int cpuStarting;
+    ArchCpu_t perCpuData[MAX_CPUS];
 } Cpu_t;
 
 
 //
-// -- This is used to control all the CPUs on the system
-//    --------------------------------------------------
-extern Cpu_t cpus;
+// -- A function to initialize the CPU structure for the cpu starting
+//    ---------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t CpuMyStruct(void);
 
 
 //
-// -- this is the location of the kernel stack
-//    ----------------------------------------
-#define STACK_LOCATION          0xff800000
-#define STACK_SIZE              0x1000
+// -- This is the cpu abstraction variable structure
+//    ----------------------------------------------
+EXTERN EXPORT KERNEL_BSS
+Cpu_t cpus;
 
 
-#endif

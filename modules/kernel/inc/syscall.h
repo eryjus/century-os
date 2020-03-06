@@ -15,8 +15,7 @@
 //===================================================================================================================
 
 
-#ifndef __SYSCALL_H__
-#define __SYSCALL_H__
+#pragma once
 
 
 #include "types.h"
@@ -25,13 +24,13 @@
 //
 // -- System function 1: Receive a message
 //    ------------------------------------
+EXTERN_C EXPORT SYSCALL
 void SyscallReceiveMessage(isrRegs_t *regs);
 
 
 //
 // -- System function 2: Send a message
 //    ------------------------------------
+EXTERN_C EXPORT SYSCALL
 void SyscallSendMessage(isrRegs_t *regs);
 
-
-#endif

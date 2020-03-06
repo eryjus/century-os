@@ -17,20 +17,30 @@
 //===================================================================================================================
 
 
-#include "hardware.h"
+#include "types.h"
+#include "serial.h"
 #include "hw-disc.h"
+#include "cpu.h"
+#include "printf.h"
 #include "platform.h"
 
 
 //
 // -- Handle the early initialization for the pc platform
 //    ---------------------------------------------------
-void __ldrtext PlatformEarlyInit(void)
+EXTERN_C EXPORT LOADER
+void PlatformEarlyInit(void)
 {
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+    kprintf("Hello...\n");
     HwDiscovery();
 
     // -- at some point, this will come from the DTB
     cpus.cpusDiscovered = 4;
+    cpus.cpusRunning = 1;
+    if (cpus.cpusDiscovered > MAX_CPUS) cpus.cpusDiscovered = MAX_CPUS;
+
+    CpuInit();
 }
 
 

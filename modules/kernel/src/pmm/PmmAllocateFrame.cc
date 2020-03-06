@@ -22,22 +22,19 @@
 
 #include "types.h"
 #include "spinlock.h"
-#include "loader.h"
 #include "heap.h"
 #include "pmm.h"
-
-
-__krndata bool pmmInitialized = false;
 
 
 //
 // -- Allocate a frame and return it
 //    ------------------------------
-__CENTURY_FUNC__ frame_t __krntext PmmAllocateFrame(void)
+EXTERN_C EXPORT KERNEL
+frame_t PmmAllocateFrame(void)
 {
     if (!pmmInitialized) {
-        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
-        return NextEarlyFrame();
+//        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
+        return (NextEarlyFrame() >> 12);
     }
 
     frame_t rv = 0;         // assume we will not find anything

@@ -22,6 +22,10 @@
 //
 // -- This is the local version of what we have found for hardware; these will be located in the loader addr space.
 //    -------------------------------------------------------------------------------------------------------------
-__ldrdata HardwareDiscovery_t _localHwDisc;
-__ldrdata HardwareDiscovery_t *localHwDisc = &_localHwDisc;
+HIDDEN LOADER_BSS
+HardwareDiscovery_t _localHwDisc;
+
+
+EXPORT LOADER_DATA
+HardwareDiscovery_t *localHwDisc = &_localHwDisc;
 

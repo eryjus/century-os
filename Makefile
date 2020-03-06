@@ -165,7 +165,7 @@ rpi2b: init
 ##    -----------------------------------------
 .PHONY: run-rpi2b
 run-rpi2b: rpi2b
-	pbl-server /dev/ttyUSB0 sysroot/rpi2b/boot/grub/cfg-file
+	pbl-server /dev/ttyUSB0 targets/rpi2b/bin/boot/grub/cfg-file
 
 
 ##
@@ -173,7 +173,7 @@ run-rpi2b: rpi2b
 ##    ------------------------------------------------------
 .PHONY: debug-rpi2b
 debug-rpi2b: rpi2b
-	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img -S
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img -S -s
 
 
 ##
@@ -211,7 +211,7 @@ x86-pc: init
 ##    ----------------------
 .PHONY: run-x86-pc
 run-x86-pc: x86-pc
-	qemu-system-i386 -smp 4 -m 3584 -serial stdio -cdrom img/x86-pc.iso
+	qemu-system-i386 -smp sockets=1,cores=4 -m 3584 -serial stdio -cdrom img/x86-pc.iso
 
 
 ##
@@ -227,7 +227,7 @@ bochs-x86-pc: x86-pc
 ##    ------------------------
 .PHONY: debug-x86-pc
 debug-x86-pc: x86-pc
-	qemu-system-i386 -smp 4 -no-reboot -no-shutdown -m 3584 -serial mon:stdio -cdrom img/x86-pc.iso -S
+	qemu-system-i386 -smp sockets=1,cores=4 -no-reboot -no-shutdown -m 3584 -serial mon:stdio -cdrom img/x86-pc.iso -S -s
 
 
 ##

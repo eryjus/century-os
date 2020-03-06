@@ -24,10 +24,10 @@
 //
 // -- End of interrupt signal
 //    -----------------------
-void _IoApicEoi(PicDevice_t *dev, Irq_t irq)
+EXTERN_C EXPORT KERNEL
+void _IoApicEoi(PicDevice_t *dev, UNUSED(Irq_t irq))
 {
     if (!dev) return;
-    if (irq < 0 || irq > 23) return;
 
     IoApicDeviceData_t *data = (IoApicDeviceData_t *)dev->device.deviceData;
     MmioWrite(data->localApicBase + LAPIC_EOI, 0);

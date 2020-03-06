@@ -27,7 +27,8 @@
 //    TODO: This may result in a deadlock if called from the heap; this needs to be fixed with a timeout
 //    See: http://eryjus.ddns.net:3000/issues/405 for more details.
 //    --------------------------------------------------------------------------------------------------
-__CENTURY_FUNC__ frame_t __krntext _PmmDoRemoveFrame(StackHead_t *stack, bool scrub)
+EXTERN_C EXPORT KERNEL
+frame_t _PmmDoRemoveFrame(StackHead_t *stack, bool scrub)
 {
     frame_t rv = 0;         // assume we will not find anything
     PmmBlock_t *block;

@@ -26,6 +26,7 @@
 //
 // -- Device not available Handler
 //    ----------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt07(isrRegs_t *regs)
 {
     kprintf("\nDevice Not Available\n");

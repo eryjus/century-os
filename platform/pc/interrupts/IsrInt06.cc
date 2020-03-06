@@ -26,6 +26,7 @@
 //
 // -- Invalid Opcode Exception Handler
 //    --------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrInt06(isrRegs_t *regs)
 {
     kprintf("\nInvalid Opcode Exception\n");

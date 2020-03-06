@@ -18,17 +18,19 @@
 
 
 #include "types.h"
-#include "printf.h"
 #include "cpu.h"
+#include "pic.h"
+#include "interrupt.h"
 #include "platform.h"
 
 
 //
 // -- Complete the platform initialization
 //    ------------------------------------
+EXTERN_C EXPORT LOADER
 void PlatformInit(void)
 {
-    UpdateKprintfPort();
-    kprintf("Serial port updated\n");
+    PicUnmaskIrq(picControl, BCM2836_CORE_MAILBOX0);
+    IsrRegister(0x64, PicMailbox0Handler);
 }
 

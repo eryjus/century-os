@@ -15,16 +15,16 @@
 //===================================================================================================================
 
 
-#include "loader.h"
-#include "pic.h"
+#include "types.h"
 #include "timer.h"
 
 
 //
 // -- This is the device description for the PIT
 //    ------------------------------------------
-__krndata TimerDevice_t timer8253Control = {
-    .base = TIMER,
+EXPORT KERNEL_DATA
+TimerDevice_t timer8253Control = {
+    .base = PC_TIMER,
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
     .TimerEoi = _TimerEoi,
@@ -36,4 +36,5 @@ __krndata TimerDevice_t timer8253Control = {
 //
 // -- This is the timer controller we use for this runtime
 //    ----------------------------------------------------
-__krndata TimerDevice_t *timerControl = &timer8253Control;
+EXPORT KERNEL_DATA
+TimerDevice_t *timerControl = &timer8253Control;

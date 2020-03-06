@@ -45,6 +45,8 @@
 ;;===================================================================================================================
 
 
+%include "constants.inc"
+
 ;;
 ;; -- take care of making sure that the conditional assemble flags are defined
 ;;    ------------------------------------------------------------------------
@@ -65,6 +67,7 @@
     extern      intTableAddr            ;; the location of the gdt, idt, and tss structures
     extern      kInitAp                 ;; the location of the C initializer
     extern      mmuLvl1Table            ;; the value to stuff into cr3
+    extern      CpuMyStruct             ;; the function to retrieve the cpu structure
 
 
 ;;
@@ -73,6 +76,7 @@
     section     .smptext
 
 
+    cpu         586
     bits        16                      ;; we start in 16-bit real mode!!
 entryAp:
     cli                                 ;; disable interrupts immediately
@@ -84,26 +88,18 @@ entryAp:
 lck:                                    ;; offset = 4
     dd          0
 
-stck:                                   ;; offset = 8
-    dd          0x2000                  ;; this is the top of the first stack
-
-gdtSize:                                ;; offset = 12 or 0xc
+gdtSize:                                ;; offset = 8
     dw          0x7f                    ;; the size of the global descriptor table to load
+    dd          X86_PHYS_GDT            ;; the location of the global descriptor table
 
-gdtLoc:                                 ;; offset = 14 or 0xe
-    dd          0                       ;; the location of the global descriptor table
+gdt2Size:                               ;; offseet = 0xe
+    dw          (((MAX_CPUS * 3) + 9) << 3) - 1
+    dd          X86_VIRT_GDT
 
-idtSize:                                ;; offset = 18 or 0x12
-    dw          0x7ff                   ;; the size of the interrupt descriptor table
+idt2Size:                               ;; offset = 0x14
+    dw          0x7ff
+    dd          X86_VIRT_IDT
 
-idtLoc:                                 ;; offset = 20 or 0x14
-    dd          0                       ;; the location of the interrupt descriptor table
-
-addr:                                   ;; offset = 24 or 0x18
-    dd          0x8000+(tgt_32_bit-entryAp)    ;; this is the absolute address of the 32-bit entry
-
-sel:                                    ;; offset = 28 or 0x1c
-    dw          0x08                    ;; CS segment selector
 
 
 ;;
@@ -120,12 +116,13 @@ setup:
 ;;    when more than 1 core is started at a time.  The spinlock will work as a boundary to keep the others
 ;;    at bay until it is safe to continue.
 ;;    ----------------------------------------------------------------------------------------------------
-    mov         ecx,1                   ;; this is the value to load
-    mov         ebx,4                   ;; This is the address of LCK -- an offset from the seg start!
+    mov         cx,1                    ;; this is the value to load
+    mov         bx,4                    ;; This is the address of LCK -- an offset from the seg start!
 
 loop:
-    mov         eax,0                   ;; this is the value it should be to load
-LOCK cmpxchg    [ebx],ecx               ;; do the cmpxchg -- notice the LOCK prefix
+    mov         ax,0                    ;; this is the value it should be to load
+LOCK xchg       [bx],cx                 ;; do the xchg -- notice the LOCK prefix
+    cmp         ax,ax
     jnz         loop                    ;; if the lock was not unlocked, loop
 
 
@@ -133,33 +130,22 @@ LOCK cmpxchg    [ebx],ecx               ;; do the cmpxchg -- notice the LOCK pre
 ;; -- only 1 core at a time gets here -- set up the stack segment register (real mode!)
 ;;    ---------------------------------------------------------------------------------
 segs:
-    xor         eax,eax                 ;; clear ax
-    mov         ecx,8                   ;; the stack address; offset = 8
+    mov         ax,0                    ;; get the stack segment we use
     mov         ss,ax
-    mov         esp,[ecx]               ;; set the stack
+    mov         sp,0x9000               ;; the stack will remain in this frame
 
 
 ;;
 ;; -- increment to the next stack (a small 2K stack)
 ;;    ----------------------------------------------
-    add         dword [ecx],0x800       ;; next stack
-    mov         dword [ebx],0           ;; unlock the lock and let the remaining cores race for the lock
-
-
-;;
-;; -- Load the IDT
-;;    ------------
-;;    mov     eax,ds                      ;; construct the physical address of the idtr contents
-;;    shl     eax,4
-    mov     eax,18                      ;; get the address of the structure
-    cs lidt    [eax]                       ;; load the idt
+    mov         word [bx],0             ;; unlock the lock and let the remaining cores race for the lock
 
 
 ;;
 ;; -- Load the GDT
 ;;    ------------
-    sub     eax,6                       ;; go to the previous strutures
-    cs lgdt    [eax]                       ;; load the gdt
+    mov        eax,0x08
+    lgdt       [eax]                    ;; load the gdt
 
 
 ;;
@@ -173,15 +159,13 @@ segs:
 ;;
 ;; -- the problem with the long jump is that it is an absolute address and we must be position independent.
 ;;    so, to that end, we need to calculate our position in memory.  This should not be too hard to do.
-;;    The basic calculation is: (tgt_32_bit - entryAp) + (`cs` << 4)
+;;    The basic calculation is: (tgt_32_bit - entryAp)
 ;;    -----------------------------------------------------------------------------------------------------
-;    jmp     long 0x08:0x80000+(tgt_32_bit-entryAp)  ;; jmp to 32-bit code
-    mov     edi,24                      ;; the offset of the target address
-    pushfd
-    push    0x08
-    push    dword [edi]
-    iretd
-;    cs jmp long [edi]
+    mov  ax,0x08
+    mov  bx,(tgt_32_bit-entryAp)+0x8000
+    push word ax
+    push word bx
+    retf
 
 
 ;;
@@ -194,7 +178,6 @@ tgt_32_bit:
     mov     ds,ax
     mov     es,ax
     mov     fs,ax
-    mov     gs,ax
     mov     ss,ax
 
 ;; -- the last step here is to load the tss
@@ -209,24 +192,54 @@ tgt_32_bit:
 
 
 ;;
-;; -- set up for large pages
-;;    ----------------------
-    mov     eax,cr4                     ;; get the cr4 register contents
-    or      eax,1<<4                    ;; set the pse bit
-    mov     cr4,eax                     ;; and write the value back
-
-;;
 ;; -- and enable paging
 ;;    -----------------
     mov     eax,cr0                     ;; get that control register
     or      eax,1<<31                   ;; set the PG bit
     mov     cr0,eax                     ;; all hell can break loose from here!
 
+
+    mov     eax,CpuMyStruct             ;; needs to be an indirect call
+    call    eax                         ;; go get the address for this cpu's structure
+    mov     ebx,eax                     ;; and save the return address
+
+;;
+;; -- Load the IDT
+;;    ------------
+    mov     eax,0x8014              ;; this is the address of the structure
+    lidt    [eax]                   ;; load the idt
+
+
+;;
+;; -- Reload the GDT with the virtual memory address
+;;    ----------------------------------------------
+    mov     eax,0x800e              ;; this is the address in memory
+    lgdt    [eax]                    ;; load the gdt
+
+    jmp     0x08:final_gdt           ;; actually jump to kernel space (off the trampoline!)
+
+
+;;
+;; -- This jump target is in the kernel address space.  Therefore, anything from here needs to be careful that
+;;    it is not referencing the trampoline page -- or doing it properly if needed.
+;;    --------------------------------------------------------------------------------------------------------
+final_gdt:
+    mov     eax,0x28                    ;; this is the segment selector for the data/stack
+    mov     ds,ax
+    mov     es,ax
+    mov     fs,ax
+
+    mov     ax,0x10
+    mov     ss,ax
+    mov     esp,[ebx+4]                 ;; set the stack
+
+
 ;;
 ;; -- finally, jump to the kernel
 ;;    ---------------------------
     mov     eax,kInitAp
     jmp     eax
+
 
 apHalt:
     hlt

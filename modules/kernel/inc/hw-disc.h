@@ -16,8 +16,7 @@
 //===================================================================================================================
 
 
-#ifndef __HW_DISC_H__
-#define __HW_DISC_H__
+#pragma once
 
 
 #include "types.h"
@@ -218,7 +217,8 @@ typedef struct HardwareDiscovery_t {
 //
 // -- We will work with a local copy and then copy the ending structure to its final location
 //    ---------------------------------------------------------------------------------------
-extern HardwareDiscovery_t *localHwDisc;
+EXTERN EXPORT LOADER_DATA
+HardwareDiscovery_t *localHwDisc;
 
 
 //
@@ -233,94 +233,164 @@ static_assert(sizeof(HardwareDiscovery_t) <= 4096, \
 //
 // -- Hardware discovery function to collect the hardware inventory
 //    -------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void HwDiscovery(void);
 
 
 //
 // -- Read the MB1 structures and place the important bits in the localHwDisc structure
 //    ---------------------------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void Mb1Parse(void);
 
 
 //
 // -- Read the MB2 structures and place the important bits in the localHwDisc structure
 //    ---------------------------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void Mb2Parse(void);
-
-
-//
-// == These are the inline access functions for the local version of the HardwareDiscovery
-//    ====================================================================================
 
 
 //
 // -- BIOS Data Area
 //    --------------
-inline bool IsEbdaAvail(void) { return localHwDisc->ebdaLocation != 0; }
-inline bool IsCom1Avail(void) { return localHwDisc->com1 != 0; }
-inline bool IsCom2Avail(void) { return localHwDisc->com2 != 0; }
-inline bool IsCom3Avail(void) { return localHwDisc->com3 != 0; }
-inline bool IsCom4Avail(void) { return localHwDisc->com4 != 0; }
-inline bool IsLpt1Avail(void) { return localHwDisc->lpt1 != 0; }
-inline bool IsLpt2Avail(void) { return localHwDisc->lpt2 != 0; }
-inline bool IsLpt3Avail(void) { return localHwDisc->lpt3 != 0; }
-inline bool IsVideoAvail(void) { return localHwDisc->videoPort != 0; }
+EXPORT LOADER INLINE
+bool IsEbdaAvail(void) { return localHwDisc->ebdaLocation != 0; }
 
-inline void SetEbda(archsize_t e) { localHwDisc->ebdaLocation = e; }
-inline archsize_t GetEbda(void) { return localHwDisc->ebdaLocation; }
+EXPORT LOADER INLINE
+bool IsCom1Avail(void) { return localHwDisc->com1 != 0; }
 
-inline void SetCom1(devaddr_t p) { localHwDisc->com1 = p; }
-inline devaddr_t GetCom1(void) { return localHwDisc->com1; }
+EXPORT LOADER INLINE
+bool IsCom2Avail(void) { return localHwDisc->com2 != 0; }
 
-inline void SetCom2(devaddr_t p) { localHwDisc->com2 = p; }
-inline devaddr_t GetCom2(void) { return localHwDisc->com2; }
+EXPORT LOADER INLINE
+bool IsCom3Avail(void) { return localHwDisc->com3 != 0; }
 
-inline void SetCom3(devaddr_t p) { localHwDisc->com3 = p; }
-inline devaddr_t GetCom3(void) { return localHwDisc->com3; }
+EXPORT LOADER INLINE
+bool IsCom4Avail(void) { return localHwDisc->com4 != 0; }
 
-inline void SetCom4(devaddr_t p) { localHwDisc->com4 = p; }
-inline devaddr_t GetCom4(void) { return localHwDisc->com4; }
+EXPORT LOADER INLINE
+bool IsLpt1Avail(void) { return localHwDisc->lpt1 != 0; }
 
-inline void SetLpt1(devaddr_t p) { localHwDisc->lpt1 = p; }
-inline devaddr_t GetLpt1(void) { return localHwDisc->lpt1; }
+EXPORT LOADER INLINE
+bool IsLpt2Avail(void) { return localHwDisc->lpt2 != 0; }
 
-inline void SetLpt2(devaddr_t p) { localHwDisc->lpt2 = p; }
-inline devaddr_t GetLpt2(void) { return localHwDisc->lpt2; }
+EXPORT LOADER INLINE
+bool IsLpt3Avail(void) { return localHwDisc->lpt3 != 0; }
 
-inline void SetLpt3(devaddr_t p) { localHwDisc->lpt3 = p; }
-inline devaddr_t GetLpt3(void) { return localHwDisc->lpt3; }
+EXPORT LOADER INLINE
+bool IsVideoAvail(void) { return localHwDisc->videoPort != 0; }
 
-inline void SetVideo(uint16_t p) { localHwDisc->videoPort = p; }
-inline uint16_t GetVideo(void) { return localHwDisc->videoPort; }
+EXPORT LOADER INLINE
+void SetEbda(archsize_t e) { localHwDisc->ebdaLocation = e; }
+
+EXPORT LOADER INLINE
+archsize_t GetEbda(void) { return localHwDisc->ebdaLocation; }
+
+EXPORT LOADER INLINE
+void SetCom1(devaddr_t p) { localHwDisc->com1 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetCom1(void) { return localHwDisc->com1; }
+
+EXPORT LOADER INLINE
+void SetCom2(devaddr_t p) { localHwDisc->com2 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetCom2(void) { return localHwDisc->com2; }
+
+
+EXPORT LOADER INLINE
+void SetCom3(devaddr_t p) { localHwDisc->com3 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetCom3(void) { return localHwDisc->com3; }
+
+
+EXPORT LOADER INLINE
+void SetCom4(devaddr_t p) { localHwDisc->com4 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetCom4(void) { return localHwDisc->com4; }
+
+
+EXPORT LOADER INLINE
+void SetLpt1(devaddr_t p) { localHwDisc->lpt1 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetLpt1(void) { return localHwDisc->lpt1; }
+
+
+EXPORT LOADER INLINE
+void SetLpt2(devaddr_t p) { localHwDisc->lpt2 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetLpt2(void) { return localHwDisc->lpt2; }
+
+
+EXPORT LOADER INLINE
+void SetLpt3(devaddr_t p) { localHwDisc->lpt3 = p; }
+
+EXPORT LOADER INLINE
+devaddr_t GetLpt3(void) { return localHwDisc->lpt3; }
+
+
+EXPORT LOADER INLINE
+void SetVideo(uint16_t p) { localHwDisc->videoPort = p; }
+
+EXPORT LOADER INLINE
+uint16_t GetVideo(void) { return localHwDisc->videoPort; }
 
 
 //
 // -- Basic memory limits (where flag 0 is set)
 //    -----------------------------------------
-inline bool AreMemLimitsAvail(void) { return localHwDisc->memLimitsAvail; }
+EXPORT LOADER INLINE
+bool AreMemLimitsAvail(void) { return localHwDisc->memLimitsAvail; }
 
-inline void SetAvailLowerMem(uint32_t l) { localHwDisc->availLowerMem = l; localHwDisc->memLimitsAvail = true; }
-inline uint32_t GetAvailLowerMem(void) { return localHwDisc->availLowerMem; }
 
-inline void SetAvailUpperMem(uint32_t l) { localHwDisc->availUpperMem = l; localHwDisc->memLimitsAvail = true; }
-inline uint32_t GetAvailUpperMem(void) { return localHwDisc->availUpperMem; }
+EXPORT LOADER INLINE
+void SetAvailLowerMem(uint32_t l) { localHwDisc->availLowerMem = l; localHwDisc->memLimitsAvail = true; }
 
-inline void SetUpperMemLimit(uint64_t l) { localHwDisc->upperMemLimit = l; }
-inline uint64_t GetUpperMemLimit(void) { return localHwDisc->upperMemLimit; }
+EXPORT LOADER INLINE
+uint32_t GetAvailLowerMem(void) { return localHwDisc->availLowerMem; }
+
+
+EXPORT LOADER INLINE
+void SetAvailUpperMem(uint32_t l) { localHwDisc->availUpperMem = l; localHwDisc->memLimitsAvail = true; }
+
+EXPORT LOADER INLINE
+uint32_t GetAvailUpperMem(void) { return localHwDisc->availUpperMem; }
+
+
+EXPORT LOADER INLINE
+void SetUpperMemLimit(uint64_t l) { localHwDisc->upperMemLimit = l; }
+
+EXPORT LOADER INLINE
+uint64_t GetUpperMemLimit(void) { return localHwDisc->upperMemLimit; }
 
 
 //
 // -- Module Data
 //    -----------
-inline bool HaveModData(void) { return localHwDisc->modAvail; }
-inline int GetModCount(void) { return localHwDisc->modCount; }
+EXPORT LOADER INLINE
+bool HaveModData(void) { return localHwDisc->modAvail; }
 
-inline frame_t GetModHightestFrame(void) { return localHwDisc->modHighestFrame; }
-inline void UpdateModHighestFrame(frame_t frame) {
+EXPORT LOADER INLINE
+int GetModCount(void) { return localHwDisc->modCount; }
+
+
+EXPORT LOADER INLINE
+frame_t GetModHightestFrame(void) { return localHwDisc->modHighestFrame; }
+
+EXPORT LOADER INLINE
+void UpdateModHighestFrame(frame_t frame) {
     if (frame > localHwDisc->modHighestFrame) localHwDisc->modHighestFrame = frame;
 }
 
-inline void AddModule(uint64_t at, uint64_t end, char *ident) {
+
+EXPORT LOADER INLINE
+void AddModule(uint64_t at, uint64_t end, char *ident) {
     localHwDisc->mods[localHwDisc->modCount].modStart = at;
     localHwDisc->mods[localHwDisc->modCount].modEnd = end;
     kStrCpy(localHwDisc->mods[localHwDisc->modCount ++].modIdent, ident);
@@ -328,107 +398,191 @@ inline void AddModule(uint64_t at, uint64_t end, char *ident) {
     localHwDisc->modAvail = true;
 }
 
-inline void SetModuleHdrSize(int i, size_t s) { localHwDisc->mods[i].modHdrSize = s; }
-//inline void SetModuleCr3(int i, archsize_t cr3) { localHwDisc->mods[i].cr3 = cr3; }
-inline void SetModuleEntry(int i, archsize_t entry) { localHwDisc->mods[i].entry = entry; }
-inline uint64_t GetAvailModuleStart(int i) { return localHwDisc->mods[i].modStart; }
-inline uint64_t GetAvailModuleEnd(int i) { return localHwDisc->mods[i].modEnd; }
-inline char *GetAvailModuleIdent(int i) { return localHwDisc->mods[i].modIdent; }
+
+EXPORT LOADER INLINE
+void SetModuleHdrSize(int i, size_t s) { localHwDisc->mods[i].modHdrSize = s; }
+//EXPORT LOADER INLINE
+//void SetModuleCr3(int i, archsize_t cr3) { localHwDisc->mods[i].cr3 = cr3; }
+
+EXPORT LOADER INLINE
+void SetModuleEntry(int i, archsize_t entry) { localHwDisc->mods[i].entry = entry; }
+
+EXPORT LOADER INLINE
+uint64_t GetAvailModuleStart(int i) { return localHwDisc->mods[i].modStart; }
+
+EXPORT LOADER INLINE
+uint64_t GetAvailModuleEnd(int i) { return localHwDisc->mods[i].modEnd; }
+
+EXPORT LOADER INLINE
+char *GetAvailModuleIdent(int i) { return localHwDisc->mods[i].modIdent; }
 
 
 //
 // -- Memory Map data
 //    ---------------
-inline bool HaveMMapData(void) { return localHwDisc->memMapAvail; }
-inline int GetMMapEntryCount(void) { return localHwDisc->memMapCount; }
+EXPORT LOADER INLINE
+bool HaveMMapData(void) { return localHwDisc->memMapAvail; }
 
-inline void AddAvailMem(uint64_t at, uint64_t len) {
+EXPORT LOADER INLINE
+int GetMMapEntryCount(void) { return localHwDisc->memMapCount; }
+
+
+EXPORT LOADER INLINE
+void AddAvailMem(uint64_t at, uint64_t len) {
     localHwDisc->mmap[localHwDisc->memMapCount].baseAddr = at;
     localHwDisc->mmap[localHwDisc->memMapCount ++].length = len;
     localHwDisc->memMapAvail = true;
 }
 
-inline uint64_t GetAvailMemStart(int i) { return localHwDisc->mmap[i].baseAddr; }
-inline uint64_t GetAvailMemLength(int i) { return localHwDisc->mmap[i].length; }
+
+EXPORT LOADER INLINE
+uint64_t GetAvailMemStart(int i) { return localHwDisc->mmap[i].baseAddr; }
+
+EXPORT LOADER INLINE
+uint64_t GetAvailMemLength(int i) { return localHwDisc->mmap[i].length; }
 
 
 //
 // -- Physical Memory Manager Bitmap location
 //    ---------------------------------------
-inline void SetPmmBitmap(uint32_t *l) { localHwDisc->pmmBitmap = l; }
-inline uint32_t *GetPmmBitmap(void) { return localHwDisc->pmmBitmap; }
+EXPORT LOADER INLINE
+void SetPmmBitmap(uint32_t *l) { localHwDisc->pmmBitmap = l; }
 
-inline void SetPmmFrameCount(size_t c) { localHwDisc->pmmFrameCount = c; }
-inline size_t GetPmmFrameCount(void) { return localHwDisc->pmmFrameCount; }
+EXPORT LOADER INLINE
+uint32_t *GetPmmBitmap(void) { return localHwDisc->pmmBitmap; }
+
+
+EXPORT LOADER INLINE
+void SetPmmFrameCount(size_t c) { localHwDisc->pmmFrameCount = c; }
+
+EXPORT LOADER INLINE
+size_t GetPmmFrameCount(void) { return localHwDisc->pmmFrameCount; }
 
 
 //
 // -- Frame Buffer Management & Screen output management
 //    --------------------------------------------------
-inline bool IsFrameBufferAvail(void) { return localHwDisc->frameBufferAvail; }
+EXPORT LOADER INLINE
+bool IsFrameBufferAvail(void) { return localHwDisc->frameBufferAvail; }
 
-inline void SetFrameBufferAddr(uint16_t *a) { localHwDisc->fbAddr = a; localHwDisc->frameBufferAvail = true; }
-inline uint16_t *GetFrameBufferAddr(void) { return localHwDisc->fbAddr; }
 
-inline void SetFrameBufferPitch(uint32_t p) { localHwDisc->fbPitch = p; }
-inline uint32_t GetFrameBufferPitch(void) { return localHwDisc->fbPitch; }
+EXPORT LOADER INLINE
+void SetFrameBufferAddr(uint16_t *a) { localHwDisc->fbAddr = a; localHwDisc->frameBufferAvail = true; }
 
-inline void SetFrameBufferWidth(uint32_t w) { localHwDisc->fbWidth = w; }
-inline uint32_t GetFrameBufferWidth(void) { return localHwDisc->fbWidth; }
+EXPORT LOADER INLINE
+uint16_t *GetFrameBufferAddr(void) { return localHwDisc->fbAddr; }
 
-inline void SetFrameBufferHeight(uint32_t h) { localHwDisc->fbHeight = h; }
-inline uint32_t GetFrameBufferHeight(void) { return localHwDisc->fbHeight; }
 
-inline void SetFrameBufferBpp(uint8_t b) { localHwDisc->fbBpp = b; }
-inline uint8_t GetFrameBufferBpp(void) { return localHwDisc->fbBpp; }
+EXPORT LOADER INLINE
+void SetFrameBufferPitch(uint32_t p) { localHwDisc->fbPitch = p; }
 
-inline void SetFrameBufferType(FrameBufferType t) { localHwDisc->fbType = t; }
-inline FrameBufferType GetFrameBufferType(void) { return localHwDisc->fbType; }
+EXPORT LOADER INLINE
+uint32_t GetFrameBufferPitch(void) { return localHwDisc->fbPitch; }
+
+
+EXPORT LOADER INLINE
+void SetFrameBufferWidth(uint32_t w) { localHwDisc->fbWidth = w; }
+
+EXPORT LOADER INLINE
+uint32_t GetFrameBufferWidth(void) { return localHwDisc->fbWidth; }
+
+
+EXPORT LOADER INLINE
+void SetFrameBufferHeight(uint32_t h) { localHwDisc->fbHeight = h; }
+
+EXPORT LOADER INLINE
+uint32_t GetFrameBufferHeight(void) { return localHwDisc->fbHeight; }
+
+
+EXPORT LOADER INLINE
+void SetFrameBufferBpp(uint8_t b) { localHwDisc->fbBpp = b; }
+
+EXPORT LOADER INLINE
+uint8_t GetFrameBufferBpp(void) { return localHwDisc->fbBpp; }
+
+
+EXPORT LOADER INLINE
+void SetFrameBufferType(FrameBufferType t) { localHwDisc->fbType = t; }
+
+EXPORT LOADER INLINE
+FrameBufferType GetFrameBufferType(void) { return localHwDisc->fbType; }
 
 
 //
 // -- Console properties that are passed to the kernel
 //    ------------------------------------------------
-inline void SetBgColor(uint16_t c) { localHwDisc->bgColor = c; }
-inline uint16_t GetBgColor(void) { return localHwDisc->bgColor; }
+EXPORT LOADER INLINE
+void SetBgColor(uint16_t c) { localHwDisc->bgColor = c; }
 
-inline void SetFgColor(uint16_t c) { localHwDisc->fgColor = c; }
-inline uint16_t GetFgColor(void) { return localHwDisc->fgColor; }
+EXPORT LOADER INLINE
+uint16_t GetBgColor(void) { return localHwDisc->bgColor; }
 
-inline void SetColPos(uint16_t p) { localHwDisc->colPos = p; }
-inline uint16_t GetColPos(void) { return localHwDisc->colPos; }
 
-inline void SetRowPos(uint16_t p) { localHwDisc->rowPos = p; }
-inline uint16_t GetRowPos(void) { return localHwDisc->rowPos; }
+EXPORT LOADER INLINE
+void SetFgColor(uint16_t c) { localHwDisc->fgColor = c; }
+
+EXPORT LOADER INLINE
+uint16_t GetFgColor(void) { return localHwDisc->fgColor; }
+
+
+EXPORT LOADER INLINE
+void SetColPos(uint16_t p) { localHwDisc->colPos = p; }
+
+EXPORT LOADER INLINE
+uint16_t GetColPos(void) { return localHwDisc->colPos; }
+
+
+EXPORT LOADER INLINE
+void SetRowPos(uint16_t p) { localHwDisc->rowPos = p; }
+
+EXPORT LOADER INLINE
+uint16_t GetRowPos(void) { return localHwDisc->rowPos; }
 
 
 //
 // -- access to the rsdp member
 //    -------------------------
-inline void SetRsdp(archsize_t p) { localHwDisc->rsdp = p; }
-inline archsize_t GetRsdp(void) { return localHwDisc->rsdp; }
+EXPORT LOADER INLINE
+void SetRsdp(archsize_t p) { localHwDisc->rsdp = p; }
+
+EXPORT LOADER INLINE
+archsize_t GetRsdp(void) { return localHwDisc->rsdp; }
 
 
 //
 // -- access to cpuid support
 //    -----------------------
-inline void SetCpuid(bool c) { localHwDisc->cpuidSupported = c; }
-inline bool GetCpuid(void) { return localHwDisc->cpuidSupported; }
-inline bool HasLocalApic(void) { return !!(localHwDisc->cpuid01edx & (1<<9)); }
+EXPORT LOADER INLINE
+void SetCpuid(bool c) { localHwDisc->cpuidSupported = c; }
+
+EXPORT LOADER INLINE
+bool GetCpuid(void) { return localHwDisc->cpuidSupported; }
+
+EXPORT LOADER INLINE
+bool HasLocalApic(void) { return !!(localHwDisc->cpuid01edx & (1<<9)); }
 
 
 //
 // -- access to the local APIC fields
 //    -------------------------------
-inline void IncLocalApic(void) { localHwDisc->lapicCount ++; }
-inline size_t GetLocalApicCount(void) { return localHwDisc->lapicCount; }
+EXPORT LOADER INLINE
+void IncLocalApic(void) { localHwDisc->lapicCount ++; }
+
+EXPORT LOADER INLINE
+size_t GetLocalApicCount(void) { return localHwDisc->lapicCount; }
 
 //
 // -- access to the IO APIC
 //    ---------------------
-inline void AddIoapic(archsize_t addr, int gsi) { localHwDisc->ioApic[localHwDisc->ioApicCount ++] = { addr, gsi}; }
-inline int GetIoapicCount(void) { return localHwDisc->ioApicCount; }
-inline archsize_t GetIoapicAddr(int i) { return localHwDisc->ioApic[i].addr; }
-inline int GetIoapicGsi(int i) { return localHwDisc->ioApic[i].gsiBase; }
+EXPORT LOADER INLINE
+void AddIoapic(archsize_t addr, int gsi) { localHwDisc->ioApic[localHwDisc->ioApicCount ++] = { addr, gsi}; }
 
-#endif
+EXPORT LOADER INLINE
+int GetIoapicCount(void) { return localHwDisc->ioApicCount; }
+
+EXPORT LOADER INLINE
+archsize_t GetIoapicAddr(int i) { return localHwDisc->ioApic[i].addr; }
+
+EXPORT LOADER INLINE
+int GetIoapicGsi(int i) { return localHwDisc->ioApic[i].gsiBase; }
+

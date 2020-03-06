@@ -20,6 +20,7 @@
 
 #pragma once
 
+
 #include "types.h"
 #include "cpu.h"
 #include "spinlock.h"
@@ -35,41 +36,42 @@
 //
 // -- This will be the bitmat we will use to keep track of the stacks
 //    ---------------------------------------------------------------
-extern EXPORT KERNEL_DATA uint32_t stacks[STACK_COUNT];
+EXTERN EXPORT KERNEL_DATA
+uint32_t stacks[STACK_COUNT];
 
 
 //
 // -- This is the lock that will protect the bitmap
 //    ---------------------------------------------
-extern EXPORT KERNEL_DATA Spinlock_t stackBitmapLock;
+EXTERN EXPORT KERNEL_DATA
+Spinlock_t stackBitmapLock;
 
 
 //
-// -- Function prototypes
-//    -------------------
-extern "C" {
+// -- Allocate a stack
+//    ----------------
+EXTERN_C EXPORT KERNEL
+void StackDoAlloc(archsize_t stackBase);
 
-
-    //
-    // -- Allocate a stack
-    //    ----------------
-    EXPORT KERNEL void StackDoAlloc(archsize_t stackBase);
-    EXPORT KERNEL inline void StackAlloc(archsize_t stackBase) {
-        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stackBitmapLock) {
-            StackDoAlloc(stackBase);
-            SPINLOCK_RLS_RESTORE_INT(stackBitmapLock, flags);
-        }
+EXPORT KERNEL INLINE
+void StackAlloc(archsize_t stackBase) {
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(stackBitmapLock) {
+        StackDoAlloc(stackBase);
+        SPINLOCK_RLS_RESTORE_INT(stackBitmapLock, flags);
     }
-
-
-    //
-    // -- Release a stack
-    //    ---------------
-    EXPORT KERNEL void StackRelease(archsize_t stackBase);
-
-
-    //
-    // -- Find an available stack
-    //    -----------------------
-    EXPORT KERNEL archsize_t StackFind(void);
 }
+
+
+//
+// -- Release a stack
+//    ---------------
+EXTERN_C EXPORT KERNEL
+void StackRelease(archsize_t stackBase);
+
+
+//
+// -- Find an available stack
+//    -----------------------
+EXTERN_C EXPORT KERNEL
+archsize_t StackFind(void);
+

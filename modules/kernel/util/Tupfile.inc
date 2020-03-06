@@ -32,11 +32,14 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 ## -- Now, go compile all the source files for this binary
 ##    ----------------------------------------------------
 : foreach  $(WS)/modules/kernel/src/*.cc                    |> !cc |>
+: foreach  $(WS)/modules/kernel/src/cpu/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/frame-buffer/*.cc       |> !cc |>
 : foreach  $(WS)/modules/kernel/src/hardware/*.cc           |> !cc |>
 : foreach  $(WS)/modules/kernel/src/heap/*.cc               |> !cc |>
 : foreach  $(WS)/modules/kernel/src/interrupts/*.cc         |> !cc |>
+: foreach  $(WS)/modules/kernel/src/ipi/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/loader/*.cc             |> !cc |>
+: foreach  $(WS)/modules/kernel/src/mmu/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/pmm/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/process/*.cc            |> !cc |>
 : foreach  $(WS)/modules/kernel/src/spinlock/*.cc           |> !cc |>
@@ -62,5 +65,14 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 ##    -----------------------------------------
 : foreach  $(WS)/arch/$(ARCH)/*.cc                          |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/*.s                           |> !as |>
+
+: foreach  $(WS)/arch/$(ARCH)/common/*.cc                      |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/common/*.s                       |> !as |>
+
+: foreach  $(WS)/arch/$(ARCH)/cpu/*.cc                      |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/cpu/*.s                       |> !as |>
+
+: foreach  $(WS)/arch/$(ARCH)/mmu/*.cc                      |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/mmu/*.s                       |> !as |>
 
 

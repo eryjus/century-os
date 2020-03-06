@@ -15,6 +15,9 @@
 //===================================================================================================================
 
 
+#pragma once
+
+
 #ifndef __HARDWARE_H__
 #   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
 #endif
@@ -23,7 +26,8 @@
 //
 // -- Get a byte from an I/O Port
 //    ---------------------------
-inline uint8_t inb(uint16_t port) {
+EXPORT KERNEL INLINE
+uint8_t inb(uint16_t port) {
     uint8_t ret;
     asm volatile ( "inb %1, %0" : "=a"(ret) : "Nd"(port) );
     return ret;
@@ -33,7 +37,8 @@ inline uint8_t inb(uint16_t port) {
 //
 // -- Output a byte to an I/O Port
 //    ----------------------------
-inline void outb(uint16_t port, uint8_t val) { asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) ); }
+EXPORT KERNEL INLINE
+void outb(uint16_t port, uint8_t val) { asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) ); }
 
 
 

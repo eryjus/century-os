@@ -3,8 +3,8 @@ plugin_ctrl: unmapped=1, biosdev=1, speaker=1, extfpuirq=1, parallel=1, serial=1
 config_interface: textconfig
 display_library: x
 memory: host=32, guest=3584
-romimage: file="/usr/share/bochs/BIOS-bochs-latest", address=0x0, options=none
-vgaromimage: file="/usr/share/bochs/VGABIOS-lgpl-latest"
+romimage: file="/home/adam/workspace/bochs-2.6.11/bios/BIOS-bochs-latest", address=0x0, options=none
+vgaromimage: file="/home/adam/workspace/bochs-2.6.11/bios/VGABIOS-lgpl-latest"
 boot: cdrom
 floppy_bootsig_check: disabled=0
 # no floppya
@@ -38,9 +38,9 @@ private_colormap: enabled=0
 clock: sync=none, time0=local, rtc_sync=0
 # no cmosimage
 # no loader
-log: -
+log: bochs.log
 logprefix: %t%e%d
-#debug: action=report
+#debug: action=ignore
 debug: action=ignore, cpu1=report
 info: action=report
 error: action=report
@@ -50,7 +50,8 @@ mouse: type=ps2, enabled=0, toggle=ctrl+mbutton
 speaker: enabled=1, mode=system
 parport1: enabled=1, file=none
 parport2: enabled=0
-com1: enabled=1, mode=term, dev="/dev/pts/1"
+com1: enabled=1, mode=term, dev="/dev/pts/3"
 com2: enabled=0
 com3: enabled=0
 com4: enabled=0
+magic_break: enabled=1

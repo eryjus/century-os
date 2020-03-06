@@ -33,6 +33,7 @@ CFLAGS += -g
 CFLAGS += -Werror
 CFLAGS += -Wall
 CFLAGS += -c
+CFLAGS += -I $(WS)/targets/$(TARGET)/inc/
 
 
 ##
@@ -41,6 +42,8 @@ CFLAGS += -c
 NFLAGS += -felf
 NFLAGS += -g
 NFLAGS += -w+all
+NFLAGS += -I $(WS)/platform/$(PLAT)/inc/
+NFLAGS += -I $(WS)/targets/$(TARGET)/inc/
 
 
 ##
@@ -48,6 +51,8 @@ NFLAGS += -w+all
 ##    ----------------------------------------
 AFLAGS += -march=armv7ve
 AFLAGS += -c
+AFLAGS += -I $(WS)/platform/$(PLAT)/inc
+AFLAGS += -I $(WS)/targets/$(TARGET)/inc/
 
 
 ##
@@ -64,13 +69,13 @@ LDFLAGS += -O2
 ## -- Create the !macros
 ##    ------------------
 !ar =       |> $(AR) crs %o %f                          |>
-!cc =       |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f     |> %B.o
+!cc =       | $(WS)/targets/$(TARGET)/inc/constants.h $(WS)/targets/$(TARGET)/inc/debug.h |> $(CC) $(CFLAGS) $(CCDEFINE) -o %o %f     |> %B.o
 !dump =     |> $(DUMP) -D %f > %o                       |> %B.map
 
 ifeq ($(ARCH),x86)
-!as =       |> nasm $(NFLAGS) $(CCDEFINE)  -o %o %f     |> %B.o
+!as =       | $(WS)/targets/$(TARGET)/inc/constants.inc  |> nasm $(NFLAGS) $(CCDEFINE)  -o %o %f     |> %B.o
 else
-!as =       |> $(AS) $(AFLAGS) $(ASDEFINE) -o %o %f     |> %B.o
+!as =       | $(WS)/targets/$(TARGET)/inc/constants.inc  |> $(AS) $(AFLAGS) $(ASDEFINE) -o %o %f     |> %B.o
 endif
 
 

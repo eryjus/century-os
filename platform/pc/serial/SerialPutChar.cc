@@ -16,6 +16,7 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
 #include "spinlock.h"
 #include "serial.h"
@@ -24,7 +25,8 @@
 //
 // -- Output a single character to the serial port
 //    --------------------------------------------
-void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
+EXTERN_C EXPORT KERNEL
+void _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
 {
     if (!dev) return;
     if (ch == '\n') dev->SerialPutChar(dev, '\r');

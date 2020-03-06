@@ -22,7 +22,11 @@
 #include "pmm.h"
 
 
-__CENTURY_FUNC__ void __krntext PmmScrubBlock(void)
+//
+// -- Clean a block of physical memory of all its data
+//    ------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void PmmScrubBlock(void)
 {
     // -- quickly check if there is something to do; we will redo the check when we get the lock
     if (IsListEmpty(&pmm.scrubStack)) return;

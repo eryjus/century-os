@@ -26,7 +26,8 @@
 //
 // -- Register an IRQ handler
 //    -----------------------
-isrFunc_t __krntext _IoApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
+EXTERN_C EXPORT KERNEL
+isrFunc_t _IoApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler)
 {
     if (!dev) return (isrFunc_t)-1;
     if (!handler) return (isrFunc_t)-1;
@@ -53,11 +54,11 @@ isrFunc_t __krntext _IoApicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vect
     kprintf(".. the table register offset is %x\n", reg);
     kprintf(".. Expect to write %p and %p to the APIC registers\n", redir.reg0, redir.reg1);
 
-    IOAPIC_WRITE(data->ioapicBase, reg, redir.reg0);
-    IOAPIC_WRITE(data->ioapicBase, reg + 1, redir.reg1);
+    IoapicWrite(data->ioapicBase, reg, redir.reg0);
+    IoapicWrite(data->ioapicBase, reg + 1, redir.reg1);
 
-    kprintf(".. the values of the APIC registers are now %p and %p\n", IOAPIC_READ(data->ioapicBase, reg),
-            IOAPIC_READ(data->ioapicBase, reg + 1));
+    kprintf(".. the values of the APIC registers are now %p and %p\n", IoapicRead(data->ioapicBase, reg),
+            IoapicRead(data->ioapicBase, reg + 1));
 
     isrFunc_t rv = IsrRegister(vector, handler);
     PicUnmaskIrq(dev, irq);

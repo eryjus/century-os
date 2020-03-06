@@ -32,5 +32,5 @@ void HeapError(const char *from, const char *desc)
 {
     DisableInterrupts();
     kprintf("Heap Error!!! %s - %s\n", from, desc);
-    Halt();
+    CpuPanicPushRegs("");
 }

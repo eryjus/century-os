@@ -28,6 +28,7 @@
 
 void IsrDumpState(isrRegs_t *regs)
 {
+    kprintf("CPU: %d\n", cpus.cpusRunning>1?thisCpu->cpuNum:0);
     kprintf("EAX: %p  EBX: %p  ECX: %p\n", regs->eax, regs->ebx, regs->ecx);
     kprintf("EDX: %p  ESI: %p  EDI: %p\n", regs->edx, regs->esi, regs->edi);
     kprintf("EBP: %p  ESP: %p  SS: %x\n", regs->ebp, regs->esp, regs->ss);
@@ -37,5 +38,7 @@ void IsrDumpState(isrRegs_t *regs)
     kprintf("CR0: %p  CR2: %p  CR3: %p\n", regs->cr0, regs->cr2, regs->cr3);
     kprintf("Trap: %x  Error: %x\n\n", regs->intno, regs->errcode);
 
-    Halt();
+    while (true) {
+        Halt();
+    }
 }

@@ -4135,7 +4135,7 @@ I thought I would give one more try before I gave up completely.  I made changes
     ttl2Entry->apx = 0;
     ttl2Entry->ap = 0b11;
     ttl2Entry->tex = (krn?0x001:0b001);
-    ttl2Entry->c = 1;
+    ttl2Entry->c = ARMV7_MMU_CACHED;
     ttl2Entry->b = (krn?1:1);
     ttl2Entry->nG = 0;
     ttl2Entry->fault = 0b10;

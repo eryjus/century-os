@@ -19,6 +19,7 @@
 
 
 #include "types.h"
+#include "cpu.h"
 #include "printf.h"
 #include "interrupt.h"
 
@@ -26,6 +27,7 @@
 //
 // -- The ISR Handler Table
 //    ---------------------
+EXPORT KERNEL_DATA
 isrFunc_t isrHandlers[256] = {NULL_ISR};
 
 
@@ -33,12 +35,14 @@ isrFunc_t isrHandlers[256] = {NULL_ISR};
 //
 // -- This is the common ISR Handler entry routine
 //    --------------------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrHandler(isrRegs_t regs)
 {
     if (isrHandlers[regs.intno] != NULL) {
         isrFunc_t handler = isrHandlers[regs.intno];
         handler(&regs);
     } else {
-        kprintf("Unhandled Interrupt #%x\n", regs.intno);
+        kprintf("PANIC: Unhandled Interrupt #%x\n", regs.intno);
+        CpuPanic("", &regs);
     }
 }

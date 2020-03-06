@@ -1,0 +1,2653 @@
+# The Century OS Development Journal - v0.5.0
+
+This version begins a cleanup and alignment effort for the 2 arch's.  There are several things that need to be done to make this code more efficient from start to finish.  There are several things that are no longer needed (since they were to get the kernel loaded and that is rather solid at this point).  There is also quite a bit of debug code that needs to be replaced with `assert()` calls and then prepared to be removed as needed for a release candidate (I know, I am nowhere near that at the moment).
+
+I am going to start using [this wiki page](http://eryjus.ddns.net:3000/projects/century-os/wiki/Low_Memory_Usage_Map) to help me document the Low Memory Usage Map (this is most relevant to x86-pc, but will also cover rpi2b when appropriate).
+
+I am also going to use [this wiki page](http://eryjus.ddns.net:3000/projects/century-os/wiki/GDT) to document the GST setup.  This in particular is specific to x86 as ARM has no concept of segmentation.
+
+## Version 0.5.0a
+
+### 2019-Dec-08
+
+Starting with the `loader` portion of the kernel, I am going to start the cleanup process.  At the same time, I am going to develop out [this wiki page](http://eryjus.ddns.net:3000/projects/century-os/wiki/Loader_Call_Stack) for the execution stack of the loader.
+
+---
+
+OK, so I am really debating about how to move forward from here.  I really thing I want to take the time to write a few routines to help me get the MMU set up properly only and then transfer control into the upper address space for the kernel.  This would mean completely relocating the sections.  And this would once again break everything.
+
+The one thing I am certain about is that I really need to move toward getting into higher memory *much* faster than I am today.  In order to get there, I need to completely map the kernel in `entry.s`.
+
+---
+
+### 2019-Dec-09
+
+The more I think about this the more I like the idea that I should be able to move all code into kernel memory space and only have the `entry.s` file sitting in lower 1MB memory space.  I'm pretty sure the key to success here is going to be ordering the kernel memory properly, in particular so that the kernel space is early on in the memory map.
+
+Another thought here is that I probably want to separate out the kernel entry (`syscall` targets) from the other kernel space, so that my user space has just the syscall targets and kernel entry code while the actual kernel space is loaded up once we have properly changed stacks and upgraded to kernel address space.  I'm not exactly certain how I want to do this yet.
+
+OK, so to think this through.  The top 2GB of virtual memory space is reserved for kernel address space.  Generally, these are broken into 4MB blocks, so I have 512 blocks to play with.  I have plenty of space here.
+
+I think I want to do something like this:
+* `0x80000000` (4MB): Loader and 1-time initialization code (frames will be reclaimed)
+* `0x80400000` (4MB): Kernel syscall target code (pergatory)
+* `0x80800000` (8MB): Kernel code
+* `0x81000000` (16MB): Kernel data and bss
+* `0x82000000` (992MB): Kernel heap
+
+This, then, means that I really only need to map the memory at `0x00100000` and then at `0x80000000` to get running from `entry.s`.  Moreover, the memory at `0x00100000` should be able to be limited to a few pages which can also be quickly unmapped.
+
+Additionally, I should be able to pick an arbitrary frame from which to start allocating physical memory for pages.  This could easily be set at 8MB and then increased statically as the kernel and its loaded modules grow.  A runtime check (for now) will be needed to verify this it is a good size.
+
+---
+
+I went through Redmine and I have cleaned up the issues.  Though I will add things to the Roadmap, here is what is targeted for [v0.5.0](http://eryjus.ddns.net:3000/versions/17).
+
+The first changes to the `x86-pc.ld` script create a triple fault:
+
+```
+    _mbStart = .;
+    .entry : {
+        *(.mboot)                       /* lead with the multiboot header */
+        *(.text.entry)                  /* followed by the code to get the mmu initialized */
+    }
+    _mbEnd = .;
+```
+
+Since I moved all the entry code out of the first page, it does make sense.
+
+---
+
+Question for `freenode#osedv`:
+
+```
+[17:04:44] <eryjus> hmmm...  it is better to have 1 GDT across all CPUs with 1 TSS for each CPU?  or multiple GDTs with 1 TSS per CPU?
+[17:05:02] <Mutabah> I prefer the former
+[17:05:42] <eryjus> ok, what make you prefer that solution?
+[17:05:48] <Mutabah> but the latter is more scalable (no need to handle running out of GDT slots)
+[17:05:50] <Mutabah> Simpler
+[17:06:06] <Mutabah> And uses less memory
+[17:06:33] <eryjus> fair enough
+...
+[17:23:54] <geist> yah i agree with mutabah
+[17:24:09] <geist> generally speaking you will probably compile with some sort of MAX_CPUS #define that's reasonable anyway
+[17:24:14] <geist> so you can just pre-reserve that many slots
+```
+
+---
+
+### 2019-Dec-10
+
+Still triple faulting.  I had to remove the `ltr` to load the TSS since the TSS descriptor no longer resides in the GDT.  This will have to be loaded later.  [This Redmine](http://eryjus.ddns.net:3000/issues/433) was created to track this work.
+
+So, I am triple faulting right after enabling paging.  I expect this -- that tables are not yet complete.
+
+---
+
+OK, I have the `*.ld` files reorganized to the target locations.  I did manage to consolidate several sections making the kernel a little but smaller.  However, I do not have the MMU mapped yet and I need to get on that.
+
+---
+
+For x86-pc I am getting all the way through the entry code.  When I get to the loader, I do not have a stack mapped and that is throwing a `#PF`.  No IDT properly set to handle that, so I get a `#DF` followed by a Triple Fault for the same reasons.
+
+The good news at this point is that I am finally getting to the loader code for x86-pc.
+
+Now, I need to do the same for rpi2b.  But here's the deal with that: I am about to go on vacation.  I have an rpi2b I can take with me, but no ability to debug it.  Then again, I have no ability to debug it here, either -- just a serial connection.  So, maybe I can take the real hardware with me and give it a try.
+
+At the same time, I am not going to have full access to Redmine, so I will have to make some notes on things to add to that system when I have access again.  In the meantime, I just need to "copy" the work I have done into the rpi2b target, however trickier since there is no cute little recursive mapping trick I can do for the management tables.
+
+Before that, though, I will need to get a proper stack for x96-pc.  This should be based at `0xff800000`, and I will need to build a table for that one as well.
+
+---
+
+This, then, gives me a stack to work with.  I should be able to work with that from here.  One more commit and then I'm on to the rpi2b.
+
+---
+
+### 2019-Dec-11
+
+OK, the problem I am going to have with the rpi2b entry point is that there is not cute little recursive mapping trick and I need to be able to maintain all these management tables myself.
+
+---
+
+I think I have all this code done.  I need to figure out how to test it.  I know it will not run on qemu based on the load address.  I beleive I will need to create a special rpi2b-qemu target to get this to work.
+
+---
+
+I was able to find and compile `rpi-boot`.  This allowed me to be able to run my code in qemu (no need for the rpi2b-qemu target).  With that, I have been able to confirm that my code is getting control.  However, I am gettnig a prefetch abort, meaning I have a problem with the paging tables.  Shocker.
+
+---
+
+### 2019-Dec-12
+
+OK, since I have not been using QEMU to debug anything so far, I am going to haev to start learning how to do this.  I need to be able to inspect the contents of the paging tables as I go.
+
+OK, `mmuLvl1Table` and `mmuLvl1Count` both currently reside in high memory.  They are going to have to move.
+
+---
+
+That done, I am finally able to investigate the memory.  And it appears I have an alignment problem with the tables:
+
+```
+        ...
+ 1000004:       01008001        tsteq   r0, r1
+ 1000008:       01008191                        ; <UNDEFINED> instruction: 0x01008191
+ 100000c:       01008321        tsteq   r0, r1, lsr #6
+ 1000010:       010084b1                        ; <UNDEFINED> instruction: 0x010084b1
+```
+
+Memory location `0x1000000` holds `0x00000000`, and it should hold the 1K table (which I assume is at `0x01008000`).  However, that table appears to be at the next memory location.
+
+Well, it appears I have 2 problems here:
+1.  The alignmment problem.
+2.  A problem incrementing the top 22 bits properly (least significant 10 bits remain 0 for the flags).
+
+It looks like I was able to get most of that cleaned up.  But I still have lingering issues:
+
+```
+        ...
+ 1000004:       01008001
+ 1000008:       01008191
+ 100000c:       01008321
+ 1000010:       010084b1
+        ...
+ 1003fd0:       01006001
+ 1003fd4:       01006191
+ 1003fd8:       01006321
+ 1003fdc:       010064b1
+        ...
+ 1003ff0:       01007001
+ 1003ff4:       01007191
+ 1003ff8:       01007321
+ 1003ffc:       010074b1
+```
+
+Of the 3 blocks above, the top one is wrong while the bottom 2 are correct.
+
+I also appear to be missing the kernel space mappings.
+
+---
+
+OK, they are not correct.
+
+Picking apart the bottom 12 bits of the address `0x1006xxx` block...
+| bits | use | index 1 | index 2 | index 3 | index 4 |
+|:----:|:----|:-------:|:-------:|:-------:|:-------:|
+| 11:10 | AP[1:0] | 0 | 0 | 0 | 1 |
+| 9 | Not used | 0 | 0 | 1 | 0 |
+| 8:5 | Domain | 0 | 0xc | 9 | 5 |
+| 4 | Execute Never | 0 | 1 | 0 | 1 |
+| 3 | Cashable | 0 | 0 | 0 | 0 |
+| 2 | Bufferesd | 0 | 0 | 0 | 0 |
+| 1 | Set to 1 | 0 | 0 | 0 | 0 |
+| 0 | Page Execute Never | 1 | 1 | 1 | 1 |
+
+So, this is a mess!
+
+---
+
+### 2019-Dec-16
+
+Over the last few days or so, I have been able to spend a few minutes here and here sorting out the issues the rpi2b entry code.  There have been several issues and have not properly documented them all.
+
+I do, however, believe I have this code ready to commit.  For both targets, I have been able to get the `entry.s` file to boot all the way through and get paging enabled.  I have a proper stack defined for `LoaderMain()`.
+
+Now, to be fair, I have not accomplished my goals.  The CPU is not is its complete native state.  In particular, interrupts cannot be handled properly on either arch and the GDT is not mapped in kernel space for the x86 arch.  However, what I am able to do is call functions in kernel address space.
+
+Execution is still broken (it will not load/execute the test code), but entry.s is cleaned up.  This is ready for a commit.
+
+---
+
+## Version 0.5.0b
+
+So, the loader is going to be the next thing to address.  This version is concerned with getting that code sorted out.  To do that, I need to articualte the new goals of the loader.  These are:
+1. Perform any config that was not able to be done with the `entry.s` file (handle interrupts, proper GDT)
+2. Collect any information about hardware (including multiboot structures) and place those in reasonable locations.
+
+This portion is about hardware, not OS structures.
+
+Since the loader is running in kernel-space memory, I should be able to elminate all special loader tricks I was using.  `loader.h` goes away.  Also, the loader variables go away.
+
+This, now, gets me to the point where I can address the serial port for outputting debugging information.  The purpose of the `loaderSerial` variable was the address at which the device was placed.  Essentially, they are the same except for fucntion addresses.
+
+---
+
+I was able to get a successful compile.  I'm certain it will not run so I am not even going to test it.  But I am going to commit this code loally.
+
+---
+
+OK the first order of business is going to be to get the output working again in the loader.  This will be a major part of the rework.
+
+That done, this then brings me to `MmuEarlyInit()`...  This function is going to be very architecture dependent.  So, starting with rpi2b, I need to map the MMIO memory space to the virtual memory location.
+
+---
+
+### 2019-Dec-17
+
+Today I am working on debugging the rpi2b target to get to the point where I can output text for debugging.
+
+---
+
+I was finally able to get the additional issues with `entry.s` addressed and I am now booting into the loader.  With that, I am finding that I am nto able to get past `EntryInit()` due to a problem with `MmuEarlyInit()` due to a problem with `MmuMapToFrame()` due to a problem with the macro `TTL1_ENTRY()` due to the fact that the TTL1 table is not properly mapped to the management space.
+
+In addition, I had to remove all the debugging calls to `kprintf()` from several functions.  I will need to come up with something to replace it.
+
+---
+
+### 2019-Dec-18
+
+OK, let's think this through a little bit (I have been doing some debugging of the paging tables for the rpi2b target):
+
+* The TTL1 table is 16K (4 pages) at phyiscal address `0x1000000`.
+* These 4 pages need to be mapped to address `0xff404000`, `0xff405000`, `0xff406000`, and `0xff407000`.
+* This means that TTL1 Entry `0xff4` (`0xff404000 >> 20`) needs to have a table assigned to it.
+* TTL1 Entry `0xff4` equates to offset `0x3fd0` (`0xff4 << 2`), or at address `0x1003fd0`.
+* This also happens to fall on a `4 X 1K` boundary, so no additional adjustment is necessary (`0xff4 & 0xffc` is `0xff4`).
+* The TTL2 table for this is allocated at `0x1006000`.
+* Given the above information, the following 4 tables will be put in place:
+    * Address `0x1003fd0` will receive the table `0x1006000` for TTL1 index `0xff4`
+    * Address `0x1003fd4` will receive the table `0x1006400` for TTL1 index `0xff5`
+    * Address `0x1003fd8` will receive the table `0x1006800` for TTL1 index `0xff6`
+    * Address `0x1003fdc` will receive the table `0x1006c00` for TTL1 index `0xff7`
+* With that, the TTL2 table base physical address will be `0x1006000` for index `0xff4`.
+* The virtual addresses for the TTL2 tables begin at `0xffc00000`.
+* The index from the base of the TTL2 table is `0xff404` (`0xff404000 >> 12`).
+* The offset from the base address of the TTL2 table is `0x3fd010` (`0xff404 << 2`).
+* The TTL2 entry I need to map will be at address `0xffffd010`.
+* The additional TTL2 entries to map will be:
+    * Address `0xffffd014` for index `0xff405`.
+    * Address `0xffffd018` for index `0xff406`.
+    * Address `0xffffd01c` for index `0xff407`.
+* The page `0xffffd000` is mapped to frame `0x1007000`
+* The index into this particular frame is `0x04`.
+* The offset into this particular frame is `0x10` (`0x04 << 2`).
+* The table at physical address `0x1007010` is `0`, meaning that this is not mapped.
+* The other tables at physical addresses `0x1007014`, `0x1007018`, and `0x100701c` are also `0`.
+
+Now, the macro `TTL1_ENTRY()` is trying to read physical memory starting at address `0xff404000` while the MMU is enabled.  This is not working because of the failure at physical address `0x1007010`.
+
+I think I have defined my first problem to fix.  But not tonight.
+
+---
+
+### 2019-Dec-19
+
+For the start of the first mappings, I have have the following comment block:
+
+```
+@@
+@@ -- Now we want to set up paging.  The first order of business here is to map the TTL1 table for managing
+@@    entries.  This requires a new page to be allocated and mapped into the TTL1 table itself.
+@@
+@@    The measureable results of this section are expected to be:
+@@    * 0x1000000 (for 4 pages) contains the TTL1 table
+@@    * create a new TTL2 table block (for managing 4 frames) exp: 0x1006000
+@@    * associate a TTL1 entries:
+@@        * index 0xff4 (offset 0x3fd0) to address 0x1006000
+@@        * index 0xff5 (offset 0x3fd4) to address 0x1006400
+@@        * index 0xff6 (offset 0x3fd8) to address 0x1006800
+@@        * index 0xff7 (offset 0x3fdc) to address 0x1006c00
+@@    * map pages into TTL2 table at 0x1006000:
+@@        * index 0x04 (offset 0x10) to address 0x1000000
+@@        * index 0x05 (offset 0x14) to address 0x1001000
+@@        * index 0x06 (offset 0x18) to address 0x1002000
+@@        * index 0x07 (offset 0x1c) to address 0x1003000
+```
+
+I should be able to properly measure these results and make any adjustments necessary.
+
+And I need to consider some adjustments:
+
+```
+(gdb) p /x *0x1003fd0
+$1 = 0x1006001
+(gdb) p /x *0x1003fd4
+$2 = 0x1006401
+(gdb) p /x *0x1003fd8
+$3 = 0x1006801
+(gdb) p /x *0x1003fdc
+$4 = 0x1006c01
+(gdb) p /x *0x1006010
+$5 = 0x1000003
+(gdb) p /x *0x1006014
+$6 = 0x0
+(gdb) p /x *0x1006018
+$7 = 0x0
+(gdb) p /x *0x100601c
+$8 = 0x0
+```
+
+The last 4 entries are `0`.  So, either my test criteria are wrong or the test results are wrong....  And I was incrementing the wrong register, so my code was wrong.
+
+Moving on to the next section....  Which I cleaned up and tested successfully.
+
+---
+
+### 2019-Dec-20
+
+I need to get my head around this.  I know the following logic works:
+
+```C++
+//
+// -- This is the location of the TTL1/TTL2 Tables in kernel space
+//    ------------------------------------------------------------
+#define TTL1_KRN_VADDR      0xff404000
+#define MGMT_KRN_TTL2       0xfffff000
+#define TTL2_KRN_VADDR      0xffc00000
+
+
+//
+// -- These macros assist with the management of the MMU mappings -- picking the address apart into indexes
+//    into the various tables
+//    -----------------------------------------------------------------------------------------------------
+#define KRN_TTL1_ENTRY(a)       (&((Ttl1_t *)TTL1_KRN_VADDR)[(a) >> 20])
+#define KRN_TTL1_ENTRY4(a)      (&((Ttl1_t *)TTL1_KRN_VADDR)[((a) >> 20) & 0xffc])
+#define KRN_TTL2_MGMT(a)        (&((Ttl2_t *)MGMT_KRN_TTL2)[(a) >> 22])
+#define KRN_TTL2_ENTRY(a)       (&((Ttl2_t *)TTL2_KRN_VADDR)[(a) >> 12])
+```
+
+So, the question is: how to change this so that it works with my `entry.s` module before I have all these address up and running?
+
+First of all, this is an array in C++ and I need to change this to be addresses of 32-bit words.  So, every one of these will be shifted-left by 2 to multiply by 4.
+
+I think the first order os business here is going to be to code these all out in assembly.  I am using `r9` as a scratch register in `entry.s` and `r8` as a counter.  So each of these 3 key macros (not `KRN_TTL1_ENTRY4`) will use registers `r5`, `r6`, or `r7`.  `KRN_TTL1_ENTRY4` will reuse the same register as `KRN_TTL1_ENTRY` and will be a prerequisite call.  Each should only need to operate on its own register.
+
+---
+
+OK, I was finally able to get into the loader space.  Plus, I was able to get past the management table issues..., well the first of them anyway.
+
+I want to commit this code while I have it.
+
+---
+
+OK, now I can complete the rest of the MMU setup that is needed from the upper memory space.
+
+---
+
+### 2019-Dec-21
+
+Today, my primary goal is to get serial output happening again on the rpi2b.  I have moved the hardware MMIO address space and I have not updated the new location in the `#define`s.  However, I am not yet getting to that place in code.  So, I need to make sure I am getting out of `MmuEarlyInit()`.
+
+I am faulting trying to move the MMIO addresses.  My suspicion is that I have a problem with creating a new TTL2 table and getting that set up properly.
+
+I was able to get a log of this fault sequence and I am getting the following:
+
+```
+IN:
+0x808018e8:  e1a00006  mov      r0, r6
+0x808018ec:  e8bd41f0  pop      {r4, r5, r6, r7, r8, lr}
+0x808018f0:  ea00065f  b        #0x80803274
+
+R00=81004a00 R01=00000000 R02=ffffd000 R03=0000d000
+R04=ff400000 R05=81004a00 R06=000000c0 R07=0100d000
+R08=00000001 R09=0100d000 R10=000287a0 R11=000254cc
+R12=05000000 R13=ff400fa8 R14=808018e8 R15=808018e8
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600003f
+...with DFSR 0x7 DFAR 0xff400fa8
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x5 IFAR 0x1005010
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x5 IFAR 0x100500c
+```
+
+Now, the `DFSR` register tells me that this is a Second Level translation fault (as in the TTL2 entry could not be found) and the `DFAR` register tells me that this is on address `0xff400fa8`.  What bothers me is the address.  That address is supposed to be used for clearing a frame before placing it into the tables in its final location.  But if there was a problem with that address, I would expect it to fail much closer to `0xff400000`, not near the end of the page.
+
+Now, the value in `r15` confuses me as well.  This address is at the end of the `MmuClearFrame()` function, but there is no memory reference near that instruction (other than stack references).  For a data abort, the problem happened 2 instructions before the value in `pc`, so that instruction would be:
+
+```
+808018e0:       e1a00005        mov     r0, r5
+```
+
+That makes no sense.  If I take the instruction itself, it was:
+
+```
+808018e8:       e1a00006        mov     r0, r6
+```
+
+That makes no sense either!
+
+I could consider this a cache consistency problem, but qemu does not emulate cache that I know of.
+
+Ahhh...  but if you look at the value in `r13` (`sp`), there is the offending value!  So, it appears that my stack and the frame to clear are getting mixed up somehow.
+
+I am loading this value from `entry.s`.  I definitely am stomping on myself here.
+
+---
+
+I have that fixed and I have the rpi2b target running to the point just before it opens the serial port for debugging output.
+
+The x86-pc target still triple faults.  And I need to make sure it is getting at least that far.  And it is.
+
+So, I am now able to make the `EarlyInit()` fuctions match between the targets, so I can simplify to 1 version of this function.  It is now called `LoaderEarlyInit()`.
+
+I have some additional cleanup to do for all the work I had done to get to this point.
+
+One of the goals at this point is to figure out a way to have a common location for defining constants but output the proper header file for any given architecture, compiler, or assembler.  I believe I might be able to use `sed` for this...  maybe `awk`.  Or, all `awk`.
+
+Anyway, I now have a `constants` file I can maintain centrally and output the different constants for each target as appropriate.  Later, I will need to be able to selectively output constants depending on the target I am using.  But that will indeed be later.
+
+I also believe I have properly cleaned up the `entry.s` file for both archs.  This moves me on to the `LoaderMain()` function.
+
+`LoaderMain()` is rather trivial, but I cannot execute all the way through this function yet.  The first call is `LoaderFunctionInit()`.
+
+`LoaderFunctionInit()` has some linker-defined variables that I also want to centralize.  I believe I can place those in `loader.h` and have them be in the right spot.  They are part of the loader sections anyway and will go away at a leter time.  If I need to capture them, it is appropriate to move them into kernel data space.
+
+Next in `LoaderMain()` is the call to `LoaderEarlyInit()`.  This then calls `MmuEarlyInit()`.
+
+Now, `MmuEarlyInit()` really needs to be renamed to `MmuInit()`, but I have one of those already.  `MmuInit()` should go away since the MMU really needs to be completely initialized after this call to `MmuEarlyInit()` -- there should be nothing more than routine maintenance to do after `MmuEarlyInit()` is done.  Several things could not be completed at the `entry.s` level since we did not yet have everything ready to go.
+
+So, the first thing to do now it safely remove `MmuInit()`.  This will be done by temporarily renaming the file.
+
+I have also realized that I do not yet have the framebuffer mapped on the rpi2b target.  This is also throwing a fault.
+
+Let me see if I can identify the fault....
+
+I never would have figure on this:
+
+```
+IN:
+0x80000228:  e30002f0  movw     r0, #0x2f0
+0x8000022c:  e3480100  movt     r0, #0x8100
+0x80000230:  e5903008  ldr      r3, [r0, #8]
+0x80000234:  e12fff33  blx      r3
+
+R00=40040000 R01=fb000000 R02=80003000 R03=00000001
+R04=00112008 R05=00000000 R06=00000000 R07=00000000
+R08=ff802000 R09=fffff000 R10=000287a0 R11=000254cc
+R12=40040000 R13=ff801ff0 R14=fffff1c8 R15=80000228
+PSR=400001d3 -Z-- A NS svc32
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x7 IFAR 0x0
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x8600003f
+...with IFSR 0x5 IFAR 0x100500c
+```
+
+In this case, I am trying to jump to a `0x00000000` address.
+
+Hmmm, could it be that I am skipping the framebuffer load altogether?  Possible I guess.  But I am returning back to `LoaderEarlyInit()`.
+
+So, thinking about this, what I think to be the case is that I am trying to map the framebuffer in the MMU before I have been able to determine where that it -- from the hardware scan in `PlatformInit()`.  This will have to move.
+
+I am also realizing that the x86-pc `MmuEarlyInit()` function does nothing and it also needs to be properly addressed.  Most of that goes away for real, but I need to finish up with mapping the IVT into kernel space.  Also, with a properly placed infinite loop, I am actually still getting a triple fault, so I need to track that down.  It looks like that final bit of code is not needed, so it was also removed.  What is left to do is set up to map the IVT properly.
+
+---
+
+### 2019-Dec-22
+
+I was able to get this all sorted out this morning.  I found that I was trying to map an address that did not have a Page Table and had assumed it was there.  This was not a problem for rpi2b since I had the TTL1 management space mapped into this same TTL1 entry.  For x86-pc, this was not the case and I had to artifically create this Page Table for this address space.  That identified and fixed, the kernel now boots to the `SerialOpen()` call.
+
+I can continue on with the cleanup.
+
+Next, I want to consider if I can eliminate `LoaderEarlyInit()`.  I think I should because it's only purpose is to call `MmuInit()` and `PlatformInit()`.  It does a couple of other it also does a couple of other things I will be moving to `PlatformInit()`.  So, in short I have a function whose sole purpose is to call 2 functions.  Sounds like unnecessary overhead to me.
+
+---
+
+I committed my changes so far and pushed those to GitHub.
+
+So, now on to the serial port.  I am going to start with x86, since that really should work out of the box.  It does not, so there is some silly problem, I am sure.  In the meantime, it's a triple fault.
+
+That's right, the code is jumping to `0x00000000`.
+
+---
+
+I have several issues sorted at this point, but the rpi2b is not outputting data to the serial port.  There are no faults (that I know of), just no serial output.
+
+Now, I recall there were issues with that using qemu (only 1 serial port was emulated -- whatever one I am not using...), so I cannot take that at face value.
+
+I also think I remember having similar problems earlier on and it ended up being mappings in the MMU.  Hmmmm....
+
+---
+
+OK, the qemu emulator will not emulate the mini-UART.  So, I cannot use qemu as too much of a test-bed.  I also remember having this problem earlier.
+
+Now, I am not certain where I am getting to in real hardware.
+
+So, the reality is I am going to have to figure out how to write to the serial port before I get to the kernel -- at least for now.
+
+---
+
+### 2019-Dec-23
+
+I am wondering if I have a problem with the loader....  I doubt it, but I need to test it to be sure.
+
+Actually, I am struggling to prove that the kernel loader (my code) actually gets control.
+
+---
+
+### 2019-Dec-24
+
+The more I think about this, the more I am drawn to the thought that I really messed up the linker script.
+
+So, from v0.4.6, this is the results from `readelf`:
+
+```
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           ARM
+  Version:                           0x1
+  Entry point address:               0x1025f4
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          575880 (bytes into file)
+  Flags:                             0x5000400, Version5 EABI, hard-float ABI
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         4
+  Size of section headers:           40 (bytes)
+  Number of section headers:         11
+  Section header string table index: 10
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .loader           PROGBITS        00100000 001000 006001 00  AX  0   0 4096
+  [ 2] .text             PROGBITS        80000000 008000 004060 00  AX  0   0  8
+  [ 3] .rodata           PROGBITS        80005000 00d000 0028ac 00   A  0   0  4
+  [ 4] .stab             PROGBITS        80008000 010000 07376d 00   A  0   0  4
+  [ 5] .data             PROGBITS        8007c000 084000 0003dc 00  WA  0   0  8
+  [ 6] .bss              NOBITS          8007d000 0843dc 004644 00  WA  0   0  4
+  [ 7] .ARM.attributes   ARM_ATTRIBUTES  00000000 0843dc 000039 00      0   0  1
+  [ 8] .symtab           SYMTAB          00000000 084418 006600 10      9 1418  4
+  [ 9] .strtab           STRTAB          00000000 08aa18 001f1d 00      0   0  1
+  [10] .shstrtab         STRTAB          00000000 08c935 000052 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  y (purecode), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x06001 0x06001 R E 0x1000
+  LOAD           0x008000 0x80000000 0x00107000 0x7b76d 0x7b76d R E 0x1000
+  LOAD           0x084000 0x8007c000 0x00183000 0x003dc 0x05644 RW  0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .loader
+   01     .text .rodata .stab
+   02     .data .bss
+   03
+```
+
+The big change here was to combine several sections.  The current sections are:
+
+```
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           ARM
+  Version:                           0x1
+  Entry point address:               0x100090
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          539476 (bytes into file)
+  Flags:                             0x5000400, Version5 EABI, hard-float ABI
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         6
+  Size of section headers:           40 (bytes)
+  Number of section headers:         11
+  Section header string table index: 10
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .entry            PROGBITS        00100000 001000 001000 00  AX  0   0 16
+  [ 2] .loader           PROGBITS        80000000 002000 004000 00  AX  0   0 4096
+  [ 3] .syscall          PROGBITS        80400000 006000 001000 00  WA  0   0  1
+  [ 4] .text             PROGBITS        80800000 007000 007000 00  AX  0   0  8
+  [ 5] .data             PROGBITS        81000000 00e000 005000 00  WA  0   0  8
+  [ 6] .stab             PROGBITS        81005000 013000 068000 00   A  0   0  4
+  [ 7] .ARM.attributes   ARM_ATTRIBUTES  00000000 07b000 000039 00      0   0  1
+  [ 8] .symtab           SYMTAB          00000000 07b03c 006900 10      9 1433  4
+  [ 9] .strtab           STRTAB          00000000 08193c 0021c0 00      0   0  1
+  [10] .shstrtab         STRTAB          00000000 083afc 000055 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  y (purecode), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x01000 0x01000 R E 0x1000
+  LOAD           0x002000 0x80000000 0x00101000 0x04000 0x04000 R E 0x1000
+  LOAD           0x006000 0x80400000 0x00105000 0x01000 0x01000 RW  0x1000
+  LOAD           0x007000 0x80800000 0x00106000 0x07000 0x07000 R E 0x1000
+  LOAD           0x00e000 0x81000000 0x0010d000 0x6d000 0x6d000 RW  0x1000
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .entry
+   01     .loader
+   02     .syscall
+   03     .text
+   04     .data .stab
+   05
+```
+
+It's not that the resulting elf is malformed, but that the `pi-bootloader` may not be able to handle it.
+
+I think.
+
+---
+
+Turns out that I am no longer able to think in decimal...  I was trying to print the number `'1'`, but I was printing decimal `31` rather than hexadecimal `0x31`.  When I cleaned that up, it worked.
+
+So, now to figure out how far I get.
+
+I was able to narrow down the problem to the first call to `MapPageFull` in `entry.s`.  I finally have something to work on here.
+
+OK, to save my debugging code:
+
+```
+    mov     r0,#0x5040
+    movt    r0,#0x3f21
+    mov     r1,#'#'
+s:  str     r1,[r0]
+    b       s
+```
+
+This outputs a stream of `'#'` characters.
+
+My problem is this block of code:
+
+```
+    mov     r9,#(ARMV7_MMU_TTL2)                @@ get the bits to set
+    orr     r3,r9                               @@ make the proper ttl1 entry
+    str     r3,[r2]                             @@ and put it in place
+```
+
+The `str` opcode does not have a valid `r2` value.  I need to clean that up.
+
+OK, so the paging tables are still messed up, even after fixing up the above issue.
+
+So, I am going to have to invest is some time into some additional debugging code.
+
+---
+
+### 2019-Dec-26
+
+So, I am unable to get the code to boot again.  I am not sure what the heck is going on, but it feels very fragile to me!  Even my output at the start of the entry point no longer works.  CRAP!
+
+Hmmm... OK...  When I write a loop of characters, I get the results I am looking for.  A single character does not work.
+
+So, I need to make sure I can output a single character.
+
+Ok, seriously, all I really changed was to clean up some alignments and now it runs.
+
+---
+
+### 2019-Dec-27
+
+More stepping through the bits I need to understand to get the rpi booting again....
+
+---
+
+### 2019-Dec-29
+
+I have finally been able to get the loader executing.  However, I am still not able to get the serial port to output anything.  So, since the MMIO memory is being identity mapped and mapped to the proper virtual memory locations.
+
+---
+
+I was finally able to finally get the rpi2b serial port to output characters properly.  I cleaned up my debugging mess and now I am getting problems with the hardware sections of both archs.  With that, I should commit my code.  I will also push it since this is a significant milestone.  I was supposed to get farther than this with v0.5.0b, but I think I will also branch this and continue on a new branch since so much work went into this.
+
+---
+
+## Version 0.5.0c
+
+I will continue on this branch with the work to get all the hardware reporting and initializing properly.
+
+It appears that my fault handlers are not working right yet.  This should be the next task.
+
+The following code is in `LoaderMain()`:
+
+```C++
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+{
+    LoaderFunctionInit();               // go and initialize all the function locations
+    MmuInit();                          // Complete the MMU initialization for the loader
+    PlatformEarlyInit();
+    kprintf("Welcome\n");
+```
+
+This code does nothing to relocate the GDT or to set up the IDT in its final location for any form in either arch.  I could add this to any of the functions, but I would prefer to have that completed sooner than later.  In reality, this really should have been done in `entry.s` but was not convenient.  Therefore, I believe a function ahead of `LoaderFunctionInt()` is in order to get these final CPU structures initialized.
+
+Now, here is the problem: to complete the GDT setup, I am going to need a TSS per CPU.  To determine the number of CPUs, I am going to need to complete `PlatformEarlyInit()` (or at least `HardwareDiscovery()` therein).  And `PlatformEarlyInit()` needs to come after `MmuInit()` to get all the mappings settled.  Finally, `LoaderFunctionInit()` really does need to come first to makes sure that the structures are properly initialized before we get into anything that might use that (like a serial port) -- stuff that the C++ runtime expects to have been called.
+
+So, this is a bit of a chicken-and-egg problem.
+
+I really need to leave the setup as it is and get this all settled down properly knowing I do not have a properly configured GDT or IDT for anything yet -- until I get past `PlatformEarlyInit()`.  So, I need to make sure that the GDT and IDT structures are identity mapped for now.
+
+Having done that for both archs, I am able to get the proper exception for rpi2b (x86-pc has not yet been set up, so I cannot yet expect the same behavior).
+
+Now, with that said, I should be able to get the IDT up and running and handle exceptions.  This may yet be able to be handled in `entry.s`.
+
+I have an IDT set up now, but I am getting some odd exceptions (`#UD` in particular).  I will need to run logs on this.
+
+---
+
+### 2019-Dec-30
+
+So, logs....  which turned out to be a quick and easy cleanup.
+
+After that, I discovered a problem with mapping a page from the kernel for rpi2b.  The management space is not mapped properly.
+
+I realize now that I have no function to dump the mmu tables for rpi2b.  I need to get that function implemented.
+
+---
+
+### 2019-Dec-31
+
+Well,  managed to get my arm `entry.s` too far out of whack and checked out the one from the last commit....  and now I am redoing some debugging.   rpi2b exceptions are not working again.
+
+---
+
+### 2020-Jan-01
+
+Well, Happy New Year!!  I started by ticking all the copyright (c) dates.  And broke a few things in the process (I really need to learn `git` better).  I will have to sort them all out.
+
+OK, so x86-pc works fine.
+
+rpi2b is getting this data abort:
+
+```
+IN:
+0x808034cc:  e5941000  ldr      r1, [r4]
+0x808034d0:  e2812054  add      r2, r1, #0x54
+0x808034d4:  e5923000  ldr      r3, [r2]
+0x808034d8:  e3130020  tst      r3, #0x20
+0x808034dc:  0afffffc  beq      #0x808034d4
+
+R00=810002f4 R01=00000001 R02=00000000 R03=80803494
+R04=810002f0 R05=00000054 R06=810002f4 R07=000000c0
+R08=ff800fbc R09=3fd01000 R10=000287a0 R11=808063f4
+R12=05000040 R13=ff800f40 R14=808034cc R15=808034cc
+PSR=600001d3 -ZC- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600003f
+...with DFSR 0x5 DFAR 0xf8215054
+```
+
+The DFAR is the mini-UART and is the mapped address.  So I need to figure out the DFSR.  And I see it is a First Level translation fault -- I do not have a TTL1 Entry for this address.  But how?
+
+OK, turns out I added some debugging code into `MmuMapToFrame()` and that is being executed too early.  And removing it fixed the problem.
+So, I need to figure out how to "turn on" debugging output.                                                           z
+
+---
+
+I am still faulting trying to map pages on rpi2b.  I still am missing somehow some epiphany I had at some point in an earlier version.  There is some page that is not mapped to be able to map a page.  I think it has something to do with recursively mapping a TTL2 table.  So, let's think this through:
+
+The formula for calculating the TTL1 Entry address is `(0xff404000 + ((<addr> >> 20) * 4))`.
+The formula for calculating the TTL2 Entry address is `(0xffc00000 + ((<addr> >> 12) * 4))`.
+
+| Page Base Address | TTL1 Entry Addr | TTL2 Entry Addr |
+|:------------------|:----------------|:----------------|
+| `0xff401000`      | `0xff407fd0`    | `0xffffd004`    |
+| `0xff407000`      | `0xff407fd0`    | `0xffffd01c`    |
+| `0xffffd000`      | `0xff407ffc`    | `0xfffffff4`    |
+| `0xfffff000`      | `0xff407ffc`    | `0xfffffffc`    |
+
+So:
+* `0xff401000` has a TTL1 Table and Entry, no TTL2 Table; check `0xffffd000`
+* `0xffffd000` has a TTL1 Table and Entry, a TTL2 Table, but no TTL2 Entry
+* `0xfffff000` has a TTL1 Table and Entry, a TTL2 Table, but no TTL2 Entry
+
+OK, so with that, I know that from `0xffc00000` to `0xffffffff` is 4MB.  This fits in 4 TTL1 entries, or in 4 TTL2 tables or 1 frame.  So, this means that TTL1 entries `0xffc` to `0xfff` should all be mapped (and I think they are).  These each will point to a TTL2 table of 256 entries, or 1 frame in total.  Therefore, address `0xfffffffc` should point to this frame.
+
+---
+
+So, I find the following comments from the v0.3.0 journal from 2019-Feb-17:
+
+> ### 2019-Feb-17
+>
+> I started today by cleaning up my `MmuInit()` function.  It certainly had some problems.  Now, since I have finally figured out that the TTL2 tables for managing the ttl2 tables needs a recursive mapping, I think it best to consider the types of structure entries I need to be able to manage to map a frame into virtual address space.  So, for any given address `addr`, I need to be able to find:
+> 1. The TTL1 Entry for that address: `TTL1_KRN_VADDR[addr >> 20]`.  This is used when we need to add a TTL2 table.  This space is already mapped and ready to be used.
+> 1. The TTL2 Management Table TTL2 Entry for that address: `0xfffff000[addr >> 22]` (taking into account the "`0x3ff`" comments from `MmuInit()`).  This address is used to map the new TTL2 table into the management space.  This table is already mapped and ready to be used.
+> 1. The TTL2 Entry for that address: `TTL2_KRN_VADDR[addr >> 12]`.  This is used to actually perform the mapping for the MMU.  Once the above steps are complete (meaning the entries are checked/mapped), every thing is in place to perform this function.
+>
+> With these 3 bits of information, I should be able to create a proper function to manage this information.  The key missing piece here is the "TTL2 Management Table TTL2 Entry" which I have been missing all this time.  And no recursion!
+
+And I am still struggling with that "TTL2 Management Table TTL2 Entry" concept.  Damn!!
+
+---
+
+### 2020-Jan-02
+
+I am spending most of my day reading.  Most of what I need to duplicate is in a previouis version of [`MmuInit()`](https://github.com/eryjus/century-os/blob/v0.3.0/arch/arm/MmuInit.cc).  This will need to be taken care of in `entry.s`, and once complete `MmuMapToFrame()` should work.
+
+The order of things that were done in `MmuInit()`:
+1. Map the TTL1 table into its management address
+1. Create and map the TTL2 table for the TTL2 management addresses (0xffc - 0xfff)
+1. Recursively map the last TTL2 entry to itself
+1. Map all existing TTL2 tables into the TTL2 management space
+
+From there, `MmuMapToFrame()` works.  At least in that version.
+
+---
+
+### 2020-Jan-03
+
+Finally!!  The key was to add a block of code at the end to loop through the `TTL1 % 4 == 0` TTL1 Entries and mapping them into the TTL2 management table.  This was the part I was missing.
+
+Now, the rpi2b boots to the Welcome message.  The x86pc page faults before then.  So, now to clean that up.
+
+OK, that problem exists in parsing the ACPI tables.  These need to be mapped and unmapped as I consume them.  And I have that worked out.
+
+---
+
+I have been able to get to the kernel.  In both archs, I am able to see the greeting "Welcome to CenturyOS -- a hobby operating system".  And then in both cases, I get a page fault.  So, I think it is time to commit this version.
+
+---
+
+## Version 0.5.0d
+
+OK, so for this version, I will work on completing the cleanup of the loader code.  This will include cleaning up the debug code.  I will also review my Redmine list for anything that can be cleaned up in the loader.  At the same time will be a review of all the Platform code -- cleaning up any issues found therein.
+
+---
+
+### 2020-Jan-04
+
+I am working on platform cleanup....
+
+---
+
+### 2020-Jan-05
+
+I have been making a number of changes trying to get the code cleaned up.  I have quite a bit of it done, but not all.
+
+However, I think I need a commit at this piont.  Nearly every source file has been changed and the risks are getting higher by the minute.
+
+---
+
+## Version 0.5.0e
+
+In this version I continue the cleanup.  There is still a lot to settle down.  However, I want to specifically focus on getting the tests to run again.
+
+---
+
+The first thing I need to do for x86-pc is to get the GDT and IDT properly prepared.  This needs to be done after we discover the number of CPUs so that we can also determine the number of TSS entries that are needed.
+
+I started by performing some calculations on the number of CPUs I can support in a single frame of GDT entries.  This came to 167 CPUs:
+
+> The number of GDT entries we need is easily calculated: 9 + (CPU_count * 3).  Each GDT Entry is 8 bytes long.  Therefore, the number of CPUs we can support in a single frame is: `floor(((4096 / 8) - 9) / 3)` or `167`.  167 CPUs is quite simply a ridiculous number of CPUs at this juncture.
+
+So, considering it a bit, I think I only need to be able to support 16 at this time (167 is really out of the question and 128 is just as ridiculous).  So, in short, this calculation and decision making result in requiring only 1 frame for the GDT.  This means, then, that the other frames will be freed up later when the butler cleans up.
+
+Now, there will be a difference between the Physical GDT address and the Virtual GDT address.  The virtual GDT address will end up in high memory (>0x80000000).
+
+---
+
+### 2020-Jan-07
+
+I am still working on cleanup.  However, I have been able to confirm I am getting to the proper new GDT.
+
+---
+
+### 2020-Jan-08
+
+Today, I am going to work on making certain the x86-pc has a proper IDT in the proper location.
+
+---
+
+I have my stack mapped to the Page Directory.  CRAP!!!
+
+---
+
+### 2020-Jan-10
+
+Ok, so somewhere between the 2 `BOCHS_BREAK` lines I am overwriting my paing table:
+
+```C++
+    BOCHS_BREAK;    // stack mapping is still good here: 0x1001000
+
+    kprintf("Initializing the IDT properly\n");
+
+    BOCHS_BREAK;    // still mapped, but 0x1001000
+```
+
+Not exactly sure where that would be; `kprintf()` should be unintrusive.
+
+However, on the first break, I have the following mapping:
+
+```
+CR3=0x000001001000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+...
+<bochs:5> page 0xff8000000
+ PDE: 0x0000000000000015    ps         a PCD pwt U R P
+ PTE: 0x00000000f000ff53       G pat D a PCD pwt S W P
+```
+
+whereas for the second breal, I have:
+
+```
+CR3=0x000001001000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+...
+<bochs:7> page 0xff8000000
+ PDE: 0x0000000000200002    ps         a pcd pwt S W p
+physical address not available for linear 0x0000000ff8000000
+```
+
+So, since the PDE is different, this means that the entry at offset `0xff8` is being overwritten.  That would be at physical address `0x01001ff8`.
+
+---
+
+### 2020-Jan-11
+
+This morning (well even yesterday while I could think), I started looking at the Bochs instrumentation.  Where this comes in is that I think I can use that to track to actual execution instruction by instruction, placing the relevant values into the output.  This, then, will become a full execution log but will slow bochs tremendously!!!.  To overcome this, I will need to also create some way to toggle the instrumentation (turn on/off).  A `nop` is technically `0x90` or `xchg ax,ax`.  The bochs magic breakpiont is `xchg bx,bx`.  I can use `xchg dx,dx` to toggle the debugging output.
+
+Well, point of correction here...  `xchg ax,r16` is the `0x9x` family of instructions.  That will not work for a simple compare here.  However, the `xchg edx,edx`/`xchg dx,dx` (depending on the native CPU mode) will still work.  This should result in a byte sequence of `0x87 0xd2` which should be able to be easily trapped.
+
+So the first thing to do here is to build Bochs with instrumentation enabled.  To do that, I am going to copy the instrumenatation `example1` to a new folder and create a symlink under the Bochs instrument folder to my project.  This will allow me to make sure I have this working right before I get into my own version.
+
+---
+
+I was not able to keep the symlink for the folder.  I had to move the physical files into pleace.  But, now I get beautiful debugging output like this:
+
+```
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ss:[ebp-112]
+LEN 3   BYTES: 8b4590
+MEM ACCESS[0]: 0x000000000007fadc (linear) 0x00000007fadc (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: test eax, eax
+LEN 2   BYTES: 85c0
+
+----------------------------------------------------------
+CPU 0: jnz .+26 (0x0000001c)
+LEN 2   BYTES: 751a     BRANCH TARGET 00000000bffea65f (TAKEN)
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ss:[ebp-112]
+LEN 3   BYTES: 8b4590
+MEM ACCESS[0]: 0x000000000007fadc (linear) 0x00000007fadc (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: test eax, eax
+LEN 2   BYTES: 85c0
+
+----------------------------------------------------------
+CPU 0: jnz .+26 (0x0000001c)
+LEN 2   BYTES: 751a     BRANCH TARGET 00000000bffea680 (TAKEN)
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ss:[ebp-380]
+LEN 6   BYTES: 8b8584feffff
+MEM ACCESS[0]: 0x000000000007f9d0 (linear) 0x00000007f9d0 (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ds:[eax]
+LEN 2   BYTES: 8b00
+MEM ACCESS[0]: 0x00000000bffe6cb0 (linear) 0x0000bffe6cb0 (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: mov eax, dword ptr ds:[eax+860]
+LEN 6   BYTES: 8b805c030000
+MEM ACCESS[0]: 0x00000000bffe757c (linear) 0x0000bffe757c (physical) RD SIZE: 4
+
+----------------------------------------------------------
+CPU 0: test eax, eax
+LEN 2   BYTES: 85c0
+
+----------------------------------------------------------
+```
+
+And I get lots of it.  Lots and lots.
+
+This is a good starting place, but I have got to be able to disable this or I am never going to get anything done with bochs.  So, I am going to start a new git and a new project.  The first order of business is to get the minimal stuff in place and then to write the repo.  But then I need to add code to toggle enable/disable of the code so I can be far more surgical with where I get the data.  So, I set this aside for a while....
+
+---
+
+OK, I have something!!
+
+Bochs debugger reports in particular for `cr3`:
+
+```
+<bochs:2> creg
+CR0=0xe0000011: PG CD NW ac wp ne ET ts em mp PE
+CR2=page fault laddr=0x00000000ff800f28
+CR3=0x000001001000
+    PCD=page-level cache disable=0
+    PWT=page-level write-through=0
+CR4=0x00000000: cet pke smap smep osxsave pcid fsgsbase smx vmx osxmmexcpt umip osfxsr pce pge mce pae pse de tsd pvi vme
+CR8: 0x0
+EFER=0x00000000: ffxsr nxe lma lme sce
+```
+
+and the instrumentation log reports:
+
+```
+00164631098i[      ] CPU 0: mov esp, 0xff801000
+00164631098i[      ] LEN 5	BYTES: bc001080ff
+```
+
+Now, later down the execution (less than a dozen instructions), we have:
+
+```
+00164631108i[      ] CPU 0: call .-88 (0xffffffad)
+00164631108i[      ] LEN 5	BYTES: e8a8ffffff
+00164631108i[      ] 	BRANCH TARGET 00000000800025a0 (TAKEN)
+00164631108i[      ] MEM ACCESS[0]: 0x00000000ff800ff0 (linear) 0x000001001ff0 (physical) WR SIZE: 4
+```
+
+This means that the stack (at `0xff800ff0` which points to physical address `0x1001ff0` is occupying the same frame as `cr3`.
+
+The stack virtual address is correct.  However the frame is wrong.
+
+So, this code is used to create a Page Table and add it to the Page Directory.  It then loads the base address of the stack into the page.
+
+```S
+;;
+;; -- 0xff800000 for our stack
+;;    ------------------------
+    call    MakePageTable                       ;; get a page table
+    mov     ebp,eax                             ;; save the location for later
+    or      eax,X86_MMU_BASE|X86_MMU_KERNEL     ;; fix up the other bits
+    mov     [ebx + (1022 * 4)],eax              ;; 0xff800000 / 0x400000 = 0x3fe (1022)
+    mov     eax,ebp                             ;; get the saved address
+
+;; -- init to populate the table
+    mov     esi,[stackBase]                     ;; get the stack physical address
+    mov     edi,0                               ;; the index into the table
+
+;; -- loop to populate the table
+    mov     edx,esi                             ;; get the address (page aligned)
+    or      edx,X86_MMU_BASE|X86_MMU_KERNEL     ;; get the other bits
+    mov     [eax + (edi * 4)],edx               ;; set the page table entry
+```
+
+In particular, I am interested in how `stackBase` is populated.
+
+```S
+;;
+;; -- The next order is business is to get a stack set up.  This will be done through `NextEarlyFrame()`.
+;;    ---------------------------------------------------------------------------------------------------
+initialize:
+    mov         esp,stack_top                   ;; This will set up an early stack so we can call a function
+    call        NextEarlyFrame                  ;; get a frame back in eax
+    add         eax,STACK_SIZE                  ;; go to the end of the stack
+    mov         esp,eax                         ;; set the stack
+    mov         [stackBase],eax                 ;; save that for later
+```
+
+`eax` is returned from `NextEarlyFrame` with the frame that will be mapped.  We use that to create a proper-depth stack, but we also adjust `eax` before we store that value into `stackBase`.  This is the problem -- the `mov [stackBase],eax` is out of sequence.  Also, I checked and this is the first call to `NextEarlyFrame` so I would expect to get `0x1000000` back from that call, not `0x1001000`.
+
+Interestingly enough, this was amazingly easy to track down with the instrumentation package!!!
+
+---
+
+### 2020-Jan-12
+
+Let's see here.  I need to figure out where I am faulting at this point.  I forgot where I was in the cleanup.  For x86-pc, it am faulting in `kMemSetW()`, which is only used as I recall in clearing the frame buffer.  For rpi2b, it is also faulting in `kMemSetW()`.  So, it is clear at this point I need to go back and make sure that the framebuffer is mapped in virtual memory.
+
+So, I might have to go back to instrumenation here....
+
+```C++
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+{
+    LoaderFunctionInit();               // go and initialize all the function locations
+    MmuInit();                          // Complete the MMU initialization for the loader
+    kPrintfEnabled = true;
+```
+
+This means I cannot get any output from `MmuInit()` because output is not enabled until after `MmuInit()` is complete.  Or..., maybe I can move that because it is dependent on the mapping of the MMIO address space for rpi2b.  Let do that!
+
+OK, realization here... I am working in the wrong space.  That is because the function `FrameBufferInit()` is collecting the data I need to map the framebuffer and that has not been called yet.  I really need to move my work onto that function.  Now, I also have a problem with rpi2b where it is being mapped twice -- and obviously neither are working properly so I have to work to do there as well.  I also have several bits of hard-coded information there that I need to get cleaned up as well.
+
+I have the rpi trying to start processes and scheduling.  It is not working 100% but that is a good place to get the pc to get caught up to.  The pc is to the point of trying to start the other cores by copying the trampoline code.
+
+However, neither arch is outputting to the monitor even though they should be at this point.  I need to get that debugged first.
+
+This also turned out to be an easy sequencing problem.  Well for x86-pc.
+
+For rpi2b, the screen is not updating and I am getting an interrupt vector 0x44:
+
+```
+Attempting the clear the monitor screen at address 0xfb000000
+.. Done!
+Request to map vector 0x41 to function at 0x80803668
+IsrHandler registered
+Enabling IRQ bit 0x0 at address 0xf800b218
+Done
+Timer Initialized
+Enabling interrupts now
+PANIC: Unhandled interrupt: 0x44
+```
+
+What the heck is *that*??  This is IRQ 68, which is not on the BCM2835 IRQ list.  So, it must be from the GPU....
+
+OK, this makes more sense:
+
+```C++
+//
+// -- BCM2835 defines IRQs 0-63, plus a handfull of additional IRQs.  These additional ones are being placed
+//    starting at IRQ64 and up.
+//    ------------------------------------------------------------------------------------------------------
+#define IRQ_ARM_TIMER       64
+#define IRQ_ARM_MAILBOX     65
+#define IRQ_ARM_DOORBELL0   66
+#define IRQ_ARM_DOORBALL1   67
+#define IRQ_GPU0_HALTED     68
+#define IRQ_GPU1_HALTED     69
+#define IRQ_ILLEGAL_ACCESS1 70
+#define IRQ_ILLEGAL_ACCESS0 71
+```
+
+---
+
+OK, so the GPU is halting.  But why???   Well, hang on....  I think I need the physical address of the structure I am communicating with the GPU with..  but I am in virtual memory.  This means I need to either identity map the structure OR I need to get a frame specifically for this so I know what the hardware address is.  I could also write an MMU function to get the frame for a page so I can calculate the hardware address.  Several options....
+
+So, let's consider the options:
+1. **Create an identity mapping for this structure.**  This will mean that to do this, I will need to find the physical address in runtime.  And then create a mapping for this address and hope that is will not conflict with something that is already mapped.  This is really not a good option.
+1. **Create a space in memory where this is a dedicated structure.**  I may end up doing that later for the video driver, but not likely.  The problem here is that this removes a complete frame for 64 * 4 or 256 bytes for something that has other options.  Not smart.
+1. **Write a general purpose MMU function to determine the physical address of a virtual one.**  This has a lot more promise in my opinion.  In reality, this will have a lot more use than any of the other solutions and it is not a uni-tasker (to steal a term from AB..)!  I think I will need something like this for DMA later -- I think (but mixing ARM and x86 technologies).
+
+Anyway, the MMU function is the way I am going to take this.
+
+---
+
+The first attempt at this did not work.  Simple cleanup though.
+
+So now the next step is to fix up the trampoline code.
+
+OK, I have both archs working without starting the extra APs.  I am going to commit this now and create a Redmine to get the APs working again.
+
+---
+
+## Version 0.5.0f
+
+OK, with the Bootstrap Processor working (BSP), I am now able to get into the Redmine work I have have been postponing.
+
+---
+
+### 2020-Jan-14
+
+Today I work on more Redmines.  `CpuNum()` is flawed and either I need to work on my understanding of what is required or my understanding of how to translate it.  See [#445](http://eryjus.ddns.net:3000/issues/445).
+
+So, for [#348](http://eryjus.ddns.net:3000/issues/348) related to the screen size and the number of characters that can be displayed, a character width is 8 pixels and its height is 16 pixels.  So the number of rows is `HEIGHT / 16` and `WIDTH / 8`.
+
+---
+
+### 2020-Jan-16
+
+Working on issues....
+
+* http://eryjus.ddns.net:3000/issues/372
+* http://eryjus.ddns.net:3000/issues/442
+
+---
+
+### 2020-Jan-17
+
+I want to get into [#380](http://eryjus.ddns.net:3000/issues/380).  This one will be intrusive.  So I am going to work on a commit to give me a roll-back point in case a make a holy mess of things.
+
+---
+
+I decided not to push this commit -- no need to do that just yet.  So this is just stored in my local repo.
+
+I want to get into #380, but this is really dependent on #443 (Restart the APs).  I will start with that.  Getting the rpi2b running should be a little easier, so I will start with that arch.
+
+I got this output:
+
+```
+Starting core with message to 0xf900009c
+Starting core with message to 0xf90000ac
+Starting core with message to 0xf90000bc
+the new process stack is located at 0xff801000 (frame 0x00000400)
+the new process stack is located at 0xff802000 (frame 0x00000401)
+.AB
+```
+
+... and then nothing.  So, it makes me wonder if I really have my VBAR working properly.  Let me test that.
+
+```
+Data Exception:
+.. Data Fault Address: 0x00000000
+.. Data Fault Status Register: 0x00000007
+.. Fault status 0x7: Translation fault (Second level)
+.. Fault occurred because of a read
+At address: 0xff800fa8
+ R0: 0x60000113   R1: 0x00000000   R2: 0x80806244
+ R3: 0x00000020   R4: 0x00000000   R5: 0xfffffffc
+ R6: 0x00000000   R7: 0xff801000   R8: 0x00000400
+ R9: 0x00400000  R10: 0x01000000  R11: 0x01007000
+R12: 0xff801000   SP: 0x80803b38   LR_ret: 0x80803b38
+SPSR_ret: 0x60000113     type: 0x17
+
+Additional Data Points:
+User LR: 0xdffb56bf  User SP: 0xdde7ead3
+Svc LR: 0xff800fb8
+```
+
+So that works.  OK, so now what?
+
+Well, after changing `entry.s` I never went back to look at `entryAp.s`.  I probably should start there.
+
+Ok, I did find this:
+
+```
+Data Exception:
+... Data Fault Address: 0xff802ff8
+```
+
+This is in the stack range.  This means my stack is not mapped.  I will need to take care of that from `entryAp.s`, but it will need to call the proper kernel function to work.
+
+---
+
+### 2020-Jan-18
+
+OK, so I have narrowed this down to a stack problem.  Once I get to the mapped stack with paging enabled, things go south on me.  I really want to be able use `StackFind()` so that I can allocate a stack properly.
+
+---
+
+### 2020-Jan-19
+
+I really have 2 choices for how and when to allocated the stacks for APs.  I can to that in `entryAP.s`, which means I will need to de-allocate a stack when I am ready to power off the core.  The risk here is that if a core is powered off due to inactivity, there is a race condition to get it powered back up and allocate a new stack before the stacks run out (there are a finite number of them).  On the other hand, if I allocate one for each possible core starting the APs, then I have them permanently allocated and I am guaranteed to always have a stack available to start the AP.
+
+For this, I probably need to get the per-CPU structures started and figure out how to handle those on an ARM CPU... and it should be defined in the ABI I think.
+
+---
+
+I found this from `lk`: https://github.com/littlekernel/lk/blob/cba9e4798747fed36e4f858965796487bfd0a7c4/arch/arm/include/arch/arch_ops.h#L219
+
+This, then, also led me to this: https://github.com/littlekernel/lk/blob/128890f8a8ce0ff73045af519b007525c76397dc/arch/arm/rules.mk#L263
+
+---
+
+### 2020-Jan-20
+
+I had the following questions that I asked on the `#lk` channel:
+
+```
+i am working on trying to set up/understand some per-cpu data and looking through lk as a reference solution.
+
+
+1) for armv7, i was looking through the ABi to see if a register was used for per-cpu data and it appears it is not.  So, I thought I would look into lk to see how you handled that.  it does not appear you use a register but calculate the cpu number on the fly with the mpidr each time it is needed.  am i correct in this conclusion?
+2) as a result, I would assume that you have an array indexed by the result of your mpidr calculation.  if this is correct, are there heterogeneous cpu configurations that throw a wrench in that or is that something not to be worried about in general?
+3) for x86, it looks like lk is not using the typical gs trick.  Am I missing it or are you just using an array?
+```
+
+Essentially, the answer was to set some compile-time limitations on what can be used.  lk has a limit of 4 CPUs max.  That seems a bit low for me, but OK...
+
+travisg also pointed me to the TPIDR register set.
+
+---
+
+As a side note, another thing I want to keep track of is:
+
+```sh
+i686-elf-gcc -dM -E platform/bcm2836/inc/constants.h | sort | sed 's/#define //'
+```
+
+---
+
+Ok, section B4.1.150 of the ARM ARM has what I need: TPIDRPRW -- a thread ID storage which can be used for a per-CPU structure which is readable/writable from PL1, but inaccessible from PL0.  There is also a TPIDRURO which is read-only from PL0 which I will not use quite yet.  Finally, TPIDRURW has no security and will be left to user mode for usage.
+
+So, it's time for some thinking....
+
+I need an array of per-cpu stuff.  This stuff will also need to contain the ordinal core number and its "location" from mpidr.  The ordinal core number will be its index into the array as well.  The `tpidrprw` will contain the address of the structure for that ordinal core number so that things can be access quickly.
+
+This all then implies that I need to start the cores one at a time and make certain that they are all properly initialized (including this `tpidrprw` register) before the next one starts.
+
+---
+
+Focus, Adam.  Back to the stacks.  [Redmine #449](http://eryjus.ddns.net:3000/issues/449) will circle back to this.
+
+---
+
+### 2020-Jan-21
+
+OK, back to the stack problem.  I need to make a decision here.  And I think the decision is going to combine the 2 problems.  Here's what I think I am going to do:
+
+* During BSP initialization, create the array that for the lesser of discovered CPUs and MAX_CPUS (may just create it for MAX_CPUS and take the loss of memory).
+* Pre-populate the stack locations, having already mapped them in the MMU.
+* Pre-populate the ordinal cpu core number for each CPU.
+* For the BSP, populate the value of `mpidr` (its "location").
+* For the BSP, populate the flag indicating the CPU is running.
+* For each AP, the BSP will in turn:
+  * Increment the count of started APs (starting at 1 since the BSP is 0).
+  * Set a flag that an AP is being started.
+  * Send the message to start the AP.
+  * Wait a reasonable amount of time for the AP to start and if not, mark the cpu as bad.
+* Each started AP will poll the started AP counter and index into the cpu array for the structure address.
+* Set the `tpidtprw` to the address.
+* Populate the value of the `mpidr` for the structure.
+* Clear the flag that the core is started properly.
+
+So, I need to decide what that `perCpuData` structure will look like....
+
+```C++
+struct {
+    int cpuNum;
+    archsize_t location;        // -- such as mpidr or apicid
+    archsize_t stackTop;
+    CpuState_t state;           // -- CPU_STOPPED = 0; CPU_STARTING = 1; CPU_RUNNING = 2; CPU_BAD = 0xffff;
+    //...
+}
+```
+
+OK, I have the code to initialize the `PerCpuData_t` structure.
+
+---
+
+### 2020-Jan-22
+
+Ok, I have having similar situations as I did when I was overwriting the Page Directory.  I think the problem is in `PmmInit()`, since it was originally written to start freeing at frame `0x400` but the early init was changed to go *up* from that frame.
+
+As a result, I need to change the way `PmmInit()` works, and it will need to work based on the value in `earlyFrame`.
+
+---
+
+Back to the task at hand....
+
+---
+
+### 2020-Jan-23
+
+Well I still have some stack problems even after that.
+
+---
+
+### 2020-Jan-24
+
+The deflated me a bit yesterday.  The stack issues should have been resolved.
+
+With rpi2b resolved, I am now back to x86-pc.  I have the following exception which triple faults:
+
+```
+00170144363e[CPU1  ] check_cs(0x0008): not a valid code segment !
+00170144363e[CPU1  ] interrupt(): gate descriptor is not valid sys seg (vector=0x0d)
+00170144363e[CPU1  ] interrupt(): gate descriptor is not valid sys seg (vector=0x08)
+00170144363i[CPU1  ] CPU is in protected mode (active)
+00170144363i[CPU1  ] CS.mode = 16 bit
+00170144363i[CPU1  ] SS.mode = 16 bit
+00170144363i[CPU1  ] EFER   = 0x00000000
+00170144363i[CPU1  ] | EAX=60000011  EBX=00000004  ECX=00000008  EDX=00000000
+00170144363i[CPU1  ] | ESP=00001ff6  EBP=00000000  ESI=00000000  EDI=00000018
+00170144363i[CPU1  ] | IOPL=0 id vip vif ac vm RF nt of df if tf sf zf af PF cf
+00170144363i[CPU1  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00170144363i[CPU1  ] |  CS:0800( 1e00| 0|  0) 00008000 0000ffff 0 0
+00170144363i[CPU1  ] |  DS:0800( 0000| 0|  0) 00008000 0000ffff 0 0
+00170144363i[CPU1  ] |  SS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
+00170144363i[CPU1  ] |  ES:0800( 0000| 0|  0) 00008000 0000ffff 0 0
+00170144363i[CPU1  ] |  FS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
+00170144363i[CPU1  ] |  GS:0000( 0000| 0|  0) 00000000 0000ffff 0 0
+00170144363i[CPU1  ] | EIP=00000089 (00000089)
+00170144363i[CPU1  ] | CR0=0x60000011 CR2=0x00000000
+00170144363i[CPU1  ] | CR3=0x00000000 CR4=0x00000000
+00170144363p[CPU1  ] >>PANIC<< exception(): 3rd (13) exception with no resolution
+```
+
+Ahhhh... this is on CPU1 while I thought it was on CPU0.  Much better.  At least that is the work at hand!
+
+What bothers me is the value at `eip`.  So it appears the cpu is excepting off the face of the earth....
+
+Looking at the bochs logs, I see the following:
+
+```
+00170144338i[APIC1 ] Deliver Start Up IPI
+00170144338i[CPU1  ] CPU 1 started up at 0800:00000000 by APIC
+```
+
+And this looks very un-right.  But in the logs, I never hear anything from CPU1 again (in the logs) until the triple fault.
+
+So, the problem must me in this code:
+
+```C++
+        picControl->PicBroadcastInit(picControl, i);
+        picControl->PicBroadcastSipi(picControl, i, (archsize_t)trampoline);
+```
+
+... and in particular the call to `picControl->PicBroadcaseSipi()`.
+
+OK, hold the phone!!  I think the last time this worked was before I downloaded the latest code and started the instrumentation.  If this is the case, then this may be a bug in Bochs (but then again, I am having some problem in qemu as well).  So the next step here is to turn logging on for qemu and determine if I still have the problem there.
+
+And, qemu actually tells me that it is the `iret` to the new GDT that creates problems.  So, this code is really:
+
+```S
+    pushfd
+    push    0x08
+    push    dword [edi]
+    iretd
+```
+
+OK, I think my clue comes from the Intel manual for the `iret` instruction:
+
+```
+REAL-ADDRESS-MODE;
+    IF OperandSize = 32
+        THEN
+            EIP ← Pop();
+            CS ← Pop(); (* 32-bit pop, high-order 16 bits discarded *)
+            tempEFLAGS ← Pop();
+            EFLAGS ← (tempEFLAGS AND 257FD5H) OR (EFLAGS AND 1A0000H);
+        ELSE (* OperandSize = 16 *)
+            EIP ← Pop(); (* 16-bit pop; clear upper 16 bits *)
+            CS ← Pop(); (* 16-bit pop *)
+            EFLAGS[15:0] ← Pop();
+    FI;
+END;
+```
+
+This says that the pops are all 16-bit for 16-bit mode.  Now, there may be an operand size override that I can check for...
+
+```S
+80808094:       66 cf                   iretw
+```
+
+And, though the opcode says `iretw`, this is really operand size overridden (`0x66`) in 16-bit mode, so I am expecting all the pops to be 32-bit operations.
+
+---
+
+OK, I finally have something I think should work:
+
+```S
+    mov  ax,0x08
+    mov  bx,(tgt_32_bit-entryAp)
+    push word ax
+    push word bx
+    retf
+```
+
+The problem now (which has the same symptom -- triple fault) is that I am not convinced I have a good GDT.
+
+```
+Global Descriptor Table (base=0x0000000000003800, limit=2047):
+GDT[0x0000]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0008]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0010]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0018]=??? descriptor hi=0x00000000, lo=0x00000000
+GDT[0x0020]=??? descriptor hi=0x00000000, lo=0x00000000
+...
+```
+
+... and in fact I do not.  Tomorrow.
+
+---
+
+### 2020-Jan-25
+
+OK, bad GDT....
+
+There is a [low memory map](http://eryjus.ddns.net:3000/projects/century-os/wiki/Low_Memory_Usage_Map) where I expect the GDT to be.  In this map, the permanent location of the GDT is starting at `0x10000`.  So, is that where it was placed and is that where I am mapping it?
+
+It looks like I am not creating a new GDT properly and I am still using the boot one.  Nope!  It's in the right place.  But I was not using the right addresses in patching it up.
+
+So, with a couple of quick modifications, I will try it again.
+
+OK, CPU is reporting as running.  I have that working now.
+
+So, what do I need to catch back up here?
+* Need to relocate the GDT and IDT to virtual memory
+* Still on a bad stack; need to clean that up
+* Need to update the current CPU structure (call CpuMyStruct)
+* Set up a `gs` section (along with the proper clean-up there) -- should this be added to the `PerCpuData_t` structure?
+* Need to set up a `tr` for each core (along with the clean-up there)
+* Find and remove all the `while (true) {}` lines
+
+---
+
+### 2020-Jan-26
+
+I think I have some problems still.  I am getting an unresovled `#PF` which is leading to a triple fault.  The instrumentation is, however, picking up the fault.  I may want to try to enhance the instrumantation so that I can get some details automatically when the first `#PF` occurs.  I am not vertain I have access to the registers at that point, so I have some research to do.
+
+---
+
+With that, I was able to get a few errors resolved.  All 4 cores are starting.
+
+---
+
+So for x86-pc, I have all the cores running.  However, each core is trying to reprogram the timer, which I think is a problem -- it probably should only be working on enabling/starting the timer (compare with rpi2b which has a timer per core).  At any rate, I believe that is what is messing up the scheduling on x86-pc.
+
+---
+
+### 2020-Jan-27
+
+OK, I was able to confirm: the x86-pc cannot have the timers initialized multiple times whereas the rpi2b requires it.  With a quick change this works.
+
+---
+
+### 2020-Jan-30
+
+I think I want to spend some time working on how to manage the debug code.  I am honestly struggling *not* to change to a disassembler and start a debugging.  I know this will be related to v0.6.0!
+
+---
+
+### 2020-Jan-31
+
+So, [this section](https://github.com/eryjus/century-old/blob/f95990f1907d92fe56f43d46acf62e66d4b56f5f/include/proc.h#L22) from xv6 shows how the x86 per-cpu structures are set up.  Copying that comment/code here:
+
+```C++
+// Per-CPU variables, holding pointers to the
+// current cpu and to the current process.
+// The asm suffix tells gcc to use "%gs:0" to refer to cpu
+// and "%gs:4" to refer to proc.  seginit sets up the
+// %gs segment register so that %gs refers to the memory
+// holding those two variables in the local cpu's struct cpu.
+// This is similar to how thread-local variables are implemented
+// in thread libraries such as Linux pthreads.
+extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
+extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
+```
+
+In reviewing this code, each CPU has its own structure `cpu` structure.  Each `cpu` structure has its own gdt.  This is different than how I am setting up Century.  What I want to do is make sure the structure is an abstraction of the CPU.  The above structure holds a pointer to the full struture and a pointer to the current process.
+
+Now, this code:
+
+```C++
+  // Map cpu, and curproc
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
+```
+
+Creates the necessary segment mapping -- starting with `&c->cpu` in the structure and a size of `8` bytes.  This works because `c = &cpus[cpunum()];`.
+
+So, from here I need to think about a CPU abstraction structure.  This will obviously need to be arch dependent.
+
+General elements:
+* OS-perspective CPU number
+* top of the startup stack for this CPU
+* the state of this CPU
+* kernel locks held by this CPU
+* reschedule pending on this CPU
+* reschedule postpone depth on this CPU
+* disable interrupts depth on this CPU
+* pointer to this structure on this CPU
+* pointer to the current process on this CPU
+
+x86-specific elements:
+* APIC ID for this CPU
+* `gs` section for this CPU
+* `tss` section for this CPU
+
+armv7-specific elements:
+* CPU location
+
+---
+
+### 2020-Feb-01
+
+I moved `location` into the common elements -- the thought here being that the APIC ID is really a location as well.
+
+---
+
+So, the next steps here are going to be to replace the `cpus` variable structure with the new `ArchCpu_t` structure definition.  Then, I need to initialize the structures and finally decorate each CPU entry as the CPU is starting.
+
+rpi2b is going to be the easier of the 2 to initialize, so I will start there.
+
+---
+
+Well, it turns out that i was able to get x86-pc worted out properly first.  I did manage to move a number of files around and rename several functions to indicate that they are arch-dependent.  The big change here is that I ended up performing the exception initialization here as well -- but that probably will need to be split between a cpu initialization and an exception initialization.
+
+That being the case, I will want to keep the rpi2b exception initialization outside of the cpu initialization.  So, the CPU work is complete.
+
+Now, I currently have a `cpu` folder in `arch/arm`.  This folder is empty and needs to be removed.  However, I will need to revamp the `tup` build to do this.
+
+---
+
+### 2020-Feb-02
+
+Now that I am back home, I have some Redmine work to do.
+
+---
+
+Having resolved server issues (grr!!), I have Redmine caught up and I have finished up the initialization for the CPU.
+
+I think I am ready for a commit to github, but before I go there I really need to make sure things are still working the way I expect -- and debug what is not.
+
+So, I think both are faulting off the face of the earth....  rpi2b is halting when trying to start a new core and x86-pc is triple faulting when trying to start a new core.  Yeah, cleaning that up is required.
+
+So, I think I need to start with the rpi2b.
+
+So, it turns out that the `volatile` keyword is going to be critical to several things.
+
+OK, this is fun:
+
+```
+Starting core 1
+... Releasing another CPU to start.
+Starting core 2
+Finalizing CPU initialization
+... Releasing another CPU to start.
+
+General Protection Fault
+Finalizing CPU initialization
+Starting core 3
+EAX: 0x00000080  EBX: 0x810009c4  ECX: 0x0000001e
+
+General Protection Fault
+... Releasing another CPU to start.
+EDX: 0x00000078  ESI: 0x00000000  EDI: 0x00000000
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+Finalizing CPU initialization
+the new process stack is located at 0xff804000 (frame 0x00001022)
+EBP: 0x00000000  ESP: 0xff801fb8  SS: 0x10
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+
+General Protection Fault
+the new process stack is located at 0xff805000 (frame 0x00001023)
+EIP: 0x808000a4  EFLAGS: 0x00010082
+EBP: 0x00000000  ESP: 0xff802f98  SS: 0x10
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+.CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x78
+EIP: 0x80800004  EFLAGS: 0x00010092
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+ACR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+EBP: 0x00000000  ESP: 0xff803f98  SS: 0x10
+BTrap: 0xd  Error: 0x80
+
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+EIP: 0x80800004  EFLAGS: 0x00010092
+Trap: 0xd  Error: 0x90
+
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x90
+
+BAB
+```
+
+So, it looks like I am successfully getting all 3 cores to start, and then all 3 are subsequently getting a `#GP` -- to the point where all the different elements are getting inter-mixed.  And then core 0 continues to start outputting it's data.
+
+All 3 problems appear to be sourced by the GDT and a bad selector.  Based on the following from the bochs log, I'm betting the latter:
+
+```
+00172955473e[CPU1  ] fetch_raw_descriptor: GDT: index (87) 10 > limit (7f)
+00172988498e[CPU2  ] fetch_raw_descriptor: GDT: index (97) 12 > limit (7f)
+00173080338e[CPU3  ] fetch_raw_descriptor: GDT: index (97) 12 > limit (7f)
+```
+
+Let me see if I can sort this out and determine *why* I am getting a bad GDT selector.
+
+
+#### Core 1
+```
+Starting core 1
+General Protection Fault
+EAX: 0x00000080  EBX: 0x810009c4  ECX: 0x0000001e
+EDX: 0x00000078  ESI: 0x00000000  EDI: 0x00000000
+EBP: 0x00000000  ESP: 0xff801fb8  SS: 0x10
+EIP: 0x808000a4  EFLAGS: 0x00010082
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x78
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x80
+```
+
+#### Core 2
+```
+Starting core 2
+General Protection Fault
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+EBP: 0x00000000  ESP: 0xff802f98  SS: 0x10
+EIP: 0x80800004  EFLAGS: 0x00010092
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x90
+```
+
+#### Core 3
+```
+Starting core 3
+General Protection Fault
+EAX: 0x00000090  EBX: 0x81000ae8  ECX: 0x0000001e
+EDX: 0x00000090  ESI: 0x00000000  EDI: 0x00000000
+EBP: 0x00000000  ESP: 0xff803f98  SS: 0x10
+EIP: 0x80800004  EFLAGS: 0x00010092
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x0
+CR0: 0xe0000011  CR2: 0x00000000  CR3: 0x01001000
+Trap: 0xd  Error: 0x90
+```
+
+And the output of preparing the cpu structure:
+
+```
+Calling per cpu(0)
+!!>> [0]: Setting the gs selector to 0x48 and the tss selector to 0x50
+..back
+Calling per cpu(1)
+!!>> [1]: Setting the gs selector to 0x60 and the tss selector to 0x68
+..back
+Calling per cpu(2)
+!!>> [2]: Setting the gs selector to 0x78 and the tss selector to 0x80
+..back
+Calling per cpu(3)
+!!>> [3]: Setting the gs selector to 0x90 and the tss selector to 0x98
+..back
+```
+
+Now, only one error code matches any of the selectors, so I am not certain that is relevant.
+
+So, the code in each `eip` register:
+
+```S
+808000a0 <ArchTssLoad>:
+808000a0:       8b 44 24 04             mov    0x4(%esp),%eax
+808000a4:       0f 00 d8                ltr    %ax
+808000a7:       c3                      ret
+```
+
+... and ...
+
+```S
+80800000:       8b 44 24 04             mov    0x4(%esp),%eax
+80800004:       8e e8                   mov    %eax,%gs
+80800006:       c3                      ret
+```
+
+So, this makes me wonder if the new GDT is in place properly when I attempt to load this....
+
+This was cleared up and I have 1 remaining `#GP`.  I believe I have a race condition that needs to be cleaned up.
+
+This, then, cleans up the code and it runs for both CPUs.  The next step is to write a commit and advance the micro-version -- a lot has gone one with this iteration.
+
+Tomorrow.
+
+---
+
+### 2020-Feb-03
+
+OK, thinking about this, I want to go through all the new source files and at least I have a proper header comment block in the file.
+
+---
+
+## v0.5.0g -- Continue to work on the Redmine issues
+
+I'm not quite certain what I want to work on next....  I think I may take on the build system and configuration changes next.  I think I also want to get into the way that the low-level register reads are taking place.
+
+---
+
+OK, I totally broke the build system!
+
+---
+
+### 2020-Feb-04
+
+The build system....  I have something crossed.
+
+---
+
+### 2020-Feb-05
+
+OK, I had to restore my changes from git.  Thank God for a good change management system!!!
+
+So, let's break this down into smaller steps.  Step 1 is to make sure that the target `Tupfile.inc` includes the arch and platform `Tupfile.inc`s.  This, then, should give me the ability to have every `Tupfile` the ability to only include the specific target's `Tupfile.inc` as appropriate.
+
+This is done.
+
+So, the next step is to relocate `constants` to be `config/constants`.
+
+OK, that is done.
+
+The next step is to create dummy constants files for every arch and every platform.  Then use those files to create an aggregated config file in each target's folder.
+
+OK, this is also done.
+
+Now, to change the creation of constants.h to be from targets/$(TGT)/config.  Make that $(TARGET).
+
+The final step is to move the resulting constants.h file to the target/$(TARGET)/inc folder.
+
+---
+
+### 2020-Feb-08
+
+Now I need to start moving some of these constants into the proper files -- depending on platform or arch.  Which is done.
+
+---
+
+### 2020-Feb-09
+
+Today I am working a little bit on the MMU constants for rpi2b.
+
+I have a good number of the Redmines cleared up properly.  So the next step here is going to be to move the arch-spcific CPU instructions into its own file.  In particular, these will be the rpi2b CP registers (though x86-pc has several candidates as well).  This will be a big change in the build system (since I also want to make these inline functions).
+
+One of the thing I am worried about is the size increase of the kernel as a result of these new inline functions.  So, for the record, before I start the binary size is 602196 bytes.
+
+---
+
+### 2020-Feb-12
+
+Working on moving the inline assembly into its own header file as static inline functions....  rpi2b is nearly done, but I still have some platform work to do.
+
+I also have significantly increased the size of the resulting binary -- to 614484 bytes just by changing these `#define`s to inline functions.  This is a 12K increase.  I'm not pleased with this and it is what I was afraid of.  Now, it would not be as big of a problem if I had a dozen source files or so, but with 1 function per file, it's a mess.
+
+---
+
+### 2020-Feb-15
+
+Today, I want to look at how these functions are being placed into the .o files and then how that is translating to the size of the resulting binary -- if this thing grew that much as a result of this, I will be going back to defines rather than inline functions.
+
+From 24-Dec, it appears that the `.stab` section has grown significantly (0x68000 to 0x7b000).  This section holds all the strings in the kernel.  This has has grown since I changed the functions from `#define`s to `inline`s.  Here's how this goes:
+* When a `#define` macro is used, the code is only emitted into the source when it is referenced.  This is done by the C Pre-Processor (CPP, not C++).  Therefore, only when a particular function is referenced will the necessary strings be emitted into code.
+* When an `inline` is used, the code is there by default, whether it is referenced or not.  Therefore, the string is also emitted.  Only when the `inline` is referenced do we get code in the `.text` section, but the strings are emitted into `.stab` regardless.
+
+This explains the increase in size of the kernel.
+
+But, what do I do about it?
+
+---
+
+So, I think what I am going to do is comment out the lined I am not using, as an example:
+
+```C++
+//
+// -- C0 :: Identification Registers
+//    ------------------------------
+CP_REG_RO(CTR,  p15,c0,0,c0,1)          // Cache Type Register
+CP_REG_RO(MPIDR,p15,c0,0,c0,5)          // Multiprocessor-Affinity Register
+CP_REG_RO(CLIDR,p15,c0,1,c0,1)          // Cache Level ID Register
+```
+
+... and let the compiler complain about things not being there.  When I uncomment the required elements, I should have a smaller executable (I hope anyway).  And that made no difference in the file.
+
+Well, this really looks like a lot of debugging data, so I am going to just suck it up and deal with it.  Since my next version is going to be more of an integrated debugger, I will make use of that information and determine if that is really what I am looking at.  Right now, I do not know enough to be certain and I am not going to spend time on that since I never come back to this if I do.  I will uncomment this code and leave it alone.
+
+---
+
+### 2020-Feb-16
+
+Today I finished up the `arch-cpu-ops.h` files for both targets.  There are quite a few changes, so I will go through some tests.
+
+With those working, I think it is time to cycle the micro-version
+
+---
+
+## v0.5.0h
+
+Most of what is left should be relatively easy to complete.  Not all will be like this.  However, at the moment I am feeling more like quick wins than taking on hard tasks.  I really want to get this version done so I can get into an integrated debugger.
+
+---
+
+So, let's get into the thougts of barriers.  As I am understanding, there are several types of barriers:
+* Software barriers -- where it controls whether the compiler can optimize memory access (read or write) across a particular line of code.  In this case, there is no opcodes emitted and the hardware knows nothing of this, but is a method to communicate with GCC on how it is allowed to optimize code.  This is also relevant in a single CPU system.
+* Hardware read barriers -- for an Out Of Order (OOO) CPU, controls whether memory reads can be moved across this place in code execution.
+* Hardware write barriers -- for an Out Of Order (OOO) CPU, controls whether memory writes can be moved across this place in code execution.
+* Hardware full barriers -- for an Out Of Order (OOO) CPU, controls whether memory reads or writes can be moved across this place in code execution.  Of the 3 hardware barriers, this one makes the most sense to me.
+
+What I really need to do is figure out what code is emitted for this barrier and compare it to what I am doing.  I think this is going to get interesting.  I started with this code:
+
+```C++
+int testVal = 0;
+
+void test (void)
+{
+    testVal ++;
+    testVal ++;
+}
+```
+
+and the resulting (arm) code was:
+
+```S
+   0:   e3003000        movw    r3, #0
+   4:   e3403000        movt    r3, #0
+   8:   e5932000        ldr     r2, [r3]
+   c:   e2822002        add     r2, r2, #2
+  10:   e5832000        str     r2, [r3]
+  14:   e12fff1e        bx      lr
+```
+
+Notice that the add opcode has been optimized to be effectively `testVal += 2`.
+
+Now, if I add the `volatile` keyword, I get the following:
+
+```S
+   0:   e3003000        movw    r3, #0
+   4:   e3403000        movt    r3, #0
+   8:   e5932000        ldr     r2, [r3]
+   c:   e2822001        add     r2, r2, #1
+  10:   e5832000        str     r2, [r3]
+  14:   e5932000        ldr     r2, [r3]
+  18:   e2822001        add     r2, r2, #1
+  1c:   e5832000        str     r2, [r3]
+  20:   e12fff1e        bx      lr
+```
+
+Which is effectively a read-update-store operation for each line.
+
+Removing the `volatile` keyword and adding a software memory barrier:
+
+```C++
+int testVal = 0;
+
+void test (void)
+{
+    testVal ++;
+    asm volatile("": : :"memory");
+    testVal ++;
+}
+```
+
+I get the exact same result as above, and this would make sense to me.  I get that the software barrier can be a bit more complicated that this and I have completely trivialized it, but the point I am trying to figure out is: what happens with a full synchronization hardware barrier?
+
+This code:
+
+```C++
+int testVal = 0;
+
+void test (void)
+{
+    testVal ++;
+    __sync_synchronize();
+    testVal ++;
+}
+```
+
+Now emits this code:
+
+```S
+   0:   e3003000        movw    r3, #0
+   4:   e3403000        movt    r3, #0
+   8:   e5932000        ldr     r2, [r3]
+   c:   e2822001        add     r2, r2, #1
+  10:   e5832000        str     r2, [r3]
+  14:   f57ff05b        dmb     ish
+  18:   e5932000        ldr     r2, [r3]
+  1c:   e2822001        add     r2, r2, #1
+  20:   e5832000        str     r2, [r3]
+  24:   e12fff1e        bx      lr
+```
+
+In particular, the `dmb ish` is now included.  To the ARM ARM I go!  Hmmm...  the "Inner Sharable" domain.  What if I now add `volatile` back in?  No change.
+
+So, from the ARM community, I read:
+
+> There isn't an exact definition of what is in the outer shareable domain. It depends on how the system was built. Basically Inner and Outer shareability define three sets of devices which have a coherent view of memory:
+>
+> 1. Those inside the inner shareabiltiy domain
+> 2. Those inside both the inner and outer shareability domain
+> 3. Those outside both shareability domains
+>
+> Data marked as "inner shareable" is only guaranteed to be visible to (1), data marked as "outer shareable" is only guaranteed to be visible to (1) and (2). Anything else (making inner shareable data visible to an outer shareable master, or making any data visible to a device in set (3)) will require manual cache maintenance.
+
+Interesting: `__sync_synchronize()` only emits a trivial instruction to lock the bus -- presumably to make everything visible:
+
+```S
+   0:   a1 00 00 00 00          mov    0x0,%eax
+   5:   40                      inc    %eax
+   6:   a3 00 00 00 00          mov    %eax,0x0
+   b:   f0 83 0c 24 00          lock orl $0x0,(%esp)
+  10:   8b 15 00 00 00 00       mov    0x0,%edx
+  16:   42                      inc    %edx
+  17:   89 15 00 00 00 00       mov    %edx,0x0
+  1d:   c3                      ret
+```
+
+[This link](https://godbolt.org/z/pRxnFC) illustrates the hardware synchronization behavior.
+
+Some thoughts from `#osdev`:
+
+```
+[13:32:26] <eryjus> interesting... for gcc armv7 i would have expected `__sync_synchronize()` to emit a `dmb sy` and instead gcc emits `dmb ish` (https://godbolt.org/z/pRxnFC).  Am I expecting a heavier hand than I need?  or perhaps I am missing a compiler option?
+[13:36:11] <geist> eryjus: yeah i was talking about that earlier
+[13:36:25] <geist> but thats probably right. again, i dont like trusting compilers to generate the right thing
+[13:36:41] <geist> dmb ish is what you use for the purposes of memory barriers with other cpus/threads
+[13:36:52] <eryjus> geist, was this today?
+[13:36:55] <geist> which is where the compilers' built in notion of synchronization stop
+[13:37:05] <geist> well, within 24h. clever was looking at something similar
+[13:37:18] <geist> anyway, i would be highly surprised if there's *any* builtins that generate stronger than ish
+[13:37:29] <geist> if you want to synchronize with hardware you should write your own inline asm macro
+[13:38:15] <geist> but anyway, question is what do you want to use sync_synchronize for?
+[13:38:58] <eryjus> ha!  good question.. not sure I can really answer it and if you pressed me I would crumble
+[13:39:45] <eryjus> im looking at overall barriers in the code and i'm trying to strengthen my understanding all around.
+[13:40:08] <geist> a bit of background: ish is the inner sharability domain, which is somewhat vague in arms world (vs outer sharability) except it is stated at least in the v8 manual that 'inner' must at least cover all of the cores/actors that participate in a single OS instance
+[13:40:24] <geist> ie, the other symmetric cores and things like MMU hardware page table walkers
+[13:40:58] <clever> my rough understanding, is that the SMP bit i had to enable int he aux control, allows L1/L2 to talk between cores, and maintain coherency?
+[13:41:07] <geist> so... dmb ish means that as far as all the cores/tlbs are concerned the memory accesses before are visible to other cores
+[13:41:13] <clever> or, does it still rely on `dmb ish` to force it?
+[13:41:39] <geist> okay... let me regroup my thinking here
+[13:42:09] <geist> so... all of the cores/actors/participants on the 'bus' that are part of an inner sharability domain are part of a symmetric system
+[13:42:47] <geist> caches that are part of that (which in practice means L1-L3 at least) are also part of the same domain
+[13:43:19] <geist> so... when you dmb ish you're not pushing out to memory or anything, you're merely making sure the cpu has synchronized with the caches that are part of the inner domain
+[13:43:57] <geist> in practice this means makiung sure the write buffers (think of it as a L0 cache private to the cpu, outstanding transactions that are being coalesced) are pushed into the L1 caches and below so the other cpus can 'see' it
+[13:44:19] <geist> and also specifically making sure the out of order memory accesses (reads/writes) are barriered before and after
+[13:44:23] <geist> make sense?
+[13:44:44] <clever> ah, so it deals with getting stuff out of the pipeline, and into L1, where normal coherency logic can deal with it from there?
+[13:45:00] <geist> exactly, and ordering memory operations that have done so before and after
+[13:45:13] <clever> yeah, so the pipeline doesnt re-order actions
+[13:45:17] <geist> right
+[13:45:40] <clever> so ish is mostly a pipeline level thing, and the SMP bit i asked about, is about L1's and L2 remaining coherent with eachother
+[13:45:43] <geist> hence why the compiler eits a dmb ish for sync_synchronize, which is basically acting as a usual programming model barrier with respect to other threads and cores
+[13:46:03] <geist> more than a pipeline, it also orders outstanding load/stores
+[13:46:08] <geist> wont prefetch arond it, etc
+[13:46:33] <geist> well... a full dmb that is. there are read and write barrier variants of it, which only affect in particular directions, but a full barrier works in both directions
+[13:46:49] <geist> but a dmb doesn't really dump the pipeline per se, it just orders all the outstanding read/writes
+[13:46:58] <geist> if the cpu has a bunch of meaty math it's working on it can keep going
+[13:47:44] <geist> the SMP bit you're talking about is on that core basically enabling the coherency logic with the other cores. why they have the bit so you can turn it off i dont know. later cores dont have a bit, but the a7 and whatnot is about 10 years old now
+[13:47:51] <geist> back when SMP was maybe more exotic and new to ARM
+[13:48:02] <geist> and maybe there's a bit of a cost associated with it
+[13:48:16] <geist> anyway, eryjus did you get this? dont want to get off on a clever tangent befor eyou got what you were looking for
+[13:48:20] <geist> as clever tends to do
+[13:48:45] <clever> was going to tangent off on gpio, but i held back :P
+[13:49:02] <geist> good
+[13:49:11] <eryjus> 1 follow-up question: what then is the difference between dmb ish and dmb sy?  heterogeneous cpus/caches?
+[13:49:39] <geist> eryjus: ah okay. so the 'sy' also orders relative to transactions that are going out to things in the outer domain
+[13:49:54] <geist> so there's inner domain, outer domain (which is rarely used) and 'system' which includes everything not in the above
+[13:50:21] <geist> so the canonical usage of it is you have posted some memory writes to pages mapped with device memory
+[13:50:55] <geist> say a register interface. it's not part of the inner sharability domain so if you write to a register it will just put it out on the bus, track the transaction (all AXI transactions have an ID) but move on
+[13:51:07] <eryjus> geist, for system: "everything" or is "everything else"
+[13:51:08] <geist> the dmb sy waits for it to complete (in addition to inner and outer sharability)
+[13:51:13] <geist> everything
+[13:51:24] <geist> including the inner layers. i'm fairly certain outer works that way too, it includes inner
+[13:51:28] <geist> like a ring of layers
+[13:52:08] <geist> note you should also read the manual with regards to this stuff once you get my basic description and then fill in the gaps based on that
+[13:52:33] <geist> it's very complicated and lists a bunch of other things that can be in the inner/outer/system domain, and it's up to the SoC vendor to put things here or there with a lot of limitations
+[13:52:39] <eryjus> geist, i have been -- needed another perspective.  thank you.  I need to digest this a bit to be sure
+[13:52:49] <geist> it gets complicated when you have other bus masters like GPUs and whatnot that are coherent with the cpu. are they inner or outer domain?
+[13:52:58] <geist> that sort of thing
+[13:53:07] * eryjus nods
+[13:53:14] <geist> iirc 'outer' is basically deprecated, i think
+[13:53:38] <geist> the idea would be probably to have other clusters of cpus in an outer domain so they can play in their own pool. so your cluster will be outer to them, their cluster is outer to you, etc
+[13:54:02] <geist> not quite numa, more like some other OS runs on those. which is not uncommon actually
+[13:54:16] <geist> but usually they're just incoherent with you
+[13:54:46] <geist> anyway so the general short rule i operate is: inner to sync with SMP cpus, system for syncing with devices
+[13:55:01] <geist> and then you use 'dsb' vs 'dmb' as a stronger version when synchronizing the pipeline or other outstanding transactions
+[13:55:35] <eryjus> dsb is the 'bigger hammer'
+[13:55:36] <geist> there's a list in the manual where dsb is used as a stronger dmb. usually synchronizing with TLB flusehs and other cache operations, which act like pending memory transactions basically. TLB flushes are out of order on ARM too
+[13:56:04] <geist> really cool that you can fire a bunch of them off, and then dsb at the end, but its a different model from x86
+[13:56:58] <geist> anyway... thanks for listening
+[13:57:03] <eryjus> geist, thanks for your time
+```
+
+I guess this isn't simple after all.
+
+But there are a few takeaways (is a pseudo-order of the size of the hammer):
+1. `dmb ish` is likely to be all I ever need on the rpi2b
+1. `dmb sy` for my so far is only really likely to be needed for the vpu -- if at all
+1. `dsb` is used to 'reset all memory transactions', save the instruction pipeline
+1. `isb` is used to deal with the instruction pipeline, and is the only instruction to affect that
+
+So, the things I think I need are these 5:
+| Function Name                     | armv7 instruction                   | x86 instruction |
+|:----------------------------------|:------------------------------------|:----------------|
+| `SoftwareBarrier()`               | `asm volatile("":::"memory")`       | `asm volatile("":::"memory")` |
+| `MemoryBarrier()`                 | `__sync_synchronize()`              | `__sync_synchronize()` |
+| `EntireSystemMemoryBarrier()`     | `asm volatile("dmb sy":::"memory")` | `asm volatile("wbinvd":::"memory")` |
+| `MemoryResynchronization()`       | `asm volatile("dsb":::"memory")`    | `asm volatile("wbinvd":::"memory")` |
+| `ClearInsutructionPipeline()`     | `asm volatile("isb":::"memory")`    | `asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")` |
+
+So, it looks like I am going to have to spend a little time looking at different IPI requirements.  One will end up being page structure maintenance, which will need to understand when a private or shared page is updated and inform the other CPUs to flush TLB information.
+
+---
+
+### 2020-Feb-19
+
+So, based on the [documentation here](http://www.osdever.net/tutorials/view/multiprocessing-support-for-hobby-oses-explained), it looks like I can set up any interrupt to be an IPI, and whatever I do with that info is up to me.  Therefore, for any core, I should be able to send an IPI whenever I map/unmap a page.  This, of course, is x86 in nature.
+
+For bcm2836, I need to find a different solution.  In that case, each core explicitly has 4 mailboxes for use. Each mailbox write should trigger an interrupt for the associated core where the value can be read and acted upon.  Each Mailbox has its own interrupt source on each core and each value is 32-bits long.  Therefore, I could have a theroretical 17,179,869,184 different messages that can be sent around the rpi2b.  I would spend more time decoding the message than responding to it....
+
+So, the problem now becomes one of IPI acknowledgement.  For example, an IPI to clear a page from the TLB can be handled in the following way with rpi2b:
+* The need to clear the TLB for page `pg` is identified
+* The value of `-1` is written to Mailbox 0 for each core except self
+* Each core is interrupted, which reads the value from the mailbox
+* Each core writes `-1` back to the mailbox to indicate it is ready
+* Each core then enters a wait state -- not processing anything until the second message comes through
+* Once all the signals are acknowledged, the value of `pg` is written to each of the core mailboxes except self
+* Each core is interrupted, which reads the value from the mailbox
+* Each core clears its TLB for the `pg` address just read
+* Each core acknowledges the clear with a write back to the mailbox
+* Each core then resumes normal operation
+
+However, with x86, there is no 'message' that can be delivered like that -- the interrupt is the message.  So we need some other method to pass that data.
+
+So, I asked the following on `#osdev`:
+
+> I am working on my first practical IPI for shared paging tables and TLB flushes.  I read recommendations to IPI to stop normal processing and put other cores into a busy loop until the mapping can be changed and then signal the other cores to flush the TLB for that page in quesion.  So (since I tend to over-engineer things), should I be building waits for acknowledgements into this process or is it good enough to say, "IPI!: I'm gonna do this, catch up!"
+
+The responses were:
+
+```
+[16:45:25] <bcos> eryjus: Sender aquires some sort of lock (to prevent others modifying same page table entry at same time); modifies page table entry; sets "count = how many CPUs should respond to IPI"; sends the IPI; then waits for "count = 0"
+[16:45:44] <bcos> eryjus: IPI receivers invalidate the TLB; then decrement count
+[16:46:14] <bcos> Hrm - will want an "address to invalidate" there too I guess
+[16:46:47] <bcos> ..so IPI handler is like "push rax; mov rax,[address_to_invalidate]; invlpg [rax]; lock dec [count]; pop rax; iret"
+[16:47:21] <bcos> D'oh
+[16:47:47] <bcos> ..Sender should probably also release the lock it acquired at the start too - might cause problems if it doesn't ;-)
+[16:48:09] <bcos> (after "count = 0")
+[16:49:05] <bcos> ..and might also want some kind of "IPI user lock" if you can't find a way to avoid multiple CPUs trying to send same IPI at same time
+[16:50:42] <eryjus> bcos, well it's not just updates..  it's reads against that page as well.  will need the IPI to "stop what I am doing and wait until I know I can flush the TLB"
+[16:51:13] <eryjus> but you answered my question about the acknowledgment
+```
+
+So, this then allows me to take the IPI as a lock, where the sender would do something like this:
+
+```C++
+{
+    Lock();
+    addressToFlush = -1;
+    IPI();
+    MapPage(addr);
+    INVLPG(addressToFlush);
+    coresToFlush = GetRunningCoreCount() - 1;   // we are one of the cores and we just flushed ourselves
+    addressToFlush = (addr & ~(PAGE_SIZE - 1));
+
+    while (coresToFlush != 0) {}
+    Unlock();
+}
+```
+
+With that, the handler on the other cores would look like:
+
+```C++
+{
+    while (addressToFlush == -1) {}
+
+    INVLPG(addressToFlush);
+    AtomicDec(coresToFlush);
+}
+```
+
+Well..., there was a race condition in there where core 1 could complete the flush and then try to change another mapping before the other cores (2 & 3) could respond.  So I ended up adding a lock anyway.
+
+Another thing I like about this logic is that when only one core is running, this does nothing really different -- nothing to wait for since `coresToFlush` is 0.  `IPI()` should do nothing since no other cores are running.
+
+Now, the thing to keep in mind is that from what I see the page mapping functionality is arch-specific but the TLB flush for the other cores should be platform-specific (while the actual flush itself is arch-specific).
+
+So, the other thing I realize as I am coding this is that I will really need to take care of the management addresses while I am in the handler, not as individual flushes.
+
+---
+
+### 2020-Feb-22
+
+I was able to get enough of the IPI work completed to compile and test.  Both archs end up with their version of a fatal error.  Bochs reveals the following:
+
+```
+00168234693e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234723e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234758e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234788e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234818e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234848e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234878e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234913e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234943e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168234973e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235003e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235033e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235068e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235098e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235128e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235158e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235188e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235223e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235253e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235283e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235313e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235343e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235378e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235408e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235438e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235468e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235498e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235533e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235563e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235593e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235623e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235653e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235688e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235718e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235748e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235778e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235808e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235843e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235873e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235903e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235933e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235963e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168235998e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168236028e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168236058e[CPU0  ] fetch_raw_descriptor: GDT: index (2f) 5 > limit (17)
+00168236063i[CPU0  ] CPU is in protected mode (active)
+00168236063i[CPU0  ] CS.mode = 32 bit
+00168236063i[CPU0  ] SS.mode = 32 bit
+00168236063i[CPU0  ] EFER   = 0x00000000
+00168236063i[CPU0  ] | EAX=00000028  EBX=00200006  ECX=00000000  EDX=81004be4
+00168236063i[CPU0  ] | ESP=ff800000  EBP=03000000  ESI=ff401000  EDI=3ffff401
+00168236063i[CPU0  ] | IOPL=0 ID vip vif ac vm RF nt of df if tf sf ZF af PF cf
+00168236063i[CPU0  ] | SEG sltr(index|ti|rpl)     base    limit G D
+00168236063i[CPU0  ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] |  GS:0018( 0003| 0|  0) 00000000 ffffffff 1 1
+00168236063i[CPU0  ] | EIP=80801805 (80801805)
+00168236063i[CPU0  ] | CR0=0xe0000011 CR2=0xff7ffffc
+00168236063i[CPU0  ] | CR3=0x01001000 CR4=0x00000000
+00168236063p[CPU0  ] >>PANIC<< exception(): 3rd (14) exception with no resolution
+```
+
+Address `0x80801805` is the target `IsrCommonStub`, meaning that I am having problems with the interrupts.  In particular, the segment selectors are those from before the GDT is replaced with the final version.  Ultimately, the recursive faults end in a stack overflow or essentially a `#PF`.
+
+So, I need to be able to disable the IPI before the system has the final proper GDT in place.
+
+What I am considering is whether it is work retrieving the existing GDT and checking its length.  If it is too short, then I would return before entering the actual ISR code...,  or just set a global variable and check it.
+
+I'm thinking the global variable.  But where to put it?  In the PIC structure?  or just a plain global variable?
+
+---
+
+### 2020-Feb-23
+
+So, ultimately, I decided to put the flag into the `pic` structure.
+
+But, I still have problems -- but now on x86 acting more like a deadlock than anything.  I think the time might be right to start working on the debugging enabling CPP directives at the file/function level.
+
+---
+
+So, I have come up with a methodology like this:
+
+```C++
+#define DEBUG_TOKEN_PASTE(x)        DEBUG_##x
+#define DEBUG_ENABLED(func)         DEBUG_TOKEN_PASTE(func)>0
+#define Debug_SomeFunction          1
+
+void SomeFunction(void)
+{
+#if DEBUG_ENABLED(SomeFunction)
+    kprintf("Some important debugging information\n");
+#endif
+}
+```
+
+Now, should I replace this with something like this:
+
+```C++
+#define Debug_SomeFunction          2
+
+void SomeFunction(void)
+{
+#if DEBUG_SomeFunction >= 2
+    kprintf("Some important debugging information\n");
+#endif
+}
+```
+
+The latter would allow me to specify "levels" of debugging information for each function.  But then again, I tend to over-engineer.  As it is I am function-specific on my debugging...., isn't that enough?  For now, I think I will leave that at the file level.
+
+---
+
+So after that, and setting up some debugging code:
+
+```
+Mapping page 0xff401000 to frame 0x1003000
+... Kernel: yes
+... Device: no
+... Write.: yes
+.. Qualified
+About to flush TLB via IPI....
+```
+
+... it appears that this block has problems...:
+
+```C++
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf("About to flush TLB via IPI....\n");
+#endif
+
+        tlbFlush.addr = -1;
+        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
+
+#if DEBUG_ENABLED(MmuMapToFrame)
+    kprintf(".. Completed\n");
+#endif
+```
+
+... which indicate that `picControl` or `picControl->PicBroadcastIpi` may be `NULL`.  I know I am not checking this.  And, as a matter of fact, I am setting up the x86 PIC to start with the default 8259 PIC which will not have such a function.  So, either I am going to have to check for `NULL`, or I am going to have to include a dummy function.
+
+---
+
+### 2020-Feb-24
+
+So, I ended up creating an `EmptyFunction()` for both archs (in assembly so that it could not be optimized away) and including that for all the 8269 PIC `PicBroadcastIpi` member.  I am barely getting any farther.  So, I am still thinking deadlock.
+
+And, yes, it is a deadlock, but not for what I was thinking (x86):
+
+```
+Starting core 1
+Finalizing CPU initialization
+CPU 0x1 running...
+Starting core 2
+Finalizing CPU initialization
+CPU 0x2 running...
+Starting core 3
+Finalizing CPU initialization
+CPU 0x3 running...
+Mapping page 0xff40a000 to frame 0x1022
+... Kernel: yes
+... Device: no
+... Write.: yes
+.. Qualified
+About to flush TLB via IPI....
+Entered _LApicBroadcastIpi
+.. Completed
+... The contents of the PTE is at 0xffffd028: 0x01022003
+Entered _LApicBroadcastIpi
+```
+
+So, all the cores are started and I am really trying to send out an IPI to get the other cores to flush the TLB properly.
+
+At this point, the actual handler has not been registered.  So, let's trace this:
+
+Yeah, no point!  I tried to look for the code I would have written for this and I could not find it.
+
+So, I need a few things:
+* An interrupt handler that will perform the pseudo-code I wrote on 19-Feb
+* Register this handler to the proper interrupt/IRQ function (depending on arch)
+* ... and a decision on where to put this code -- with interrupts, with the kernel, or with the PIC
+
+For rpi2b, there needs to be a mailbox interrupt handler written and registered.  In addition, there needs to be a TLB-specific flush handler written.  All of those need to be integrated into the system.
+
+Part of this will need to create an interrupts folder for the rpi2b arch and relocate the right stuff there.
+
+... and this brings me to another problem:  `InvalidatePage()` has 2 different prototypes based on the arch.  Not good.
+
+---
+
+### 2020-Feb-25
+
+OK, issue with 2 separate prototypes for different archs is a problem.  I have added it to the list to check for other instances and to clean those up.  However, `InvalidatePage()` is blocking at the moment.
+
+The armv7 function looks like this:
+
+```C++
+void InvalidatePage(uint32_t ent, uint32_t vma) {
+    WriteDCCMVAC(ent);
+    MemoryBarrier();
+    WriteTLBIMVAA(vma & 0xfffff000);
+    WriteBPIALL();
+    MemoryBarrier();
+    ClearInsutructionPipeline();
+}
+```
+
+and in particular the `WriteDCCMVAC(ent)` is really the problem statement.  Tracing back, I need to figure out again what the `DCCMVAC` register is (cache maintenance?).  And it is a cache line cleanout.  Can I move that into `MmuMapToPage()`?
+
+---
+
+Back to x86 -- I'm entering an infinite loop waiting for an interrupt to fire.  It looks like interrupts are enabled on the target CPU, and I have a good IDT mapping on the target CPU.  So, likely something with the LocalAPIC which is getting in the way.
+
+---
+
+OK, I think I figured this out....  I believe the LAPIC needs an EOI after handling the IPI.  I can pick that up tomorrow.
+
+---
+
+### 2020-Feb-26
+
+So, that was quick cleanup on x86.  Now to clean up the rpi2b.
+
+Ahhh...  I never created the Mailbox handler with the jump table for the specific message....
+
+Hmmm... with `DEBUG_PicBroadcastIpi` set to 0, the rpi2b kernel boots to the point of trying to start the test processes.  When it set to 1, it dies without any indication given.  I'm not sure if this is a code bug, or a size problem.
+
+Well, crap!  The BCM2835 SoC sets several simple IRQs for masking/unmasking.  However, the BCM2836 SoC maps them in a many-to-one arrangement.  This means that several IRQs that can be triggered are all masked by a single IRQ enable bit.
+
+I'm beginning to think the whole of the interrupt controller for the rpi2b needs a do-over.  And I am not really interested in taking that on right now!
+
+---
+
+### 2020-Feb-27
+
+Ok, rpi2b interrupts.  Let's think this through a bit....
+
+I really only need to be concerned with FIQ and IRQ types at this point in time -- the rest of the exceptions are just that: exceptions and more closely described as errors than requests.
+
+So, requests.  There are 2 types: regular interrupt requests (IRQ) and fast interrupt requests (FIQ).  To date, I have not routed anything to the fast interrupts, but I think I am considering making either the IPI or the Timer as a fast interrupt.  However, for now, I will keep them all as IRQs (regular interrupt requests).
+
+So, the bcm2835 has an interrupt source chart, such as the following (in the Basic Pendnig Register):
+
+| Index | Source |
+|:-----:|:-------|
+| 0-63  | GPU Interrupts (1:1) |
+| 64    | ARM Timer Interrupt |
+| 65    | ARM Mailbox Interrupt |
+| 66    | ARM Doorbell 0 Interrupt |
+| 67    | ARM Doorbell 1 Interrupt |
+| 68    | GPU0 Halted Interrupt |
+| 69    | GPU1 Halted Interrupt |
+| 70    | Illegal Access Type-1 Interrupt |
+| 71    | Illegal Access Type-0 Interrupt |
+
+On the other hand, the bcm2836 (with the extensions for rpi2b), have the following core interrupt sources:
+
+| Bit | Source |
+|:---:|:-------|
+| 0   | CNTPSIRQ Timer Interrupt |
+| 1   | CNTPNSIRQ Timer Interrupt |
+| 2   | CNTHPIRQ Timer Interrupt |
+| 3   | CNTVIRQ Timer Interrupt |
+| 4   | Mailbox 0 Interrupt |
+| 5   | Mailbox 1 Interrupt |
+| 6   | Mailbox 2 Interrupt |
+| 7   | Mailbox 3 Interrupt |
+| 8   | GPU Interrupt |
+| 9   | PMU Interrupt |
+| 10  | AXI-ountstanting interrupt (only for core 0) |
+| 11  | Local timer interrupt |
+
+So, the question I have is does the bcm2836 structures override the bcm2835 structs?  Or work in conjunction.  So, I look at lk.
+
+Actually, I think [this](https://github.com/littlekernel/lk/blob/cba9e4798747fed36e4f858965796487bfd0a7c4/platform/bcm28xx/include/platform/bcm28xx.h#L67) answers my question.  I need to take them as a union of the 2 sets of interrupts.  Aalso, [this line](https://github.com/littlekernel/lk/blob/master/platform/bcm28xx/intc.c#L171) is taking bit 8 out of play, which appears to indicate that there is something important to look at in the other 2 banks of interrupts.
+
+Effectively, this needs to become 4 banks of interrupts registers (of which for `lk` 1 of the banks is commented out in code).
+
+So, ultimately, I need to revisit this design.  But it is not as bad as I had expected.
+
+---
+
+### 2020-Feb-29
+
+OK, so the first order of business is going to be to redo the interrupt numbers for the interrupt table.
+
+`lk` first checks the Local CPU PIC interrupts first.  In there is a bit to indicate you have a GPU interrupts to handle, which `lk` masks out.  All the rest are of interest.
+
+Then, which is commented out, `lk` would check the basic pending interrupts next.  And then finally the GPU interrupts.
+
+Now, that is the order in which they are checked, not the ordinal interrupt number.  That is really simple enough.
+
+---
+
+With that done, I am now back to the original point -- looking for a handler for the IPIs.  I should have an unhandled interrupt for the IPI and I do not.  So, I need to get the the bottom of that.
+
+---
+
+### 2020-Mar-01
+
+I am continuing to debug the mailbox IRQs.  In short, I am unable to get mailbox0 to fire in interrupt.
+
+There is definitely something wrong in how the PIC is programmed.  No mailbox interrupts are making it through.
+
+> A mailbox generates and interrupt as long as it is non-zero.
+
+Hmmm...  guess what!!
+
+
+```
+##
+## -- Some IPI interrupts that will get triggered
+##    -------------------------------------------
+IPI_TLB_FLUSH                   0x00
+```
+
+This is not going to work.  Making that `0x0001` worked!  I'm a dumb-ass!
+
+OK, I finally have the rpi2b working properly again.  But I have a problem with x86-pc again.  Ok, CRAP!!!  x86 works in bochs but not qemu.
+
+---
+
+### 2020-Mar-02
+
+The task at hand today is to figure out why bochs works while qemu does not.  So, the first order of business is to determine where qemu does differently.  It looks like the IPI is not happening, or the interrupt is not firing.
+
+```
+About to flush TLB via IPI....
+Entered _LApicBroadcastIpi on CPU 0
+.. Qualified on CPU 0
+.. Completed on CPU 0
+.. Completed TLB flush
+CPU 0: Current response count is 3 of 3
+CPU 0: Current response count is 3 of 3
+CPU 0: Current response count is 3 of 3
+```
+
+So, let's see what the debugging output says....
+
+What bothers me is that it appears to be a cache coherence problem, but qemu does not emulate cache....  Or, maybe its a race condition that always works my way for Bochs and never for qemu....
+
+Well, the ESR checking code:
+
+```C++
+#if DEBUG_ENABLED(LApicBroadcastIpi)
+    kprintf(".. The ESR report %p\n", MmioRead(LAPIC_MMIO + LAPIC_ESR));
+
+    kprintf(".. Completed on CPU %d\n", thisCpu->cpuNum);
+#endif
+```
+
+reports...
+
+```
+.. The ESR report 0x00000000
+.. Completed on CPU 0
+```
+
+All of which seem normal.
+
+OK, so the initialization seems reasonable; the IPI seems reasonable; the error conditions seem reasonable.  Do I need to enable the local APIC on each core individually?
+
+So, bochs is configured for the following system:
+
+```
+cpuid: level=6, stepping=3, model=3, family=6
+```
+
+and qemu is configured for the following:
+
+```
+pc                   Standard PC (i440FX + PIIX, 1996) (alias of pc-i440fx-3.1)
+pc-i440fx-3.1        Standard PC (i440FX + PIIX, 1996) (default)
+```
+
+So, I wonder if I change the qemu system to x86_64 if that will work....??  Nope.  No change in behavior.
+
+Hmmm...  This command line works properly:
+
+```
+qemu-system-i386 -smp cpus=1,cores=4 -m 3584 -serial stdio -cdrom img/x86-pc.iso
+```
+
+but I get issued this warning:
+
+```
+qemu-system-i386: warning: Invalid CPU topology deprecated: sockets (0) * cores (4) * threads (1) != maxcpus (1)
+```
+
+Except the other cores don't exist!  Grrr....
+
+---
+
+### 2020-Mar-03
+
+OK, I think I have the qemu command line sorted..., I hope so anyway.
+
+I think I am going to try this on real hardware just for kicks.  Same behavior as qemu.
+
+---
+
+### 2020-Mar-04
+
+So, it dawns on me today that I may yet still need to enable the Local APIC on the other cores by setting the flag for the spurious interrupt.  A little debug code should be able to check that.
+
+And this is correct (and hopefully the final answer!).
+
+So for CPU 0, the initialization looks like this:
+
+```
+.. Before setting the spurious interrupt at 0xfee000f0, the value is 0x000001ff
+.. After setting the spurious interrupt at 0xfee000f0, the value is 0x00000127
+```
+
+while the other CPUs look like this:
+
+```
+on CPU 3, the spurious interrupt at 0xfee000f0, the value is 0x000000ff
+```
+
+In particular, bit 8 `(1<<8)` needs to be set to enable the Local APIC.
+
+Also, I realized I have been calling the IOAPIC init function rather than the LAPIC init function.
+
+I finally have some progress:
+
+```
+CPU 0: Current response count is 3 of 3 at 0x81000080
+
+Page Fault
+EAX: 0x00000000  EBX: 0xffffffff  ECX: 0xffffffff
+EDX: 0x00000000  ESI: 0x007e6b48  EDI: 0x00000000
+EBP: 0x00000003  ESP: 0xff800f2c  SS: 0x10
+EIP: 0x80803144  EFLAGS: 0x00200013
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x48
+CR0: 0xe0000011  CR2: 0x0000002c  CR3: 0x01001000
+Trap: 0xe  Error: 0x2
+```
+
+So, I need to figure out which CPU this is happening on!  OK, so it is on CPU0 and it is in the Sleep function.  For the moment, I will save that for later.
+
+While I am on the topic, I think I will work out the `Panic()` function to halt all the other cores.
+
+Part of what `Panic()` needs to accomplish is to dump the registers for the current CPU.  Sometimes this will be called from an exception handler and sometimes this will be called from the mainstream kernel code.  So, I need 2 versions.
+
+* `Panic()` -- which has the registers already available and will dump their contents.
+* `PanicPushRegs()` -- to push the registers onto the stack as if it was from an ISR and then call the `Panic()` function.
+
+The implementation of `Panic()` can be general kernel code (non-arch-specific).  The implementation of `PanicPushRegs()` will need to be arch-specific.
+
+Once this is done, `Halt()` and `HaltCpu()` should be able to be replaced in most cases.
+
+Done.
+
+---
+
+### 2020-Mar-05
+
+Today, I am working on some additional cleanup from the changes yesterday.  Several Redmines should be about ready to close.
+
+I still have something that is not right on x86....  I will need to get to the bottom of that.  Pretty simple fix -- I moved the IRQ number for the `Panic()` functions and did not get everything lined up again.
+
+This even works on real x86 hardware.  Time for a commit and a version change.
+

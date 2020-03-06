@@ -16,16 +16,23 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
-#include "cpu.h"
 #include "spinlock.h"
 #include "serial.h"
 
 
+EXTERN_C EXPORT LOADER
+void ___SerialPutChar(int ch)
+{
+    debugSerial.SerialPutChar(&debugSerial, (uint8_t)ch);
+}
+
 //
 // -- Write a single character to the UART
 //    ------------------------------------
-void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
+EXTERN_C EXPORT KERNEL
+void _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
 {
     if (!dev) return;
     if (ch == '\n') dev->SerialPutChar(dev, '\r');
@@ -34,7 +41,6 @@ void __krntext _SerialPutChar(SerialDevice_t *dev, uint8_t ch)
         while ((MmioRead(dev->base + AUX_MU_LSR_REG) & (1<<5)) == 0) { }
 
         MmioWrite(dev->base + AUX_MU_IO_REG, ch);
-        DSB();
         SPINLOCK_RLS_RESTORE_INT(dev->lock, flags);
     }
 }

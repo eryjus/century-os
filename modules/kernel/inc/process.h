@@ -61,8 +61,7 @@
 //===================================================================================================================
 
 
-#ifndef __PROCESS_H__
-#define __PROCESS_H__
+#pragma once
 
 
 #include "types.h"
@@ -161,165 +160,191 @@ typedef struct Scheduler_t {
 //
 // -- And the scheduler object itself
 //    -------------------------------
-extern Scheduler_t scheduler;
-extern Spinlock_t schedulerLock;
+EXTERN EXPORT KERNEL_DATA
+Scheduler_t scheduler;
+
+EXTERN EXPORT KERNEL_DATA
+Spinlock_t schedulerLock;
 
 
 //
-// -- Function Prototypes
-//    -------------------
-extern "C" {
+// -- Initialize the process structures
+//    ---------------------------------
+EXTERN_C EXPORT LOADER
+void ProcessInit(void);
 
 
-    //
-    // -- Initialize the process structures
-    //    ---------------------------------
-    EXPORT LOADER void ProcessInit(void);
+//
+// -- Scheduler locking, postponing, unlocking, and scheduling functions
+//    ------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessUnlockScheduler(void);
 
+EXTERN_C EXPORT KERNEL
+void ProcessUnlockAndSchedule(void);
 
-    //
-    // -- Scheduler locking, postponing, unlocking, and scheduling functions
-    //    ------------------------------------------------------------------
-    EXPORT KERNEL void ProcessUnlockScheduler(void);
-    EXPORT KERNEL void ProcessUnlockAndSchedule(void);
-    EXPORT KERNEL void ProcessLockScheduler(bool save = true);
-    EXPORT KERNEL inline void ProcessLockAndPostpone(void) {
-        ProcessLockScheduler();
-        AtomicInc(&scheduler.postponeCount);
-    }
+EXTERN_C EXPORT KERNEL
+void ProcessLockScheduler(bool save = true);
 
-
-    //
-    // -- Functions to block the current process
-    //    --------------------------------------
-    EXPORT KERNEL void ProcessDoBlock(ProcStatus_t reason);
-    EXPORT KERNEL inline void ProcessBlock(ProcStatus_t reason) {
-        ProcessLockAndPostpone();
-            ProcessDoBlock(reason);
-            ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- New task initialization tasks
-    //    -----------------------------
-    EXPORT KERNEL void ProcessStart(void);
-
-
-    //
-    // -- Create a new process
-    //    --------------------
-    EXPORT KERNEL Process_t *ProcessCreate(void (*startingAddr)(void));
-
-
-    //
-    // -- Switch to a new process
-    //    -----------------------
-    EXPORT KERNEL void ProcessSwitch(Process_t *proc);
-
-
-    //
-    // -- Create a new stack for a new process, and populate its contents
-    //    ---------------------------------------------------------------
-    EXPORT KERNEL frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
-
-
-    //
-    // -- Perform a scheduling exercise to determine the next process to run
-    //    ------------------------------------------------------------------
-    EXPORT KERNEL void ProcessSchedule(void);
-
-
-    //
-    // -- Place a process on the correct ready queue
-    //    ------------------------------------------
-    EXPORT KERNEL void ProcessDoReady(Process_t *proc);
-    EXPORT KERNEL inline void ProcessReady(Process_t *proc) {
-        ProcessLockAndPostpone();
-        ProcessDoReady(proc);
-        ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- Unblock a process
-    //    -----------------
-    EXPORT KERNEL void ProcessDoUnblock(Process_t *proc);
-    EXPORT KERNEL inline void ProcessUnblock(Process_t *proc) {
-        ProcessLockAndPostpone();
-        ProcessDoUnblock(proc);
-        ProcessUnlockAndSchedule();
-    }
-
-
-    //
-    // -- Update the time used for a process
-    //    ----------------------------------
-    EXPORT KERNEL void ProcessUpdateTimeUsed(void);
-
-
-    //
-    // -- Sleep until the we reach the number of micro-seconds since boot
-    //    ---------------------------------------------------------------
-    EXPORT KERNEL void ProcessDoMicroSleepUntil(uint64_t when);
-    EXPORT KERNEL inline void ProcessMicroSleepUntil(uint64_t when) {
-        ProcessLockAndPostpone();
-        ProcessDoMicroSleepUntil(when);
-        ProcessUnlockAndSchedule();
-    }
-    EXPORT KERNEL inline void ProcessMicroSleep(uint64_t micros) {
-        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
-    }
-    EXPORT KERNEL inline void ProcessMilliSleep(uint64_t ms) {
-        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
-    }
-    EXPORT KERNEL inline void ProcessSleep(uint64_t secs) {
-        ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
-    }
-
-
-    //
-    // -- Terminate a task
-    //    ----------------
-    EXPORT KERNEL void ProcessTerminate(Process_t *proc);
-
-
-    //
-    // -- Elect to end the current task
-    //    -----------------------------
-    EXPORT KERNEL inline void ProcessEnd(void) { ProcessTerminate(scheduler.currentProcess); }
-
-
-    //
-    // -- remove the process for its list, if it is on one
-    //    ------------------------------------------------
-    EXPORT KERNEL void ProcessListRemove(Process_t *proc);
-
-
+EXPORT KERNEL INLINE
+void ProcessLockAndPostpone(void) {
+    ProcessLockScheduler();
+    AtomicInc(&scheduler.postponeCount);
 }
+
+
+//
+// -- Functions to block the current process
+//    --------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessDoBlock(ProcStatus_t reason);
+
+EXPORT KERNEL INLINE
+void ProcessBlock(ProcStatus_t reason) {
+    ProcessLockAndPostpone();
+        ProcessDoBlock(reason);
+        ProcessUnlockAndSchedule();
+}
+
+
+//
+// -- New task initialization tasks
+//    -----------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessStart(void);
+
+
+//
+// -- Create a new process
+//    --------------------
+EXTERN_C EXPORT KERNEL
+Process_t *ProcessCreate(void (*startingAddr)(void));
+
+
+//
+// -- Switch to a new process
+//    -----------------------
+EXTERN_C EXPORT KERNEL
+void ProcessSwitch(Process_t *proc);
+
+
+//
+// -- Create a new stack for a new process, and populate its contents
+//    ---------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
+
+
+//
+// -- Perform a scheduling exercise to determine the next process to run
+//    ------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessSchedule(void);
+
+
+//
+// -- Place a process on the correct ready queue
+//    ------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessDoReady(Process_t *proc);
+
+EXPORT KERNEL INLINE
+void ProcessReady(Process_t *proc) {
+    ProcessLockAndPostpone();
+    ProcessDoReady(proc);
+    ProcessUnlockAndSchedule();
+}
+
+
+//
+// -- Unblock a process
+//    -----------------
+EXTERN_C EXPORT KERNEL
+void ProcessDoUnblock(Process_t *proc);
+
+EXPORT KERNEL INLINE
+void ProcessUnblock(Process_t *proc) {
+    ProcessLockAndPostpone();
+    ProcessDoUnblock(proc);
+    ProcessUnlockAndSchedule();
+}
+
+
+//
+// -- Update the time used for a process
+//    ----------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessUpdateTimeUsed(void);
+
+
+//
+// -- Sleep until the we reach the number of micro-seconds since boot
+//    ---------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessDoMicroSleepUntil(uint64_t when);
+
+EXPORT KERNEL INLINE
+void ProcessMicroSleepUntil(uint64_t when) {
+    ProcessLockAndPostpone();
+    ProcessDoMicroSleepUntil(when);
+    ProcessUnlockAndSchedule();
+}
+EXPORT KERNEL INLINE
+void ProcessMicroSleep(uint64_t micros) {
+    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
+}
+EXPORT KERNEL INLINE
+void ProcessMilliSleep(uint64_t ms) {
+    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
+}
+EXPORT KERNEL INLINE
+void ProcessSleep(uint64_t secs) {
+    ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
+}
+
+
+//
+// -- Terminate a task
+//    ----------------
+EXTERN_C EXPORT KERNEL
+void ProcessTerminate(Process_t *proc);
+
+
+//
+// -- Elect to end the current task
+//    -----------------------------
+EXPORT KERNEL INLINE
+void ProcessEnd(void) { ProcessTerminate(scheduler.currentProcess); }
+
+
+//
+// -- remove the process for its list, if it is on one
+//    ------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessListRemove(Process_t *proc);
+
 
 //
 // -- For the scheduler structure, clean the cache pushing the changes to ram
 //    -----------------------------------------------------------------------
-#define CLEAN_SCHEDULER()           CLEAN_CACHE(&scheduler, sizeof(Scheduler_t))
+#define CLEAN_SCHEDULER()           CleanCache((archsize_t)&scheduler, sizeof(Scheduler_t))
 
 
 //
 // -- For the scheduler structure, invalidate the cache forcing a re-read from ram
 //    ----------------------------------------------------------------------------
-#define INVALIDATE_SCHEDULER()      INVALIDATE_CACHE(&scheduler, sizeof(Scheduler_t))
+#define INVALIDATE_SCHEDULER()      InvalidateCache(&scheduler, sizeof(Scheduler_t))
 
 
 //
 // -- for a Process structure, clean the cache pushing the changes to ram
 //    -------------------------------------------------------------------
-#define CLEAN_PROCESS(proc)         CLEAN_CACHE(proc, sizeof(Process_t))
+#define CLEAN_PROCESS(proc)         CleanCache((archsize_t)proc, sizeof(Process_t))
 
 
 //
 // -- for a Process structure, invalidate the cache forcing a re-read from ram
 //    ------------------------------------------------------------------------
-#define INVALIDATE_PROCESS(proc)    INVALIDATE_CACHE(proc, sizeof(Process_t))
+#define INVALIDATE_PROCESS(proc)    InvalidateCache(proc, sizeof(Process_t))
 
 
-#endif

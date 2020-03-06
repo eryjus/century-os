@@ -16,14 +16,23 @@
 //===================================================================================================================
 
 
-#ifndef __PRINTF_H__
-#define __PRINTF_H__
+#pragma once
+
+#include "types.h"
+
+
+//
+// -- used to "turn on" kprintf() output
+//    ----------------------------------
+EXTERN EXPORT KERNEL_DATA
+bool kPrintfEnabled;
+
 
 
 //
 // -- This function operates like printf()
 //    ------------------------------------
+EXTERN_C EXPORT KERNEL
 int kprintf(const char *fmt, ...);
 
 
-#endif

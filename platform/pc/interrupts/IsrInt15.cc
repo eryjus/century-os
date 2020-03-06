@@ -26,6 +26,7 @@
 //
 // -- An Intel Interrupt
 //    --------------
+EXTERN_C EXPORT KERNEL
 void IsrInt15(isrRegs_t *regs)
 {
     kprintf("\nRESERVED INT15\n");

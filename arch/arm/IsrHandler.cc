@@ -26,6 +26,7 @@
 #include "timer.h"
 #include "pic.h"
 #include "interrupt.h"
+#include "debug.h"
 
 
 //
@@ -40,19 +41,23 @@ isrFunc_t isrHandlers[256] = {NULL_ISR};
 void IsrHandler(isrRegs_t *regs)
 {
     int intno = 0;
-    int pending = 0;
+
 
     // -- Here we need to determine the intno for the ISR
-    pending = PicDetermineIrq(picControl);
+    intno = PicDetermineIrq(picControl);
 
-    if (pending == -1) return;        // spurious interrupt
-    intno = pending;
+    if (intno == -1) return;        // spurious interrupt
+
+#if DEBUG_ENABLED(IsrHandler)
+    // skip timer irq
+    if (intno != 97) kprintf("good interrupt on cpu %d: %d\n", thisCpu->cpuNum, intno);
+#endif
 
     if (isrHandlers[intno] != NULL) {
         isrFunc_t handler = isrHandlers[intno];
         handler(regs);
     } else {
         kprintf("PANIC: Unhandled interrupt: %x\n", intno);
-        Halt();
+        CpuPanic("", regs);
     }
 }

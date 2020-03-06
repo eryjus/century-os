@@ -24,22 +24,20 @@
 
 
 #include "types.h"
-#include "hardware.h"
-#include "cpu.h"
-#include "interrupt.h"
-#include "pic.h"
 #include "timer.h"
 
 
 //
 // -- This is the callback function that is triggered with each interrupt
 //    -------------------------------------------------------------------
-extern void TimerCallBack(isrRegs_t *reg);
+EXTERN_C EXPORT KERNEL
+void TimerCallBack(isrRegs_t *reg);
 
 
 //
 // -- Set the timer to fire at the desires frequency
 //    ----------------------------------------------
+EXTERN_C EXPORT KERNEL
 void _TimerInit(TimerDevice_t *dev, uint32_t frequency)
 {
     if (!dev) return;

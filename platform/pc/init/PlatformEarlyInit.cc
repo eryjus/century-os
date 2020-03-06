@@ -17,9 +17,13 @@
 //===================================================================================================================
 
 
+#include "types.h"
 #include "hardware.h"
 #include "hw-disc.h"
-#include "fb.h"
+#include "serial.h"
+#include "mmu.h"
+#include "pic.h"
+#include "interrupt.h"
 #include "printf.h"
 #include "platform.h"
 
@@ -27,19 +31,44 @@
 //
 // -- Handle the early initialization for the pc platform
 //    ---------------------------------------------------
-void __ldrtext PlatformEarlyInit(void)
+EXTERN_C EXPORT LOADER
+void PlatformEarlyInit(void)
 {
-    HwDiscovery();
-    RSDP_t *rsdp = AcpiFindRsdp();
-    if (rsdp == NULL) return;
+    SerialOpen(&debugSerial);       // initialize the serial port so we can output debug data
+    kprintf("Hello...\n");
 
-    if ((rsdp->xsdtAddress != 0) && (AcpiReadXsdt(rsdp->xsdtAddress) == true)) {
-        return;
+    if (CheckCpuid() != 0) {
+        SetCpuid(true);
+        CollectCpuid();
     }
 
-    AcpiReadRsdt(rsdp->rsdtAddress);
+    HwDiscovery();
 
-    kprintf("The APIC base address is at %p\n", READ_APIC_BASE());
+    RSDP_t *rsdp = AcpiFindRsdp();
+    if (rsdp == NULL) {
+        cpus.cpusDiscovered = 1;
+        goto exit;
+    }
+
+    // -- temporarily map the acpi tables
+    MmuMapToFrame((archsize_t)rsdp, (frame_t)(((archsize_t)rsdp) >> 12), PG_KRN);
+
+    if ((rsdp->xsdtAddress != 0) && (AcpiReadXsdt(rsdp->xsdtAddress) == true)) {
+        // -- do nothing here...
+    } else {
+        AcpiReadRsdt(rsdp->rsdtAddress);
+        kprintf("The APIC base address is at %p\n", READ_APIC_BASE());
+    }
+
+    if (cpus.cpusDiscovered > MAX_CPUS) cpus.cpusDiscovered = MAX_CPUS;
+    cpus.cpusRunning = 1;
+
+    // -- unmap the acpi tables
+    MmuUnmapPage((archsize_t)rsdp);
+
+exit:
+    // -- Complete the CPU initialization
+    CpuInit();
 }
 
 

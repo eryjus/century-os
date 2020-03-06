@@ -15,7 +15,8 @@
 //===================================================================================================================
 
 
-#include "timer.h"
+#include "types.h"
+#include "interrupt.h"
 #include "cpu.h"
 #include "pic.h"
 
@@ -23,19 +24,23 @@
 //
 // -- This is the data that will be used to manage the pic
 //    ----------------------------------------------------
-__krndata Bcm2835Pic_t bcm2835Data = {
-    .picLoc = PIC,
-    .timerLoc = TIMER,
+EXPORT KERNEL_DATA
+Bcm2835Pic_t bcm2835Data = {
+    .picLoc = BCM2835_PIC,
+    .timerLoc = BCM2835_TIMER,
 };
 
 //
 // -- This is the device description that is used to output data to the serial port during loader initialization
 //    ----------------------------------------------------------------------------------------------------------
-__krndata PicDevice_t picBcm2835 = {
+EXPORT KERNEL_DATA
+PicDevice_t picBcm2835 = {
     .device = { .deviceData = (DeviceData_t *)&bcm2835Data, },
+    .ipiReady = false,
     .PicInit = _PicInit,
     .PicMaskIrq = _PicMaskIrq,
     .PicUnmaskIrq = _PicUnmaskIrq,
+    .PicEoi = (void (*)(PicDevice_t *, Irq_t))EmptyFunction,
     .PicDetermineIrq = _PicDetermineIrq,
     .PicBroadcastIpi = _PicBroadcastIpi,
 };
@@ -44,5 +49,17 @@ __krndata PicDevice_t picBcm2835 = {
 //
 // -- This is the pic we are going to use
 //    -----------------------------------
+EXPORT KERNEL_DATA
 PicDevice_t *picControl = &picBcm2835;
+
+
+//
+// -- An array of handlers
+//    --------------------
+EXPORT KERNEL_DATA
+MbHandler_t mbHandlers[MAX_IPI] = {
+    NULL,
+    (MbHandler_t)Halt,          // We are panicing all CPUs; do nothing
+    IpiHandleTlbFlush,
+};            // limit to 100 messages for now
 

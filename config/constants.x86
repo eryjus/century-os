@@ -1,0 +1,74 @@
+##===================================================================================================================
+##
+##  constants.arm -- This file contains the x86 constants that will be defined in Century-OS.
+##
+##        Copyright (c)  2017-2019 -- Adam Clark
+##        Licensed under "THE BEER-WARE LICENSE"
+##        See License.md for details.
+##
+##  This file will be processed with `sed` and `awk` to produce the necessary output in the proper format.  This
+##  file is very dependent on the columns and what is in each one.  First of all, any line that starts with a '#'
+##  is a comment and will be ignored.
+##
+##  The columns are as follows:
+##  * The constant name ($1)
+##  * The constant value ($2)
+##
+## ------------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ----------------------------------------------------------------------------
+##  2020-Feb-05  Initial  v0.5.0g  ADCL  Initial version
+##
+##===================================================================================================================
+
+
+##
+## -- Some x86 specific constants
+##    ---------------------------
+X86_PHYS_GDT                    (0x10000)
+X86_VIRT_GDT                    (0xff410000)
+
+X86_PHYS_IDT                    (0x9000)
+X86_VIRT_IDT                    (0xff401000)
+
+X86_TRAMPOLINE                  0x8000
+
+
+##
+## -- These are constants related to the x86 MMU
+##    --------------------------------------------
+
+## -- Present (<<0)
+X86_MMU_PRESENT_FALSE           0
+X86_MMU_PRESENT_TRUE            1
+
+## -- read/write flags (<<1)
+X86_MMU_READ                    0
+X86_MMU_WRITE                   1
+
+## -- user/supervisor access flags (<<2)
+X86_MMU_SUPERVISOR              0
+X86_MMU_USER                    1
+
+## -- Page Write Through (<<3)
+X86_MMU_PWT_ENABLED             1
+X86_MMU_PWT_DISABLED            0
+
+## -- Page Cache Disabled (<<4)
+X86_MMU_PCD_TRUE                1
+X86_MMU_PCD_FALSE               0
+
+## -- other flags
+X86_MMU_ACCESSED                (1<<5)
+X86_MMU_DIRTY                   (1<<6)
+X86_MMU_PAT                     (1<<7)
+X86_MMU_GLOBAL                  (1<<8)
+X86_MMU_KERNEL                  (1<<9)
+
+## -- some interesting page types
+X86_MMU_BASE                    ((X86_MMU_PRESENT_TRUE<<0)|(X86_MMU_WRITE<<1)|(X86_MMU_SUPERVISOR<<2))
+X86_MMU_KRN_CODE                ((X86_MMU_PRESENT_TRUE<<0)|(X86_MMU_SUPERVISOR<<2)|(X86_MMU_READ<<1)|X86_MMU_KERNEL)
+X86_MMU_KRN_DATA                ((X86_MMU_PRESENT_TRUE<<0)|(X86_MMU_SUPERVISOR<<2)|(X86_MMU_WRITE<<1)|X86_MMU_KERNEL)
+
+

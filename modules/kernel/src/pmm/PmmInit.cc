@@ -37,7 +37,6 @@
 //===================================================================================================================
 
 
-#include "loader.h"
 #include "types.h"
 #include "serial.h"
 #include "printf.h"
@@ -57,10 +56,10 @@
 //
 // -- initialize the physical portion of the memory manager
 //    -----------------------------------------------------
-__CENTURY_FUNC__ void __ldrtext PmmInit(void)
+EXTERN_C EXPORT LOADER
+void PmmInit(void)
 {
     extern bool pmmInitialized;
-    extern uint8_t _kernelEnd[];
 
     kprintf("Startng PMM initialization\n");
 
@@ -73,8 +72,7 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
 
     // -- Sanity check -- we cannot continue without a memory map
     if (!HaveMMapData()) {
-        kprintf("PANIC: Unable to determine memory map; Century OS cannot initialize\n\n");
-        HaltCpu();
+        CpuPanicPushRegs("PANIC: Unable to determine memory map; Century OS cannot initialize\n\n");
     }
 
 
@@ -93,10 +91,10 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
         size_t count = (archsize_t)((end - start) >> 12);
 
         // -- skip anything before 4MB
-        if (frame < 0x400 && count < 0x400) continue;
-        if (frame < 0x400) {
-            count -= (0x400 - frame);
-            frame = 0x400;
+        if (frame < earlyFrame && count < earlyFrame) continue;
+        if (frame < earlyFrame) {
+            count -= (earlyFrame - frame);
+            frame = earlyFrame;
         }
 
         kprintf("Releasing block of memory from frame %x for a count of %x frames\n", frame, count);
@@ -115,18 +113,6 @@ __CENTURY_FUNC__ void __ldrtext PmmInit(void)
     }
 
     CLEAN_PMM();
-
-
-    //
-    // -- Finally, double check we did not over-allocate into the kernel
-    //    --------------------------------------------------------------
-    if (((pmmEarlyFrame + 1) << 12) < PHYS_OF(_kernelEnd)) {
-        kprintf("PANIC: Too many frames were allocated to get the system running!\n");
-        kprintf("       The kernel ends at %p and we allocated frame %p\n",
-                PHYS_OF(_kernelEnd), (pmmEarlyFrame + 1) << 12);
-        kprintf("       Recompile the system with larget identity mapped support\n");
-        HaltCpu();
-    }
 
 
     //
