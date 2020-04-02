@@ -173,8 +173,8 @@ void EmptyFunction(void);
 //    ------------------------------------------------------------------
 typedef struct Cpu_t {
     int cpusDiscovered;
-    int cpusRunning;
-    int cpuStarting;
+    SMP_UNSTABLE int cpusRunning;
+    SMP_UNSTABLE int cpuStarting;
     ArchCpu_t perCpuData[MAX_CPUS];
 } Cpu_t;
 
@@ -192,4 +192,6 @@ archsize_t CpuMyStruct(void);
 EXTERN EXPORT KERNEL_BSS
 Cpu_t cpus;
 
+
+#include "atomic.h"
 

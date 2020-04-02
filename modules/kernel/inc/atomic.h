@@ -22,13 +22,14 @@
 
 
 #include "types.h"
+#include "cpu.h"
 
 
 //
 // -- this is the atomic integer type
 //    -------------------------------
 typedef struct AtomicInt_t {
-    int32_t counter;
+    SMP_UNSTABLE int32_t counter;
 } AtomicInt_t;
 
 
@@ -41,70 +42,86 @@ typedef struct AtomicInt_t {
 //
 // -- Set an AtomicInt_t to a value, returning the previous value
 //    -----------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-int32_t AtomicSet(volatile AtomicInt_t *a, int32_t v);
+EXPORT INLINE
+int32_t AtomicSet(volatile AtomicInt_t *a, int32_t v) {
+    return __atomic_exchange_n(&(a->counter), v, __ATOMIC_SEQ_CST);
+}
 
 
 //
 // -- Add a value to an AtomicInt_t, returning the *previous* value
 //    -------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-int32_t AtomicAdd(volatile AtomicInt_t *a, int32_t v);
+EXPORT INLINE
+int32_t AtomicAdd(volatile AtomicInt_t *a, int32_t v) {
+    return __atomic_fetch_add(&(a->counter), v, __ATOMIC_SEQ_CST);
+}
 
 
 //
 // -- Subtract a value from an AtomicInt_t, returning the previous value
 //    ------------------------------------------------------------------
-EXPORT KERNEL INLINE
-int32_t AtomicSub(volatile AtomicInt_t *a, int32_t v) { return AtomicAdd(a, -v); }
+EXPORT INLINE
+int32_t AtomicSub(volatile AtomicInt_t *a, int32_t v) {
+    return __atomic_fetch_sub(&(a->counter), v, __ATOMIC_SEQ_CST);
+}
 
 
 //
 // -- This function will read an integer atomically (which happens without any special work)
 //    --------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
-int32_t AtomicRead(volatile AtomicInt_t *a) { return a->counter; }
+EXPORT INLINE
+int32_t AtomicRead(volatile AtomicInt_t *a) {
+    return __atomic_load_n(&(a->counter), __ATOMIC_SEQ_CST);
+}
 
 
 //
 // -- This function will increment a value for an atomic interger, returning the previous value
 //    -----------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 int32_t AtomicInc(volatile AtomicInt_t *a) { return AtomicAdd(a, 1); }
 
 
 //
 // -- This function will decrement a value for an atomic integer, returning the previous value
 //    ----------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
-int32_t AtomicDec(volatile AtomicInt_t *a) { return AtomicAdd(a, -1); }
+EXPORT INLINE
+int32_t AtomicDec(volatile AtomicInt_t *a) { return AtomicSub(a, 1); }
 
 
 //
 // -- This function will atomically add and test if the result is 0
 //    -------------------------------------------------------------
-EXPORT KERNEL INLINE
-bool AtomicAddAndNegative(volatile AtomicInt_t *a, int32_t v) { return ((AtomicAdd(a, v) + v) < 0); }
+EXPORT INLINE
+bool AtomicAddAndNegative(volatile AtomicInt_t *a, int32_t v) {
+    return __atomic_add_fetch(&(a->counter), v, __ATOMIC_SEQ_CST) < 0;
+}
 
 
 //
 // -- This function will atomically subtract and test if the result is 0
 //    ------------------------------------------------------------------
-EXPORT KERNEL INLINE
-bool AtomicSubAndTest0(volatile AtomicInt_t *a, int32_t v) { return ((AtomicAdd(a, -v) - v) == 0); }
+EXPORT INLINE
+bool AtomicSubAndTest0(volatile AtomicInt_t *a, int32_t v) {
+    return __atomic_sub_fetch(&(a->counter), v, __ATOMIC_SEQ_CST) == 0;
+}
 
 
 //
 // -- This function will atomically increment and test if the result is 0
 //    -------------------------------------------------------------------
-EXPORT KERNEL INLINE
-bool AtomicIncAndTest0(volatile AtomicInt_t *a) { return ((AtomicAdd(a, 1) + 1) == 0); }
+EXPORT INLINE
+bool AtomicIncAndTest0(volatile AtomicInt_t *a) {
+    return __atomic_add_fetch(&(a->counter), 1, __ATOMIC_SEQ_CST) == 0;
+}
 
 
 //
 // -- This function will atomically decrement and test if the result is 0
 //    -------------------------------------------------------------------
-EXPORT KERNEL INLINE
-bool AtomicDecAndTest0(volatile AtomicInt_t *a) { return ((AtomicAdd(a, -1) - 1) == 0); }
+EXPORT INLINE
+bool AtomicDecAndTest0(volatile AtomicInt_t *a) {
+    return __atomic_sub_fetch(&(a->counter), 1, __ATOMIC_SEQ_CST) == 0;
+}
 
 

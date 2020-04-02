@@ -34,28 +34,28 @@
 //
 // -- Write to a Memory Mapped I/O Register
 //    -------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void MmioWrite(archsize_t regLocation, uint32_t data) { (*((volatile uint32_t *)(regLocation)) = (data)); }
 
 
 //
 // -- Write to a 64-bit Memory Mapped I/O Register
 //    --------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void MmioWrite64(archsize_t regLocation, uint64_t data) { (*((volatile uint64_t *)(regLocation)) = (data)); }
 
 
 //
 // -- Read from a Memory Mapped I/O Register
 //    --------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 uint32_t MmioRead(archsize_t regLocation) { return (*((volatile uint32_t *)(regLocation))); }
 
 
 //
 // -- Read from a 64-bit Memory Mapped I/O Register
 //    ---------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 uint64_t MmioRead64(archsize_t regLocation) { return (*((volatile uint64_t *)(regLocation))); }
 
 

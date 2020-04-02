@@ -45,10 +45,10 @@ void ProcessUpdateTimeUsed(void)
     uint64_t elapsed = now - lastTimer;
     lastTimer = now;
 
-    if (scheduler.currentProcess == NULL) {
+    if (currentThread == NULL) {
         cpuIdleTime += elapsed;
     } else {
-        scheduler.currentProcess->timeUsed += elapsed;
+        currentThread->timeUsed += elapsed;
     }
 }
 

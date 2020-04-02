@@ -31,10 +31,11 @@ EXPORT KERNEL
 void ProcessDoBlock(ProcStatus_t reason)
 {
     if (!assert(reason >= PROC_INIT && reason <= PROC_MSGW)) return;
-    if (!assert(scheduler.currentProcess != 0)) return;
+    if (!assert(currentThread != 0)) return;
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoBlock()` without the proper lock");
 
-    scheduler.currentProcess->status = reason;
-    scheduler.currentProcess->pendingErrno = 0;
+    currentThread->status = reason;
+    currentThread->pendingErrno = 0;
+    scheduler.processChangePending = true;
     ProcessSchedule();
 }

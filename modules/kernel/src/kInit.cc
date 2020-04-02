@@ -45,7 +45,6 @@
 #include "timer.h"
 #include "pmm.h"
 #include "serial.h"
-#include "atomic.h"
 
 
 //
@@ -64,7 +63,7 @@ int semid;
 void StartA(void)
 {
     while (true) {
-        kprintf("A");
+        kprintf("A(%d);", thisCpu->cpuNum);
         ProcessMilliSleep(500);
     }
 }
@@ -72,9 +71,43 @@ void StartA(void)
 void StartB(void)
 {
     while (true) {
-        kprintf("B");
+        kprintf("B(%d);", thisCpu->cpuNum);
         ProcessMilliSleep(250);
     }
+}
+
+
+Spinlock_t testLock = {0};
+volatile int testval = 0;
+AtomicInt_t atomVal = {0};
+AtomicInt_t done = {0};
+AtomicInt_t instance = {0};
+
+void AtomicsTest(void)
+{
+    int odd = AtomicInc(&instance) % 2;
+
+    while (cpus.cpusRunning != 4) {}
+
+    for (int i = 0; i < 1000000; i ++) {
+        if (odd) {
+            AtomicInc(&atomVal);
+        } else {
+            AtomicDec(&atomVal);
+        }
+    }
+
+    for (int i = 0; i < 1000000; i ++) {
+        archsize_t flags =  SPINLOCK_BLOCK_NO_INT(testLock) {
+            if (odd) {
+                testval ++;
+            } else {
+                testval --;
+            }
+        } SPINLOCK_RLS_RESTORE_INT(testLock, flags);
+    }
+
+    AtomicInc(&done);
 }
 
 
@@ -98,25 +131,32 @@ void kInit(void)
     FrameBufferPutS("    (initializing...)\n");
     FrameBufferPutS("The RSDP is located at "); FrameBufferPutHex(GetRsdp()); FrameBufferDrawChar('\n');
 
-#ifdef RSDP_t
-#   define RSDT        ((RSDP_t *)GetRsdp())->rsdtAddress
-#else
-#   define RSDT        0
-#endif
-    FrameBufferPutS("The RSDT is located at ");  FrameBufferPutHex(RSDT); FrameBufferDrawChar('\n');
-#undef RSDT
-
 
     //
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
+//    ProcessCheckQueue();
     TimerInit(timerControl, 1000);
+    kprintf("Reporting interesting Process_t offsets:\n");
+    kprintf("  Top of Stack: %x\n", offsetof(Process_t, topOfStack));
+    kprintf("  Virtual Address Space: %x\n", offsetof(Process_t, virtAddrSpace));
+    kprintf("  Process Status: %x\n", offsetof(Process_t, status));
+    kprintf("Reporting interesting Scheduler_t offsets:\n");
+    kprintf("  Next PID to assign: %x\n", offsetof(Scheduler_t, nextPID));
+    kprintf("  Next wake timer tick: %x\n", offsetof(Scheduler_t, nextWake));
+    kprintf("  Process Change Pending flag: %x\n", offsetof(Scheduler_t, processChangePending));
+    kprintf("  Postpone Count: %x\n", offsetof(Scheduler_t, postponeCount));
+
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
     CoresStart();
     picControl->ipiReady = true;
     kprintf("Starting processes\n");
+    BOCHS_TOGGLE_INSTR;
+//    AtomicsTest();  while (AtomicRead(&done) != 4) {}
+//    kprintf("The resulting int value is %d\n", testval);
+//    kprintf("The resulting Atomic val is %d\n", AtomicRead(&atomVal));
 
     A = ProcessCreate(StartA);
     B = ProcessCreate(StartB);
@@ -179,7 +219,7 @@ void kInit(void)
 #endif
 
     while (true) {
-        kprintf(".");
+        kprintf(".(%d);", thisCpu->cpuNum);
         ProcessSleep(2);
     }
 

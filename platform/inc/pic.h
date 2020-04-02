@@ -75,26 +75,26 @@ PicDevice_t *picControl;
 // -- These are the common interface functions we will use to interact with the PIC.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    ------------------------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void PicInit(PicDevice_t *dev, const char *name) { dev->PicInit(dev, name); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 isrFunc_t PicRegisterHandler(PicDevice_t *dev, Irq_t irq, int vector, isrFunc_t handler) {
                     return dev->PicRegisterHandler(dev, irq, vector, handler); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void PicUnmaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicUnmaskIrq(dev, irq); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void PicMaskIrq(PicDevice_t *dev, Irq_t irq) { dev->PicMaskIrq(dev, irq); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void PicEoi(PicDevice_t *dev, Irq_t irq) { dev->PicEoi(dev, irq); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 archsize_t PicDetermineIrq(PicDevice_t *dev) { return dev->PicDetermineIrq(dev); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void PicBroadcastIpi(PicDevice_t *dev, int ipi) { return dev->PicBroadcastIpi(dev, ipi); }
 
 

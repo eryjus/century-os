@@ -27,7 +27,6 @@
 #include "pic.h"
 #include "mmu.h"
 #include "process.h"
-#include "debug.h"
 
 
 //
@@ -103,6 +102,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
             kprintf("CPU %d: Current response count is %d of %d at %p\n", thisCpu->cpuNum,
                     AtomicRead(&tlbFlush.count), expected, picControl);
 #endif
+            ProcessMilliSleep(1);
         }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flg);

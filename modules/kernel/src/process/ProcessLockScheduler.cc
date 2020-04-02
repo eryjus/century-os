@@ -29,8 +29,10 @@ EXPORT KERNEL
 void ProcessLockScheduler(bool save)
 {
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(schedulerLock);
+    scheduler.lockCpu = thisCpu->cpuNum;
 
     if (AtomicRead(&scheduler.schedulerLockCount) == 0) {
+//        kprintf("Scheduler locked on CPU%d\n", thisCpu->cpuNum);
         if (save) scheduler.flags = flags;
     }
 

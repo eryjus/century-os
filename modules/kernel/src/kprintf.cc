@@ -168,9 +168,14 @@ int kprintf(const char *fmt, ...)
 
             case 'd':
                 {
-                    val = va_arg(args, archsize_t);
+                    int val = va_arg(args, int);
                     char buf[30];
                     int i = 0;
+
+                    if (val < 0) {
+                        SerialPutChar(&debugSerial, '-');
+                        val = -val;
+                    }
 
                     if (val == 0) {
                         SerialPutChar(&debugSerial, '0');

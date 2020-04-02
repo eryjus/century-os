@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  platform-io.h -- These are additional I/O functions that are use for x86
+//  ProcessIdle.cc -- This is an idle process to use on the CPU when there is nothing else to do
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,35 +10,29 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-23  Initial   0.3.0   ADCL  Initial version
+//  2020-Mar-27  Initial  v0.5.1a  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#pragma once
-
-
-#ifndef __HARDWARE_H__
-#   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
-#endif
+#include "cpu.h"
+#include "heap.h"
+#include "timer.h"
+#include "process.h"
 
 
 //
-// -- Get a byte from an I/O Port
-//    ---------------------------
-EXPORT INLINE
-uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ( "inb %1, %0" : "=a"(ret) : "Nd"(port) );
-    return ret;
+// -- Idle when there is nothing to do
+//    --------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessIdle(void)
+{
+    currentThread->priority = PTY_IDLE;
+
+    while (true) {
+        assert(currentThread->status == PROC_RUNNING);
+        EnableInterrupts();
+        HaltCpu();
+    }
 }
-
-
-//
-// -- Output a byte to an I/O Port
-//    ----------------------------
-EXPORT INLINE
-void outb(uint16_t port, uint8_t val) { asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) ); }
-
-
 

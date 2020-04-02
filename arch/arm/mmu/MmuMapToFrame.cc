@@ -27,6 +27,7 @@
 #include "cpu.h"
 #include "printf.h"
 #include "pmm.h"
+#include "process.h"
 #include "spinlock.h"
 #include "pic.h"
 #include "mmu.h"
@@ -164,7 +165,10 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
-        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {}
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
+            ProcessMilliSleep(500);
+
+        }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flg);
     }

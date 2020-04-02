@@ -64,7 +64,7 @@ void WRMSR(uint32_t r, uint64_t v) {
 //
 // -- a lightweight function to halt the cpu
 //    --------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void HaltCpu(void) { __asm("hlt"); }
 
 
@@ -72,11 +72,17 @@ void HaltCpu(void) { __asm("hlt"); }
 // -- cache maintenance functions
 //    ---------------------------
 #if defined(ENABLE_CACHE) && ENABLE_CACHE == 1
-#   define CleanCache(mem,len)         MemoryResynchronization()
-#   define InvalidateCache(mem,len)    MemoryResynchronization()
+EXTERN_C EXPORT INLINE
+void CleanCache(archsize_t mem, size_t len) { MemoryResynchronization(); }
+
+EXTERN_C EXPORT INLINE
+void InvalidateCache(archsize_t mem, size_t len) { MemoryResynchronization(); }
 #else
-#   define CleanCache(mem,len)
-#   define InvalidateCache(mem,len)
+EXTERN_C EXPORT INLINE
+void CleanCache(archsize_t mem, size_t len) { }
+
+EXTERN_C EXPORT INLINE
+void InvalidateCache(archsize_t mem, size_t len) { }
 #endif
 
 

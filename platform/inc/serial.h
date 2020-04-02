@@ -72,23 +72,23 @@ SerialDevice_t debugSerial;
 // -- These are the common interface functions we will use to interact with the serial port.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    -----------------------------------------------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-inline void SerialOpen(SerialDevice_t *dev) { dev->SerialOpen(dev); }
+EXTERN_C EXPORT INLINE
+void SerialOpen(SerialDevice_t *dev) { dev->SerialOpen(dev); }
 
-EXTERN_C EXPORT KERNEL
-inline void SerialClose(SerialDevice_t *dev) { dev->SerialClose(dev); }
+EXTERN_C EXPORT INLINE
+void SerialClose(SerialDevice_t *dev) { dev->SerialClose(dev); }
 
-EXTERN_C EXPORT KERNEL
-inline bool SerialHasRoom(SerialDevice_t *dev) { return dev->SerialHasRoom(dev); }
+EXTERN_C EXPORT INLINE
+bool SerialHasRoom(SerialDevice_t *dev) { return dev->SerialHasRoom(dev); }
 
-EXTERN_C EXPORT KERNEL
-inline bool SerialHasChar(SerialDevice_t *dev) { return dev->SerialHasChar(dev); }
+EXTERN_C EXPORT INLINE
+bool SerialHasChar(SerialDevice_t *dev) { return dev->SerialHasChar(dev); }
 
-EXTERN_C EXPORT KERNEL
-inline uint8_t SerialGetChar(SerialDevice_t *dev) { return dev->SerialGetChar(dev); }
+EXTERN_C EXPORT INLINE
+uint8_t SerialGetChar(SerialDevice_t *dev) { return dev->SerialGetChar(dev); }
 
-EXTERN_C EXPORT KERNEL
-inline void SerialPutChar(SerialDevice_t *dev, uint8_t ch) { dev->SerialPutChar(dev, ch); }
+EXTERN_C EXPORT INLINE
+void SerialPutChar(SerialDevice_t *dev, uint8_t ch) { dev->SerialPutChar(dev, ch); }
 
 
 //

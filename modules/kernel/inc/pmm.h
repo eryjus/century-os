@@ -103,16 +103,16 @@ frame_t PmmAllocateFrame(void);
 //
 // -- Allocate a frame from low memory in the pmm
 //    -------------------------------------------
-EXTERN_C EXPORT KERNEL
-inline frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, false); }
+EXTERN_C EXPORT INLINE
+frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, false); }
 
 
 
 //
 // -- Allocate a block of aligned frames; bitAlignment is the significance of the alignment (min is 12 bits)
 //    ------------------------------------------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-inline frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
+EXTERN_C EXPORT INLINE
+frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
     return _PmmDoAllocAlignedFrames(&pmm.normalStack, count, bitAlignment);
 }
 
@@ -120,8 +120,8 @@ inline frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignme
 //
 // -- Same as above but from low mem; bitAlignment is significance of the alignment (min is 12 bits)
 //    ----------------------------------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-inline frame_t PmmAllocAlignedLowFrames(const size_t count, const size_t bitAlignment) {
+EXTERN_C EXPORT INLINE
+frame_t PmmAllocAlignedLowFrames(const size_t count, const size_t bitAlignment) {
     return _PmmDoAllocAlignedFrames(&pmm.lowStack, count, bitAlignment);
 }
 
@@ -136,15 +136,15 @@ void PmmReleaseFrameRange(const frame_t frame, const size_t count);
 //
 // -- Release a single frame
 //    ----------------------
-EXTERN_C EXPORT KERNEL
-inline void PmmReleaseFrame(const frame_t frame) { return PmmReleaseFrameRange(frame, 1); }
+EXTERN_C EXPORT INLINE
+void PmmReleaseFrame(const frame_t frame) { return PmmReleaseFrameRange(frame, 1); }
 
 
 //
 // -- Scrub a frame in preparation the next allocation (includes clearing the frame)
 //    ------------------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-inline void PmmScrubFrame(const frame_t frame) { MmuClearFrame(frame); }
+EXTERN_C EXPORT INLINE
+void PmmScrubFrame(const frame_t frame) { MmuClearFrame(frame); }
 
 
 //
