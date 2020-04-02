@@ -82,14 +82,14 @@ typedef struct ListHead_t {
 //
 // -- Initialize a list to point to itself
 //    ------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListInit(ListHead_t::List_t * const list) { list->next = list->prev = list; }
 
 
 //
 // -- Low-level function to add a node to a list
 //    ------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void __list_add(ListHead_t::List_t * const nw, ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
     nx->prev = nw; nw->next = nx; nw->prev = pv; pv->next = nw;
 }
@@ -98,7 +98,7 @@ void __list_add(ListHead_t::List_t * const nw, ListHead_t::List_t * const pv, Li
 //
 // -- Low-level function to delete a node from a list
 //    -----------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void __list_del(ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
     nx->prev = pv; pv->next = nx;
 }
@@ -107,7 +107,7 @@ void __list_del(ListHead_t::List_t * const pv, ListHead_t::List_t * const nx) {
 //
 // -- Add a new node to a list (which is right ahead of the head)
 //    -----------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListAdd(ListHead_t * const head, ListHead_t::List_t * const nw) {
     __list_add(nw, &head->list, head->list.next);
 }
@@ -116,7 +116,7 @@ void ListAdd(ListHead_t * const head, ListHead_t::List_t * const nw) {
 //
 // -- Add a new node to a list (which will be right behind the tail)
 //    --------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListAddTail(ListHead_t * const head, ListHead_t::List_t * const nw) {
     __list_add(nw, head->list.prev, &head->list);
 }
@@ -125,7 +125,7 @@ void ListAddTail(ListHead_t * const head, ListHead_t::List_t * const nw) {
 //
 // -- Delete a node from a list (and clear the node's pointers to NULL)
 //    -----------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListRemove(ListHead_t::List_t * const entry) {
     __list_del(entry->prev, entry->next); entry->next = entry->prev = 0;
 }
@@ -134,7 +134,7 @@ void ListRemove(ListHead_t::List_t * const entry) {
 //
 // -- Delete a node from a list (and and initialize the node to be properly empty)
 //    ----------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListRemoveInit(ListHead_t::List_t * const entry) {
     __list_del(entry->prev, entry->next); ListInit(entry);
 }
@@ -143,7 +143,7 @@ void ListRemoveInit(ListHead_t::List_t * const entry) {
 //
 // -- Is this list empty or not?  Notice that both the address and the contents are constant
 //    --------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 bool IsListEmpty(const ListHead_t * const head) {
     return (head->list.next == &head->list);
 }
@@ -152,7 +152,7 @@ bool IsListEmpty(const ListHead_t * const head) {
 //
 // -- Is this entry last in the list?  Notice that both the address and the contents are constant
 //    -------------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 bool IsLastInList(const ListHead_t * const head, const ListHead_t::List_t * const entry) {
     return entry->next == &head->list;
 }
@@ -161,7 +161,7 @@ bool IsLastInList(const ListHead_t * const head, const ListHead_t::List_t * cons
 //
 // -- Move an entry from one list to another (in front of the head)
 //    -------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListMove(ListHead_t * const head, ListHead_t::List_t * const entry) {
     __list_del(entry->prev, entry->next); ListAdd(head, entry);
 }
@@ -170,9 +170,24 @@ void ListMove(ListHead_t * const head, ListHead_t::List_t * const entry) {
 //
 // -- Move an entry from one list to another (after the tail)
 //    -------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ListMoveTail(ListHead_t * const head, ListHead_t::List_t * const entry) {
     __list_del(entry->prev, entry->next); ListAddTail(head, entry);
+}
+
+
+//
+// -- Count the number of items in the list
+//    -------------------------------------
+EXPORT INLINE
+int ListCount(ListHead_t *const head) {
+    int rv = 0;
+    ListHead_t::List_t *wrk = head->list.next;
+    while (wrk != &head->list) {
+        rv ++;
+        wrk = wrk->next;
+    }
+    return rv;
 }
 
 
@@ -185,7 +200,7 @@ typedef ListHead_t QueueHead_t;
 //
 // -- Enqueue a node onto a queue
 //    ---------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void Enqueue(QueueHead_t *head, ListHead_t::List_t *list) { ListAddTail(head, list); }
 
 
@@ -198,6 +213,6 @@ typedef ListHead_t StackHead_t;
 //
 // -- Push a node onto a stack
 //    ------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void Push(StackHead_t *head, ListHead_t::List_t *list) { ListAdd(head, list); }
 

@@ -69,16 +69,16 @@ TimerDevice_t *timerControl;
 // -- These are the common interface functions we will use to interact with the timer.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    ------------------------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void TimerInit(TimerDevice_t *dev, uint32_t freq) { dev->TimerInit(dev, freq); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void TimerEoi(TimerDevice_t *dev) { dev->TimerEoi(dev); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void TimerPlatformTick(TimerDevice_t *dev) { dev->TimerPlatformTick(dev); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 uint64_t TimerCurrentCount(TimerDevice_t *dev) { return dev->TimerCurrentCount(dev); }
 
 

@@ -27,13 +27,14 @@ void ProcessDoMicroSleepUntil(uint64_t when)
 {
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
             "Calling `ProcessDoMicroSleepUntil()` without the proper lock");
+    assert_msg(currentThread != NULL, "scheduler.currentProcess is NULL");
 
     if (when < TimerCurrentCount(timerControl)) return;
 
-    scheduler.currentProcess->wakeAtMicros = when;
+    currentThread->wakeAtMicros = when;
     if (when < scheduler.nextWake) scheduler.nextWake = when;
 
-    Enqueue(&scheduler.listSleeping, &scheduler.currentProcess->stsQueue);
+    Enqueue(&scheduler.listSleeping, &currentThread->stsQueue);
 
     ProcessDoBlock(PROC_DLYW);
 }

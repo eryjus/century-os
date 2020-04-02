@@ -16,11 +16,9 @@
 
 
 #include "types.h"
-#include "atomic.h"
 #include "mmu.h"
 #include "pic.h"
 #include "printf.h"
-#include "debug.h"
 
 //
 // -- Handle the actual TLB flush, waiting for the address to flush

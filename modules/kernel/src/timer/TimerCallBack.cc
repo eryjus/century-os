@@ -38,7 +38,7 @@
 //  2012-Sep-23                          set new SpuriousIRQ handler
 //  2013-Sep-03    #73                   Encapsulate Process Structure
 //  2013-Sep-12   #101                   Resolve issues splint exposes
-//  2018-Oct-28  Initial   0.1.0   ADCL  Copied this function from Century32 to Centrury-OS
+//  2018-Oct-28  Initial   0.1.0   ADCL  Copied this function from Century32 to Century-OS
 //  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
 //
 //===================================================================================================================
@@ -59,16 +59,22 @@
 EXPORT KERNEL
 void TimerCallBack(UNUSED(isrRegs_t *reg))
 {
+    uint64_t now = 0;
+
     TimerEoi(timerControl);     // take care of this while interrupts are disabled!
 
     ProcessLockAndPostpone();
+
+#if DEBUG_ENABLED(TimerCallBack)
+    kprintf("handling timer\n");
+#endif
 
     if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
 
     //
     // -- here we look for any sleeping tasks to wake
     //    -------------------------------------------
-    uint64_t now = TimerCurrentCount(timerControl);
+    now = TimerCurrentCount(timerControl);
     if (now >= scheduler.nextWake && IsListEmpty(&scheduler.listSleeping) == false) {
         uint64_t newWake = (uint64_t)-1;
 
@@ -96,8 +102,13 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     //
     // -- adjust the quantum and see if it is time to change tasks
     //    --------------------------------------------------------
-    if (scheduler.currentProcess != NULL) {
-        if (AtomicDec(&scheduler.currentProcess->quantumLeft) <= 0) ProcessSchedule();
+    if (currentThread != NULL) {
+        if (AtomicDec(&currentThread->quantumLeft) <= 0) {
+#if DEBUG_ENABLED(TimerCallBack)
+            kprintf("Preempt\n");
+#endif
+            scheduler.processChangePending = true;
+        }
     }
 
     ProcessUnlockAndSchedule();

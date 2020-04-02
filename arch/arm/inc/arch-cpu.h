@@ -34,13 +34,6 @@ typedef struct ArchCpu_t {
 
 
 //
-// -- Some optimizations for the elements we will get to frequently
-//    -------------------------------------------------------------
-#define thisCpu ((ArchCpu_t *)ReadTPIDRPRW())
-#define currentThread ((Process_t *)ReadTPIDRURO())
-
-
-//
 // -- Perform the Archictecture-Specifc CPU initialization required
 //    -------------------------------------------------------------
 #define ArchEarlyCpuInit()
@@ -173,3 +166,20 @@ void ArchFpuInit(void);
 // -- Inlcude the arch-specific CPU operations
 //    ----------------------------------------
 #include "arch-cpu-ops.h"
+
+
+//
+// -- Some optimizations for the elements we will get to frequently
+//    -------------------------------------------------------------
+#define thisCpu ((ArchCpu_t *)ReadTPIDRPRW())
+#define currentThread ((Process_t *)ReadTPIDRURO())
+
+EXTERN_C EXPORT INLINE
+void CurrentThreadAssign(Process_t *p) { WriteTPIDRURO((archsize_t)p); }
+
+
+//
+// -- Bochs magic breakpoint (which will not work on arm)
+//    ---------------------------------------------------
+#define BOCHS_BREAK
+#define BOCHS_TOGGLE_INSTR

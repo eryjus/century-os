@@ -290,7 +290,7 @@ void _LApicBroadcastSipi(PicDevice_t *dev, uint32_t core, archsize_t addr);
 //
 // -- A helper function for translating an IRQ to a redir table entry
 //    ---------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 archsize_t IoApicRedir(IoApicDeviceData_t *data, Irq_t irq) { return data->redirTableEntry[irq]; }
 
 
@@ -313,14 +313,14 @@ uint64_t _LApicCurrentCount(TimerDevice_t *dev);
 //
 // -- These 2 inlines will assist in reading from/writing to the ioapic registers
 //    ---------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 uint32_t IoapicRead(archsize_t addr, uint32_t reg) {
     MmioWrite(addr + IOREGSEL, reg);
     return MmioRead(addr + IOWIN);
 }
 
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void IoapicWrite(archsize_t addr, uint32_t reg, uint32_t val) {
     MmioWrite(addr + IOREGSEL, reg);
     MmioWrite(addr + IOWIN, val);

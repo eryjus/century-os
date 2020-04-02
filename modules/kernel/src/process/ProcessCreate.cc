@@ -54,8 +54,11 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     //
     // -- Construct the new addres space for the process
     //    ----------------------------------------------
-//    rv->virtAddrSpace = MmuNewVirtualSpace(rv->ssAddr);   // -- this will have to create a new virtual address space
     rv->virtAddrSpace = mmuLvl1Table;
+
+#if DEBUG_ENABLED(ProcessCreate)
+    kprintf("ProcessCreate() created a new process at %p\n", rv);
+#endif
 
 
     //

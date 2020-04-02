@@ -53,7 +53,7 @@ Spinlock_t stackBitmapLock;
 EXTERN_C EXPORT KERNEL
 void StackDoAlloc(archsize_t stackBase);
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void StackAlloc(archsize_t stackBase) {
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(stackBitmapLock) {
         StackDoAlloc(stackBase);

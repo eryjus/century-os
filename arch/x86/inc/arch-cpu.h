@@ -288,6 +288,9 @@ typedef struct Descriptor_t {
 EXTERN ArchCpu_t *thisCpu asm("%gs:0");
 EXTERN struct Process_t *currentThread asm("%gs:4");
 
+EXTERN_C EXPORT INLINE
+void CurrentThreadAssign(Process_t *p) { currentThread = p; }
+
 
 //
 // -- Perform the architecture-specific CPU initialization

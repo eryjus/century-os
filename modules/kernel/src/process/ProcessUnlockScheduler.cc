@@ -31,6 +31,7 @@ void ProcessUnlockScheduler(void)
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "schedulerLockCount out if sync");
 
     if (AtomicDecAndTest0(&scheduler.schedulerLockCount)) {
+//        kprintf("Scheduler unlocked on CPU%d\n", thisCpu->cpuNum);
         SPINLOCK_RLS_RESTORE_INT(schedulerLock, scheduler.flags);
     }
 }

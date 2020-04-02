@@ -56,24 +56,24 @@ typedef struct PageEntry_t {
 //
 // -- These are the helper functions to make MMU management nearly painless
 //    ---------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 int MmuGetPDIndexFromAddr(archsize_t addr) { return (addr >> 22) & 0x3ff; }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 int MmuGetPTIndexFromAddr(archsize_t addr) { return (addr >> 12) & 0x3ff; }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 PageEntry_t *MmuGetPDAddress(void) { return (PageEntry_t *)RECURSIVE_PD_VADDR; }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 PageEntry_t *MmuGetPTAddress(archsize_t addr) {
     return (PageEntry_t *)(RECURSIVE_VADDR + (MmuGetPDIndexFromAddr(addr) * 0x1000));
 }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 PageEntry_t *MmuGetPDEntry(archsize_t addr) { return &MmuGetPDAddress()[MmuGetPDIndexFromAddr(addr)]; }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 PageEntry_t *MmuGetPTEntry(archsize_t addr) { return &MmuGetPTAddress(addr)[MmuGetPTIndexFromAddr(addr)]; }
 
 EXTERN_C EXPORT KERNEL

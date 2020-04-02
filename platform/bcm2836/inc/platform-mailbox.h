@@ -48,10 +48,10 @@ MailboxDevice_t kernelMailbox;
 // -- These are the common interface functions we will use to interact with the GPIO.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    -----------------------------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void MailboxSend(MailboxDevice_t *dev, archsize_t mb, archsize_t msg) { dev->MailboxSend(dev, mb, msg); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 archsize_t MailboxReceive(MailboxDevice_t *dev, archsize_t mb) { return dev->MailboxReceive(dev, mb); }
 
 

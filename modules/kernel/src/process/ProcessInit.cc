@@ -39,24 +39,40 @@ void ProcessInit(void)
 {
     extern uint64_t lastTimer;
 
-    scheduler.currentProcess = NEW(Process_t);
-    if (!assert_msg(scheduler.currentProcess != NULL, "Unable to allocate Current Process structure")) {
+    Process_t *proc = NEW(Process_t);
+    CurrentThreadAssign(proc);
+
+    if (!assert(proc != NULL)) {
         CpuPanicPushRegs("Unable to allocate Current Process structure");
     }
 
-    scheduler.currentProcess->topOfStack = 0;
-    scheduler.currentProcess->virtAddrSpace = mmuLvl1Table;
-    scheduler.currentProcess->pid = scheduler.nextPID ++;          // -- this is the butler process ID
-    scheduler.currentProcess->ssAddr = STACK_LOCATION;
-    scheduler.currentProcess->command = NULL;
-    scheduler.currentProcess->policy = POLICY_0;
-    scheduler.currentProcess->priority = PTY_OS;
-    scheduler.currentProcess->status = PROC_RUNNING;
-    AtomicSet(&scheduler.currentProcess->quantumLeft, PTY_OS);
-    scheduler.currentProcess->timeUsed = 0;
-    ListInit(&scheduler.currentProcess->stsQueue);
+    proc->topOfStack = 0;
+    proc->virtAddrSpace = mmuLvl1Table;
+    proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
+    proc->ssAddr = STACK_LOCATION;
+    proc->command = NULL;
+    proc->policy = POLICY_0;
+    proc->priority = PTY_OS;
+    proc->status = PROC_RUNNING;
+    AtomicSet(&proc->quantumLeft, PTY_OS);
+    proc->timeUsed = 0;
+    ListInit(&proc->stsQueue);
     CLEAN_SCHEDULER();
-    CLEAN_PROCESS(scheduler.currentProcess);
+    CLEAN_PROCESS(proc);
+
+    kprintf("ProcessInit() established the current process at %p for CPU%d\n", proc, thisCpu->cpuNum);
+
+
+    //
+    // -- Create an idle process for each CPU
+    //    -----------------------------------
+    for (int i = 0; i < cpus.cpusDiscovered; i ++) {
+        // -- Note ProcessCreate() creates processes at the OS priority...
+        kprintf("starting idle process %d\n", i);
+        ProcessCreate(ProcessIdle);
+    }
+
 
     lastTimer = TimerCurrentCount(timerControl);
+    kprintf("ProcessInit() complete\n");
 }
