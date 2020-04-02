@@ -26,6 +26,7 @@
 #include "heap.h"
 #include "fb.h"
 #include "platform.h"
+#include "entry.h"
 #include "loader.h"
 
 
@@ -44,6 +45,11 @@ void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
     HeapInit();
     PmmInit();
     PlatformInit();
+
+    if (!assert(stabEnd >= (4 * 1024 * 1024))) {
+        kprintf("The kernel is bigger than 4MB; time to add more page mappings!\n");
+        Halt();
+    }
 
 
     // -- Theoretically, after this point, there should be very little architecture-dependent code
