@@ -26,33 +26,46 @@
 ##
 ## -- These are the macros that enable the whole thing!!
 ##    --------------------------------------------------
-DEBUG_TOKEN_PASTE(x)        DEBUG_##x
-DEBUG_ENABLED(func)         DEBUG_TOKEN_PASTE(func)>0
-
-
-##
-## -- MMU-related debugging
-##    ---------------------
-DEBUG_MmuMapToFrame         1
-
-
-
-
-##
-## -- PIC-related debugging
-##    ---------------------
-DEBUG_LApicBroadcastIpi     1
-DEBUG_IpiHandleTlbFlush     1
-DEBUG_PicBroadcastIpi       1
-DEBUG_PicMaskIrq            1
-DEBUG_PicUnmaskIrq          1
-
+DEBUG_TOKEN_PASTE(x)                    DEBUG_##x
+DEBUG_ENABLED(func)                     DEBUG_TOKEN_PASTE(func)>0
 
 
 ##
 ## -- Interrupt debugging
 ##    -------------------
-DEBUG_IsrHandler            1
+DEBUG_IsrHandler                        0
 
+
+
+##
+## -- MMU-related debugging
+##    ---------------------
+DEBUG_MmuMapToFrame                     0
+
+
+##
+## -- Process/Scheduler-related debugging
+##    -----------------------------------
+DEBUG_ProcessCreate                     0
+DEBUG_ProcessNext                       0
+DEBUG_ProcessDoReady                    0
+DEBUG_ProcessSchedule                   0
+DEBUG_ProcessUnlockAndSchedule          0
+
+
+##
+## -- PIC-related debugging
+##    ---------------------
+DEBUG_LApicBroadcastIpi                 0
+DEBUG_IpiHandleTlbFlush                 0
+DEBUG_PicBroadcastIpi                   0
+DEBUG_PicMaskIrq                        0
+DEBUG_PicUnmaskIrq                      0
+
+
+##
+## -- Timer-related debugging
+##    -----------------------
+DEBUG_TimerCallBack                     0
 
 

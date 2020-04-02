@@ -26,6 +26,9 @@
 EXPORT KERNEL
 void ProcessDoReady(Process_t *proc)
 {
+#if DEBUG_ENABLED(ProcessDoReady)
+    kprintf("Attempting to ready process at %p\n", proc);
+#endif
     if (!assert(proc != NULL)) return;
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0, "Calling `ProcessDoReady()` without the proper lock");
 
@@ -51,6 +54,10 @@ void ProcessDoReady(Process_t *proc)
 
     case PTY_LOW:
         Enqueue(&scheduler.queueLow, &proc->stsQueue);
+        break;
+
+    case PTY_IDLE:
+        Enqueue(&scheduler.queueIdle, &proc->stsQueue);
         break;
     }
 }

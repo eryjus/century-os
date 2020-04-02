@@ -64,10 +64,10 @@ PROC_QUANTUM_LEFT       EQU     16
 ;;
 ;; -- some local equates for accessing the structure offsets
 ;;    ------------------------------------------------------
-SCH_CURRENT_PROCESS     EQU     0
-SCH_CHG_PENDING         EQU     0x10
-SCH_LOCK_COUNT          EQU     0x18
-SCH_POSTPONE_COUNT      EQU     0x1c
+;;SCH_CURRENT_PROCESS     EQU     0
+SCH_CHG_PENDING         EQU     0x0c
+SCH_LOCK_COUNT          EQU     0x14
+SCH_POSTPONE_COUNT      EQU     0x18
 
 
 ;;
@@ -110,7 +110,7 @@ ProcessSwitch:
 ;;
 ;; -- Get the current task structure
 ;;    ------------------------------
-        mov     esi,[scheduler+SCH_CURRENT_PROCESS]         ;; get the address of the current process
+        mov     esi,[gs:4]                  ;; get the address of the current process
 
         cmp     dword [esi+PROC_STATUS],PROC_STS_RUNNING    ;; is this the current running process
         jne     .saveStack
@@ -129,7 +129,7 @@ ProcessSwitch:
 ;; -- next, we get the next task and prepare to switch to that
 ;;    --------------------------------------------------------
         mov     edi,[esp+((4+1)*4)]         ;; get the new task's structure
-        mov     [scheduler+SCH_CURRENT_PROCESS],edi        ;; this is now the currnet task
+        mov     [gs:4],edi                  ;; this is now the currnet task
 
         mov     esp,[edi+PROC_TOP_OF_STACK] ;; get the stop of the next process stack
         mov     dword [edi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running

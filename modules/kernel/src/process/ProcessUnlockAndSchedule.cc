@@ -33,6 +33,9 @@ void ProcessUnlockAndSchedule(void)
     if (AtomicDecAndTest0(&scheduler.postponeCount) == true) {
         if (scheduler.processChangePending != false) {
             scheduler.processChangePending = false;           // need to clear this to actually perform a change
+#if DEBUG_ENABLED(ProcessUnlockAndSchedule)
+            kprintf("Finally scheduling!\n");
+#endif
             ProcessSchedule();
         }
     }

@@ -59,7 +59,7 @@ void FrameBufferPutS(const char *s);
 //
 // -- Output a hex string to the screen
 //    ---------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void FrameBufferPutHex(uint32_t val) {
     FrameBufferDrawChar('0');
     FrameBufferDrawChar('x');

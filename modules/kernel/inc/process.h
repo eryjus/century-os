@@ -69,8 +69,31 @@
 #include "lists.h"
 #include "cpu.h"
 #include "timer.h"
-#include "atomic.h"
 #include "spinlock.h"
+
+
+//
+// -- For the scheduler structure, clean the cache pushing the changes to ram
+//    -----------------------------------------------------------------------
+#define CLEAN_SCHEDULER()           CleanCache((archsize_t)&scheduler, sizeof(Scheduler_t))
+
+
+//
+// -- For the scheduler structure, invalidate the cache forcing a re-read from ram
+//    ----------------------------------------------------------------------------
+#define INVALIDATE_SCHEDULER()      InvalidateCache((archsize_t)&scheduler, sizeof(Scheduler_t))
+
+
+//
+// -- for a Process structure, clean the cache pushing the changes to ram
+//    -------------------------------------------------------------------
+#define CLEAN_PROCESS(proc)         CleanCache((archsize_t)proc, sizeof(Process_t))
+
+
+//
+// -- for a Process structure, invalidate the cache forcing a re-read from ram
+//    ------------------------------------------------------------------------
+#define INVALIDATE_PROCESS(proc)    InvalidateCache((archsize_t)proc, sizeof(Process_t))
 
 
 //
@@ -100,7 +123,9 @@ typedef enum { POLICY_0,
 //
 // -- This is list is the priority of the process, which doubles as the quantum that will be given a process
 //    ------------------------------------------------------------------------------------------------------
-typedef enum { PTY_LOW = 5,             // This is a low priority user process
+typedef enum {
+        PTY_IDLE = 1,                   // This ia an idle priority process
+        PTY_LOW = 5,                    // This is a low priority user process
         PTY_NORM = 10,                  // This is a normal user process
         PTY_HIGH = 20,                  // This is a high priority user process
         PTY_OS = 30,                    // This is an OS or Driver process
@@ -132,7 +157,6 @@ typedef struct Process_t {
 //    ------------------------------------------------------
 typedef struct Scheduler_t {
     // -- These fields can only be changed after ProcessLockAndPostpone(); SMP may change this
-    Process_t *currentProcess;              // the process that is currently executing on the cpu
     PID_t nextPID;                          // the next pid number to allocate
     volatile uint64_t nextWake;             // the next tick-since-boot when a process needs to wake up
 
@@ -144,13 +168,14 @@ typedef struct Scheduler_t {
     volatile AtomicInt_t schedulerLockCount;// the depth of the locks
     volatile AtomicInt_t postponeCount;     // the depth of the number of postpone requests
 
-
+    int lockCpu;                            // the CPU that currently holds the lock (invalid when no lock is held)
 
     // -- and the different lists a process might be on, locks in each list will be used
     QueueHead_t queueOS;                    // this is the queue for the OS tasks -- if it can run it does
     QueueHead_t queueHigh;                  // this is the queue for High pty tasks
     QueueHead_t queueNormal;                // these are the typical tasks -- most non-OS tasks will be here
     QueueHead_t queueLow;                   // low priority tasks which do not need cpu unless there is nothing else
+    QueueHead_t queueIdle;                  // idle priority tasks
     ListHead_t  listBlocked;                // these are blocked tasks for any number of reasons
     ListHead_t  listSleeping;               // these are sleeping tasks, which the timer interrupt will investigate
     ListHead_t  listTerminated;             // these are terminated tasks, which are waiting to be torn down
@@ -186,10 +211,11 @@ void ProcessUnlockAndSchedule(void);
 EXTERN_C EXPORT KERNEL
 void ProcessLockScheduler(bool save = true);
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessLockAndPostpone(void) {
     ProcessLockScheduler();
     AtomicInc(&scheduler.postponeCount);
+    INVALIDATE_SCHEDULER();
 }
 
 
@@ -199,11 +225,11 @@ void ProcessLockAndPostpone(void) {
 EXTERN_C EXPORT KERNEL
 void ProcessDoBlock(ProcStatus_t reason);
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessBlock(ProcStatus_t reason) {
     ProcessLockAndPostpone();
-        ProcessDoBlock(reason);
-        ProcessUnlockAndSchedule();
+    ProcessDoBlock(reason);
+    ProcessUnlockAndSchedule();
 }
 
 
@@ -248,7 +274,7 @@ void ProcessSchedule(void);
 EXTERN_C EXPORT KERNEL
 void ProcessDoReady(Process_t *proc);
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessReady(Process_t *proc) {
     ProcessLockAndPostpone();
     ProcessDoReady(proc);
@@ -262,7 +288,7 @@ void ProcessReady(Process_t *proc) {
 EXTERN_C EXPORT KERNEL
 void ProcessDoUnblock(Process_t *proc);
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessUnblock(Process_t *proc) {
     ProcessLockAndPostpone();
     ProcessDoUnblock(proc);
@@ -283,21 +309,21 @@ void ProcessUpdateTimeUsed(void);
 EXTERN_C EXPORT KERNEL
 void ProcessDoMicroSleepUntil(uint64_t when);
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessMicroSleepUntil(uint64_t when) {
     ProcessLockAndPostpone();
     ProcessDoMicroSleepUntil(when);
     ProcessUnlockAndSchedule();
 }
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessMicroSleep(uint64_t micros) {
     ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + micros);
 }
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessMilliSleep(uint64_t ms) {
     ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (ms * 1000));
 }
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void ProcessSleep(uint64_t secs) {
     ProcessMicroSleepUntil(TimerCurrentCount(timerControl) + (secs * 1000000));
 }
@@ -313,8 +339,8 @@ void ProcessTerminate(Process_t *proc);
 //
 // -- Elect to end the current task
 //    -----------------------------
-EXPORT KERNEL INLINE
-void ProcessEnd(void) { ProcessTerminate(scheduler.currentProcess); }
+EXPORT INLINE
+void ProcessEnd(void) { ProcessTerminate(currentThread); }
 
 
 //
@@ -325,26 +351,23 @@ void ProcessListRemove(Process_t *proc);
 
 
 //
-// -- For the scheduler structure, clean the cache pushing the changes to ram
-//    -----------------------------------------------------------------------
-#define CLEAN_SCHEDULER()           CleanCache((archsize_t)&scheduler, sizeof(Scheduler_t))
+// -- Idle when there is nothing to do
+//    --------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessIdle(void);
 
 
 //
-// -- For the scheduler structure, invalidate the cache forcing a re-read from ram
-//    ----------------------------------------------------------------------------
-#define INVALIDATE_SCHEDULER()      InvalidateCache(&scheduler, sizeof(Scheduler_t))
+// -- Debugging functions to output the scheduler state
+//    -------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ProcessDoCheckQueue(void);
 
-
-//
-// -- for a Process structure, clean the cache pushing the changes to ram
-//    -------------------------------------------------------------------
-#define CLEAN_PROCESS(proc)         CleanCache((archsize_t)proc, sizeof(Process_t))
-
-
-//
-// -- for a Process structure, invalidate the cache forcing a re-read from ram
-//    ------------------------------------------------------------------------
-#define INVALIDATE_PROCESS(proc)    InvalidateCache(proc, sizeof(Process_t))
+EXPORT INLINE
+void ProcessCheckQueue(void) {
+    ProcessLockAndPostpone();
+    ProcessDoCheckQueue();
+    ProcessUnlockAndSchedule();
+}
 
 

@@ -20,7 +20,6 @@
 
 
 #include "types.h"
-#include "atomic.h"
 #include "cpu.h"
 
 
@@ -82,29 +81,42 @@
 // -- This is the spinlock structure which notes who holds the lock
 //    -------------------------------------------------------------
 typedef struct Spinlock_t {
-    int lock;
+    SMP_UNSTABLE int lock;
 } Spinlock_t;
 
 
 //
 // -- This inline function will lock a spinlock, busy looping indefinitely until a lock is obtained
 //    ---------------------------------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-void SpinLock(Spinlock_t *lock);
+EXPORT INLINE
+void SpinLock(Spinlock_t *lock) {
+    int exp, des;
+    do {
+        exp = 0;
+        des = 1;
+    } while (!__atomic_compare_exchange(&(lock->lock), &exp, &des, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+}
 
 
 //
 // -- This inline function will unlock a spinlock, clearing the lock holder
 //    ---------------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-void SpinUnlock(Spinlock_t *lock);
+EXPORT INLINE
+void SpinUnlock(Spinlock_t *lock) {
+    int zero = 0;
+    __atomic_store(&(lock->lock), &zero, __ATOMIC_SEQ_CST);
+}
 
 
 //
 // -- This inline function will determine if a spinlock is locked
 //    -----------------------------------------------------------
-EXPORT KERNEL INLINE
-bool SpinlockIsLocked(Spinlock_t *lock) { return lock->lock == 1; }
+EXPORT INLINE
+bool SpinlockIsLocked(Spinlock_t *lock) {
+    int l;
+    __atomic_load(&(lock->lock), &l, __ATOMIC_SEQ_CST);
+    return l == 1;
+}
 
 
 //

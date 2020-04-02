@@ -26,7 +26,6 @@
 #include "timer.h"
 #include "pic.h"
 #include "interrupt.h"
-#include "debug.h"
 
 
 //

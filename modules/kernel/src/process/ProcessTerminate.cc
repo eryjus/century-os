@@ -24,16 +24,27 @@
 //
 // -- Terminate a task
 //    ----------------
-EXPORT KERNEL void ProcessTerminate(Process_t *proc)
+EXTERN_C EXPORT KERNEL
+void ProcessTerminate(Process_t *proc)
 {
     if (!assert(proc != NULL)) return;
 
     ProcessLockAndPostpone();
-    ProcessListRemove(proc);
-    Enqueue(&scheduler.listTerminated, &proc->stsQueue);
 
-    if (proc == scheduler.currentProcess) ProcessDoBlock(PROC_TERM);
-    else proc->status = PROC_TERM;
+    kprintf("Terminating process at address %p on CPU%d\n", proc, thisCpu->cpuNum);
+    kprintf(".. this process is %sRunning\n", proc == currentThread ? "" : "not ");
+
+    if (proc == currentThread) {
+        kprintf(".. ending the current process\n");
+        assert(proc->stsQueue.next == &proc->stsQueue);
+        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+        ProcessDoBlock(PROC_TERM);
+    } else {
+        kprintf(".. termianting another process\n");
+        ProcessListRemove(proc);
+        Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+        proc->status = PROC_TERM;
+    }
 
     ProcessUnlockAndSchedule();
 }

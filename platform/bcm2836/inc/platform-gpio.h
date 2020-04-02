@@ -67,13 +67,13 @@ GpioDevice_t kernelGpio;
 // -- These are the common interface functions we will use to interact with the GPIO.  These functions are
 //    not safe in that they will not check for nulls before calling the function.  Therefore, caller beware!
 //    -----------------------------------------------------------------------------------------------------------
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void GpioSelectAlt(GpioDevice_t *dev, GpioPin_t pin, GpioAlt_t alt) { dev->GpioSelectAlt(dev, pin, alt); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void GpioEnablePin(GpioDevice_t *dev, GpioPin_t pin) { dev->GpioEnablePin(dev, pin); }
 
-EXPORT KERNEL INLINE
+EXPORT INLINE
 void GpioDisablePin(GpioDevice_t *dev, GpioPin_t pin) { dev->GpioDisablePin(dev, pin); }
 
 

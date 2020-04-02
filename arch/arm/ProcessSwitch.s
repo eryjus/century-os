@@ -53,7 +53,6 @@
 @@
 @@ -- Some local equates to access the scheduler elements
 @@    ---------------------------------------------------
-    .equ        SCH_CURRENT_PROCESS,0
     .equ        SCH_CHG_PENDING,0x10
     .equ        SCH_LOCK_COUNT,0x18
     .equ        SCH_POSTPONE_COUNT,0x1c
@@ -84,6 +83,12 @@ ProcessSwitch:
     cmp     r1,#0                           @@ is this zero?
     beq     .cont                           @@ if zero, contunue
 
+@    push    {r0-r4}
+@    ldr     r0,=rdy
+@    ldr     r0,[r0]
+@    bl      kprintf
+@    pop     {r0-r4}
+
     ldr     r1,=(scheduler+SCH_CHG_PENDING) @@ get addr of the proc chg pend (&scheduler.processChangePending)
     mov     r0,#1                           @@ load the value to store (value 1)
     str     r0,[r1]                         @@ set the flag
@@ -99,15 +104,14 @@ ProcessSwitch:
 @@
 @@ -- Save the state by writing the current stack pointer to the current structure
 @@    ----------------------------------------------------------------------------
-    ldr     r1,=(scheduler+SCH_CURRENT_PROCESS) @@ get &scheduler.currentProcess
-    ldr     r2,[r1]                         @@ get scheduler.currentProcess (or the pointer to Process_t)
+    mrc     p15,0,r2,c13,c0,3               @@ get the current thread
 
     ldr     r4,[r2,#PROC_STATUS]            @@ get the status scheduler.currentProcess->status
     cmp     r4,#PROC_STS_RUNNING            @@ is the status running
     bne     .saveStack                      @@ if not, skip the next part
 
     push    {r0,r1,r2,r3}                   @@ save the clobber registers
-    ldr     r0,[r1]                         @@ get the current process (scheduler.currentProcess)
+    mov     r0,r2                           @@ get the current process (scheduler.currentProcess)
     bl      ProcessDoReady                  @@ go make the current process ready
     pop     {r0,r1,r2,r3}                   @@ restore the vlobber registers
 
@@ -124,7 +128,7 @@ ProcessSwitch:
 @@
 @@ -- now, restore the state of the next task; r0 contains the address of this task
 @@    -----------------------------------------------------------------------------
-    str     r0,[r1]                         @@ set the new current process (scheduler.currentProcess = r0)
+    mcr     p15,0,r0,c13,c0,3               @@ set the new currentThread
     ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack (scheduler.currentProcess->topOfStack)
     mov     r4,#PROC_STS_RUNNING            @@ load the status into a register (value 1)
     str     r4,[r0,#PROC_STATUS]            @@ ... and set the status (scheduler.currentProcess->status = 1)
