@@ -2578,6 +2578,11 @@ I think I am getting close.  Both archs are scheduling (rpi about 90% of the run
 
 At this point, I want to clean up a few things and then commit this code (and clean up the other branches that need to be cleaned up).
 
+---
+
+OK, this has been merged and I have started sub-branch `v0.5.1b`.  There are still 12 issues left to complete in Redmine.
+
+I have decided to handle only 3 of them at this point (2 of the 3 are very similar).  I really want to get into the debugger.  So, with that, I am also debating whether I take on my file cleanup effort now or wait and take care of it as I go.  I really want to get into the debugger.  I really need something new to work on!  I think my last task will be to check if this will run on real x86 hardware.  And it does!
 
 
 
