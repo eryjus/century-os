@@ -112,8 +112,10 @@ int kprintf(const char *fmt, ...)
             case 's': {
                 char *s = va_arg(args, char *);
                 if (!s) s = (char *)"<NULL>";
-                while (*s) SerialPutChar(&debugSerial, *s ++);
-                printed ++;
+                while (*s) {
+                    SerialPutChar(&debugSerial, *s ++);
+                    printed ++;
+                }
                 continue;
             }
 
@@ -174,6 +176,7 @@ int kprintf(const char *fmt, ...)
 
                     if (val < 0) {
                         SerialPutChar(&debugSerial, '-');
+                        printed ++;
                         val = -val;
                     }
 

@@ -41,6 +41,7 @@
     global      mb1Data
     global      mb2Data
     global      intTableAddr                    ;; interrupt table address
+    global      ldrStackFrame
 
 
 ;;
@@ -236,6 +237,9 @@ mb2Data:
     dd          0
 
 intTableAddr:
+    dd          0
+
+ldrStackFrame:
     dd          0
 
 

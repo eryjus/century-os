@@ -83,7 +83,9 @@ void ProcessSchedule(void)
 #if DEBUG_ENABLED(ProcessSchedule)
         kprintf("Postponing a reschedule\n");
 #endif
-        scheduler.processChangePending = true;
+        if (currentThread && AtomicRead(&currentThread->quantumLeft) < 0) {
+            scheduler.processChangePending = true;
+        }
         return;
     }
 

@@ -129,6 +129,9 @@ ProcessSwitch:
 @@ -- now, restore the state of the next task; r0 contains the address of this task
 @@    -----------------------------------------------------------------------------
     mcr     p15,0,r0,c13,c0,3               @@ set the new currentThread
+    mrc     p15,0,r1,c13,c0,4               @@ get the current CPU structure
+    str     r0,[r1,#0x20]                   @@ save the new process address
+
     ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack (scheduler.currentProcess->topOfStack)
     mov     r4,#PROC_STS_RUNNING            @@ load the status into a register (value 1)
     str     r4,[r0,#PROC_STATUS]            @@ ... and set the status (scheduler.currentProcess->status = 1)

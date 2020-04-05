@@ -45,6 +45,7 @@
 #include "timer.h"
 #include "pmm.h"
 #include "serial.h"
+#include "debugger.h"
 
 
 //
@@ -56,6 +57,8 @@ void PmmStart(Module_t *);
 
 Process_t *A;
 Process_t *B;
+
+Process_t *debugger;
 
 int semid;
 
@@ -121,7 +124,7 @@ void kInit(void)
     // -- Phase 1: Required by the processor to setup the proper state
     //             Greet the user from the kernel.
     //    ------------------------------------------------------------
-    kprintf("Welcome to CenturyOS -- a hobby operating system\n");
+    kprintf("\x1b[0;1;31;40mWelcome to CenturyOS\x1b[0m -- a hobby operating system\n");
     kprintf("    (initializing...)\n");
 
     SetBgColor(FrameBufferParseRGB("#404040"));
@@ -153,13 +156,13 @@ void kInit(void)
     CoresStart();
     picControl->ipiReady = true;
     kprintf("Starting processes\n");
-    BOCHS_TOGGLE_INSTR;
 //    AtomicsTest();  while (AtomicRead(&done) != 4) {}
 //    kprintf("The resulting int value is %d\n", testval);
 //    kprintf("The resulting Atomic val is %d\n", AtomicRead(&atomVal));
 
-    A = ProcessCreate(StartA);
-    B = ProcessCreate(StartB);
+//    A = ProcessCreate(StartA);
+//    B = ProcessCreate(StartB);
+    debugger = ProcessCreate("Kernel Debugger", DebugStart);
 
 
     //
@@ -219,7 +222,6 @@ void kInit(void)
 #endif
 
     while (true) {
-        kprintf(".(%d);", thisCpu->cpuNum);
         ProcessSleep(2);
     }
 

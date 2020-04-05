@@ -37,8 +37,6 @@ extern archsize_t mmuLvl1Table;
 EXPORT LOADER
 void ProcessInit(void)
 {
-    extern uint64_t lastTimer;
-
     Process_t *proc = NEW(Process_t);
     CurrentThreadAssign(proc);
 
@@ -50,12 +48,18 @@ void ProcessInit(void)
     proc->virtAddrSpace = mmuLvl1Table;
     proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
     proc->ssAddr = STACK_LOCATION;
-    proc->command = NULL;
+
+    // -- set the process name
+    proc->command = (char *)HeapAlloc(20, false);
+    kMemSetB(proc->command, 0, 20);
+    kStrCpy(proc->command, "kInit");
+
     proc->policy = POLICY_0;
     proc->priority = PTY_OS;
     proc->status = PROC_RUNNING;
     AtomicSet(&proc->quantumLeft, PTY_OS);
     proc->timeUsed = 0;
+    proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
     CLEAN_SCHEDULER();
     CLEAN_PROCESS(proc);
@@ -69,10 +73,10 @@ void ProcessInit(void)
     for (int i = 0; i < cpus.cpusDiscovered; i ++) {
         // -- Note ProcessCreate() creates processes at the OS priority...
         kprintf("starting idle process %d\n", i);
-        ProcessCreate(ProcessIdle);
+        ProcessCreate("Idle Process", ProcessIdle);
     }
 
 
-    lastTimer = TimerCurrentCount(timerControl);
+    thisCpu->lastTimer = TimerCurrentCount(timerControl);
     kprintf("ProcessInit() complete\n");
 }

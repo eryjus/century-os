@@ -76,3 +76,13 @@ FONT_WIDTH                      8
 ##    -----------------------------------------------------
 EXCEPT_VECTOR_TABLE             0xff401000
 
+
+
+
+##
+## -- Debugger constants
+##    ------------------
+DEBUG_COMMAND_LEN               256
+
+
+

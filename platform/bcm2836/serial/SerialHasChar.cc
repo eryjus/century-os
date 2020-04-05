@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  SerialVars.cc -- These are the variables for the Serial Port for x86
+//  SerialHasChar.cc -- Determine if there is data in the buffer to be read
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,27 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-23  Initial   0.3.0   ADCL  Initial version
+//  2020-Apr-02  Initial  v0.6.0a  ADCL  Initial Version
 //
 //===================================================================================================================
 
 
 #include "types.h"
+#include "hardware.h"
 #include "serial.h"
 
 
 //
-// -- This is the device description that will be used for outputting data to the debugging serial port
-//    -------------------------------------------------------------------------------------------------
-EXPORT KERNEL_DATA
-SerialDevice_t debugSerial = {
-    .base = COM1,
-    .lock = {0},
-    .SerialOpen = _SerialOpen,
-    .SerialHasChar = _SerialHasChar,
-    .SerialHasRoom = _SerialHasRoom,
-    .SerialGetChar = _SerialGetChar,
-    .SerialPutChar = _SerialPutChar,
-};
+// -- does the serial port have room for a character to be added?
+//    -----------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+bool _SerialHasChar(SerialDevice_t *dev)
+{
+    if (!dev) return false;
 
+    archsize_t val = MmioRead(dev->base + AUX_MU_LSR_REG);
+    val &= 1;
 
+    return (val != 0);
+}
 

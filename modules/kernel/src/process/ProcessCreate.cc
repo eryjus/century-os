@@ -26,7 +26,7 @@
 // -- Create a new process and get it ready to be scheduled
 //    -----------------------------------------------------
 EXPORT KERNEL
-Process_t *ProcessCreate(void (*startingAddr)(void))
+Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
 {
     extern archsize_t mmuLvl1Table;
 
@@ -36,12 +36,19 @@ Process_t *ProcessCreate(void (*startingAddr)(void))
     }
 
     rv->pid = scheduler.nextPID ++;
-    rv->command = NULL;
+
+    // -- set the name of the process
+    int len = kStrLen(name + 1);
+    rv->command = (char *)HeapAlloc(len, false);
+    rv->command[len + 1] = 0;
+    kStrCpy(rv->command, name);
+
     rv->policy = POLICY_0;
     rv->priority = PTY_OS;
     rv->status = PROC_INIT;
-    AtomicSet(&rv->quantumLeft, PTY_OS);
+    AtomicSet(&rv->quantumLeft, 0);
     rv->timeUsed = 0;
+    rv->wakeAtMicros = 0;
     ListInit(&rv->stsQueue);
 
 

@@ -40,4 +40,6 @@ PC_TIMER                        0x40
 IPI_PANIC                       0xf0
 IPI_TLB_FLUSH                   0xf1
 
+IPI_DEBUGGER                    0xff
+
 

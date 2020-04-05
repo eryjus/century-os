@@ -54,3 +54,5 @@ The journal file was getting to be a bit unwieldy.  `vscode` was not able to kee
 * [Version 0.4.5 Journal](JOURNAL-v0.4.5.md)
 * [Version 0.4.6 Journal](JOURNAL-v0.4.6.md)
 * [Version 0.5.0 Journal](JOURNAL-v0.5.0.md)
+* [Version 0.5.1 Journal](JOURNAL-v0.5.1.md)
+* [Version 0.6.0 Journal](JOURNAL-v0.6.0.md)

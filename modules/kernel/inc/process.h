@@ -111,6 +111,23 @@ typedef enum { PROC_INIT = 0,           // This is being created and is not on a
 
 
 //
+// -- Convert a ProcStatus_t to a string
+//    -----------------------------------
+EXPORT INLINE
+const char *ProcStatusStr(ProcStatus_t s) {
+    if (s == PROC_INIT)         return "INIT";
+    else if (s == PROC_RUNNING) return "RUNNING";
+    else if (s == PROC_READY)   return "READY";
+    else if (s == PROC_TERM)    return "TERM";
+    else if (s == PROC_MTXW)    return "MTXW";
+    else if (s == PROC_SEMW)    return "SEMW";
+    else if (s == PROC_DLYW)    return "DLYW";
+    else if (s == PROC_MSGW)    return "MSGW";
+    else                        return "Unknown!";
+}
+
+
+//
 // -- This list is the policy choices for a running process; unused currently
 //    -----------------------------------------------------------------------
 typedef enum { POLICY_0,
@@ -130,6 +147,20 @@ typedef enum {
         PTY_HIGH = 20,                  // This is a high priority user process
         PTY_OS = 30,                    // This is an OS or Driver process
 } ProcPriority_t;
+
+
+//
+// -- Convert a ProcStatus_t to a string
+//    -----------------------------------
+EXPORT INLINE
+const char *ProcPriorityStr(ProcPriority_t p) {
+    if (p == PTY_IDLE)          return "IDLE";
+    else if (p == PTY_LOW)      return "LOW";
+    else if (p == PTY_NORM)     return "NORMAL";
+    else if (p == PTY_HIGH)     return "HIGH";
+    else if (p == PTY_OS)       return "OS";
+    else                        return "Unknown!";
+}
 
 
 //
@@ -244,7 +275,7 @@ void ProcessStart(void);
 // -- Create a new process
 //    --------------------
 EXTERN_C EXPORT KERNEL
-Process_t *ProcessCreate(void (*startingAddr)(void));
+Process_t *ProcessCreate(const char *name, void (*startingAddr)(void));
 
 
 //

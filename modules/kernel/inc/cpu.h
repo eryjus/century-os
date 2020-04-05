@@ -56,7 +56,10 @@ struct Process_t;
     bool reschedulePending;                 \
     int disableIntDepth;                    \
     ArchCpu_t *cpu;                         \
-    INT_UNSTABLE struct Process_t *process;
+    INT_UNSTABLE struct Process_t *process; \
+    uint64_t lastTimer;                     \
+    uint64_t cpuIdleTime;                   \
+    frame_t stackFrame;
 
 
 #if __has_include("arch-cpu.h")
@@ -137,7 +140,14 @@ void kMemMove(void *tgt, void *src, size_t cnt);
 // -- Copy a string from one location to another
 //    ------------------------------------------
 EXTERN_C EXPORT KERNEL
-void kStrCpy(char *dest, char *src);
+void kStrCpy(char *dest, const char *src);
+
+
+//
+// -- Copy a string from one location to another
+//    ------------------------------------------
+EXTERN_C EXPORT KERNEL
+int kStrCmp(const char *str1, const char *str2);
 
 
 //

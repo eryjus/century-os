@@ -43,30 +43,37 @@ void kInitAp(void)
     assert(proc != NULL);
 
     proc->pid = scheduler.nextPID ++;
+    proc->ssAddr = thisCpu->stackFrame;
     proc->virtAddrSpace = mmuLvl1Table;
-    proc->command = NULL;
+
+    // -- set the process name
+    proc->command = (char *)HeapAlloc(20, false);
+    kMemSetB(proc->command, 0, 20);
+    kStrCpy(proc->command, "kInitAp( )");
+    proc->command[8] = thisCpu->cpuNum + '0';
+
     proc->policy = POLICY_0;
     proc->priority = PTY_OS;
     proc->status = PROC_RUNNING;
     AtomicSet(&proc->quantumLeft, PTY_OS);
     proc->timeUsed = 0;
+    proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
-    proc->ssAddr = 0;
 
     kprintf("kInitAp() established the current process at %p for CPU%d\n", proc, thisCpu->cpuNum);
 
 //    ProcessCheckQueue();
     CurrentThreadAssign(proc);
+    thisCpu->lastTimer = TimerCurrentCount(timerControl);
 
     // -- Now we immediately self-terminate to give the scheduler to something else
     kprintf("Enabling interrupts on CPU %d\n",  thisCpu->cpuNum);
     kprintf("Cpus running is %d\n", cpus.cpusRunning);
-    BOCHS_TOGGLE_INSTR;
     EnableInterrupts();
     NextCpu(cpus.cpuStarting);
 //    AtomicsTest();
 
-//while (true) {}
+while (true) {}
     ProcessTerminate(currentThread);
 
     assert(false);

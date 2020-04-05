@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  SerialVars.cc -- These are the variables for the Serial Port for x86
+//  DebuggerRelease.cc -- Release the other cores from a stopped state
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,22 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-23  Initial   0.3.0   ADCL  Initial version
+//  2020-Apr-03  Initial  v0.6.0a  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "serial.h"
+#include "pic.h"
+#include "debugger.h"
 
 
 //
-// -- This is the device description that will be used for outputting data to the debugging serial port
-//    -------------------------------------------------------------------------------------------------
-EXPORT KERNEL_DATA
-SerialDevice_t debugSerial = {
-    .base = COM1,
-    .lock = {0},
-    .SerialOpen = _SerialOpen,
-    .SerialHasChar = _SerialHasChar,
-    .SerialHasRoom = _SerialHasRoom,
-    .SerialGetChar = _SerialGetChar,
-    .SerialPutChar = _SerialPutChar,
-};
-
-
-
+// -- Release the other cores from a stopped state
+//    --------------------------------------------
+EXTERN_C EXPORT KERNEL
+void DebuggerRelease(void)
+{
+    AtomicSet(&debugCommunication.coresEngaged, 0);
+    RestoreInterrupts(debugCommunication.debuggerFlags);
+}

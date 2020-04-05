@@ -64,3 +64,10 @@ EXTERN_C EXPORT KERNEL
 void IpiHandleTlbFlush(UNUSED(isrRegs_t *regs));
 
 
+//
+// -- An interrupt to handle debugger engagement
+//    ------------------------------------------
+EXTERN_C EXPORT KERNEL
+void IpiHandleDebugger(UNUSED(isrRegs_t *regs));
+
+

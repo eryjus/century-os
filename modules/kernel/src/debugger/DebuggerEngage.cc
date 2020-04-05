@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  SerialVars.cc -- These are the variables for the Serial Port for x86
+//  DebuggerEngage.cc -- Signal the cores to stop processing until we release them
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,28 +10,25 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Feb-23  Initial   0.3.0   ADCL  Initial version
+//  2020-Apr-03  Initial  v0.6.0a  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "serial.h"
+#include "pic.h"
+#include "debugger.h"
 
 
 //
-// -- This is the device description that will be used for outputting data to the debugging serial port
-//    -------------------------------------------------------------------------------------------------
-EXPORT KERNEL_DATA
-SerialDevice_t debugSerial = {
-    .base = COM1,
-    .lock = {0},
-    .SerialOpen = _SerialOpen,
-    .SerialHasChar = _SerialHasChar,
-    .SerialHasRoom = _SerialHasRoom,
-    .SerialGetChar = _SerialGetChar,
-    .SerialPutChar = _SerialPutChar,
-};
-
-
-
+// -- Signal the other cores to stop and wait for confirmation that they have
+//    -----------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void DebuggerEngage(DbgIniCommand_t cmd)
+{
+    debugCommunication.debuggerFlags = DisableInterrupts();
+    AtomicSet(&debugCommunication.coresEngaged, 1);
+    debugCommunication.command = cmd;
+    PicBroadcastIpi(picControl, IPI_DEBUGGER);
+    while (AtomicRead(&debugCommunication.coresEngaged) != cpus.cpusRunning) {}
+}
