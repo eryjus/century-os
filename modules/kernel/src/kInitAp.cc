@@ -64,14 +64,17 @@ void kInitAp(void)
 
 //    ProcessCheckQueue();
     CurrentThreadAssign(proc);
+    kprintf("Assigning the starting timer for CPU%d\n", thisCpu->cpuNum);
     thisCpu->lastTimer = TimerCurrentCount(timerControl);
 
     // -- Now we immediately self-terminate to give the scheduler to something else
     kprintf("Enabling interrupts on CPU %d\n",  thisCpu->cpuNum);
     kprintf("Cpus running is %d\n", cpus.cpusRunning);
     EnableInterrupts();
+    kprintf("Interrupts enabled on CPU %d\n",  thisCpu->cpuNum);
     NextCpu(cpus.cpuStarting);
 //    AtomicsTest();
+    kprintf("CPU%d signalled the next CPU to start\n",  thisCpu->cpuNum);
 
 while (true) {}
     ProcessTerminate(currentThread);

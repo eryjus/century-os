@@ -542,3 +542,136 @@ In short, this is issuing times about properly on real hardware -- I am not goin
 
 Actually, I think I have enough changes to justify a push for the changes so far.  I will stay on this micro-version.
 
+---
+
+OK, let's go back to [Redmine #459](http://eryjus.ddns.net:3000/issues/459).  This should be an easy fix.
+
+I was also able to take care of #460 at the same time.
+
+With that, I really want to figure out the correct toolchain issues.  So, I am going to change back to the other one (the correct one) and see if I can't get it working properly.
+
+OK, so I get this far:
+
+```
+CPU 0x1 running...
+kInitAp() established the current process at 0x900002e8 for CPU1
+Enabling interrupts on CPU 1
+Cpus running is 2
+Starting core with message to 0xf90000ac
+..  waiting for core to start...
+Timer Initialized
+CPU 0x2 running...
+kInitAp() established the current process at 0x90000370 for CPU2
+Enabling interrupts on CPU 2
+Cpus running is 3
+```
+
+OK, interesting... on the rpi, the timer appears to be getting disabled on CPU0.
+
+I have not yet figured out why....  OK, I have a problem with a sleep there the resulting time has already passed.  Such as: `ProcessMicroSleep(0)`.
+
+OK, so an explicit `EnableInterrupts()` call fixes my problem....  So, does this mean that the `ProcessStart()` function is not being called?
+
+```c++
+EXTERN_C EXPORT KERNEL
+void DebugStart(void)
+{
+    EnableInterrupts();
+```
+
+OK, so the problem is that the `ProcessStart()` function would restore interrupts when it executed `ProcessUnlockScheduler()`, but would not explicitly enable interrupts.  I added an explicit enable after unlocking the scheduler.  This now works much better.
+
+The last thing I wanted to do today was to get a 64-bit int version of `kprintf()` working.  There's something about the 64-bit division that is making the kernel not run on the rpi2b.  I can't figure it out yet.
+
+---
+
+### 2020-Apr-06
+
+OK, so I found the following function in Linux yesterday:
+
+https://github.com/spotify/linux/blob/master/lib/div64.c
+
+This function performs the division by basically repeatedly subtracting the dividend from the divisor.  There is some scaling that happens, but the algorithm can be inefficient -- especially for very small dividends compared to the divisor.  This is what I am looking to do: really big number of microseconds since boot divided by 10 -- over and over.
+
+For now, I will just add these comments to the Redmine.
+
+---
+
+For [Redmine #460](http://eryjus.ddns.net:3000/issues/460), this is working properly for x86-pc, but not rpi2b.  Also, the processes are migrating around the CPUs as `kInit()` wakes.  On the RPi, they do not migrate -- and I do not believe the timer is firing.
+
+Hmmm....
+
+```
+sched :> stat
+Dumping the status of the scheduler:
+The scheduler is unlocked
+CPU0 does have a process running on it
+CPU1 does have a process running on it
+CPU2 does have a process running on it
+CPU3 does have a process running on it
+       OS Queue process count: 0
+     High Queue process count: 0
+   Normal Queue process count: 1
+      Low Queue process count: 0
+     Idle Queue process count: 0
+   Blocked List process count: 0
+  Sleeping List process count: 0
+Terminated List process count: 0
+sched :>
+ (allowed: show,status,run,ready,list,exit)
+```
+
+I lost the idle processes and and for some reason the `kInit()` process has been moved to the Normal queue.  Now, that said, the `Kernel Debugger` process is getting its quantum reset, so the timer has to be firing but the timer is not being updated.
+
+OK, so I replaced the crappy timer IRQ counter with a better query of the hardware timer counter.  This is properly updating.  I still cannot say I am getting proper timer interrupts, but the quantum is changing for all processes.
+
+Oh wait!!
+
+```
++------------------------+-------------------+-------------------+-------------------+-------------------+
+| CPU                    |        CPU0       |        CPU1       |        CPU2       |        CPU3       |
++------------------------+-------------------+-------------------+-------------------+-------------------+
+| Process Address:       | 0x90000480        | 0x900002e8        | 0x90000370        | 0x900003f8        |
+| Process ID:            | 618               | 5                 | 6                 | 7                 |
+| Command:               | Kernel Debugger   | kInitAp(1)        | kInitAp(2)        | kInitAp(3)        |
+| Virtual Address Space: | 0x1000000         | 0x1000000         | 0x1000000         | 0x1000000         |
+| Base Stack Frame:      | 0x102e            | 0x1015            | 0x1016            | 0x1017            |
+| Status:                | RUNNING           | RUNNING           | RUNNING           | RUNNING           |
+| Priority:              | Unknown!          | OS                | OS                | OS                |
+| Quantum Left:          | 10                | 5                 | 5                 | 4                 |
+| Time Used:             | 0                 | 0                 | 0                 | 0                 |
+| Wake At:               | 0                 | 0                 | 0                 | 0                 |
+| Queue Status:          | Not on a queue    | Not on a queue    | Not on a queue    | Not on a queue    |
++------------------------+-------------------+-------------------+-------------------+-------------------+
+sched :>
+ (allowed: show,status,run,ready,list,exit)
+```
+
+I have a problem in the assembly again where the members are in the wrong location.  Did this happen when I changed toolchains??!
+
+Whoa!!! changing the toolchain for armv7 also changed the location of structure members -- it is packing structures I did not expect.
+
+OK, that corrected, I still have a problem with a couple of things on rpi2b:
+* the Time Used field is not being updated
+* the idle tasks are being 'lost'
+
+OK, so the change from `gnueabi` to `eabi` changed the structure packing and also the member sizes.  Once I made the member sizes right (as in `ldrb`), the idle tasks worked again.
+
+Finally!  Changing back the debugging code to not use 64-bit numbers changed the parameter value and therefore changed the results -- for the better.  Now, the processes are not migrating like I think they should, but that could just be a feature of the different archs.  The `kInit()` process is getting time properly.
+
+So, this is working.
+
+What to look at next???  Well, I am really interested in getting `sched show` working.  This will require a change to the `Process_t` structure to allow for a global process list.  That will be for tomorrow.
+
+---
+
+### 2020-Apr-07
+
+So for the `shced show` command...  I first need to create a global list of processes.  I think I will bury that in the scheduler.  Then, there are a few places I will need to update to add processes into that list:
+* `ProcessInit()` for the `kInit()` process
+* `kInitAp()` for their respective processes
+* `ProcessCreate()` for all the other processes
+
+I will also need to maintain this list once I have the butler running and cleaning up.
+
+

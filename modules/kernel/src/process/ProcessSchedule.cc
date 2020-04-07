@@ -24,7 +24,7 @@
 // -- Find the next process to give the CPU to
 //    ----------------------------------------
 HIDDEN KERNEL
-Process_t *ProcessNext(void)
+Process_t *ProcessNext(ProcPriority_t pty)
 {
 #if DEBUG_ENABLED(ProcessNext)
     kprintf("From within ProcessNext():\n");
@@ -36,22 +36,22 @@ Process_t *ProcessNext(void)
         kprintf("..OS\n");
 #endif
         return FIND_PARENT(scheduler.queueOS.list.next, Process_t, stsQueue);
-    } else if (IsListEmpty(&scheduler.queueHigh) == false) {
+    } else if (IsListEmpty(&scheduler.queueHigh) == false && PTY_HIGH >= pty) {
 #if DEBUG_ENABLED(ProcessNext)
         kprintf("..High\n");
 #endif
         return FIND_PARENT(scheduler.queueHigh.list.next, Process_t, stsQueue);
-    } else if (IsListEmpty(&scheduler.queueNormal) == false) {
+    } else if (IsListEmpty(&scheduler.queueNormal) == false && PTY_NORM >= pty) {
 #if DEBUG_ENABLED(ProcessNext)
         kprintf("..Normal\n");
 #endif
         return FIND_PARENT(scheduler.queueNormal.list.next, Process_t, stsQueue);
-    } else if (IsListEmpty(&scheduler.queueLow) == false) {
+    } else if (IsListEmpty(&scheduler.queueLow) == false && PTY_LOW >= pty) {
 #if DEBUG_ENABLED(ProcessNext)
         kprintf("..Low\n");
 #endif
         return FIND_PARENT(scheduler.queueLow.list.next, Process_t, stsQueue);
-    } else if (IsListEmpty(&scheduler.queueIdle) == false) {
+    } else if (IsListEmpty(&scheduler.queueIdle) == false && PTY_IDLE >= pty) {
 #if DEBUG_ENABLED(ProcessNext)
         kprintf("..Idle\n");
 #endif
@@ -89,7 +89,7 @@ void ProcessSchedule(void)
         return;
     }
 
-    next = ProcessNext();
+    next = ProcessNext(currentThread?currentThread->priority:PTY_IDLE);
     if (next != NULL) {
         ProcessListRemove(next);
         assert(AtomicRead(&scheduler.postponeCount) == 0);
@@ -113,7 +113,7 @@ void ProcessSchedule(void)
             HaltCpu();
             DisableInterrupts();
             ProcessLockScheduler(false);     // make sure that this does not overwrite the process's flags
-            next = ProcessNext();
+            next = ProcessNext(PTY_IDLE);
         } while (next == NULL);
         ProcessListRemove(next);
 

@@ -51,7 +51,7 @@ struct Process_t;
     int cpuNum;                             \
     archsize_t stackTop;                    \
     archsize_t location;                    \
-    SMP_UNSTABLE CpuState_t state;          \
+    struct AtomicInt_t state;               \
     int kernelLocksHeld;                    \
     bool reschedulePending;                 \
     int disableIntDepth;                    \
@@ -70,7 +70,7 @@ struct Process_t;
 //
 // -- Mark this CPU as started so the next one can be released
 //    --------------------------------------------------------
-#define NextCpu(c) cpus.perCpuData[c].state = CPU_STARTED
+#define NextCpu(c) AtomicSet(&cpus.perCpuData[c].state, CPU_STARTED)
 
 
 //

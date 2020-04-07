@@ -145,11 +145,16 @@ void kInit(void)
     kprintf("  Top of Stack: %x\n", offsetof(Process_t, topOfStack));
     kprintf("  Virtual Address Space: %x\n", offsetof(Process_t, virtAddrSpace));
     kprintf("  Process Status: %x\n", offsetof(Process_t, status));
+    kprintf("  Process Priority: %x\n", offsetof(Process_t, priority));
+    kprintf("  Process Quantum Left: %x\n", offsetof(Process_t, quantumLeft));
     kprintf("Reporting interesting Scheduler_t offsets:\n");
     kprintf("  Next PID to assign: %x\n", offsetof(Scheduler_t, nextPID));
     kprintf("  Next wake timer tick: %x\n", offsetof(Scheduler_t, nextWake));
     kprintf("  Process Change Pending flag: %x\n", offsetof(Scheduler_t, processChangePending));
+    kprintf("  Process Lock Count: %x\n", offsetof(Scheduler_t, schedulerLockCount));
     kprintf("  Postpone Count: %x\n", offsetof(Scheduler_t, postponeCount));
+    kprintf("Reporting interesting perCPU offsets:\n");
+    kprintf("  Current Process: %x\n", offsetof(ArchCpu_t, process));
 
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();

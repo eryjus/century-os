@@ -96,8 +96,7 @@
 
 .SILENT:
 
-#ARMV7-LIB = $(shell arm-none-eabi-gcc  -mlittle-endian  -mcpu=cortex-a7  -mfpu=neon-vfpv4  -mfloat-abi=hard  --print-libgcc-file-name)
-ARMV7-LIB = $(shell armv7-rpi2-linux-gnueabihf-gcc  -mlittle-endian  -mcpu=cortex-a7  -mfpu=neon-vfpv4  -mfloat-abi=hard  --print-libgcc-file-name)
+ARMV7-LIB = $(shell arm-none-eabi-gcc  -mlittle-endian  -mcpu=cortex-a7  -mfpu=neon-vfpv4  -mfloat-abi=hard  --print-libgcc-file-name)
 X86-LIB = $(shell i686-elf-gcc --print-libgcc-file-name)
 
 

@@ -39,6 +39,7 @@ void DebugPrompt(DebuggerState_t state)
             pos = DEBUG_COMMAND_LEN - 2;
         }
 
+        while (!SerialHasChar(&debugSerial)) {  }
         char ch = (char)SerialGetChar(&debugSerial);
 
         // -- an enter completes the command input

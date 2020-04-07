@@ -28,6 +28,7 @@
 EXTERN_C EXPORT KERNEL
 void DebugStart(void)
 {
+    EnableInterrupts();
     // -- we want the highest chance of getting CPU time!
     currentThread->priority = PTY_OS;
     debugState = DBG_HOME;

@@ -66,7 +66,6 @@ int kprintf(const char *fmt, ...)
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(kprintfLock) {
         int printed = 0;
         const char *dig = digits;
-        archsize_t val;
 
         va_list args;
         va_start(args, fmt);
@@ -84,10 +83,19 @@ int kprintf(const char *fmt, ...)
             if (!*fmt) goto exit;
             int fmtDefn = 1;
             int flags = 0;
+            bool isLong = false;
+
+            if (isLong);        // TODO: remove this
 
             // -- we need to check for the format modifiers, starting with zero-fill
             if (*fmt == '0') {
                 flags |= ZEROPAD;
+                fmtDefn ++;
+                fmt ++;
+            }
+
+            if (*fmt == 'l') {
+                isLong = true;
                 fmtDefn ++;
                 fmt ++;
             }
@@ -125,17 +133,19 @@ int kprintf(const char *fmt, ...)
                 // fall through
 
             case 'p':
-                val = va_arg(args, archsize_t);
-                SerialPutChar(&debugSerial, '0');
-                SerialPutChar(&debugSerial, 'x');
-                printed += 2;
+                {
+                    archsize_t val = va_arg(args, archsize_t);
+                    SerialPutChar(&debugSerial, '0');
+                    SerialPutChar(&debugSerial, 'x');
+                    printed += 2;
 
-                for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
-                    SerialPutChar(&debugSerial, dig[(val >> j) & 0x0f]);
-                    printed ++;
+                    for (int j = sizeof(archsize_t) * 8 - 4; j >= 0; j -= 4) {
+                        SerialPutChar(&debugSerial, dig[(val >> j) & 0x0f]);
+                        printed ++;
+                    }
+
+                    break;
                 }
-
-                break;
 
             case 'X':
                 flags |= LARGE;
@@ -144,7 +154,7 @@ int kprintf(const char *fmt, ...)
 
             case 'x':
                 {
-                    val = va_arg(args, archsize_t);
+                    archsize_t val = va_arg(args, archsize_t);
                     SerialPutChar(&debugSerial, '0');
                     SerialPutChar(&debugSerial, 'x');
                     printed += 2;
@@ -179,6 +189,32 @@ int kprintf(const char *fmt, ...)
                         printed ++;
                         val = -val;
                     }
+
+                    if (val == 0) {
+                        SerialPutChar(&debugSerial, '0');
+                        printed ++;
+                    } else {
+                        while (val) {
+                            buf[i ++] = (val % 10) + '0';
+                            val /= 10;
+                        }
+
+                        while (--i >= 0) {
+                            SerialPutChar(&debugSerial, buf[i]);
+                            printed ++;
+                        }
+                    }
+
+                    break;
+                }
+
+            case 'u':
+                {
+                    unsigned int val;
+
+                    val = va_arg(args, unsigned int);
+                    char buf[30];
+                    int i = 0;
 
                     if (val == 0) {
                         SerialPutChar(&debugSerial, '0');

@@ -29,7 +29,7 @@ TimerDevice_t _timerControl = {
     .TimerCallBack = TimerCallBack,
     .TimerInit = _TimerInit,
     .TimerEoi = _TimerEoi,
-    .TimerPlatformTick = _TimerPlatformTick,
+//    .TimerPlatformTick = _TimerPlatformTick,
     .TimerCurrentCount = _TimerCurrentCount,
 };
 

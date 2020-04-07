@@ -47,7 +47,7 @@ void CpuInit(void)
         cpus.perCpuData[i].cpuNum = i;
         cpus.perCpuData[i].location = -1;        // will be filled in later
         cpus.perCpuData[i].stackTop = stack + STACK_SIZE;
-        cpus.perCpuData[i].state = (i < cpus.cpusDiscovered ? CPU_STOPPED : CPU_BAD);
+        AtomicSet(&cpus.perCpuData[i].state, (i < cpus.cpusDiscovered ? CPU_STOPPED : CPU_BAD));
         cpus.perCpuData[i].kernelLocksHeld = 0;
         cpus.perCpuData[i].reschedulePending = false;
         cpus.perCpuData[i].disableIntDepth = 0;
@@ -60,7 +60,7 @@ void CpuInit(void)
         kprintf("..back\n");
     }
 
-    cpus.perCpuData[0].state = CPU_STARTED;
+    AtomicSet(&cpus.perCpuData[0].state, CPU_STARTED);
     cpus.cpusRunning = 1;
     cpus.cpuStarting = -1;
     // -- the location will be done in `CoresStart()`

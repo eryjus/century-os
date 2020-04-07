@@ -188,6 +188,10 @@ EXTERN_C INLINE
 void SEV(void) { __asm volatile("dsb\nsev\n"); }
 
 
+EXTERN_C INLINE
+void DMB(void) { __asm volatile("dmb\n"); }
+
+
 //
 // -- a lightweight function to halt the cpu
 //    --------------------------------------

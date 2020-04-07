@@ -16,17 +16,11 @@
 ##
 ## -- These are the commands that will be used to build for that arm architecture
 ##    ---------------------------------------------------------------------------
-AR = armv7-rpi2-linux-gnueabihf-ar
-AS = armv7-rpi2-linux-gnueabihf-as
-CC = armv7-rpi2-linux-gnueabihf-gcc
-LD = armv7-rpi2-linux-gnueabihf-ld
-OC = armv7-rpi2-linux-gnueabihf-objcopy
-
-#AR = arm-none-eabi-ar
-#AS = arm-none-eabi-as
-#CC = arm-none-eabi-gcc
-#LD = arm-none-eabi-ld
-#OC = arm-none-eabi-objcopy
+AR = arm-none-eabi-ar
+AS = arm-none-eabi-as
+CC = arm-none-eabi-gcc
+LD = arm-none-eabi-ld
+OC = arm-none-eabi-objcopy
 
 
 
