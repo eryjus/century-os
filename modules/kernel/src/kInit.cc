@@ -45,6 +45,13 @@
 #include "timer.h"
 #include "pmm.h"
 #include "serial.h"
+#include "debugger.h"
+
+
+//
+// -- the flag which will indicate it is time to clean up
+//    ---------------------------------------------------
+extern volatile bool startCleanup;
 
 
 //
@@ -56,6 +63,8 @@ void PmmStart(Module_t *);
 
 Process_t *A;
 Process_t *B;
+
+Process_t *debugger;
 
 int semid;
 
@@ -121,7 +130,7 @@ void kInit(void)
     // -- Phase 1: Required by the processor to setup the proper state
     //             Greet the user from the kernel.
     //    ------------------------------------------------------------
-    kprintf("Welcome to CenturyOS -- a hobby operating system\n");
+    kprintf("\x1b[0;1;31;40mWelcome to CenturyOS\x1b[0m -- a hobby operating system\n");
     kprintf("    (initializing...)\n");
 
     SetBgColor(FrameBufferParseRGB("#404040"));
@@ -142,24 +151,30 @@ void kInit(void)
     kprintf("  Top of Stack: %x\n", offsetof(Process_t, topOfStack));
     kprintf("  Virtual Address Space: %x\n", offsetof(Process_t, virtAddrSpace));
     kprintf("  Process Status: %x\n", offsetof(Process_t, status));
+    kprintf("  Process Priority: %x\n", offsetof(Process_t, priority));
+    kprintf("  Process Quantum Left: %x\n", offsetof(Process_t, quantumLeft));
     kprintf("Reporting interesting Scheduler_t offsets:\n");
     kprintf("  Next PID to assign: %x\n", offsetof(Scheduler_t, nextPID));
     kprintf("  Next wake timer tick: %x\n", offsetof(Scheduler_t, nextWake));
     kprintf("  Process Change Pending flag: %x\n", offsetof(Scheduler_t, processChangePending));
+    kprintf("  Process Lock Count: %x\n", offsetof(Scheduler_t, schedulerLockCount));
     kprintf("  Postpone Count: %x\n", offsetof(Scheduler_t, postponeCount));
+    kprintf("Reporting interesting perCPU offsets:\n");
+    kprintf("  Current Process: %x\n", offsetof(ArchCpu_t, process));
 
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
+//BOCHS_TOGGLE_INSTR;
     CoresStart();
     picControl->ipiReady = true;
     kprintf("Starting processes\n");
-    BOCHS_TOGGLE_INSTR;
 //    AtomicsTest();  while (AtomicRead(&done) != 4) {}
 //    kprintf("The resulting int value is %d\n", testval);
 //    kprintf("The resulting Atomic val is %d\n", AtomicRead(&atomVal));
 
-    A = ProcessCreate(StartA);
-    B = ProcessCreate(StartB);
+//    A = ProcessCreate(StartA);
+//    B = ProcessCreate(StartB);
+    debugger = ProcessCreate("Kernel Debugger", DebugStart);
 
 
     //
@@ -218,8 +233,9 @@ void kInit(void)
     scheduler.currentProcess->priority = PTY_LOW;
 #endif
 
+
+    startCleanup = true;
     while (true) {
-        kprintf(".(%d);", thisCpu->cpuNum);
         ProcessSleep(2);
     }
 

@@ -29,7 +29,9 @@ SerialDevice_t debugSerial = {
     .base = KRN_SERIAL_BASE,
     .lock = {0},
     .SerialOpen = _SerialOpen,
+    .SerialHasChar = _SerialHasChar,
     .SerialHasRoom = _SerialHasRoom,
+    .SerialGetChar = _SerialGetChar,
     .SerialPutChar = _SerialPutChar,
     .platformData = &kernelGpio,
 };

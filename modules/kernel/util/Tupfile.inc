@@ -33,6 +33,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 ##    ----------------------------------------------------
 : foreach  $(WS)/modules/kernel/src/*.cc                    |> !cc |>
 : foreach  $(WS)/modules/kernel/src/cpu/*.cc                |> !cc |>
+: foreach  $(WS)/modules/kernel/src/debugger/*.cc           |> !cc |>
 : foreach  $(WS)/modules/kernel/src/frame-buffer/*.cc       |> !cc |>
 : foreach  $(WS)/modules/kernel/src/hardware/*.cc           |> !cc |>
 : foreach  $(WS)/modules/kernel/src/heap/*.cc               |> !cc |>

@@ -68,12 +68,12 @@ void CoresStart(void)
 
     for (int i = 1; i < cpus.cpusDiscovered; i ++) {
         cpus.cpuStarting = i;
-        cpus.perCpuData[cpus.cpuStarting].state = CPU_STARTING;
+        AtomicSet(&cpus.perCpuData[cpus.cpuStarting].state, CPU_STARTING);
 
         kprintf("Starting core %d \n", i);
         picControl->PicBroadcastInit(picControl, i);
         picControl->PicBroadcastSipi(picControl, i, (archsize_t)trampoline);
 
-        while (cpus.perCpuData[cpus.cpuStarting].state == CPU_STARTING) {}
+        while (AtomicRead(&cpus.perCpuData[cpus.cpuStarting].state) == CPU_STARTING) {}
     }
 }

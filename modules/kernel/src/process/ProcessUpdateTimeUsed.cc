@@ -22,31 +22,17 @@
 
 
 //
-// -- This is the last timer value that was updated
-//    ---------------------------------------------
-EXPORT KERNEL_DATA
-uint64_t lastTimer = 0;
-
-
-//
-// -- This is the CPU idle time
-//    -------------------------
-EXPORT KERNEL_DATA
-uint64_t cpuIdleTime = 0;
-
-
-//
 // -- Get the current timer value and update the time used of the current process
 //    ---------------------------------------------------------------------------
 EXPORT KERNEL
 void ProcessUpdateTimeUsed(void)
 {
     uint64_t now = TimerCurrentCount(timerControl);
-    uint64_t elapsed = now - lastTimer;
-    lastTimer = now;
+    uint64_t elapsed = now - thisCpu->lastTimer;
+    thisCpu->lastTimer = now;
 
     if (currentThread == NULL) {
-        cpuIdleTime += elapsed;
+        thisCpu->cpuIdleTime += elapsed;
     } else {
         currentThread->timeUsed += elapsed;
     }

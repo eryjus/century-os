@@ -111,6 +111,23 @@ typedef enum { PROC_INIT = 0,           // This is being created and is not on a
 
 
 //
+// -- Convert a ProcStatus_t to a string
+//    -----------------------------------
+EXPORT INLINE
+const char *ProcStatusStr(ProcStatus_t s) {
+    if (s == PROC_INIT)         return "INIT";
+    else if (s == PROC_RUNNING) return "RUNNING";
+    else if (s == PROC_READY)   return "READY";
+    else if (s == PROC_TERM)    return "TERM";
+    else if (s == PROC_MTXW)    return "MTXW";
+    else if (s == PROC_SEMW)    return "SEMW";
+    else if (s == PROC_DLYW)    return "DLYW";
+    else if (s == PROC_MSGW)    return "MSGW";
+    else                        return "Unknown!";
+}
+
+
+//
 // -- This list is the policy choices for a running process; unused currently
 //    -----------------------------------------------------------------------
 typedef enum { POLICY_0,
@@ -133,6 +150,20 @@ typedef enum {
 
 
 //
+// -- Convert a ProcStatus_t to a string
+//    -----------------------------------
+EXPORT INLINE
+const char *ProcPriorityStr(ProcPriority_t p) {
+    if (p == PTY_IDLE)          return "IDLE";
+    else if (p == PTY_LOW)      return "LOW";
+    else if (p == PTY_NORM)     return "NORMAL";
+    else if (p == PTY_HIGH)     return "HIGH";
+    else if (p == PTY_OS)       return "OS";
+    else                        return "Unknown!";
+}
+
+
+//
 // -- This is a process structure
 //    ---------------------------
 typedef struct Process_t {
@@ -148,6 +179,7 @@ typedef struct Process_t {
     uint64_t timeUsed;                  // This is the relative amount of CPU used
     uint64_t wakeAtMicros;              // Wake this process at or after this micros since boot
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
+    ListHead_t::List_t globalList;      // This is the global list entry
     int pendingErrno;                   // this is the pending error number for a blocked process
 } Process_t;
 
@@ -179,6 +211,7 @@ typedef struct Scheduler_t {
     ListHead_t  listBlocked;                // these are blocked tasks for any number of reasons
     ListHead_t  listSleeping;               // these are sleeping tasks, which the timer interrupt will investigate
     ListHead_t  listTerminated;             // these are terminated tasks, which are waiting to be torn down
+    ListHead_t  globalProcesses;            // this is the complete list of all processes regardless where the reside
 } Scheduler_t;
 
 
@@ -244,7 +277,7 @@ void ProcessStart(void);
 // -- Create a new process
 //    --------------------
 EXTERN_C EXPORT KERNEL
-Process_t *ProcessCreate(void (*startingAddr)(void));
+Process_t *ProcessCreate(const char *name, void (*startingAddr)(void));
 
 
 //
@@ -337,10 +370,10 @@ void ProcessTerminate(Process_t *proc);
 
 
 //
-// -- Elect to end the current task
-//    -----------------------------
-EXPORT INLINE
-void ProcessEnd(void) { ProcessTerminate(currentThread); }
+// -- End current process
+//    -------------------
+EXTERN_C EXPORT KERNEL
+void ProcessEnd(void);
 
 
 //
@@ -367,6 +400,22 @@ EXPORT INLINE
 void ProcessCheckQueue(void) {
     ProcessLockAndPostpone();
     ProcessDoCheckQueue();
+    ProcessUnlockAndSchedule();
+}
+
+
+//
+// -- Add a process to the global process List
+//    ----------------------------------------
+EXTERN_C INLINE
+void ProcessDoAddGlobal(Process_t *proc) {
+    ListAddTail(&scheduler.globalProcesses, &proc->globalList);
+}
+
+EXTERN_C INLINE
+void ProcessAddGlobal(Process_t *proc) {
+    ProcessLockAndPostpone();
+    ProcessDoAddGlobal(proc);
     ProcessUnlockAndSchedule();
 }
 

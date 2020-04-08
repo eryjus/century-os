@@ -27,6 +27,9 @@
 EXTERN_C EXPORT KERNEL
 void ProcessTerminate(Process_t *proc)
 {
+    assert_msg(false, "`ProcessTerminate() is flawed!! do not use");
+    return;
+
     if (!assert(proc != NULL)) return;
 
     ProcessLockAndPostpone();
@@ -46,6 +49,7 @@ void ProcessTerminate(Process_t *proc)
         proc->status = PROC_TERM;
     }
 
+    kprintf("..  terminated; giving up the CPU\n");
     ProcessUnlockAndSchedule();
 }
 

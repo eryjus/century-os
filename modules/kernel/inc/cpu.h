@@ -51,12 +51,15 @@ struct Process_t;
     int cpuNum;                             \
     archsize_t stackTop;                    \
     archsize_t location;                    \
-    SMP_UNSTABLE CpuState_t state;          \
+    struct AtomicInt_t state;               \
     int kernelLocksHeld;                    \
     bool reschedulePending;                 \
     int disableIntDepth;                    \
     ArchCpu_t *cpu;                         \
-    INT_UNSTABLE struct Process_t *process;
+    INT_UNSTABLE struct Process_t *process; \
+    uint64_t lastTimer;                     \
+    uint64_t cpuIdleTime;                   \
+    frame_t stackFrame;
 
 
 #if __has_include("arch-cpu.h")
@@ -67,7 +70,7 @@ struct Process_t;
 //
 // -- Mark this CPU as started so the next one can be released
 //    --------------------------------------------------------
-#define NextCpu(c) cpus.perCpuData[c].state = CPU_STARTED
+#define NextCpu(c) AtomicSet(&cpus.perCpuData[c].state, CPU_STARTED)
 
 
 //
@@ -137,7 +140,14 @@ void kMemMove(void *tgt, void *src, size_t cnt);
 // -- Copy a string from one location to another
 //    ------------------------------------------
 EXTERN_C EXPORT KERNEL
-void kStrCpy(char *dest, char *src);
+void kStrCpy(char *dest, const char *src);
+
+
+//
+// -- Copy a string from one location to another
+//    ------------------------------------------
+EXTERN_C EXPORT KERNEL
+int kStrCmp(const char *str1, const char *str2);
 
 
 //

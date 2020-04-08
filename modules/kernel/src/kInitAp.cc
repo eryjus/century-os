@@ -26,7 +26,13 @@
 #include "entry.h"
 #include "serial.h"
 
-extern void AtomicsTest(void);
+
+//
+// -- This flag will indicate the point when we are ready to clean up
+//    ---------------------------------------------------------------
+volatile bool startCleanup = false;
+
+
 //
 // -- This is AP Entry point.  While we have a shared temporary stack and need to get that
 //    -----------------------------------------------------------------------------------------------------
@@ -43,31 +49,42 @@ void kInitAp(void)
     assert(proc != NULL);
 
     proc->pid = scheduler.nextPID ++;
+    proc->ssAddr = thisCpu->stackFrame;
     proc->virtAddrSpace = mmuLvl1Table;
-    proc->command = NULL;
+
+    // -- set the process name
+    proc->command = (char *)HeapAlloc(20, false);
+    kMemSetB(proc->command, 0, 20);
+    kStrCpy(proc->command, "kInitAp( )");
+    proc->command[8] = thisCpu->cpuNum + '0';
+
     proc->policy = POLICY_0;
     proc->priority = PTY_OS;
     proc->status = PROC_RUNNING;
     AtomicSet(&proc->quantumLeft, PTY_OS);
     proc->timeUsed = 0;
+    proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
-    proc->ssAddr = 0;
 
     kprintf("kInitAp() established the current process at %p for CPU%d\n", proc, thisCpu->cpuNum);
 
-//    ProcessCheckQueue();
     CurrentThreadAssign(proc);
+    kprintf("Assigning the starting timer for CPU%d\n", thisCpu->cpuNum);
+    thisCpu->lastTimer = TimerCurrentCount(timerControl);
 
     // -- Now we immediately self-terminate to give the scheduler to something else
     kprintf("Enabling interrupts on CPU %d\n",  thisCpu->cpuNum);
     kprintf("Cpus running is %d\n", cpus.cpusRunning);
-    BOCHS_TOGGLE_INSTR;
+    ProcessAddGlobal(proc);         // lock required
     EnableInterrupts();
+    kprintf("Interrupts enabled on CPU %d\n",  thisCpu->cpuNum);
     NextCpu(cpus.cpuStarting);
-//    AtomicsTest();
+    kprintf("CPU%d signalled the next CPU to start\n",  thisCpu->cpuNum);
 
-//while (true) {}
-    ProcessTerminate(currentThread);
+    // -- core 1 will be trying to clean up before core 3 is started; hold all cpus at this barrier until ready
+    while (!startCleanup) {}
+    ProcessMicroSleep(0);
+    ProcessEnd();
 
     assert(false);
     while (true) {}

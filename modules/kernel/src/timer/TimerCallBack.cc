@@ -69,7 +69,7 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     kprintf("handling timer\n");
 #endif
 
-    if (timerControl->TimerPlatformTick) TimerPlatformTick(timerControl);
+    if (timerControl->TimerPlatformTick && thisCpu->cpuNum == 0) TimerPlatformTick(timerControl);
 
     //
     // -- here we look for any sleeping tasks to wake

@@ -57,7 +57,7 @@ void _LApicInit(TimerDevice_t *dev, uint32_t freq)
 
     // -- get the per cpu address
     dev->pic = picControl;
-    dev->base = (TimerBase_t)LAPIC_MMIO;          // TODO: re-enable this line
+    dev->base = (TimerBase_t)LAPIC_MMIO;
     archsize_t base = dev->base;
 
 
