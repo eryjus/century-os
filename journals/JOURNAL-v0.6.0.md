@@ -674,4 +674,107 @@ So for the `shced show` command...  I first need to create a global list of proc
 
 I will also need to maintain this list once I have the butler running and cleaning up.
 
+Ok, that done, I need to start the Debug process to dump this list.  This should (at least in theory) be ordered by PID -- I am adding to the tail but I am making no effort to ensure this order.  If PID every wraps, things will be out of PID order but should still be in the order they were created.
+
+So, what information do I want to see?  Well, this is my inspiration for this screen:
+
+```
+                             Work with Active Jobs                     SYSTEM
+                                                         04/07/20  18:48:04 EDT
+ CPU %:      .0     Elapsed time:   00:00:00     Active jobs:   794
+                     Current
+ Opt  Subsystem/Job  User        Type  CPU %  Function        Status
+      BFCDAKOTA      QSYS        SBS      .0                   DEQW
+        QP0ZSPWT     TOMDKTADC   BCI      .0  JVM-org.apache   SELW
+      JDEE910        QSYS        SBS      .0                   DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-jvmStartPa   DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-jvmStartPa   DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+        JDENET_K     ONEWORLD    BCI      .0  PGM-JDENET_K     DEQW
+                                                                        More...
+ ===>
+ F21=Display instructions/keys
+ ```
+
+So, for my implementation of this list, I am wanting the following information:
+* Command
+* PID
+* Priority
+* Status
+* Address
+* Time Used
+
+I can add to this list if I need to.
+
+I'm pleased with this so far:
+
+```
++---------------------------+--------+----------+----------+------------+-----------------------+
+| Command                   | PID    | Priority | Status   | Address    | Time Used             |
++---------------------------+--------+----------+----------+------------+-----------------------+
+| kInit                     | 0      | OS       | DLYW     | 0x90000040 | 0x00000000 0x00985fd0 |
+| Idle Process              | 1      | IDLE     | READY    | 0x900000d0 | 0x00000000 0x00007918 |
+| Idle Process              | 2      | IDLE     | READY    | 0x90000160 | 0x00000000 0x00007918 |
+| Idle Process              | 3      | IDLE     | READY    | 0x900001f0 | 0x00000000 0x00007918 |
+| Idle Process              | 4      | IDLE     | READY    | 0x90000280 | 0x00000000 0x00007918 |
+| kInitAp(1)                | 5      | OS       | RUNNING  | 0x90000310 | 0x00000000 0x063c67b0 |
+| kInitAp(2)                | 6      | OS       | RUNNING  | 0x900003a0 | 0x00000000 0x063b2760 |
+| kInitAp(3)                | 7      | OS       | RUNNING  | 0x90000430 | 0x00000000 0x063b46a0 |
+| Kernel Debugger           | 8      | OS       | RUNNING  | 0x900004c0 | 0x00000000 0x063b5e10 |
++---------------------------+--------+----------+----------+------------+-----------------------+
+sched :>
+ (allowed: show,status,run,ready,list,exit)
+```
+
+So, at this point, I can confirm that the idle processes are not getting CPU -- there is no need yet.  Also, `kInit()` gets a little cpu about every 2 seconds.  Both are what I would expect.
+
+So, the next thing is that I think I have enough in place properly terminate the `kInitAp()` processes.
+
+And when I try to allow this, I get a `#PF`:
+
+```
+Starting processes
+
+Page Fault
+CPU: 3
+EAX: 0x01001000  EBX: 0x00000028  ECX: 0x01001000
+EDX: 0x00000000  ESI: 0x00000028  EDI: 0x00000028
+EBP: 0x00000048  ESP: 0xff800ebc  SS: 0x10
+EIP: 0x01001000  EFLAGS: 0x00200046
+CS: 0x8  DS: 0x28  ES: 0x28  FS: 0x28  GS: 0x90
+CR0: 0xe0000011  CR2: 0x01001000  CR3: 0x01001000
+Trap: 0xe  Error: 0x0
+```
+
+What's more, I am trying to execute the paging tables!!!
+
+So, `ProcessTerminate()` really only needs to block itself just like `ProcessMicroSleepUntil()`.
+
+I did replace `ProcessTerminate()` with `ProcessEnd()`, which will terminate the current process.  There is a flaw with `ProcessTerminate()` which will fail miserably if it is called against a process currently on a CPU.  I have protected the function with an `assert(false)` statement, but it may need to get fixed at some point.
+
+Also, I ended up creating a barrier against which all the `kInitAp()` processes waited until released so that the processes could terminate properly.  The problem was that CPU1 was ready to terminate before CPU3 was started, and CPU0 was not in a position to deal with a reschedule yet.  In other words, `picControl->ipiReady = true;` had not been executed.
+
+I got to this point far faster than I had thought I would.  Now I gotta find something new to work on.
+
+---
+
+OK, I have a few ideas:
+* Continue to add functionality to the debugging (but these may be things I may not need for some time)
+* Add messaging to the kernel (IPC is really the only feature missing in the kernel at this point)
+* Turn the `kInit()` process into the `Butler()` process and start cleaning up processes
+* Start the `PmmSanitize()` process to clean frames
+* Re-enable user mode
+* Perform the post-boot cleanup (likely integrated into the `Butler()` initialization)
+
+No matter which directions I go, it is time to commit this and merge into v0.6.0.
+
+---
 

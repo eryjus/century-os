@@ -70,6 +70,7 @@ DebuggerCommand_t DebugParse(DebuggerState_t state)
             if (kStrCmp(debugCommand, "running") == 0) { rv = CMD_RUNNING; goto exit; }
             if (kStrCmp(debugCommand, "ready") == 0) { rv = CMD_READY; goto exit; }
             if (kStrCmp(debugCommand, "list") == 0) { rv = CMD_LIST; goto exit; }
+            if (kStrCmp(debugCommand, "show") == 0) { rv = CMD_SHOW; goto exit; }
             break;
 
         case DBG_TIMER:

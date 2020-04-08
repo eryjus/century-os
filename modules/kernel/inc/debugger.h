@@ -160,6 +160,13 @@ void DebugSchedulerRunning(void);
 
 
 //
+// -- Show the status of the scheduler queues
+//    ---------------------------------------
+EXTERN_C EXPORT KERNEL
+void DebugSchedulerShow(void);
+
+
+//
 // -- Debug the timer
 //    ---------------
 EXTERN_C EXPORT KERNEL

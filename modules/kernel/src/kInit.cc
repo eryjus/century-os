@@ -49,6 +49,12 @@
 
 
 //
+// -- the flag which will indicate it is time to clean up
+//    ---------------------------------------------------
+extern volatile bool startCleanup;
+
+
+//
 // -- A couple of local prototypes
 //    ----------------------------
 extern "C" void kInit(void);
@@ -158,6 +164,7 @@ void kInit(void)
 
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
+//BOCHS_TOGGLE_INSTR;
     CoresStart();
     picControl->ipiReady = true;
     kprintf("Starting processes\n");
@@ -226,6 +233,8 @@ void kInit(void)
     scheduler.currentProcess->priority = PTY_LOW;
 #endif
 
+
+    startCleanup = true;
     while (true) {
         ProcessSleep(2);
     }

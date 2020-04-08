@@ -73,6 +73,7 @@ Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
     //    ----------------------------------------
     ProcessLockAndPostpone();
     rv->status = PROC_READY;
+    ProcessDoAddGlobal(rv);
     ProcessDoReady(rv);
     ProcessUnlockAndSchedule();
 

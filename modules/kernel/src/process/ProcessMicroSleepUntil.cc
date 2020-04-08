@@ -29,7 +29,7 @@ void ProcessDoMicroSleepUntil(uint64_t when)
             "Calling `ProcessDoMicroSleepUntil()` without the proper lock");
     assert_msg(currentThread != NULL, "scheduler.currentProcess is NULL");
 
-    if (when < TimerCurrentCount(timerControl)) return;
+    if (when <= TimerCurrentCount(timerControl)) return;
 
     currentThread->wakeAtMicros = when;
     if (when < scheduler.nextWake) scheduler.nextWake = when;

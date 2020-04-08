@@ -26,7 +26,13 @@
 #include "entry.h"
 #include "serial.h"
 
-extern void AtomicsTest(void);
+
+//
+// -- This flag will indicate the point when we are ready to clean up
+//    ---------------------------------------------------------------
+volatile bool startCleanup = false;
+
+
 //
 // -- This is AP Entry point.  While we have a shared temporary stack and need to get that
 //    -----------------------------------------------------------------------------------------------------
@@ -62,7 +68,6 @@ void kInitAp(void)
 
     kprintf("kInitAp() established the current process at %p for CPU%d\n", proc, thisCpu->cpuNum);
 
-//    ProcessCheckQueue();
     CurrentThreadAssign(proc);
     kprintf("Assigning the starting timer for CPU%d\n", thisCpu->cpuNum);
     thisCpu->lastTimer = TimerCurrentCount(timerControl);
@@ -70,14 +75,16 @@ void kInitAp(void)
     // -- Now we immediately self-terminate to give the scheduler to something else
     kprintf("Enabling interrupts on CPU %d\n",  thisCpu->cpuNum);
     kprintf("Cpus running is %d\n", cpus.cpusRunning);
+    ProcessAddGlobal(proc);         // lock required
     EnableInterrupts();
     kprintf("Interrupts enabled on CPU %d\n",  thisCpu->cpuNum);
     NextCpu(cpus.cpuStarting);
-//    AtomicsTest();
     kprintf("CPU%d signalled the next CPU to start\n",  thisCpu->cpuNum);
 
-while (true) {}
-    ProcessTerminate(currentThread);
+    // -- core 1 will be trying to clean up before core 3 is started; hold all cpus at this barrier until ready
+    while (!startCleanup) {}
+    ProcessMicroSleep(0);
+    ProcessEnd();
 
     assert(false);
     while (true) {}

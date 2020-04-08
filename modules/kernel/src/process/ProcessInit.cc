@@ -61,6 +61,7 @@ void ProcessInit(void)
     proc->timeUsed = 0;
     proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
+    ProcessDoAddGlobal(proc);           // no lock required -- still single threaded
     CLEAN_SCHEDULER();
     CLEAN_PROCESS(proc);
 

@@ -40,8 +40,9 @@ void DebugScheduler(void)
                 return;
 
             case CMD_SHOW:
-                debugState = DBG_HOME;
-                return;
+                DebugSchedulerShow();
+                debugState = DBG_SCHED;
+                break;
 
             case CMD_STAT:
                 DebugSchedulerStat();
