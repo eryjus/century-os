@@ -42,6 +42,13 @@ archsize_t intTableAddr;
 
 
 //
+// -- This is the stack frame we used for the loader
+//    ----------------------------------------------
+EXTERN ENTRY_DATA
+frame_t ldrStackFrame;
+
+
+//
 // -- These are the linker-provided symbols for the entry section
 //    -----------------------------------------------------------
 EXTERN ENTRY_DATA

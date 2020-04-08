@@ -60,6 +60,7 @@
     .global     mb1Data
     .global     mb2Data
     .global     intTableAddr                    @@ IVT location
+    .global     ldrStackFrame
     .global     OutputChar
     .global     stack_top                       @@ each core will use this scratch space
 
@@ -107,6 +108,9 @@ mb2Data:
     .long       0
 
 intTableAddr:
+    .long       0
+
+ldrStackFrame:
     .long       0
 
 
@@ -219,6 +223,8 @@ bssLoop:
 @@ -- now, we can get the stack
     bl      NextEarlyFrame                      @@ -- get a stack frame
     add     sp,r0,#STACK_SIZE                   @@ -- and set the new stack
+    ldr     r1,=ldrStackFrame                   @@ -- get the address to store the stack
+    str     r0,[r1]                             @@ -- and save that for later
 
 
 @@ -- get a frame and initialize the Vector Table

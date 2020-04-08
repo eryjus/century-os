@@ -40,6 +40,8 @@
 #   error "Do not include 'arch-cpu.h' directly; include 'cpu.h' instead, which will pick up this file."
 #endif
 
+#include "atomic.h"
+
 
 //
 // -- This is the Task State-Segment structure

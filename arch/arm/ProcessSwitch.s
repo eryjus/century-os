@@ -46,8 +46,8 @@
     .equ        PROC_TOP_OF_STACK,0
     .equ        PROC_VIRT_ADDR_SPACE,4
     .equ        PROC_STATUS,8
-    .equ        PROC_PRIORITY,12
-    .equ        PROC_QUANTUM_LEFT,16
+    .equ        PROC_PRIORITY,9
+    .equ        PROC_QUANTUM_LEFT,0x0c
 
 
 @@
@@ -106,7 +106,8 @@ ProcessSwitch:
 @@    ----------------------------------------------------------------------------
     mrc     p15,0,r2,c13,c0,3               @@ get the current thread
 
-    ldr     r4,[r2,#PROC_STATUS]            @@ get the status scheduler.currentProcess->status
+    mov     r4,#0                           @@ clear r4
+    ldrb    r4,[r2,#PROC_STATUS]            @@ get the status scheduler.currentProcess->status
     cmp     r4,#PROC_STS_RUNNING            @@ is the status running
     bne     .saveStack                      @@ if not, skip the next part
 
@@ -129,12 +130,16 @@ ProcessSwitch:
 @@ -- now, restore the state of the next task; r0 contains the address of this task
 @@    -----------------------------------------------------------------------------
     mcr     p15,0,r0,c13,c0,3               @@ set the new currentThread
+    mrc     p15,0,r1,c13,c0,4               @@ get the current CPU structure
+    str     r0,[r1,#0x20]                   @@ save the new process address
+
     ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack (scheduler.currentProcess->topOfStack)
     mov     r4,#PROC_STS_RUNNING            @@ load the status into a register (value 1)
-    str     r4,[r0,#PROC_STATUS]            @@ ... and set the status (scheduler.currentProcess->status = 1)
+    strb    r4,[r0,#PROC_STATUS]            @@ ... and set the status (scheduler.currentProcess->status = 1)
     ldr     r2,[r0,#PROC_VIRT_ADDR_SPACE]   @@ get addr spc of new tsk (r2 = scheduler.currentProcess->virtAddrSpace)
 
-    ldr     r1,[r0,#PROC_PRIORITY]          @@ get the process priority (r1 = scheduler.currentProcess->priority)
+    mov     r1,#0                           @@ clear r1
+    ldrb    r1,[r0,#PROC_PRIORITY]          @@ get the process priority (r1 = scheduler.currentProcess->priority)
     ldr     r4,[r0,#PROC_QUANTUM_LEFT]      @@ get the quantum left (r4 = scheduler.currentProcess->quantumLeft)
     add     r4,r4,r1                        @@ add the new quantum allotment to the amount remaining
                                             @@ -- adjusts for "overdrawn" processes

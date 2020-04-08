@@ -23,6 +23,7 @@
 
 
 #include "types.h"
+#include "atomic.h"
 
 
 //
@@ -175,7 +176,7 @@ void ArchFpuInit(void);
 #define currentThread ((Process_t *)ReadTPIDRURO())
 
 EXTERN_C EXPORT INLINE
-void CurrentThreadAssign(Process_t *p) { WriteTPIDRURO((archsize_t)p); }
+void CurrentThreadAssign(Process_t *p) { thisCpu->process = p; WriteTPIDRURO((archsize_t)p); }
 
 
 //

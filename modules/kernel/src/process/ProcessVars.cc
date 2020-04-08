@@ -39,6 +39,7 @@ Scheduler_t scheduler = {
     {{&scheduler.listBlocked.list, &scheduler.listBlocked.list}, {0}, 0},           // the list of blocked processes
     {{&scheduler.listSleeping.list, &scheduler.listSleeping.list}, {0}, 0},         // the list of sleeping processes
     {{&scheduler.listTerminated.list, &scheduler.listTerminated.list}, {0}, 0},     // the list of terminated tasks
+    {{&scheduler.globalProcesses.list, &scheduler.globalProcesses.list}, {0}, 0},   // the global process list
 };
 
 

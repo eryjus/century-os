@@ -52,6 +52,8 @@ IPI_DO_NOT_USE                  0
 IPI_PANIC                       0x0001
 IPI_TLB_FLUSH                   0x0002
 
+IPI_DEBUGGER                    0x000f
+
 
 
 ##

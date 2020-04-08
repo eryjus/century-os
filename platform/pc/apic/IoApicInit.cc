@@ -76,7 +76,7 @@ void _IoApicInit(PicDevice_t *dev, const char *name)
     IsrRegister(0xfc, SpurriousPic);
     IsrRegister(0xfd, SpurriousPic);
     IsrRegister(0xfe, SpurriousPic);
-    IsrRegister(0xff, SpurriousPic);
+    IsrRegister(IPI_DEBUGGER, IpiHandleDebugger);
 
 
     IoApicDeviceData_t *data = (IoApicDeviceData_t*)dev->device.deviceData;

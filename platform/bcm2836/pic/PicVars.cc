@@ -61,5 +61,18 @@ MbHandler_t mbHandlers[MAX_IPI] = {
     NULL,
     (MbHandler_t)Halt,          // We are panicing all CPUs; do nothing
     IpiHandleTlbFlush,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    IpiHandleDebugger,
 };            // limit to 100 messages for now
 

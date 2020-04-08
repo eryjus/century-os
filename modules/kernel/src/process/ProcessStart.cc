@@ -33,6 +33,10 @@ void ProcessStart(void)
     assert_msg(AtomicRead(&scheduler.schedulerLockCount) > 0,
             "`ProcessStart()` is executing for a new process without holding the proper lock");
 
+    assert_msg(AtomicRead(&scheduler.schedulerLockCount) == 1,
+            "`ProcessStart()` is executing while too many locks are held");
+
     ProcessUnlockScheduler();
+    EnableInterrupts();
 }
 

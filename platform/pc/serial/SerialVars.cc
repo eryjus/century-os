@@ -27,7 +27,9 @@ SerialDevice_t debugSerial = {
     .base = COM1,
     .lock = {0},
     .SerialOpen = _SerialOpen,
+    .SerialHasChar = _SerialHasChar,
     .SerialHasRoom = _SerialHasRoom,
+    .SerialGetChar = _SerialGetChar,
     .SerialPutChar = _SerialPutChar,
 };
 
