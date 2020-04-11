@@ -57,6 +57,11 @@ void DebugStart(void)
                 DebugTimer();
                 continue;
 
+            case CMD_MSGQ:
+                debugState = DBG_MSGQ;
+                DebugMsgq();
+                continue;
+
             case CMD_ERROR:
             default:
                 kprintf("\n\n" ANSI_ATTR_BOLD ANSI_FG_RED

@@ -40,11 +40,12 @@ char debugCommand[DEBUG_COMMAND_LEN];
 EXPORT KERNEL_DATA
 DebugPrompt_t dbgPrompts[] {
 // -- location              allowed
-    {"-",                   "scheduler,timer"},                                 // -- DBG_HOME
+    {"-",                   "scheduler,timer,msgq"},                            // -- DBG_HOME
     {"sched",               "show,status,run,ready,list,exit"},                 // -- DBG_SCHED
     {"sched:ready",         "all,os,high,normal,low,idle,exit"},                // -- DBG_SCHED_RDY
     {"sched:list",          "blocked,sleeping,zombie,exit"},                    // -- DBG_SCHED_LIST
-    {"timer",               "counts,config"},                                   // -- DBG_TIMER
+    {"timer",               "counts,config,exit"},                              // -- DBG_TIMER
+    {"msgq",                "status,show,exit"},                                // -- DBG_MSGQ
 };
 
 

@@ -44,8 +44,10 @@
 #include "process.h"
 #include "timer.h"
 #include "pmm.h"
+#include "msgq.h"
 #include "serial.h"
 #include "debugger.h"
+#include "msgq.h"
 
 
 //
@@ -66,22 +68,27 @@ Process_t *B;
 
 Process_t *debugger;
 
-int semid;
+MessageQueue_t *q1;
+MessageQueue_t *q2;
 
 
 void StartA(void)
 {
     while (true) {
-        kprintf("A(%d);", thisCpu->cpuNum);
-        ProcessMilliSleep(500);
+        long t = 0;
+        MessageQueueSend(q1, t, 0, 0);
+        MessageQueueReceive(q2, &t, 0, 0, true);
+        ProcessSleep(1);
     }
 }
 
 void StartB(void)
 {
     while (true) {
-        kprintf("B(%d);", thisCpu->cpuNum);
-        ProcessMilliSleep(250);
+        long t = 0;
+        MessageQueueReceive(q1, &t, 0, 0, true);
+        ProcessSleep(1);
+        MessageQueueSend(q2, t, 0, 0);
     }
 }
 
@@ -145,8 +152,8 @@ void kInit(void)
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
     ProcessInit();
-//    ProcessCheckQueue();
     TimerInit(timerControl, 1000);
+
     kprintf("Reporting interesting Process_t offsets:\n");
     kprintf("  Top of Stack: %x\n", offsetof(Process_t, topOfStack));
     kprintf("  Virtual Address Space: %x\n", offsetof(Process_t, virtAddrSpace));
@@ -162,99 +169,39 @@ void kInit(void)
     kprintf("Reporting interesting perCPU offsets:\n");
     kprintf("  Current Process: %x\n", offsetof(ArchCpu_t, process));
 
+    MessageQueueInit();
+
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
-//BOCHS_TOGGLE_INSTR;
     CoresStart();
     picControl->ipiReady = true;
-    kprintf("Starting processes\n");
-//    AtomicsTest();  while (AtomicRead(&done) != 4) {}
-//    kprintf("The resulting int value is %d\n", testval);
-//    kprintf("The resulting Atomic val is %d\n", AtomicRead(&atomVal));
-
-//    A = ProcessCreate(StartA);
-//    B = ProcessCreate(StartB);
-    debugger = ProcessCreate("Kernel Debugger", DebugStart);
 
 
     //
     // -- Phase 3: Service Interrupts only enabled, not ready for all interrupts
-    //             Includes hardware discovery and initialization
+    //             Includes hardware initialization
     //    ----------------------------------------------------------------------
 
-//    kprintf("\nEnabling Interrupts & Driver Initialization starting...\n");
-
-//    EnableInterrupts();
-//    schedulerEnabled = 1;
-//    InitPS2();
-//    InitKeyboard();
-
-//    debuggerPID = CreateProcess("Kernel Debugger", (uint32)DbgProcess, 0);
-//    kprintf("Debugger PID = %lu\n", debuggerPID);
-
-//    wrk = globalProcess.next;
-//    do {
-//        kprintf("%ld %s\n", GetProcPID(GLOBAL2PROC(wrk)), GetProcCommand(GLOBAL2PROC(wrk)));
-
-//        wrk = wrk->next;
-//    } while (wrk != &globalProcess);
-//    hang();
 
     //
     // -- Phase 4: Full interrupts enabled, user space prepared
     //             Includes loading and starting device drivers
     //      -----------------------------------------------------
+    q1 = MessageQueueCreate();
+    q2 = MessageQueueCreate();
+    kprintf("Starting drivers and other kernel processes\n");
+    ProcessCreate("Process A", StartA);
+    ProcessCreate("Process B", StartB);
+    debugger = ProcessCreate("Kernel Debugger", DebugStart);
 
-//    kprintf("\nStarting User Space\n");
-//    readyForInterrupts = 1;
 
-//    SetTTY(TTY_DEBUGGER);
-
-//    if (tty15Mode != TTY15_NONE) SetTTY(TTYF);
 
     //
-    // -- Phase 5: Become the Butler Process
-    //    ----------------------------------
-
-//    SetProcPriority(currentProcess, PTY_IDLE);
-//    BREAKPOINT;
-
-
-#if 0
-    semid = SemaphoreGet(IPC_PRIVATE, 1, 0);
-    if (semid < 0) {
-        kprintf("SemaphoreGet() returned -%x\n", -semid);
-        HaltCpu();
-    } else kprintf("SemaphoreGet() offered semid %x\n", semid);
-
-    A = ProcessCreate(StartA);
-    B = ProcessCreate(StartB);
-
-    scheduler.currentProcess->priority = PTY_LOW;
-#endif
-
-
+    // -- Phase 5: Assume the butler process role
+    //      ---------------------------------------
     startCleanup = true;
     while (true) {
         ProcessSleep(2);
     }
-
-
-#if 0
-    //
-    // -- Phase 5: Assume the butler process role
-    //      ---------------------------------------
-    while (1) {
-        //
-        // -- Here we will look for pmm frames to clear
-        //    -----------------------------------------
-        PmmScrubBlock();
-
-        //
-        // -- there is nothing to do, so halt the cpu
-        //    ---------------------------------------
-        HaltCpu();
-    }
-#endif
 }
 

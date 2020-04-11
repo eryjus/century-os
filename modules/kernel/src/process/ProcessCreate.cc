@@ -35,6 +35,8 @@ Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
         CpuPanicPushRegs("Out of memory allocating a new Process_t");
     }
 
+    kMemSetB(rv, 0, sizeof(Process_t));
+
     rv->pid = scheduler.nextPID ++;
 
     // -- set the name of the process
@@ -50,6 +52,7 @@ Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
     rv->timeUsed = 0;
     rv->wakeAtMicros = 0;
     ListInit(&rv->stsQueue);
+    ListInit(&rv->references.list);
 
 
     //

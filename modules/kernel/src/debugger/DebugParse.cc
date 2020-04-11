@@ -60,6 +60,7 @@ DebuggerCommand_t DebugParse(DebuggerState_t state)
             if (kStrCmp(debugCommand, "sched") == 0) { rv = CMD_SCHED; goto exit; }
             if (kStrCmp(debugCommand, "scheduler") == 0) { rv = CMD_SCHED; goto exit; }
             if (kStrCmp(debugCommand, "timer") == 0) { rv = CMD_TIMER; goto exit; }
+            if (kStrCmp(debugCommand, "msgq") == 0) { rv = CMD_MSGQ; goto exit; }
             break;
 
         case DBG_SCHED:
@@ -70,7 +71,6 @@ DebuggerCommand_t DebugParse(DebuggerState_t state)
             if (kStrCmp(debugCommand, "running") == 0) { rv = CMD_RUNNING; goto exit; }
             if (kStrCmp(debugCommand, "ready") == 0) { rv = CMD_READY; goto exit; }
             if (kStrCmp(debugCommand, "list") == 0) { rv = CMD_LIST; goto exit; }
-            if (kStrCmp(debugCommand, "show") == 0) { rv = CMD_SHOW; goto exit; }
             break;
 
         case DBG_TIMER:
@@ -81,6 +81,12 @@ DebuggerCommand_t DebugParse(DebuggerState_t state)
             if (kStrCmp(debugCommand, "config") == 0) { rv = CMD_CONFIG; goto exit; }
             if (kStrCmp(debugCommand, "conf") == 0) { rv = CMD_CONFIG; goto exit; }
             if (kStrCmp(debugCommand, "cfg") == 0) { rv = CMD_CONFIG; goto exit; }
+
+        case DBG_MSGQ:
+            if (kStrCmp(debugCommand, "show") == 0) { rv = CMD_SHOW; goto exit; }
+            if (kStrCmp(debugCommand, "stat") == 0) { rv = CMD_STAT; goto exit; }
+            if (kStrCmp(debugCommand, "status") == 0) { rv = CMD_STAT; goto exit; }
+            break;
 
 
         default:
