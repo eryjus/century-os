@@ -48,6 +48,7 @@
 #include "serial.h"
 #include "debugger.h"
 #include "msgq.h"
+#include "butler.h"
 
 
 //
@@ -200,8 +201,6 @@ void kInit(void)
     // -- Phase 5: Assume the butler process role
     //      ---------------------------------------
     startCleanup = true;
-    while (true) {
-        ProcessSleep(2);
-    }
+    Butler();
 }
 

@@ -98,3 +98,8 @@ typedef struct GenericDevice_t {
 #   include "platform-mailbox.h"
 #endif
 
+#if __has_include("platform-init.h")
+#   include "platform-init.h"
+#endif
+
+

@@ -108,6 +108,42 @@ So, after testing, I think it is time to commit and merge this micro-version.  T
 
 ---
 
+## Version 0.6.1b
 
+In this micro-version, I will create the butler process.  I believe that cleaning up the startup code and memory is going to expose several problems.  I will take this slowly perform several commits along the way.
 
+First, let's assume the correct name.  Well, the name and the priority:
 
+```
++---------------------------+--------+----------+----------+------------+-----------------------+
+| Command                   | PID    | Priority | Status   | Address    | Time Used             |
++---------------------------+--------+----------+----------+------------+-----------------------+
+| Butler                    | 0      | LOW      | MSGW     | 0x90000040 | 0x00000000 0x00004a38 |
+| Idle Process              | 1      | IDLE     | RUNNING  | 0x900000e0 | 0x00000000 0x00a4d350 |
+| Idle Process              | 2      | IDLE     | READY    | 0x90000180 | 0x00000000 0x00a57b48 |
+| Idle Process              | 3      | IDLE     | RUNNING  | 0x90000220 | 0x00000000 0x00a47d60 |
+| Idle Process              | 4      | IDLE     | RUNNING  | 0x900002c0 | 0x00000000 0x00a490e8 |
+| kInitAp(1)                | 5      | OS       | TERM     | 0x90000360 | 0x00000000 0x00016b48 |
+| kInitAp(2)                | 6      | OS       | TERM     | 0x90000400 | 0x00000000 0x00013880 |
+| kInitAp(3)                | 7      | OS       | TERM     | 0x900004a0 | 0x00000000 0x00016760 |
+| Process A                 | 8      | OS       | MSGW     | 0x90000648 | 0x00000000 0x00002af8 |
+| Process B                 | 9      | OS       | DLYW     | 0x900006e8 | 0x00000000 0x000003e8 |
+| Kernel Debugger           | 10     | OS       | RUNNING  | 0x900007bc | 0x00000000 0x00db21a8 |
++---------------------------+--------+----------+----------+------------+-----------------------+
+sched :>
+ (allowed: show,status,run,ready,list,exit)
+```
+
+I now have the basic process loop waiting for something to do.  None of the proper clean-up has been done yet.  So, what is first??  I think I will start with the low memory.  There is a lot to free there that might be needed for drivers that will get loaded soon.  But are also a number of land-mines to navigate.
+
+The notes I took [here](http://eryjus.ddns.net:3000/projects/century-os/wiki/Low_Memory_Usage_Map) are critical to this reclamation.  Some of this is, however, arch-dependent.  For x86, I have several structures that need to remain in this memory.  For armv7, this is all fair game.
+
+I think the best thing to do is to create an arch-specific function that will accept a frame number and return whether the frame is valid to free.  For arm, this will be trivial -- true.  For x86, this will need to be implemented as a function with some real logic.  First, met me make sure I have the EBDA properly bounded and the starting address recorded.  Which it is not.
+
+How about the GDT frame count?  Am I logging that?  I think I am only using 1 frame.  It is only 1 frame.
+
+OK, so I have a few functions written and have reorganized a bit of code.  The first thing I am going to do is unmap the memory below 1MB.  Well my first test triple faults reading the EBDA.  The page would be for frame 0, which I am not mapping.
+
+OK, I think I have the low memory cleaned up.  Time for a commit.
+
+---

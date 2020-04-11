@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//  platform-init.h -- Some platform-specific initialization routines
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,30 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-Jun-09  Initial   0.1.0   ADCL  Initial version
+//  2020-Apr-10  Initial  v0.6.1b  ADCL  Initial version
 //
 //===================================================================================================================
 
 
+#pragma once
+
+
+#ifndef __HARDWARE_H__
+#   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
+#endif
+
+
+
 #include "types.h"
-#include "printf.h"
-#include "hardware.h"
-#include "hw-disc.h"
+
+
+
+#define PlatformDiscovery()
 
 
 //
-// -- Perform the hardware discovery
-//    ------------------------------
-EXTERN_C EXPORT LOADER
-void HwDiscovery(void)
-{
-    kMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
+// -- all low memory is available on rpi2b
+//    ------------------------------------
+#define LowMemCheck(frame)      (frame?true:false)
 
-    Mb1Parse();
-    Mb2Parse();
-    PlatformDiscovery();
-}
+

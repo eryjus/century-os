@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//  ButlerInit.cc -- This is the main butler process
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,30 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-Jun-09  Initial   0.1.0   ADCL  Initial version
+//  2020-Apr-10  Initial  v0.6.1b  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "printf.h"
-#include "hardware.h"
-#include "hw-disc.h"
+#include "msgq.h"
+#include "butler.h"
 
 
 //
-// -- Perform the hardware discovery
-//    ------------------------------
-EXTERN_C EXPORT LOADER
-void HwDiscovery(void)
+// -- The main butler process, dispatching tasks to complete
+//    ------------------------------------------------------
+EXTERN_C EXPORT KERNEL NORETURN
+void Butler(void)
 {
-    kMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
+    long msgt;
 
-    Mb1Parse();
-    Mb2Parse();
-    PlatformDiscovery();
+    ButlerInit();
+
+    while (true) {
+        // -- block until we have something to do
+        MessageQueueReceive(butlerMsgq, &msgt, 0, 0, true);
+
+    }
 }
+
