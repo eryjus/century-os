@@ -41,6 +41,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 : foreach  $(WS)/modules/kernel/src/ipi/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/loader/*.cc             |> !cc |>
 : foreach  $(WS)/modules/kernel/src/mmu/*.cc                |> !cc |>
+: foreach  $(WS)/modules/kernel/src/msgq/*.cc               |> !cc |>
 : foreach  $(WS)/modules/kernel/src/pmm/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/process/*.cc            |> !cc |>
 : foreach  $(WS)/modules/kernel/src/spinlock/*.cc           |> !cc |>
