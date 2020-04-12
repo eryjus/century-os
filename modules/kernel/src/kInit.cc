@@ -64,15 +64,23 @@ extern "C" void kInit(void);
 void PmmStart(Module_t *);
 
 
+EXPORT KERNEL_DATA
 Process_t *A;
+
+EXPORT KERNEL_DATA
 Process_t *B;
 
+EXPORT KERNEL_DATA
 Process_t *debugger;
 
+EXPORT KERNEL_DATA
 MessageQueue_t *q1;
+
+EXPORT KERNEL_DATA
 MessageQueue_t *q2;
 
 
+EXTERN_C EXPORT KERNEL
 void StartA(void)
 {
     while (true) {
@@ -83,6 +91,7 @@ void StartA(void)
     }
 }
 
+EXTERN_C EXPORT KERNEL
 void StartB(void)
 {
     while (true) {
@@ -94,12 +103,23 @@ void StartB(void)
 }
 
 
+EXPORT KERNEL_DATA
 Spinlock_t testLock = {0};
+
+EXPORT KERNEL_DATA
 volatile int testval = 0;
+
+EXPORT KERNEL_DATA
 AtomicInt_t atomVal = {0};
+
+EXPORT KERNEL_DATA
 AtomicInt_t done = {0};
+
+EXPORT KERNEL_DATA
 AtomicInt_t instance = {0};
 
+
+EXTERN_C EXPORT KERNEL
 void AtomicsTest(void)
 {
     int odd = AtomicInc(&instance) % 2;

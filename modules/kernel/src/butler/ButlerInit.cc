@@ -35,23 +35,99 @@ const char *butlerName = "Butler";
 
 
 //
-// -- This is the message queue the butler will use
-//    ---------------------------------------------
-EXPORT KERNEL_BSS
-MessageQueue_t *butlerMsgq;
-
-
-//
 // -- Initialize the Butler and perform the initial cleanup
 //    -----------------------------------------------------
 EXTERN_C EXPORT KERNEL
 void ButlerInit(void)
 {
+    // -- kernel text location
+    EXTERN uint8_t txtStart[];
+    EXTERN uint8_t txtEnd[];
+    EXTERN archsize_t txtPhys;
+    EXTERN archsize_t txtSize;
+
+    krnKernelTextStart = txtStart;
+    krnKernelTextEnd = txtEnd;
+    krnKernelTextPhys = txtPhys;
+    krnKernelTextSize = txtSize;
+
+
+    // -- kernel data location
+    EXTERN uint8_t dataStart[];
+    EXTERN uint8_t bssEnd[];
+    EXTERN archsize_t dataPhys;
+    EXTERN archsize_t dataSize;
+
+    krnKernelDataStart = dataStart;
+    krnKernelDataEnd = bssEnd;
+    krnKernelDataPhys = dataPhys;
+    krnKernelDataSize = dataSize;
+
+
+    // -- kernel syscall location
+    EXTERN uint8_t sysStart[];
+    EXTERN uint8_t sysEnd[];
+    EXTERN archsize_t sysPhys;
+    EXTERN archsize_t sysSize;
+
+    krnSyscallStart = sysStart;
+    krnSyscallEnd = sysEnd;
+    krnSyscallPhys = sysPhys;
+    krnSyscallSize = sysSize;
+
+
+    // -- stab location
+    EXTERN uint8_t stabStart[];
+    EXTERN uint8_t stabEnd[];
+    EXTERN archsize_t stabPhys;
+    EXTERN archsize_t stabSize;
+
+    krnStabStart = stabStart;
+    krnStabEnd = stabEnd;
+    krnStabPhys = stabPhys;
+    krnStabSize = stabSize;
+
+
+    // -- data needed to clean up the entry point
+    EXTERN uint8_t mbStart[];
+    EXTERN uint8_t mbEnd[];
+    EXTERN archsize_t mbPhys;
+
+    uint8_t *krnMbStart = mbStart;
+    uint8_t *krnMbEnd = mbEnd;
+    archsize_t krnMbPhys = mbPhys;
+
+
+    // -- data needed to clean up the loader
+    EXTERN uint8_t ldrStart[];
+    EXTERN uint8_t ldrEnd[];
+    EXTERN archsize_t ldrPhys;
+
+    uint8_t *krnLdrStart = ldrStart;
+    uint8_t *krnLdrEnd = ldrEnd;
+    archsize_t krnLdrPhys = ldrPhys;
+
+
+    // -- data need to clean up the smp block (better be 1 page)
+    EXTERN uint8_t smpStart[];
+    EXTERN archsize_t smpPhys;
+    EXTERN archsize_t smpSize;
+
+    uint8_t *krnSmpStart = smpStart;
+    archsize_t krnSmpPhys = smpPhys;
+    archsize_t krnSmpSize = smpSize;
+
+
+    // -- Change our identity
     archsize_t flags = DisableInterrupts();
     currentThread->command = (char *)butlerName;            // usually heap memory, conversion required
     currentThread->priority = PTY_LOW;
     RestoreInterrupts(flags);
 
+
+    //
+    // -- up to this point we have had access to the multiboot entry code; not any more
+    //    -----------------------------------------------------------------------------
 
     // -- unmap any memory below 1 MB
     for (archsize_t addr = 0; addr < 0x100000; addr += PAGE_SIZE) {
@@ -59,9 +135,41 @@ void ButlerInit(void)
     }
 
 
-    // -- free any available low memory
-    for (frame_t frame = 0; frame < 0x100; frame ++) {
-        if (LowMemCheck(frame)) PmmReleaseFrame(frame);
+    // -- free any available memory < 4MB
+    for (frame_t frame = 0; frame < 0x400; frame ++) {
+        if (ButlerMemCheck(frame)) PmmReleaseFrame(frame);
+    }
+
+
+    //
+    // -- up to this point, we have access to all the loader code; not any more
+    //    ---------------------------------------------------------------------
+
+    // -- Clean up the SMP code
+    if (krnSmpSize) {
+        MmuUnmapPage((archsize_t)krnSmpStart);
+        PmmReleaseFrame(krnSmpPhys >> 12);
+    }
+
+    // -- Clean up the loader
+    while (krnLdrStart < krnLdrEnd) {
+        MmuUnmapPage((archsize_t)krnLdrStart);
+        PmmReleaseFrame(krnLdrPhys >> 12);
+        krnLdrStart += PAGE_SIZE;
+        krnLdrPhys += PAGE_SIZE;
+    }
+
+    // -- Clean up the multiboot entry
+    while (krnMbStart < krnMbEnd) {
+        MmuUnmapPage((archsize_t)krnMbStart);
+        PmmReleaseFrame(krnMbPhys >> 12);
+        krnMbStart += PAGE_SIZE;
+        krnMbPhys += PAGE_SIZE;
+    }
+
+    // -- Now, clean up all the PMM frames from initialization
+    while (!IsListEmpty(&pmm.scrubStack)) {
+        PmmScrubBlock();
     }
 }
 

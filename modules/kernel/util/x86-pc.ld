@@ -51,6 +51,7 @@ SECTIONS {
          * -- add some linker-provided variables here
          *    ---------------------------------------
          */
+        . = ALIGN(4);
         phys_loc = .;           LONG(PHYS);
         kern_loc = .;           LONG(LOADER);
 

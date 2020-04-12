@@ -18,6 +18,7 @@
 #include "types.h"
 #include "printf.h"
 #include "platform.h"
+#include "interrupt.h"
 #include "serial.h"
 #include "pic.h"
 #include "cpu.h"
@@ -29,6 +30,7 @@
 EXTERN_C EXPORT KERNEL
 void PlatformApInit(void)
 {
+    ExceptionInit();
     PicInit(picControl, "PIC");
     PicUnmaskIrq(picControl, BCM2836_CORE_MAILBOX0);
 }

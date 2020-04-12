@@ -22,6 +22,7 @@
 #include "interrupt.h"
 
 
+EXTERN_C EXPORT NORETURN KERNEL
 void IsrDumpState(isrRegs_t *regs)
 {
     kprintf("At address: %p\n", regs);
@@ -39,3 +40,4 @@ void IsrDumpState(isrRegs_t *regs)
         Halt();
     }
 }
+

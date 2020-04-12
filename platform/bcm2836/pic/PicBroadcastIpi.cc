@@ -29,6 +29,8 @@ void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
     if (!dev) return;
     if (!dev->ipiReady) return;
 
+    AtomicSet(&mb0Resp, 1);
+
 #if DEBUG_ENABLED(PicBroadcastIpi)
     kprintf("For IPI broadcast Qualified on CPU %d\n", thisCpu->cpuNum);
 #endif
@@ -41,6 +43,8 @@ void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
             MmioWrite(IPI_MAILBOX_BASE + (0x10 * i), (archsize_t)ipi);
         }
     }
+
+    while (AtomicRead(&mb0Resp) != cpus.cpusRunning) {}
 
 #if DEBUG_ENABLED(PicBroadcastIpi)
     kprintf(".. Completed on CPU %d\n", thisCpu->cpuNum);

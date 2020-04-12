@@ -76,3 +76,10 @@ MbHandler_t mbHandlers[MAX_IPI] = {
     IpiHandleDebugger,
 };            // limit to 100 messages for now
 
+
+//
+// -- This is the number of cores that have responded to an IPI
+//    ---------------------------------------------------------
+EXPORT KERNEL_BSS
+AtomicInt_t mb0Resp = {0};
+

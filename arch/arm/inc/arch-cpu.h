@@ -82,12 +82,6 @@ void ArchLateCpuInit(int c);
 
 
 //
-// -- Wait the specified number of MICRO-seconds (not milli-)
-//    -------------------------------------------------------
-void BusyWait(uint32_t microSecs);
-
-
-//
 // -- a macro to read a 32-bit control register
 //    -----------------------------------------
 #define MRC(cp15Spec) ({                                \

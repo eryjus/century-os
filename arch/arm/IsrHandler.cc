@@ -31,12 +31,14 @@
 //
 // -- The ISR Handler Table
 //    ---------------------
+EXPORT KERNEL_BSS
 isrFunc_t isrHandlers[256] = {NULL_ISR};
 
 
 //
 // -- This is the common ISR Handler entry routine
 //    --------------------------------------------
+EXTERN_C EXPORT KERNEL
 void IsrHandler(isrRegs_t *regs)
 {
     int intno = 0;

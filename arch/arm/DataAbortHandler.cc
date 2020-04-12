@@ -21,6 +21,8 @@
 #include "cpu.h"
 #include "interrupt.h"
 
+
+EXPORT KERNEL_DATA
 const char *causes[] = {
     "Unknown",                                                                      // 0b00000
     "Alignment Fault (fault on first lookup)",                                      // 0b00001
@@ -57,7 +59,12 @@ const char *causes[] = {
 };
 
 
-extern "C" void DataAbortHandler(isrRegs_t *regs)
+
+//
+// -- Handle a data exception
+//    -----------------------
+EXTERN_C EXPORT KERNEL
+void DataAbortHandler(isrRegs_t *regs)
 {
     archsize_t dfsr = ReadDFSR();
     int cause = ((dfsr & (1 << 10)) >> 6) | (dfsr & 0xf);

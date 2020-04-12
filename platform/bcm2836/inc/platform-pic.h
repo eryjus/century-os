@@ -40,6 +40,13 @@ struct PicDevice_t picBcm2835;
 
 
 //
+// -- This is the number of cores that have responded to an IPI
+//    ---------------------------------------------------------
+EXTERN EXPORT KERNEL_BSS
+AtomicInt_t mb0Resp;
+
+
+//
 // -- Define the pic data we need to keep track of
 //    --------------------------------------------
 typedef struct Bcm2835Pic_t {

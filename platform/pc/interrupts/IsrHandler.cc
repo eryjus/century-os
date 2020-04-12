@@ -27,7 +27,7 @@
 //
 // -- The ISR Handler Table
 //    ---------------------
-EXPORT KERNEL_DATA
+EXPORT KERNEL_BSS
 isrFunc_t isrHandlers[256] = {NULL_ISR};
 
 

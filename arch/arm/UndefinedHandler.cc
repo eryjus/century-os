@@ -22,7 +22,11 @@
 #include "interrupt.h"
 
 
-extern "C" void UndefinedHandler(isrRegs_t *regs)
+//
+// -- Handle an undefined instruction
+//    -------------------------------
+EXTERN_C EXPORT KERNEL
+void UndefinedHandler(isrRegs_t *regs)
 {
     kprintf("Undefined Instruction:\n");
     IsrDumpState(regs);

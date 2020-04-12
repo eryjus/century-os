@@ -77,13 +77,15 @@ typedef struct InterruptVector_t {
 //
 // -- Build the IDT and populate its gates; initialize the handlers to NULL
 //    ---------------------------------------------------------------------
+EXTERN_C EXPORT LOADER
 void ExceptionInit(void);
 
 
 //
 // -- A Local prototype to prevent the compiler from name mangling
 //    ------------------------------------------------------------
-extern "C" void IsrHandler(isrRegs_t *regs);
+EXTERN_C EXPORT KERNEL
+void IsrHandler(isrRegs_t *regs);
 
 
 //
