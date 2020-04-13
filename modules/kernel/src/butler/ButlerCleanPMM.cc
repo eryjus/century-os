@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ButlerInit.cc -- This is the main butler process
+//  ButlerCleanPmm.cc -- Clean up a PMM frame, sanitizing it
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -16,36 +16,19 @@
 
 
 #include "types.h"
-#include "msgq.h"
+#include "pmm.h"
 #include "butler.h"
 
 
 //
-// -- The main butler process, dispatching tasks to complete
-//    ------------------------------------------------------
-EXTERN_C EXPORT KERNEL NORETURN
-void Butler(void)
+// -- The Butler has been notified of a PMM frame to clean
+//    ----------------------------------------------------
+void ButlerCleanPmm(void)
 {
-    long msgt;
-
-    ButlerInit();
-
-    while (true) {
-        // -- block until we have something to do
-        MessageQueueReceive(butlerMsgq, &msgt, 0, 0, true);
-
-        switch (msgt) {
-        case BUTLER_CLEAN_PMM:
-//            ButlerCleanPmm();
-            break;
-
-        case BUTLER_CLEAN_PROCESS:
-            break;
-
-        default:
-            assert(false);
-        }
-
+    // -- With one message, we clean all we can; later messages will clean nothing
+    while (!IsListEmpty(&pmm.scrubStack)) {
+        PmmScrubBlock();
     }
 }
+
 

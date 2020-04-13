@@ -24,6 +24,8 @@
 #include "msgq.h"
 #include "mmu.h"
 #include "pmm.h"
+#include "spinlock.h"
+#include "heap.h"
 #include "butler.h"
 
 
@@ -126,6 +128,18 @@ void ButlerInit(void)
 
 
     //
+    // -- CHEATING HERE!!!!  Redmine http://eryjus.ddns.net:3000/issues/405 comes into play when I run out of heap
+    //    completing the initialization.  Rather than solve this problem now, I am cheating and pre-allocating
+    //    additional kernel heap memory here.  This is not a proper long-term solution!
+    //    --------------------------------------------------------------------------------------------------------
+    extern Spinlock_t heapLock;
+    flags = SPINLOCK_BLOCK_NO_INT(heapLock) {
+//        HeapExpand();
+        SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
+    }
+
+
+    //
     // -- up to this point we have had access to the multiboot entry code; not any more
     //    -----------------------------------------------------------------------------
 
@@ -137,7 +151,7 @@ void ButlerInit(void)
 
     // -- free any available memory < 4MB
     for (frame_t frame = 0; frame < 0x400; frame ++) {
-        if (ButlerMemCheck(frame)) PmmReleaseFrame(frame);
+//        if (ButlerMemCheck(frame)) PmmReleaseFrame(frame);
     }
 
 
@@ -165,11 +179,6 @@ void ButlerInit(void)
         PmmReleaseFrame(krnMbPhys >> 12);
         krnMbStart += PAGE_SIZE;
         krnMbPhys += PAGE_SIZE;
-    }
-
-    // -- Now, clean up all the PMM frames from initialization
-    while (!IsListEmpty(&pmm.scrubStack)) {
-        PmmScrubBlock();
     }
 }
 

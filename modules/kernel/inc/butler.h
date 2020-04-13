@@ -21,6 +21,15 @@
 
 
 //
+// -- These are the messages that the butler knows how to handle
+//    ----------------------------------------------------------
+typedef enum {
+    BUTLER_CLEAN_PMM,
+    BUTLER_CLEAN_PROCESS,
+} ButlerTask_t;
+
+
+//
 // -- The name of the butler process
 //    ------------------------------
 EXTERN EXPORT KERNEL_DATA
@@ -107,4 +116,8 @@ EXTERN_C EXPORT LOADER
 bool ButlerMemCheck(frame_t frame);
 
 
+//
+// -- The Butler has been notified of a PMM frame to clean
+//    ----------------------------------------------------
+void ButlerCleanPmm(void);
 

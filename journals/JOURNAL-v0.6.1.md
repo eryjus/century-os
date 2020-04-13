@@ -302,4 +302,78 @@ I am going to commit the code at this point.  The cleanup is complete at this po
 
 ---
 
+OK, so the first thing to do is to set up the initial messages the Butler will respond to.  So far, I have 2:
+* ProcessTerminate
+* SanitizePmmFrame
+
+Interesting....  I am now running out of memory:
+
+```
+PANIC: unable to allocate memory for freeing a frame
+
+
+At address: 0xff800f60
+ R0: 0x8080a1bc   R1: 0x00000000   R2: 0x00000000
+ R3: 0xfffff034   R4: 0x00000000   R5: 0x00000001
+ R6: 0x00000336   R7: 0x00100000   R8: 0x00111000
+ R9: 0x0000c000  R10: 0x00105000  R11: 0x01007000
+R12: 0x00000000   SP: 0x80805028   LR_ret: 0x80805028
+SPSR_ret: 0x000001d3     type: 0x80805028
+```
+
+This is happening on both archs.  However, I have also written the heap to expand itself.  So I need to get some quick stats from the heap into the debugger.
+
+OK, I am running out of heap space!!  I had made a change when I was working on another version, but I had abandoned that code.  Let me see if I can recover that code....  Nope.  I removed that branch.
+
+OK, now [this Redmine](http://eryjus.ddns.net:3000/issues/405) is catching me -- I have a deadlock between a lock on the PMM, and needing to expand the heap, and expanding the heap needing to get to the PMM again.  To get around this for now, I am going to pre-allocate some more heap in the Butler initialization.  TO be clear, I am not solving this problem.  I am kicking the can down the road.
+
+Hmmmm...  I think I have a really bad race condition.  I am not going to be able to cheat my code.  I have to solve this now.  The problem is that there are a lot of things that require a PMM frame, including messaging and MMU and just about anything that could want memory.  Even the PMM can want more memory from the heap, which will want frames from the PMM.
+
+Long story show, #405 is absolutely correct but it is bigger than just the heap/pmm relationship.  I'm going to have to think on this a bit.
+
+I might be able to get around this with the following changes:
+* Add a `SpinLockTry()` function, where I can bail out immediately when I cannot get a lock
+* Change the `PMM` structure to also include a number of pre-allocated frames (protected by its own lock as well) -- call it a reserved frame list
+* Change the `PmmAllocateFrame()` function to first check for a normal lock and if unable to get that in a reasonable amount of time or if there are not other normal frames left, get a frame from the pre-allocated list
+* Change the `PmmScrubFrame()` function to first check if it needs to replenish the re-allocated frame list and if so get that lock -- this should also be a try for a short period of time
+
+I could also change this to look at the low memory if the upper memory could not be locked.
+
+There may still be a risk for deadlock, but those risks are severely reduced.  I need to think on this a bit.
+
+```
+[14:01:37] <eryjus_> crap!  rookie mistake:  the pmm is dependent on the heap and the heap is dependent on the pmm...  deadlock!
+[14:25:25] <geist> eryjus_: yah i'd suggest having the pmm depend on nothing at all
+[14:25:31] <geist> can depend on itself
+```
+
+I can think of 3 ways to get this done....
+1. Have the `pmm` be its own process, with its own heap.  This is a flawed design as I just add an extra abstraction to the deadlock.
+1. Have the `pmm` allocate a slab of memory and use that for managing the stack.  Still worst case is that I will need 768K to be able to manage everything.  That's a lot of overhead.
+1. Actually use the frames themselves to hold the stack, keeping only the top of the stack mapped so that I can read the stack and number of contiguous frames.  This completely eliminates the dependencies on the heap, but will slow down the allocations with managing the paging tables (and resulting TLB flushes across cores).
+
+So, I have 2 choices to get through this roadblock.  One option is a half-assed non-solution that kicks the can down the road.  The other a bigger but sustainable and permanent solution.  Hmmmmm....
+
+Seriously, there is not really a choice.  The kernel has enough features in it that everything I do from here is completely dependent on what I have done.  I have to redo the PMM design.
+
+I want to keep the same basic design -- a structure with the frame number (the current one that be being read) and the count of the number of frames in that block, and I would have to add a `next frame` element to the structure rather than the list.  I would keep that frame mapped until all the frames were consumed.  On the side where I re-stack sanitized frames (and try to tie blocks together), I would have another page I could use the check the stack after looking at the top of the stack.  So, instead of 3 lists (Low, Normal, Scrub), I would have 5 pages to map:
+1. Low
+2. Normal
+2. Scrub
+2. Search
+4. Insertion
+
+Each page would be protected by its own spinlock.
+
+It looks like I have 5 pages starting at `0xff40b000` on both archs that are available for the above 5 pages.  However, if I require a 6th page I will have to separate the pages or move them together to the `0xff42x000` block.
+
+OK, I have backed out enough changes to get the kernel to run again.  At this point I am going to commit the code and tickle the micro-version for the PMM rewrite.
+
+---
+
+
+
+
+
+
 

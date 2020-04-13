@@ -18,6 +18,8 @@
 #include "types.h"
 #include "spinlock.h"
 #include "heap.h"
+#include "butler.h"
+#include "msgq.h"
 #include "pmm.h"
 
 
@@ -28,6 +30,8 @@ EXTERN_C EXPORT KERNEL
 void PmmReleaseFrameRange(const frame_t frame, const size_t count)
 {
     PmmBlock_t *block = NEW(PmmBlock_t);        // this may deadlock and will be addressed in PmmAllocateFrame()
+
+//    kprintf("PMM Block address is %p\n", block);
 
     if (!block) {
         CpuPanicPushRegs("PANIC: unable to allocate memory for freeing a frame\n");
@@ -45,6 +49,8 @@ void PmmReleaseFrameRange(const frame_t frame, const size_t count)
 
         SPINLOCK_RLS_RESTORE_INT(pmm.scrubStack.lock, flags);
     }
+
+    MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PMM, 0, 0);
 
     CLEAN_PMM_BLOCK(block);
 }
