@@ -82,12 +82,6 @@ void ArchLateCpuInit(int c);
 
 
 //
-// -- Wait the specified number of MICRO-seconds (not milli-)
-//    -------------------------------------------------------
-void BusyWait(uint32_t microSecs);
-
-
-//
 // -- a macro to read a 32-bit control register
 //    -----------------------------------------
 #define MRC(cp15Spec) ({                                \
@@ -184,3 +178,5 @@ void CurrentThreadAssign(Process_t *p) { thisCpu->process = p; WriteTPIDRURO((ar
 //    ---------------------------------------------------
 #define BOCHS_BREAK
 #define BOCHS_TOGGLE_INSTR
+
+

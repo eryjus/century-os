@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  HwDiscovery.cc -- This source contains the i686 implementation of the hardware discovery.
+//  LowMemCheck.cc -- Determine if this low memory is used or available
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,26 +10,38 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2017-Jun-09  Initial   0.1.0   ADCL  Initial version
+//  2020-Apr-10  Initial  v0.6.1b  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "printf.h"
-#include "hardware.h"
 #include "hw-disc.h"
 
 
-//
-// -- Perform the hardware discovery
-//    ------------------------------
-EXTERN_C EXPORT LOADER
-void HwDiscovery(void)
-{
-    kMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
 
-    Mb1Parse();
-    Mb2Parse();
-    PlatformDiscovery();
+//
+// -- all low memory is available on rpi2b
+//    ------------------------------------
+EXTERN_C EXPORT LOADER
+bool LowMemCheck(frame_t frame)
+{
+    // -- the NULL frame is abandonned
+    if (frame == 0) return false;
+
+    // -- The GDT is not available
+    if (frame == 0x10) return false;
+
+    // -- The IDT is not available
+    if (frame ==  0x09) return false;
+
+    // -- The Trampoline is not available
+    if (frame == 0x08) return false;
+
+    // -- The EBDA is not available
+    if (frame > GetEbda() >> 12) return false;
+
+    // -- everything else is available
+    return true;
 }
+

@@ -23,7 +23,7 @@
 //
 // -- Get the number of ticks since boot
 //    ----------------------------------
-EXPORT KERNEL
+EXTERN_C EXPORT KERNEL
 uint64_t _TimerCurrentCount(TimerDevice_t *dev)
 {
     return READ_CNTPCT();

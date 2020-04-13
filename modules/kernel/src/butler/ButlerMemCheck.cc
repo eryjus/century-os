@@ -1,34 +1,43 @@
 //===================================================================================================================
 //
-//  ResetHandler.cc -- Handle a reset assertion
+//  ButlerMemCheck.cc -- Check the memory frame to see if it can be freed
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Up to 4MB, check the memory to see if it can be freed.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Dec-01  Initial   0.2.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-11  Initial  v0.6.1b  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "printf.h"
-#include "cpu.h"
-#include "interrupt.h"
-
+#include "pmm.h"
+#include "butler.h"
 
 
 //
-// -- "Reset the system" handler
-//    --------------------------
-EXTERN_C EXPORT KERNEL
-void ResetHandler(isrRegs_t *regs)
+// -- Check the memory to see if it is eligible to be freed
+//    -----------------------------------------------------
+EXTERN_C EXPORT LOADER
+bool ButlerMemCheck(frame_t frame)
 {
-    kprintf("Reset:\n");
-    IsrDumpState(regs);
+    archsize_t addr = frame << 12;
+    archsize_t krnBeg = 0x100000;
+    archsize_t krnEnd = krnStabPhys + krnStabSize;
+
+    if (frame < 0x100) return LowMemCheck(frame);
+    if (addr >= krnBeg && addr < krnEnd) return false;
+
+    return true;
 }
+
+
+
+

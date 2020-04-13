@@ -30,6 +30,7 @@
 EXTERN_C EXPORT LOADER
 void PlatformInit(void)
 {
+    ExceptionInit();
     PicUnmaskIrq(picControl, BCM2836_CORE_MAILBOX0);
     IsrRegister(0x64, PicMailbox0Handler);
 }

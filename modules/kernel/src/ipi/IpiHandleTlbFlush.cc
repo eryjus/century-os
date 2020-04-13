@@ -18,6 +18,7 @@
 #include "types.h"
 #include "mmu.h"
 #include "pic.h"
+#include "process.h"
 #include "printf.h"
 
 //
@@ -35,7 +36,6 @@ void IpiHandleTlbFlush(isrRegs_t *regs)
 
     InvalidatePage(tlbFlush.addr);
     AtomicDec(&tlbFlush.count);
-
     PicEoi(picControl, (Irq_t)0);
 }
 

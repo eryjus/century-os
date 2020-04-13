@@ -166,8 +166,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
         while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
-            ProcessMilliSleep(500);
-
+            ProcessMilliSleep(150);
         }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flg);

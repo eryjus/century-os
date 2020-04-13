@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ResetHandler.cc -- Handle a reset assertion
+//  ButlerCleanPmm.cc -- Clean up a PMM frame, sanitizing it
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,25 +10,25 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Dec-01  Initial   0.2.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-10  Initial  v0.6.1b  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "printf.h"
-#include "cpu.h"
-#include "interrupt.h"
-
+#include "pmm.h"
+#include "butler.h"
 
 
 //
-// -- "Reset the system" handler
-//    --------------------------
-EXTERN_C EXPORT KERNEL
-void ResetHandler(isrRegs_t *regs)
+// -- The Butler has been notified of a PMM frame to clean
+//    ----------------------------------------------------
+void ButlerCleanPmm(void)
 {
-    kprintf("Reset:\n");
-    IsrDumpState(regs);
+    // -- With one message, we clean all we can; later messages will clean nothing
+    while (!IsListEmpty(&pmm.scrubStack)) {
+        PmmScrubBlock();
+    }
 }
+
+

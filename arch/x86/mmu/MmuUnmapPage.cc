@@ -25,6 +25,7 @@
 #include "cpu.h"
 #include "pic.h"
 #include "printf.h"
+#include "process.h"
 #include "mmu.h"
 
 
@@ -50,7 +51,9 @@ frame_t MmuUnmapPage(archsize_t addr)
         AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
-        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {}
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
+            ProcessMilliSleep(150);
+        }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);
     }

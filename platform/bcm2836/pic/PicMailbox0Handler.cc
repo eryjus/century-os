@@ -23,10 +23,13 @@
 //
 // -- Decode and handle a mailbox0 interrupt
 //    --------------------------------------
+EXTERN_C EXPORT KERNEL
 void PicMailbox0Handler(UNUSED(isrRegs_t *))
 {
     int msg = MmioRead(IPI_MAILBOX_ACK + ((thisCpu->cpuNum) * 0x10));
     MbHandler_t handler = NULL;
+
+    AtomicInc(&mb0Resp);
 
     if (msg < 0 || msg >= MAX_IPI) goto exit;
 

@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  ResetHandler.cc -- Handle a reset assertion
+//  platform-init.h -- Some platform-specific initialization routines
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,25 +10,30 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2018-Dec-01  Initial   0.2.0   ADCL  Initial version
-//  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-10  Initial  v0.6.1b  ADCL  Initial version
 //
 //===================================================================================================================
 
 
-#include "types.h"
-#include "printf.h"
-#include "cpu.h"
-#include "interrupt.h"
+#pragma once
 
+
+#ifndef __HARDWARE_H__
+#   error "Use #include \"hardware.h\" and it will pick up this file; do not #include this file directly."
+#endif
+
+
+
+#include "types.h"
+
+
+
+#define PlatformDiscovery()
 
 
 //
-// -- "Reset the system" handler
-//    --------------------------
-EXTERN_C EXPORT KERNEL
-void ResetHandler(isrRegs_t *regs)
-{
-    kprintf("Reset:\n");
-    IsrDumpState(regs);
-}
+// -- all low memory is available on rpi2b
+//    ------------------------------------
+#define LowMemCheck(frame)      (frame?true:false)
+
+

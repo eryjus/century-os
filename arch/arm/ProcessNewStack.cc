@@ -26,7 +26,7 @@
 //
 // -- build the stack needed to start a new process
 //    ---------------------------------------------
-EXPORT KERNEL
+EXTERN_C EXPORT KERNEL
 frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 {
     archsize_t *stack;
