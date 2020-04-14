@@ -6,11 +6,17 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  The design of the PMM has changed.  I am now storing the PMM data in the frames themselves.  Therefore, the
+//  frame will need to be mapped into the `insert` member and then the stack info populated from the values passed
+//  in, along with the frame number from the next member in the stack.  Then the frame will need to be unmapped
+//  and then remapped to the top of the proper stack.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2019-Mar-11  Initial   0.3.1   ADCL  Initial version
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -29,28 +35,13 @@
 EXTERN_C EXPORT KERNEL
 void PmmReleaseFrameRange(const frame_t frame, const size_t count)
 {
-    PmmBlock_t *block = NEW(PmmBlock_t);        // this may deadlock and will be addressed in PmmAllocateFrame()
-
-//    kprintf("PMM Block address is %p\n", block);
-
-    if (!block) {
-        CpuPanicPushRegs("PANIC: unable to allocate memory for freeing a frame\n");
+    // -- there are 2 locks to get
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubLock) {
+        PmmPush(pmm.scrubStack, frame, count);
+        SPINLOCK_RLS_RESTORE_INT(pmm.scrubLock, flags);
     }
 
-    ListInit(&block->list);
-    block->frame = frame;
-    block->count = count;
-
-    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubStack.lock) {
-        Push(&pmm.scrubStack, &block->list);
-        pmm.scrubStack.count += block->count;
-
-        CLEAN_PMM();
-
-        SPINLOCK_RLS_RESTORE_INT(pmm.scrubStack.lock, flags);
-    }
-
+    AtomicAdd(&pmm.framesAvail, count);
     MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PMM, 0, 0);
-
-    CLEAN_PMM_BLOCK(block);
 }
+

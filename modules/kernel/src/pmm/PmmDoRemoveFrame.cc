@@ -11,6 +11,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2019-Mar-11  Initial   0.3.1   ADCL  Initial version
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -22,40 +23,28 @@
 
 
 //
-// -- Given the stack, remove a frame from the top of the stack
-//
-//    TODO: This may result in a deadlock if called from the heap; this needs to be fixed with a timeout
-//    See: http://eryjus.ddns.net:3000/issues/405 for more details.
-//    --------------------------------------------------------------------------------------------------
+// -- Given the stack, remove a frame from the top of the stack (lock MUST be held to call)
+//    -------------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-frame_t _PmmDoRemoveFrame(StackHead_t *stack, bool scrub)
+frame_t _PmmDoRemoveFrame(PmmFrameInfo_t *stack, bool scrub)
 {
     frame_t rv = 0;         // assume we will not find anything
-    PmmBlock_t *block;
 
-    archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
-        if (!IsListEmpty(stack)) {
-            block = FIND_PARENT(stack->list.next, PmmBlock_t, list);
-            rv = block->frame;
-            block->frame ++;
-            block->count --;
-            stack->count --;
+    if (MmuIsMapped((archsize_t)stack)) {
+        rv = stack->frame + stack->count - 1;
+        stack->count --;
+        AtomicDec(&pmm.framesAvail);
 
-            // -- if we have emptied the block, free the structure
-            if (block->count == 0) {
-                ListRemoveInit(&block->list);
-                FREE(block);
-            }
-
-            CLEAN_PMM_BLOCK(block);
-
-            // -- scrub the frame if requested
-            if (scrub) PmmScrubFrame(rv);
+        if (stack->count == 0) {
+            PmmPop(stack);
         }
-
-        SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
+    } else {
+        return 0;
     }
 
-    CLEAN_PMM();
+
+    // -- scrub the frame if requested
+    if (scrub) PmmScrubFrame(rv);
+
     return rv;
 }

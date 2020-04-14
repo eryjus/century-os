@@ -36,7 +36,7 @@ void Butler(void)
 
         switch (msgt) {
         case BUTLER_CLEAN_PMM:
-//            ButlerCleanPmm();
+            ButlerCleanPmm();
             break;
 
         case BUTLER_CLEAN_PROCESS:

@@ -371,9 +371,23 @@ OK, I have backed out enough changes to get the kernel to run again.  At this po
 
 ---
 
+## Version 0.6.1c
 
+OK, for this version, I will begin the rewrite of the PMM.  I needed a solid roll-back point before starting this major change.  `v0.6.1b` is the rollback point.
 
+### 2020-Apr-13
 
+Yesterday I managed to complete the rewrite of all but 2 files to the new PMM.  Today, I will wrap up the last 2 files (I hope anyway).
+
+Hmmm...  I also want to be able to pull a block out of the middle of the stack.  To do this effectively, I need a doubly linked list.  However, this will not be from `ListHead_t::List_t`, but will be simply a typical implementation.
+
+---
+
+Hmmm....  as I go through this, I am treating `MmuIsMapped()` as an atomic function.  I need to confirm that I have locks where I need locks.
+
+This is working.  I'm surprised, only 1 bug to sort out.  I will commit this code here and tickle the micro-version.
+
+---
 
 
 
