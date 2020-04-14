@@ -13,6 +13,7 @@
 //  2018-Jun-10  Initial   0.1.0   ADCL  Initial version
 //  2019-Feb-14  Initial   0.3.0   ADCL  Relocated
 //  2019-Mar-10  Initial   0.3.1   ADCL  Rebuild the PMM to be managed by a stack
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -27,35 +28,51 @@
 #include "lists.h"
 #include "printf.h"
 #include "hw-disc.h"
+#include "spinlock.h"
 #include "mmu.h"
 #include "pmm-msg.h"
 
 
 //
-// -- This structure is used on the stack and scrubStack to keep track of the frame
-//    -----------------------------------------------------------------------------
-typedef struct PmmBlock_t {
-    ListHead_t::List_t list;
+// -- This is the new PMM frame information structure -- contains info about this block of frames
+//    -------------------------------------------------------------------------------------------
+typedef struct PmmFrameInfo_t {
     frame_t frame;
     size_t count;
-} PmmBlock_t;
+    frame_t prev;
+    frame_t next;
+} PmmFrameInfo_t;
+
 
 
 //
-// -- This structure (there is only one of these on the system) manages all the PMM
-//    -----------------------------------------------------------------------------
-typedef struct PmmManager_t {
-    StackHead_t normalStack;
-    StackHead_t lowStack;
-    StackHead_t scrubStack;
-} PmmManager_t;
+// -- This is the new PMM itself
+//    --------------------------
+typedef struct Pmm_t {
+    AtomicInt_t framesAvail;                // -- this is the total number of frames available in the 3 stacks
+
+    Spinlock_t lowLock;                     // -- This lock protects lowStack
+    PmmFrameInfo_t *lowStack;
+
+    Spinlock_t normLock;                    // -- This lock protects normStack
+    PmmFrameInfo_t *normStack;
+
+    Spinlock_t scrubLock;                   // -- This lock protects scrubStack
+    PmmFrameInfo_t *scrubStack;
+
+    Spinlock_t searchLock;                  // -- This lock protects search only; get lowLock or normLock also
+    PmmFrameInfo_t *search;
+
+    Spinlock_t insertLock;                  // -- Protects insert only; one of low-, norm-, or scrubLock as well
+    PmmFrameInfo_t *insert;
+} Pmm_t;
 
 
 //
 // -- This variable is the actual Physical Memory Manager data
 //    --------------------------------------------------------
 EXTERN EXPORT KERNEL_DATA
-PmmManager_t pmm;
+Pmm_t pmm;
 
 
 //
@@ -73,24 +90,36 @@ archsize_t earlyFrame;
 
 
 //
+// -- Pop a node off the stack; stack must be locked to call this function
+//    --------------------------------------------------------------------
+void PmmPop(PmmFrameInfo_t *stack);
+
+
+//
+// -- Push a new node onto the stack; stack must be locked to call this function
+//    --------------------------------------------------------------------------
+void PmmPush(PmmFrameInfo_t *stack, frame_t frame, size_t count);
+
+
+//
 // -- add the frames to an existing block if possible, returning if the operation was successful
 //    ------------------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-bool _PmmAddToStackNode(StackHead_t *stack, frame_t frame, size_t count);
+void PmmAddToStackNode(Spinlock_t *lock, PmmFrameInfo_t *stack, frame_t frame, size_t count);
 
 
 //
 // -- This is the worker function to find a block and allocate it
 //    -----------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-frame_t _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment);
+frame_t PmmDoAllocAlignedFrames(Spinlock_t *lock, PmmFrameInfo_t *stack, const size_t count, const size_t bitAlignment);
 
 
 //
 // -- This is the worker function to find a block and allocate it
 //    -----------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-frame_t _PmmDoRemoveFrame(StackHead_t *stack, bool scrub);
+frame_t _PmmDoRemoveFrame(PmmFrameInfo_t *stack, bool scrub);
 
 
 //
@@ -104,7 +133,15 @@ frame_t PmmAllocateFrame(void);
 // -- Allocate a frame from low memory in the pmm
 //    -------------------------------------------
 EXTERN_C EXPORT INLINE
-frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, false); }
+frame_t PmmAllocateLowFrame(void) {
+    frame_t rv;
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.lowLock) {
+        rv = _PmmDoRemoveFrame(pmm.lowStack, false);
+        SPINLOCK_RLS_RESTORE_INT(pmm.lowLock, flags);
+    }
+
+    return rv;
+}
 
 
 
@@ -113,7 +150,7 @@ frame_t PmmAllocateLowFrame(void) { return _PmmDoRemoveFrame(&pmm.lowStack, fals
 //    ------------------------------------------------------------------------------------------------------
 EXTERN_C EXPORT INLINE
 frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
-    return _PmmDoAllocAlignedFrames(&pmm.normalStack, count, bitAlignment);
+    return PmmDoAllocAlignedFrames(&pmm.normLock, pmm.normStack, count, bitAlignment);
 }
 
 
@@ -122,7 +159,7 @@ frame_t PmmAllocAlignedFrames(const size_t count, const size_t bitAlignment) {
 //    ----------------------------------------------------------------------------------------------
 EXTERN_C EXPORT INLINE
 frame_t PmmAllocAlignedLowFrames(const size_t count, const size_t bitAlignment) {
-    return _PmmDoAllocAlignedFrames(&pmm.lowStack, count, bitAlignment);
+    return PmmDoAllocAlignedFrames(&pmm.lowLock, pmm.lowStack, count, bitAlignment);
 }
 
 
@@ -162,13 +199,6 @@ void PmmInit(void);
 
 
 //
-// -- For debugging purposes, dump the state of the PMM manager
-//    ---------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-void PmmDumpState(void);
-
-
-//
 // -- Allocate an early frame before the PMM is put in charge
 //    -------------------------------------------------------
 EXTERN_C EXPORT ENTRY
@@ -178,13 +208,7 @@ frame_t NextEarlyFrame(void);
 //
 // -- Clean/Invalidate PMM Manager structure
 //    --------------------------------------
-#define CLEAN_PMM()                 CleanCache((archsize_t)&pmm, sizeof(PmmManager_t))
-#define INVALIDATE_PMM()            InvalidateCache(&pmm, sizeof(PmmManager_t))
+#define CLEAN_PMM()                 CleanCache((archsize_t)&pmm, sizeof(Pmm_t))
+#define INVALIDATE_PMM()            InvalidateCache(&pmm, sizeof(Pmm_t))
 
-
-//
-// -- Clean/Invalidate PMM Block Structure
-//    ------------------------------------
-#define CLEAN_PMM_BLOCK(blk)        CleanCache((archsize_t)blk, sizeof(PmmBlock_t))
-#define INVALIDATE_PMM_BLOCK(blk)   InvalidateCache(blk, sizeof(PmmBlock_t))
 

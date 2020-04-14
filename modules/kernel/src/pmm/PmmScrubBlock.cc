@@ -11,6 +11,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2019-Mar-12  Initial   0.3.1   ADCL  Initial version
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -29,51 +30,40 @@ EXTERN_C EXPORT KERNEL
 void PmmScrubBlock(void)
 {
     // -- quickly check if there is something to do; we will redo the check when we get the lock
-    if (IsListEmpty(&pmm.scrubStack)) return;
+    if (!MmuIsMapped((archsize_t)pmm.scrubStack)) return;
 
-//    kprintf("Preparing to scrub a frame\n");
-    PmmBlock_t *block = NULL;
-    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubStack.lock) {
+    frame_t frame = 0;
+    size_t count = 0;
+
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubLock) {
         // -- double check just in case something changed
-        if (!IsListEmpty(&pmm.scrubStack)) {
-            ListHead_t::List_t *list = pmm.scrubStack.list.next;
-            ListRemoveInit(list);
-            block = FIND_PARENT(list, PmmBlock_t, list);
-            pmm.scrubStack.count -= block->count;
-            CLEAN_PMM();
+        if (MmuIsMapped((archsize_t)pmm.scrubStack)) {
+            frame = pmm.scrubStack->frame;
+            count = pmm.scrubStack->count;
+
+            AtomicSub(&pmm.framesAvail, count);
+
+            PmmPop(pmm.scrubStack);
         }
 
-        SPINLOCK_RLS_RESTORE_INT(pmm.scrubStack.lock, flags);
-
-        if (block) CLEAN_PMM_BLOCK(block);
+        SPINLOCK_RLS_RESTORE_INT(pmm.scrubLock, flags);
     }
 
 
     // -- if we found nothing to do, return
-    if (block == NULL) return;
-
-//    kprintf("Found something to do for real; the block is at address %p\n", block);
-//    kprintf(".. The block starts at frame %x and has %x frames\n", block->frame, block->count);
+    if (frame == 0) return;
 
     // -- here we scrub the frames in the block
-    for (size_t i = 0; i < block->count; i ++) PmmScrubFrame(block->frame + i);
+    for (size_t i = 0; i < count; i ++) PmmScrubFrame(frame + i);
 
 
-    // -- now, add it to the right stack
-    StackHead_t *stack;
-    if (block->frame < 0x100) stack = &pmm.lowStack;
-    else stack = &pmm.normalStack;
-
-    if (_PmmAddToStackNode(stack, block->frame, block->count)) FREE(block);
-    else {
-//        kprintf("Pushing the block onto the stack\n");
-        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
-            stack->count += block->count;
-            Push(stack, &block->list);
-            CLEAN_PMM();
-            SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
-        }
+    // -- see if we can add it to an existing block
+    if (frame < 0x100) {
+        PmmAddToStackNode(&pmm.lowLock, pmm.lowStack, frame, count);
+    } else {
+        PmmAddToStackNode(&pmm.normLock, pmm.normStack, frame, count);
     }
-
-    CLEAN_PMM_BLOCK(block);
 }
+
+
+
