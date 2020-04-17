@@ -111,12 +111,12 @@ void ButlerInit(void)
 
 
     // -- data need to clean up the smp block (better be 1 page)
-//    EXTERN uint8_t smpStart[];
-//    EXTERN archsize_t smpPhys;
+    EXTERN uint8_t smpStart[];
+    EXTERN archsize_t smpPhys;
     EXTERN archsize_t smpSize;
 
-//    uint8_t *krnSmpStart = smpStart;
-//    archsize_t krnSmpPhys = smpPhys;
+    uint8_t *krnSmpStart = smpStart;
+    archsize_t krnSmpPhys = smpPhys;
     archsize_t krnSmpSize = smpSize;
 
 
@@ -132,19 +132,16 @@ void ButlerInit(void)
     //    -----------------------------------------------------------------------------
 
     // -- unmap any memory below 1 MB
-    kprintf("Freeing MMU pages below 1MB\n");
     for (archsize_t addr = 0; addr < 0x100000; addr += PAGE_SIZE) {
-//        if (MmuIsMapped(addr)) {
-//            kprintf(".. freeing %p\n", addr);
-//            MmuUnmapPage(addr);
-//        }
+        if (MmuIsMapped(addr)) {
+            MmuUnmapPage(addr);
+        }
     }
 
 
     // -- free any available memory < 4MB
-    kprintf("Freeing PMM frames up to 4MB\n");
     for (frame_t frame = 0; frame < 0x400; frame ++) {
-//        if (ButlerMemCheck(frame)) PmmReleaseFrame(frame);
+        if (ButlerMemCheck(frame)) PmmReleaseFrame(frame);
     }
 
 
@@ -153,26 +150,23 @@ void ButlerInit(void)
     //    ---------------------------------------------------------------------
 
     // -- Clean up the SMP code
-    kprintf("Freeing SMP Init code\n");
     if (krnSmpSize) {
-//        MmuUnmapPage((archsize_t)krnSmpStart);
-//        PmmReleaseFrame(krnSmpPhys >> 12);
+        MmuUnmapPage((archsize_t)krnSmpStart);
+        PmmReleaseFrame(krnSmpPhys >> 12);
     }
 
     // -- Clean up the loader
-    kprintf("Freeing Loader code\n");
     while (krnLdrStart < krnLdrEnd) {
-//        MmuUnmapPage((archsize_t)krnLdrStart);
-//        PmmReleaseFrame(krnLdrPhys >> 12);
+        MmuUnmapPage((archsize_t)krnLdrStart);
+        PmmReleaseFrame(krnLdrPhys >> 12);
         krnLdrStart += PAGE_SIZE;
         krnLdrPhys += PAGE_SIZE;
     }
 
     // -- Clean up the multiboot entry
-    kprintf("Freeing multiboot entry point\n");
     while (krnMbStart < krnMbEnd) {
-//        MmuUnmapPage((archsize_t)krnMbStart);
-//        PmmReleaseFrame(krnMbPhys >> 12);
+        MmuUnmapPage((archsize_t)krnMbStart);
+        PmmReleaseFrame(krnMbPhys >> 12);
         krnMbStart += PAGE_SIZE;
         krnMbPhys += PAGE_SIZE;
     }
