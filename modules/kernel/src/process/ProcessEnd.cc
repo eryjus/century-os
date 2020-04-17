@@ -18,6 +18,8 @@
 #include "types.h"
 #include "printf.h"
 #include "cpu.h"
+#include "msgq.h"
+#include "butler.h"
 #include "process.h"
 
 
@@ -33,6 +35,10 @@ void ProcessEnd(void)
     assert(proc->stsQueue.next == &proc->stsQueue);
     Enqueue(&scheduler.listTerminated, &proc->stsQueue);
     ProcessDoBlock(PROC_TERM);
+
+    // -- send a message with the scheduler already locked
+    _MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PROCESS, 0, 0, false);
+
     ProcessUnlockAndSchedule();
 }
 

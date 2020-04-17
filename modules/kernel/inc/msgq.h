@@ -117,10 +117,19 @@ void MessageQueueDelete(MessageQueue_t *msgq) {
 
 
 //
-// -- Send a message to a message queue (all pre-checks completed)
-//    ------------------------------------------------------------
+// -- This is the working function to send a message to a message queue
+//    -----------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-void MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload);
+void _MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload, bool lock);
+
+
+//
+// -- This is the normal API for sending a message
+//    --------------------------------------------
+EXTERN_C INLINE
+void MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload) {
+    _MessageQueueSend(msgq, type, sz, payload, true);
+}
 
 
 //

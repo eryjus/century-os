@@ -120,56 +120,33 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     }
 
 
-
     //
-    // -- first, obtain the lock for managing the MMU structures
-    //    ------------------------------------------------------
-    archsize_t flg = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
-        tlbFlush.addr = -1;
-        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
+    // -- At this point, we know we have a ttl2 table and the management entries are all set up properly.  It
+    //    is just a matter of mapping the address.
+    //    ---------------------------------------------------------------------------------------------------
+//    kprintf("Checking for TTL2 entry....\n");
+    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(addr);
+//    kprintf("ttl2Entry has been set: %p\n", ttl2Entry);
 
+    if (ttl2Entry->fault != ARMV7_MMU_FAULT) return;
 
-        //
-        // -- At this point, we know we have a ttl2 table and the management entries are all set up properly.  It
-        //    is just a matter of mapping the address.
-        //    ---------------------------------------------------------------------------------------------------
-    //    kprintf("Checking for TTL2 entry....\n");
-        Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(addr);
-    //    kprintf("ttl2Entry has been set: %p\n", ttl2Entry);
+//    kprintf("mapping the page\n");
 
-        if (ttl2Entry->fault != ARMV7_MMU_FAULT) return;
+    WriteDCCMVAC((uint32_t)ttl2Entry);
+    InvalidatePage(addr);
 
-    //    kprintf("mapping the page\n");
+    ttl2Entry->frame = frame;
+    ttl2Entry->s = ARMV7_SHARABLE_TRUE;
+    ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
+    ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
+    ttl2Entry->tex = (flags&PG_DEVICE?ARMV7_MMU_TEX_DEVICE:ARMV7_MMU_TEX_NORMAL);
+    ttl2Entry->c = (flags&PG_DEVICE?ARMV7_MMU_UNCACHED:ARMV7_MMU_CACHED);
+    ttl2Entry->b = (flags&PG_DEVICE?ARMV7_MMU_UNBUFFERED:ARMV7_MMU_BUFFERED);
+    ttl2Entry->nG = ARMV7_MMU_GLOBAL;
+    ttl2Entry->fault = ARMV7_MMU_CODE_PAGE;
 
-        WriteDCCMVAC((uint32_t)ttl2Entry);
-        InvalidatePage(addr);
-
-        ttl2Entry->frame = frame;
-        ttl2Entry->s = ARMV7_SHARABLE_TRUE;
-        ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
-        ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
-        ttl2Entry->tex = (flags&PG_DEVICE?ARMV7_MMU_TEX_DEVICE:ARMV7_MMU_TEX_NORMAL);
-        ttl2Entry->c = (flags&PG_DEVICE?ARMV7_MMU_UNCACHED:ARMV7_MMU_CACHED);
-        ttl2Entry->b = (flags&PG_DEVICE?ARMV7_MMU_UNBUFFERED:ARMV7_MMU_BUFFERED);
-        ttl2Entry->nG = ARMV7_MMU_GLOBAL;
-        ttl2Entry->fault = ARMV7_MMU_CODE_PAGE;
-
-        WriteDCCMVAC((uint32_t)ttl2Entry);
-        InvalidatePage(addr);
-        MemoryBarrier();
-
-
-        //
-        // -- Finally, wait for all the CPUs to complete the flush before continuing
-        //   -----------------------------------------------------------------------
-        AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
-        tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
-
-        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
-            ProcessMilliSleep(150);
-        }
-
-        SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flg);
-    }
+    WriteDCCMVAC((uint32_t)ttl2Entry);
+    InvalidatePage(addr);
+    MemoryBarrier();
 }
 

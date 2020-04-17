@@ -29,6 +29,8 @@
 //    --------------------------------------------------------------------
 void PmmPop(PmmFrameInfo_t *stack)
 {
+//    kprintf("Popping a node off the stack at %p\n", stack);
+
     if (!MmuIsMapped((archsize_t)stack)) return;
 
     frame_t nx = stack->next;

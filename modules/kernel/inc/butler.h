@@ -121,3 +121,10 @@ bool ButlerMemCheck(frame_t frame);
 //    ----------------------------------------------------
 void ButlerCleanPmm(void);
 
+
+//
+// -- The Butler has been notified of a Process to clean
+//    --------------------------------------------------
+void ButlerCleanProcess(void);
+
+

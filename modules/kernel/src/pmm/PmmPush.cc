@@ -29,6 +29,8 @@
 //    --------------------------------------------------------------------------
 void PmmPush(PmmFrameInfo_t *stack, frame_t frame, size_t count)
 {
+//    kprintf("Pushing a node onto the stack at %p (frame: %x; size: %d)\n", stack, frame, count);
+
     // -- decorate the frame with the proper info to push onto the stack
     SPINLOCK_BLOCK(pmm.insertLock) {
         MmuMapToFrame((archsize_t)pmm.insert, frame, PG_KRN | PG_WRT);

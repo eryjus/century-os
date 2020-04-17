@@ -68,45 +68,16 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
         return;
     }
 
-    archsize_t flg = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
-#if DEBUG_ENABLED(MmuMapToFrame)
-    kprintf("About to flush TLB via IPI....\n");
-#endif
 
-        tlbFlush.addr = -1;
-        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
-
-#if DEBUG_ENABLED(MmuMapToFrame)
-    kprintf(".. Completed TLB flush\n");
-#endif
+    // -- finally we can map the page to the frame as requested
+    pte->frame = frame;
+    pte->rw = (flags & PG_WRT?X86_MMU_WRITE:X86_MMU_READ);
+    pte->us = (flags & PG_KRN?X86_MMU_SUPERVISOR:X86_MMU_USER);
+    pte->pcd = (flags & PG_DEVICE?X86_MMU_PCD_TRUE:X86_MMU_PCD_FALSE);
+    pte->pwt = (flags & PG_DEVICE?X86_MMU_PWT_ENABLED:X86_MMU_PWT_DISABLED);
+    pte->p = X86_MMU_PRESENT_TRUE;
 
 
-        // -- finally we can map the page to the frame as requested
-        pte->frame = frame;
-        pte->rw = (flags & PG_WRT?X86_MMU_WRITE:X86_MMU_READ);
-        pte->us = (flags & PG_KRN?X86_MMU_SUPERVISOR:X86_MMU_USER);
-        pte->pcd = (flags & PG_DEVICE?X86_MMU_PCD_TRUE:X86_MMU_PCD_FALSE);
-        pte->pwt = (flags & PG_DEVICE?X86_MMU_PWT_ENABLED:X86_MMU_PWT_DISABLED);
-        pte->p = X86_MMU_PRESENT_TRUE;
-
-
-        //
-        // -- Finally, wait for all the CPUs to complete the flush before continuing
-        //   -----------------------------------------------------------------------
-        int expected = cpus.cpusRunning - 1;
-        AtomicSet(&tlbFlush.count, expected);
-        tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
-
-        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
-#if DEBUG_ENABLED(MmuMapToFrame)
-            kprintf("CPU %d: Current response count is %d of %d at %p\n", thisCpu->cpuNum,
-                    AtomicRead(&tlbFlush.count), expected, picControl);
-#endif
-            ProcessMilliSleep(150);
-        }
-
-        SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flg);
-    }
 #if DEBUG_ENABLED(MmuMapToFrame)
     kprintf("... The contents of the PTE is at %p: %p\n", pte, ((*(uint32_t *)pte) & 0xffffffff));
 #endif

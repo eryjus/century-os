@@ -25,10 +25,7 @@
 //    ----------------------------------------------------
 void ButlerCleanPmm(void)
 {
-    // -- With one message, we clean all we can; later messages will clean nothing
-    while (MmuIsMapped((archsize_t)pmm.scrubStack)) {
-        PmmScrubBlock();
-    }
+    PmmScrubBlock();
 }
 
 

@@ -28,6 +28,8 @@
 EXTERN_C EXPORT KERNEL
 frame_t _PmmDoRemoveFrame(PmmFrameInfo_t *stack, bool scrub)
 {
+//    kprintf("PMM is pulling a frame off the stack %p\n", stack);
+
     frame_t rv = 0;         // assume we will not find anything
 
     if (MmuIsMapped((archsize_t)stack)) {
