@@ -83,10 +83,15 @@ frame_t PmmSplitBlock(PmmFrameInfo_t *stack, frame_t frame, size_t blockSize, fr
 EXTERN_C EXPORT KERNEL
 frame_t PmmDoAllocAlignedFrames(Spinlock_t *lock, PmmFrameInfo_t *stack, const size_t count, const size_t bitAlignment)
 {
+//    kprintf("Handling a request to allocate frames aligned to %d-bit precision\n", bitAlignment);
+
     //
     // -- start by determining the bits we cannot have enabled when we evaluate a frame
     //    -----------------------------------------------------------------------------
     frame_t frameBits = ~(((frame_t)-1) << (bitAlignment<12?0:bitAlignment-12));
+    // -- if there is no alignment required, save the hassle
+    if (frameBits == 0) return PmmAllocateFrame();
+
     frame_t rv = 0;
 
     if (!MmuIsMapped((archsize_t)stack)) return 0;
@@ -140,6 +145,8 @@ exit:
 
         SPINLOCK_RLS_RESTORE_INT(*lock, flags);
     }
+
+    kprintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
 
     return rv;
 }

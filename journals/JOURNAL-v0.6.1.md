@@ -389,5 +389,268 @@ This is working.  I'm surprised, only 1 bug to sort out.  I will commit this cod
 
 ---
 
+## Version 0.6.1d
+
+The final task for the butler for now is to tear down a process structure.  This will be completed in this micro-version.
+
+---
+
+### 2020-Apr-14
+
+There are 3 processes that have terminated and the memory and resources associated with the process need to be cleaned up.  So far, the trickiest part is the message queue cleanup.  For each resource, I need to remove the reference to that resource (and then if the resources have no references, I need to determine if it will be time to destroy the resource).
+
+After writing this procedure, it deadlocks again.
+
+---
+
+### 2020-Apr-15
+
+Well, this is a bigger problem than I thought.  There is something that is not getting handled properly and is most likely in the PMM since that was that last major change I have made.  I do not have the energy to get to the bottom of this tonight.  What is clear is that the scheduler is getting hosed.
+
+---
+
+### 2020-Apr-16
+
+OK, I need to start by walking the new PMM code to look for holes in the lock/unlock patterns.
+
+CPU 0 Stack:
+```
+<bochs:3> print-stack 60
+Stack address size 4
+ | STACK 0xff800e88 [0xff800ef8] (<unknown>)
+ | STACK 0xff800e8c [0x0000001a] (<unknown>)
+ | STACK 0xff800e90 [0x0000001a] (<unknown>)
+ | STACK 0xff800e94 [0x8080642c] (<unknown>) -- TimerCallBack() return from call to ProcessLockScheduler()
+ | STACK 0xff800e98 [0x00000001] (<unknown>)
+ | STACK 0xff800e9c [0x9000000c] (<unknown>)
+ | STACK 0xff800ea0 [0x80805d39] (<unknown>) -- ProcessSchedule() return from call to ProcessSwitch()
+ | STACK 0xff800ea4 [0x00000042] (<unknown>)
+ | STACK 0xff800ea8 [0x00000042] (<unknown>)
+ | STACK 0xff800eac [0xff800fb0] (<unknown>)
+ | STACK 0xff800eb0 [0x8080b559] (<unknown>)
+ | STACK 0xff800eb4 [0x80803a8c] (<unknown>) -- IsrHandler() after call to handler (in this case TimerCallBack())
+ | STACK 0xff800eb8 [0xff800ed8] (<unknown>)
+ | STACK 0xff800ebc [0x00000000] (<unknown>)
+ | STACK 0xff800ec0 [0xff40a000] (<unknown>)
+ | STACK 0xff800ec4 [0x0000001a] (<unknown>)
+ | STACK 0xff800ec8 [0x0000001a] (<unknown>)
+ | STACK 0xff800ecc [0xff800fc8] (<unknown>)
+ | STACK 0xff800ed0 [0x80808464] (<unknown>)
+ | STACK 0xff800ed4 [0x80803a8c] (<unknown>) -- IsrHandler() after call to handler
+ | STACK 0xff800ed8 [0xff800ef8] (<unknown>)
+ | STACK 0xff800edc [0x00000048] (<unknown>)
+ | STACK 0xff800ee0 [0x00000028] (<unknown>)
+ | STACK 0xff800ee4 [0x00000028] (<unknown>)
+ | STACK 0xff800ee8 [0x00000028] (<unknown>)
+ | STACK 0xff800eec [0x01001000] (<unknown>)
+ | STACK 0xff800ef0 [0x808061d7] (<unknown>) -- _SerialPutChar() after call to driver function (unclear which)
+ | STACK 0xff800ef4 [0x80803974] (<unknown>) -- IsrCommonStub return after call to IsrHandler()
+ | STACK 0xff800ef8 [0x00000010] (<unknown>)
+ | STACK 0xff800efc [0x00000048] (<unknown>)
+ | STACK 0xff800f00 [0x00000028] (<unknown>)
+ | STACK 0xff800f04 [0x00000028] (<unknown>)
+ | STACK 0xff800f08 [0x00000028] (<unknown>)
+ | STACK 0xff800f0c [0x01001000] (<unknown>)
+ | STACK 0xff800f10 [0x00000000] (<unknown>)
+ | STACK 0xff800f14 [0xe0000011] (<unknown>)
+ | STACK 0xff800f18 [0xff800fc8] (<unknown>)
+ | STACK 0xff800f1c [0x0000001a] (<unknown>)
+ | STACK 0xff800f20 [0x80808464] (<unknown>)
+ | STACK 0xff800f24 [0xff800f28] (<unknown>)
+ | STACK 0xff800f28 [0x0000001a] (<unknown>)
+ | STACK 0xff800f2c [0x80808465] (<unknown>)
+ | STACK 0xff800f30 [0x00000000] (<unknown>)
+ | STACK 0xff800f34 [0x00200202] (<unknown>)
+ | STACK 0xff800f38 [0x00000020] (<unknown>)
+ | STACK 0xff800f3c [0x00000001] (<unknown>)
+ | STACK 0xff800f40 [0x00000000] (<unknown>)
+ | STACK 0xff800f44 [0x80806076] (<unknown>) -- RestoreInterrupts() after popping flags
+ | STACK 0xff800f48 [0x00000008] (<unknown>)
+ | STACK 0xff800f4c [0x00200202] (<unknown>)
+ | STACK 0xff800f50 [0x80806fb7] (<unknown>) -- kprintf() after call to RestoreInterrupts()
+ | STACK 0xff800f54 [0x00200202] (<unknown>)
+ | STACK 0xff800f58 [0x0000000a] (<unknown>)
+ | STACK 0xff800f5c [0x80808464] (<unknown>)
+ | STACK 0xff800f60 [0x80808464] (<unknown>)
+ | STACK 0xff800f64 [0x00001027] (<unknown>)
+ | STACK 0xff800f68 [0x00001027] (<unknown>)
+ | STACK 0xff800f6c [0x8080bf68] (<unknown>)
+ | STACK 0xff800f70 [0x80804473] (<unknown>) -- MmuUnmapPage() after call to RestoreInterrupts()
+ | STACK 0xff800f74 [0x01200086] (<unknown>)
+ | STACK 0xff800f78 [0x00000000] (<unknown>)
+ | STACK 0xff800f7c [0x00200296] (<unknown>)
+ | STACK 0xff800f80 [0x00200202] (<unknown>)
+ | STACK 0xff800f84 [0x00200296] (<unknown>)
+ | STACK 0xff800f88 [0x80809d70] (<unknown>)
+ | STACK 0xff800f8c [0x00200296] (<unknown>)
+ | STACK 0xff800f90 [0x00001027] (<unknown>)
+ | STACK 0xff800f94 [0xff80a000] (<unknown>)
+ | STACK 0xff800f98 [0x00200296] (<unknown>)
+ | STACK 0xff800f9c [0x00200286] (<unknown>)
+ | STACK 0xff800fa0 [0x80805ff4] (<unknown>) -- ProcessUnlockScheduler() return from call to RestoreInterrupts()
+ | STACK 0xff800fa4 [0x00200286] (<unknown>)
+ | STACK 0xff800fa8 [0xff80a000] (<unknown>)
+ | STACK 0xff800fac [0x00200286] (<unknown>)
+ | STACK 0xff800fb0 [0x00000020] (<unknown>)
+ | STACK 0xff800fb4 [0x8080be05] (<unknown>)
+ | STACK 0xff800fb8 [0x01003800] (<unknown>)
+ | STACK 0xff800fbc [0x01009000] (<unknown>)
+ | STACK 0xff800fc0 [0x808000fd] (<unknown>) -- Butler() return from call to ButlerInit()
+ | STACK 0xff800fc4 [0x80808465] (<unknown>)
+ | STACK 0xff800fc8 [0x808005b0] (<unknown>) -- DebugStart() Entry point
+ | STACK 0xff800fcc [0x00000058] (<unknown>)
+ | STACK 0xff800fd0 [0x9000080c] (<unknown>)
+ | STACK 0xff800fd4 [0x00000020] (<unknown>)
+ | STACK 0xff800fd8 [0x8080be05] (<unknown>)
+ | STACK 0xff800fdc [0x01003800] (<unknown>)
+ | STACK 0xff800fe0 [0x80806a5d] (<unknown>) -- kInit() return from call to Butler()
+ | STACK 0xff800fe4 [0x8080be19] (<unknown>)
+ | STACK 0xff800fe8 [0x808005b0] (<unknown>)
+ | STACK 0xff800fec [0x81000160] (<unknown>)
+ | STACK 0xff800ff0 [0x81000160] (<unknown>)
+ | STACK 0xff800ff4 [0x01003800] (<unknown>)
+ | STACK 0xff800ff8 [0x01003800] (<unknown>)
+ | STACK 0xff800ffc [0x001000c8] (<unknown>)
+```
+
+CPU 1 Stack:
+
+```
+<bochs:6> print-stack 60
+Stack address size 4
+ | STACK 0xff801f54 [0x90000340] (<unknown>)
+ | STACK 0xff801f58 [0x9000032c] (<unknown>)
+ | STACK 0xff801f5c [0x00000001] (<unknown>)
+ | STACK 0xff801f60 [0x80804979] (<unknown>) -- MessageQueueSend() return from call to ProcessLockScheduler()
+ | STACK 0xff801f64 [0x00000001] (<unknown>)
+ | STACK 0xff801f68 [0x00000000] (<unknown>)
+ | STACK 0xff801f6c [0x00000046] (<unknown>)
+ | STACK 0xff801f70 [0x80804936] (<unknown>)
+ | STACK 0xff801f74 [0x81000160] (<unknown>)
+ | STACK 0xff801f78 [0x00000003] (<unknown>)
+ | STACK 0xff801f7c [0x8080bf68] (<unknown>)
+ | STACK 0xff801f80 [0x00000000] (<unknown>)
+ | STACK 0xff801f84 [0x01000028] (<unknown>)
+ | STACK 0xff801f88 [0x900003b0] (<unknown>)
+ | STACK 0xff801f8c [0x900003e4] (<unknown>)
+ | STACK 0xff801f90 [0x900003b0] (<unknown>)
+ | STACK 0xff801f94 [0x900003e4] (<unknown>)
+ | STACK 0xff801f98 [0x00000000] (<unknown>)
+ | STACK 0xff801f9c [0x00000000] (<unknown>)
+ | STACK 0xff801fa0 [0x8080573a] (<unknown>)
+ | STACK 0xff801fa4 [0x9000032c] (<unknown>)
+ | STACK 0xff801fa8 [0x00000001] (<unknown>)
+ | STACK 0xff801fac [0x00000000] (<unknown>)
+ | STACK 0xff801fb0 [0x00000000] (<unknown>)
+ | STACK 0xff801fb4 [0x00000003] (<unknown>)
+ | STACK 0xff801fb8 [0xff801fbc] (<unknown>)
+ | STACK 0xff801fbc [0x00000296] (<unknown>)
+ | STACK 0xff801fc0 [0x8080582c] (<unknown>)
+ | STACK 0xff801fc4 [0x00000001] (<unknown>)
+ | STACK 0xff801fc8 [0x00000001] (<unknown>)
+ | STACK 0xff801fcc [0x00000002] (<unknown>)
+ | STACK 0xff801fd0 [0x80806c9e] (<unknown>)
+ | STACK 0xff801fd4 [0x0026b628] (<unknown>)
+ | STACK 0xff801fd8 [0x00000000] (<unknown>)
+ | STACK 0xff801fdc [0x00000008] (<unknown>)
+ | STACK 0xff801fe0 [0x00000246] (<unknown>)
+ | STACK 0xff801fe4 [0x00000000] (<unknown>)
+ | STACK 0xff801fe8 [0x00000000] (<unknown>)
+ | STACK 0xff801fec [0x0026b628] (<unknown>)
+ | STACK 0xff801ff0 [0x00000000] (<unknown>)
+ | STACK 0xff801ff4 [0x00000000] (<unknown>)
+ | STACK 0xff801ff8 [0x81000258] (<unknown>)
+ | STACK 0xff801ffc [0x00000000] (<unknown>)
+```
+
+CPU 2 Stack:
+
+```
+<bochs:9> print-stack 60
+Stack address size 4
+ | STACK 0xff802fa4 [0x00000000] (<unknown>)
+ | STACK 0xff802fa8 [0x00000001] (<unknown>)
+ | STACK 0xff802fac [0x00000003] (<unknown>)
+ | STACK 0xff802fb0 [0x808056ec] (<unknown>) -- ProcessEnd() return from call to ProcessLockScheduler()
+ | STACK 0xff802fb4 [0x00000001] (<unknown>)
+ | STACK 0xff802fb8 [0xff802fbc] (<unknown>)
+ | STACK 0xff802fbc [0x00000296] (<unknown>)
+ | STACK 0xff802fc0 [0x8080582c] (<unknown>)
+ | STACK 0xff802fc4 [0x00000001] (<unknown>)
+ | STACK 0xff802fc8 [0x00000001] (<unknown>)
+ | STACK 0xff802fcc [0x00000003] (<unknown>)
+ | STACK 0xff802fd0 [0x80806c9e] (<unknown>)
+ | STACK 0xff802fd4 [0x0026b628] (<unknown>)
+ | STACK 0xff802fd8 [0x00000000] (<unknown>)
+ | STACK 0xff802fdc [0x00000008] (<unknown>)
+ | STACK 0xff802fe0 [0x00000246] (<unknown>)
+ | STACK 0xff802fe4 [0x00000000] (<unknown>)
+ | STACK 0xff802fe8 [0x00000000] (<unknown>)
+ | STACK 0xff802fec [0x0026b628] (<unknown>)
+ | STACK 0xff802ff0 [0x00000000] (<unknown>)
+ | STACK 0xff802ff4 [0x00000000] (<unknown>)
+ | STACK 0xff802ff8 [0x81000304] (<unknown>)
+ | STACK 0xff802ffc [0x00000000] (<unknown>)
+```
+
+CPU 3 Stack:
+
+```
+<bochs:11> print-stack 60
+Stack address size 4
+ | STACK 0xff803fa4 [0x00000000] (<unknown>)
+ | STACK 0xff803fa8 [0x00000001] (<unknown>)
+ | STACK 0xff803fac [0x00000004] (<unknown>)
+ | STACK 0xff803fb0 [0x808056ec] (<unknown>) -- ProcessEnd() return from call to ProcessLockScheduler()
+ | STACK 0xff803fb4 [0x00000001] (<unknown>)
+ | STACK 0xff803fb8 [0xff803fbc] (<unknown>)
+ | STACK 0xff803fbc [0x00000296] (<unknown>)
+ | STACK 0xff803fc0 [0x8080582c] (<unknown>)
+ | STACK 0xff803fc4 [0x00000001] (<unknown>)
+ | STACK 0xff803fc8 [0x00000001] (<unknown>)
+ | STACK 0xff803fcc [0x00000004] (<unknown>)
+ | STACK 0xff803fd0 [0x80806c9e] (<unknown>)
+ | STACK 0xff803fd4 [0x0026b628] (<unknown>)
+ | STACK 0xff803fd8 [0x00000000] (<unknown>)
+ | STACK 0xff803fdc [0x00000008] (<unknown>)
+ | STACK 0xff803fe0 [0x00000246] (<unknown>)
+ | STACK 0xff803fe4 [0x00000000] (<unknown>)
+ | STACK 0xff803fe8 [0x00000000] (<unknown>)
+ | STACK 0xff803fec [0x0026b628] (<unknown>)
+ | STACK 0xff803ff0 [0x00000000] (<unknown>)
+ | STACK 0xff803ff4 [0x00000000] (<unknown>)
+ | STACK 0xff803ff8 [0x810003b0] (<unknown>)
+ | STACK 0xff803ffc [0x00000000] (<unknown>)
+```
+
+---
+
+### 2020-Apr-17
+
+This is still feeling like I am mixing stacks.  If that is not the case, then I am enabling interrupts with a lock held and that should not happen either.
+
+I'm going to need to decorate the new PMM code with lots of debugging output.
+
+First, since the PMM is fully dependent on the MMU being up and running, I need to confirm it is sequenced properly.  And it is.  It's taken care of in the loader.
+
+---
+
+On a hunch, I looked at the other things that I had changed and I make a crucial change in `ProcessEnd()`:
+
+```c++
+void ProcessEnd(void)
+{
+    ProcessLockAndPostpone();
+
+    Process_t *proc = currentThread;
+    assert(proc->stsQueue.next == &proc->stsQueue);
+    Enqueue(&scheduler.listTerminated, &proc->stsQueue);
+    ProcessDoBlock(PROC_TERM);
+//    MessageQueueSend(butlerMsgq, BUTLER_CLEAN_PROCESS, 0, 0);
+    ProcessUnlockAndSchedule();
+}
+```
+
+When the call to `MessageQueueSend()` is commented out the kernel works; when I call it the kernel deadlocks.  In short, this is because `MessageQueueSend()` tries to lock the scheduler as well, which is a recursive lock.
 
 

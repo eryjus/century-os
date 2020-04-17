@@ -94,6 +94,7 @@ void PmmInit(void)
 
         kprintf("Releasing block of memory from frame %x for a count of %x frames\n", frame, count);
 
+
         //
         // -- since we are guaranteed to be above 1MB, this is all the normal queue
         //    ---------------------------------------------------------------------

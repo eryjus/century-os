@@ -33,9 +33,12 @@
 EXTERN_C EXPORT KERNEL
 frame_t PmmAllocateFrame(void)
 {
-    if (!pmmInitialized) {
+    if (unlikely(!pmmInitialized)) {
+//        kprintf("The PMM is not yet initialized; returning an early frame\n");
         return (NextEarlyFrame() >> 12);
     }
+
+//    kprintf("Allcoating a PMM frame\n");
 
     frame_t rv = 0;         // assume we will not find anything
     archsize_t flags;

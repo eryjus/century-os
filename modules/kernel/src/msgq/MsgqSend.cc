@@ -25,7 +25,7 @@
 // -- Send a message to a message queue (all pre-checks completed)
 //    ------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-void MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload)
+void _MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload, bool lock)
 {
     // -- construct the message
     size_t size = sz + sizeof(Message_t);                // -- adjust for the overhead
@@ -46,7 +46,7 @@ void MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload)
 
 
     // -- release anything waiting for something in the queue and let the scheduler sort it all out
-    ProcessLockAndPostpone();
+    if (lock) ProcessLockAndPostpone();
 
     flags = SPINLOCK_BLOCK_NO_INT(msgq->waiting.lock) {
 
@@ -60,5 +60,5 @@ void MessageQueueSend(MessageQueue_t *msgq, long type, size_t sz, void *payload)
         SPINLOCK_RLS_RESTORE_INT(msgq->waiting.lock, flags);
     }
 
-    ProcessUnlockAndSchedule();
+    if (lock) ProcessUnlockAndSchedule();
 }
