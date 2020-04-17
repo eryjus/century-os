@@ -98,5 +98,3 @@ DEBUG_COMMAND_LEN               256
 ## -- Message queue constants
 ##    -----------------------
 MSGMNI                          500
-
-

@@ -88,7 +88,6 @@ DebuggerCommand_t DebugParse(DebuggerState_t state)
             if (kStrCmp(debugCommand, "status") == 0) { rv = CMD_STAT; goto exit; }
             break;
 
-
         default:
             kprintf(ANSI_FG_RED ANSI_ATTR_BOLD "\n\n!! Unimplemented state!!\n" ANSI_ATTR_NORMAL);
             break;

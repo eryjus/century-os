@@ -73,6 +73,8 @@ Process_t *B;
 EXPORT KERNEL_DATA
 Process_t *debugger;
 
+int semid;
+
 EXPORT KERNEL_DATA
 MessageQueue_t *q1;
 
@@ -194,6 +196,7 @@ void kInit(void)
 
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
+//BOCHS_TOGGLE_INSTR;
     CoresStart();
     picControl->ipiReady = true;
 
