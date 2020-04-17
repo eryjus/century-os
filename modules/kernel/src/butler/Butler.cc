@@ -27,15 +27,15 @@ EXTERN_C EXPORT KERNEL NORETURN
 void Butler(void)
 {
     long msgt;
-    kprintf("Assuming the Butler role!\n");
+//    kprintf("Assuming the Butler role!\n");
 
     ButlerInit();
-    kprintf(".. Butler Initialization complete\n");
+//    kprintf(".. Butler Initialization complete\n");
 
     while (true) {
         // -- block until we have something to do
         MessageQueueReceive(butlerMsgq, &msgt, 0, 0, true);
-        kprintf("Have a message to process...\n");
+//        kprintf("Have a message to process...\n");
 
         switch (msgt) {
         case BUTLER_CLEAN_PMM:

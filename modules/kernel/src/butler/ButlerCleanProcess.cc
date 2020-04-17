@@ -27,7 +27,7 @@
 //    --------------------------------------------------
 void ButlerCleanProcess(void)
 {
-    kprintf("Starting to clean a process up\n");
+//    kprintf("Starting to clean a process up\n");
     Process_t *dlt = NULL;
 
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(schedulerLock) {
