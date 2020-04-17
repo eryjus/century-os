@@ -26,8 +26,11 @@
 //
 // -- This is a local prototype for a low level setup function
 //    --------------------------------------------------------
-extern "C" void IdtSetAddr(void);
-extern "C" uint32_t GetMode(void);
+EXTERN_C EXPORT KERNEL
+void IdtSetAddr(void);
+
+EXTERN_C EXPORT KERNEL
+uint32_t GetMode(void);
 
 
 //
@@ -39,18 +42,32 @@ InterruptVector_t *exceptVect = (InterruptVector_t *)EXCEPT_VECTOR_TABLE;
 //
 // -- These are the handlers that get control on an interrupt
 //    -------------------------------------------------------
-extern "C" void ResetTarget(void) __attribute__((noreturn));
-extern "C" void UndefinedTarget(void) __attribute__((noreturn));
-extern "C" void SuperTarget(void);
-extern "C" void PrefetchTarget(void) __attribute__((noreturn));
-extern "C" void DataAbortTarget(void) __attribute__((noreturn));
-extern "C" void IRQTarget(void);
-extern "C" void FIQTarget(void);
+EXTERN_C EXPORT KERNEL
+void ResetTarget(void) __attribute__((noreturn));
+
+EXTERN_C EXPORT KERNEL
+void UndefinedTarget(void) __attribute__((noreturn));
+
+EXTERN_C EXPORT KERNEL
+void SuperTarget(void);
+
+EXTERN_C EXPORT KERNEL
+void PrefetchTarget(void) __attribute__((noreturn));
+
+EXTERN_C EXPORT KERNEL
+void DataAbortTarget(void) __attribute__((noreturn));
+
+EXTERN_C EXPORT KERNEL
+void IRQTarget(void);
+
+EXTERN_C EXPORT KERNEL
+void FIQTarget(void);
 
 
 //
 // -- Set up the Exception Vector Table
 //    ---------------------------------
+EXTERN_C EXPORT LOADER
 void ExceptionInit(void)
 {
     IdtSetAddr();

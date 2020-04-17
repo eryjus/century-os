@@ -33,6 +33,7 @@
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2017-Jun-11  Initial   0.1.0   ADCL  Initial version
 //  2019-Feb-14  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -64,12 +65,6 @@ void PmmInit(void)
     kprintf("Startng PMM initialization\n");
 
 
-    // -- regardless of anything else, we need to initialize the lists
-    ListInit(&pmm.normalStack.list);
-    ListInit(&pmm.lowStack.list);
-    ListInit(&pmm.scrubStack.list);
-
-
     // -- Sanity check -- we cannot continue without a memory map
     if (!HaveMMapData()) {
         CpuPanicPushRegs("PANIC: Unable to determine memory map; Century OS cannot initialize\n\n");
@@ -99,17 +94,15 @@ void PmmInit(void)
 
         kprintf("Releasing block of memory from frame %x for a count of %x frames\n", frame, count);
 
-        PmmBlock_t *block = NEW(PmmBlock_t);
-        ListInit(&block->list);
-        block->frame = frame;
-        block->count = count;
-        CLEAN_PMM_BLOCK(block);
 
         //
         // -- since we are guaranteed to be above 1MB, this is all the normal queue
         //    ---------------------------------------------------------------------
-        Push(&pmm.normalStack, &block->list);
-        pmm.normalStack.count = block->count;
+        MmuMapToFrame((archsize_t)pmm.normStack, frame, PG_KRN | PG_WRT);
+        pmm.normStack->frame = frame;
+        pmm.normStack->count = count;
+        pmm.normStack->next = 0;
+        pmm.normStack->prev = 0;
     }
 
     CLEAN_PMM();

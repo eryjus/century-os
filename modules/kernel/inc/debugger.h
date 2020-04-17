@@ -79,6 +79,7 @@ typedef enum {
     DBG_SCHED_RDY,
     DBG_SCHED_LIST,
     DBG_TIMER,
+    DBG_MSGQ,
 } DebuggerState_t;
 
 
@@ -107,6 +108,7 @@ typedef enum {
     CMD_TIMER,
     CMD_COUNTS,
     CMD_CONFIG,
+    CMD_MSGQ,
 } DebuggerCommand_t;
 
 
@@ -185,6 +187,20 @@ void DebugTimerCounts(void);
 //    ---------------------
 EXTERN_C EXPORT KERNEL
 void DebugTimerConfig(void);
+
+
+//
+// -- Debug the message queues
+//    ------------------------
+EXTERN_C EXPORT KERNEL
+void DebugMsgq(void);
+
+
+//
+// -- Debug the message queues
+//    ------------------------
+EXTERN_C EXPORT KERNEL
+void DebugMsgqStatus(void);
 
 
 //

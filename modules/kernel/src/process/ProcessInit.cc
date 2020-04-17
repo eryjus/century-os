@@ -44,6 +44,8 @@ void ProcessInit(void)
         CpuPanicPushRegs("Unable to allocate Current Process structure");
     }
 
+    kMemSetB(proc, 0, sizeof(Process_t));
+
     proc->topOfStack = 0;
     proc->virtAddrSpace = mmuLvl1Table;
     proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
@@ -61,6 +63,7 @@ void ProcessInit(void)
     proc->timeUsed = 0;
     proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
+    ListInit(&proc->references.list);
     ProcessDoAddGlobal(proc);           // no lock required -- still single threaded
     CLEAN_SCHEDULER();
     CLEAN_PROCESS(proc);

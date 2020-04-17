@@ -22,7 +22,12 @@
 #include "interrupt.h"
 
 
-extern "C" void ResetHandler(isrRegs_t *regs)
+
+//
+// -- "Reset the system" handler
+//    --------------------------
+EXTERN_C EXPORT KERNEL
+void ResetHandler(isrRegs_t *regs)
 {
     kprintf("Reset:\n");
     IsrDumpState(regs);

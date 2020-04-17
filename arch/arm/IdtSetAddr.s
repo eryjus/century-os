@@ -19,6 +19,7 @@
 @@===================================================================================================================
 
 
+    .include "constants.inc"
 
     .globl      IdtSetAddr
 
@@ -30,9 +31,8 @@ IdtSetAddr:
     and     r0,r0,#(~(1<<13))
     mcr     p15,0,r0,c1,c0,0
 
-    mov     r0,#0xff40
-    lsl     r0,#16
-    add     r0,#0x1000
+    mov     r0,#(EXCEPT_VECTOR_TABLE & 0xffff)
+    movt    r0,#(EXCEPT_VECTOR_TABLE >> 16)
     mcr     p15,0,r0,c12,c0,0
 
     mov     pc,lr

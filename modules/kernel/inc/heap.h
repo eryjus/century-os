@@ -61,6 +61,7 @@
 
 #include "types.h"
 
+#define DEBUG_HEAP 1
 
 //
 // -- Set DEBUG_HEAP to 1 to enable debugging
@@ -90,6 +91,7 @@
 #define MIN_HOLE_SIZE           (sizeof(KHeapHeader_t) + sizeof(KHeapHeader_t) + HEAP_SMALLEST)
 
 #define HEAP_MIN_SIZE           0x00010000
+#define HEAP_SIZE_INCR          HEAP_MIN_SIZE
 #define ORDERED_LIST_STATIC     (1024)
 
 
@@ -257,6 +259,13 @@ void HeapRemoveFromList(OrderedList_t *entry);
 
 
 //
+// -- Expand the heap size (we have the heap lock)
+//    --------------------------------------------
+EXTERN_C EXPORT KERNEL
+size_t HeapExpand(void);
+
+
+//
 // -- Split a block into 2 blocks, creating ordered list entries for each
 //    -------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
@@ -306,7 +315,7 @@ void HeapError(const char *from, const char *desc);
 //
 // -- A quick macro to make coding easier and more readable
 //    -----------------------------------------------------
-#define NEW(tp)         ((tp *)HeapAlloc(sizeof(tp), false))
+#define NEW(tp)         ({tp* rv = (tp *)HeapAlloc(sizeof(tp), false); if (!rv) HeapCheckHealth(); rv;})
 #define FREE(ptr)       HeapFree(ptr)
 
 

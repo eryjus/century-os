@@ -39,6 +39,7 @@ STACK_BASE                      0xff800000
 STACK_LOCATION                  (STACK_BASE+STACK_SIZE)
 
 
+
 ##
 ## -- Some general MMU constants
 ##    --------------------------
@@ -46,10 +47,17 @@ PAGE_SIZE                       0x1000
 FRAME_SIZE                      0x1000
 
 MMU_HEAP_START                  0x90000000
-MMU_FRAMEBUFFER                 0xfb000000
 MMU_CLEAR_FRAME                 0xff400000
 MMU_NEW_TABLE_INIT              0xff408000
 MMU_STACK_INIT_VADDR            0xff40a000
+MMU_PMM_LOW_TOS                 0xff40b000
+MMU_PMM_NORM_TOS                0xff40c000
+MMU_PMM_SCRUB_TOS               0xff40d000
+MMU_PMM_SEARCH_TOS              0xff40e000
+MMU_PMM_INSERT                  0xff40f000
+
+## -- need to deal with this:
+MMU_FRAMEBUFFER                 0xfb000000
 FRAME_BUFFER_VADDR              0xfb000000
 
 
@@ -86,3 +94,7 @@ DEBUG_COMMAND_LEN               256
 
 
 
+##
+## -- Message queue constants
+##    -----------------------
+MSGMNI                          500

@@ -68,11 +68,14 @@ void *HeapAlloc(size_t size, bool align)
 
         adjustedSize = size + sizeof(KHeapHeader_t) + sizeof(KHeapFooter_t);
 
+again:
         entry = HeapFindHole(adjustedSize, align);
 
         // -- are we out of memory?
         if (!entry) {
             HeapCheckHealth();
+            if(HeapExpand()) goto again;
+
             SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
 
             return 0;
@@ -87,6 +90,8 @@ void *HeapAlloc(size_t size, bool align)
 
             if (!entry) {
                 HeapCheckHealth();
+                if(HeapExpand()) goto again;
+
                 SPINLOCK_RLS_RESTORE_INT(heapLock, flags);
 
                 return 0;

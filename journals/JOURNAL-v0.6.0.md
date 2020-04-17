@@ -778,3 +778,6 @@ No matter which directions I go, it is time to commit this and merge into v0.6.0
 
 ---
 
+OK, so for the user processes to work, I am going to need SYSCALLS implemented.  The `PmmSanitize()` function should run as a user process.  Adding debugging functionality before I really need it (frankly) sounds boring.  I think the next thing is going to be to get messaging and other IPC working in the kernel.
+
+For messaging, however, I need to make sure I am building for Posix.  So, we start researching.  Also, I think I need to tickle the version.

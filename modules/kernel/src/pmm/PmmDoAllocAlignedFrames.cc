@@ -26,11 +26,15 @@
 //  Once we have removed it from the stack, we will trim off (as appropriate) both the starting frames and the
 //  trailing frames, adding the extra frames back onto the top of the stack.
 //
+//  This algorithm is inefficient since it must look through the 'small frame blocks' at the top of the stack
+//  before it gets to the bigger 'large frame blocks' at the bottom of the stack.
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2019-Mar-11  Initial   0.3.1   ADCL  Initial version
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -45,41 +49,27 @@
 // -- Split the block as needed to pull out the proper alignment and size of frames
 //    -----------------------------------------------------------------------------
 EXTERN_C HIDDEN KERNEL
-frame_t PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, frame_t atFrame, size_t count)
+frame_t PmmSplitBlock(PmmFrameInfo_t *stack, frame_t frame, size_t blockSize, frame_t atFrame, size_t count)
 {
-    if (block->frame < atFrame) {
+    if (frame < atFrame) {
         // -- Create a new block with the leading frames
-        PmmBlock_t *blk = NEW(PmmBlock_t);
-        ListInit(&blk->list);
-        blk->frame = block->frame;
-        blk->count = atFrame - block->frame;
+        PmmPush(stack, frame, atFrame - blockSize);
 
         // -- adjust the existing block
-        block->frame = atFrame;
-        block->count -= blk->count;
-
-        // -- finally push this block back onto the stack
-        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
-            Push(stack, &blk->list);
-            stack->count += blk->count;
-            SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
-        }
+        frame = atFrame;
+        blockSize -= (atFrame - blockSize);
     }
 
 
     // -- check for frames to remove at the end of this block; or free the block since it is not needed
-    if (block->count > count) {
+    if (blockSize > count) {
         // -- adjust this block to remove what we want
-        block->frame += count;
-        block->count -= count;
+        frame += count;
+        blockSize -= count;
 
         // -- finally push this block back onto the stack
-        archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
-            Push(stack, &block->list);
-            stack->count += block->count;
-            SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
-        }
-    } else FREE(block);
+        PmmPush(stack, frame, blockSize);
+    }
 
 
     // -- what is left at this point is `count` frames at `atFrame`; return this value
@@ -91,51 +81,73 @@ frame_t PmmSplitBlock(StackHead_t *stack, PmmBlock_t *block, frame_t atFrame, si
 // -- This function is the working to find a frame that is properly aligned and allocate multiple contiguous frames
 //    -------------------------------------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-frame_t _PmmDoAllocAlignedFrames(StackHead_t *stack, const size_t count, const size_t bitAlignment)
+frame_t PmmDoAllocAlignedFrames(Spinlock_t *lock, PmmFrameInfo_t *stack, const size_t count, const size_t bitAlignment)
 {
+//    kprintf("Handling a request to allocate frames aligned to %d-bit precision\n", bitAlignment);
+
     //
     // -- start by determining the bits we cannot have enabled when we evaluate a frame
     //    -----------------------------------------------------------------------------
     frame_t frameBits = ~(((frame_t)-1) << (bitAlignment<12?0:bitAlignment-12));
+    // -- if there is no alignment required, save the hassle
+    if (frameBits == 0) return PmmAllocateFrame();
 
-    //
-    // -- Now, starting from the bottom of the stack, we look for a block big enough to suit our needs
-    //    --------------------------------------------------------------------------------------------
-    ListHead_t::List_t *wrk = stack->list.prev;
-    while (wrk != &stack->list) {
-        PmmBlock_t *block = FIND_PARENT(wrk, PmmBlock_t, list);
-        frame_t end = block->frame + block->count - 1;
+    frame_t rv = 0;
 
-        // -- here we determine if the block is big enough
-        if (((block->frame + frameBits) & ~frameBits) + count - 1 <= end) {
-            //
-            // -- we now have a candidate.  At this point we need to check our work by acquiring the spinlock
-            //    and double checking our work under lock conditions.
-            //    -------------------------------------------------------------------------------------------
-            archsize_t flags = SPINLOCK_BLOCK_NO_INT(stack->lock) {
-                block = FIND_PARENT(wrk, PmmBlock_t, list);
-                end = block->frame + block->count - 1;
+    if (!MmuIsMapped((archsize_t)stack)) return 0;
 
-                if (((block->frame + frameBits) & ~frameBits) + count - 1 <= end) {
-                    // -- OK, we do have a good block, remove it so we can work with it
-                    ListRemoveInit(wrk);
-                    stack->count -= block->count;
-                    CLEAN_PMM_BLOCK(block);
-                    CLEAN_PMM();
-                    SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
-                    return PmmSplitBlock(stack, block, (block->frame + frameBits) & ~frameBits, count);
+
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(*lock) {
+        SPINLOCK_BLOCK(pmm.searchLock) {
+            MmuMapToFrame((archsize_t)pmm.search, stack->frame, PG_WRT | PG_KRN);
+
+            while(true) {
+                frame_t end = pmm.search->frame + pmm.search->count - 1;
+                frame_t next;
+
+                // -- here we determine if the block is big enough
+                if (((pmm.search->frame + frameBits) & ~frameBits) + count - 1 <= end) {
+                    frame_t p = pmm.search->prev;
+                    frame_t n = pmm.search->next;
+                    frame_t f = pmm.search->frame;
+                    size_t sz = pmm.search->count;
+
+                    MmuUnmapPage((archsize_t)pmm.search);
+
+                    if (n) {
+                        MmuMapToFrame((archsize_t)pmm.search, n, PG_WRT | PG_KRN);
+                        pmm.search->prev = p;
+                        MmuUnmapPage((archsize_t)pmm.search);
+                    }
+
+                    if (p) {
+                        MmuMapToFrame((archsize_t)pmm.search, p, PG_WRT | PG_KRN);
+                        pmm.search->next = n;
+                        MmuUnmapPage((archsize_t)pmm.search);
+                    }
+
+                    rv = PmmSplitBlock(stack, f, sz, (f + frameBits) & ~frameBits, count);
+                    goto exit;
                 }
 
-                // -- it did not work out; release the lock and loop again (do we start over?)
-                SPINLOCK_RLS_RESTORE_INT(stack->lock, flags);
+                // -- move to the next node
+                next = pmm.search->next;
+                MmuUnmapPage((archsize_t)pmm.search);
+
+                // -- here we check if we made it to the end of the stack
+                if (next) MmuMapToFrame((archsize_t)pmm.search, next, PG_WRT | PG_KRN);
+                else goto exit;
             }
+
+exit:
+            SPINLOCK_RLS(pmm.searchLock);
         }
 
-        wrk = wrk->prev;
+        SPINLOCK_RLS_RESTORE_INT(*lock, flags);
     }
 
-    CLEAN_PMM();
+    kprintf("Aligned PMM Allocation is finally returning frame %x\n", rv);
 
-    return 0;
+    return rv;
 }
 

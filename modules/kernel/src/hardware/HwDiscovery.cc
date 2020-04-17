@@ -17,6 +17,7 @@
 
 #include "types.h"
 #include "printf.h"
+#include "hardware.h"
 #include "hw-disc.h"
 
 
@@ -27,7 +28,8 @@ EXTERN_C EXPORT LOADER
 void HwDiscovery(void)
 {
     kMemSetB(localHwDisc, 0, sizeof(HardwareDiscovery_t));
+
     Mb1Parse();
     Mb2Parse();
-//    ArchDiscovery();
+    PlatformDiscovery();
 }

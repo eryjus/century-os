@@ -181,7 +181,31 @@ typedef struct Process_t {
     ListHead_t::List_t stsQueue;        // This is the location on the current status queue
     ListHead_t::List_t globalList;      // This is the global list entry
     int pendingErrno;                   // this is the pending error number for a blocked process
+
+    ListHead_t references;              // NOTE the lock is required to update this structure
 } Process_t;
+
+
+//
+// -- These are the types of resources that can hold references
+//    ---------------------------------------------------------
+typedef enum {
+    REF_UNKNOWN,                        // not used / uninitialized
+    REF_MSGQ,                           // Message Queue resource
+} RefType_t;
+
+
+//
+// -- this structure will help keep track of the references held by a process, and what is resource is
+//    referred to by what process.  the result is to resolve a many-to-may relationship.
+//    ------------------------------------------------------------------------------------------------
+typedef struct Reference_t {
+    RefType_t type;
+    void *resAddr;
+    Process_t *process;
+    ListHead_t::List_t procRefList;
+    ListHead_t::List_t resourceRefBy;
+} Reference_t;
 
 
 //

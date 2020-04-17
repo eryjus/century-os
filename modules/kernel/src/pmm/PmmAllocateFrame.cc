@@ -16,6 +16,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2019-Mar-11  Initial   0.3.1   ADCL  Initial version
+//  2020-Apr-12   #405    v0.6.1c  ADCL  Redesign the PMM to store the stack in the freed frames themselves
 //
 //===================================================================================================================
 
@@ -32,29 +33,36 @@
 EXTERN_C EXPORT KERNEL
 frame_t PmmAllocateFrame(void)
 {
-    if (!pmmInitialized) {
-//        kprintf("Call to allocate a PMM frame before the PMM has been initialized!\n");
+    if (unlikely(!pmmInitialized)) {
+//        kprintf("The PMM is not yet initialized; returning an early frame\n");
         return (NextEarlyFrame() >> 12);
     }
 
+//    kprintf("Allcoating a PMM frame\n");
+
     frame_t rv = 0;         // assume we will not find anything
+    archsize_t flags;
 
 
     //
     // -- check the normal stack for a frame to allocate
     //    ----------------------------------------------
-    rv = _PmmDoRemoveFrame(&pmm.normalStack, false);
+    flags = SPINLOCK_BLOCK_NO_INT(pmm.normLock) {
+        rv = _PmmDoRemoveFrame(pmm.normStack, false);
+        SPINLOCK_RLS_RESTORE_INT(pmm.normLock, flags);
+    }
     if (rv != 0) return rv;
 
 
     //
     // -- check the scrub queue for a frame to allocate
     //    --------------------------------------------------------------------------------------------------
-    rv = _PmmDoRemoveFrame(&pmm.scrubStack, true);
-    if (rv != 0) {
-        PmmScrubFrame(rv);          // -- it needs to be scrubbed
-        return rv;
+    flags = SPINLOCK_BLOCK_NO_INT(pmm.scrubLock) {
+        rv = _PmmDoRemoveFrame(pmm.scrubStack, true);       // -- scrub the frame when it is removed
+        SPINLOCK_RLS_RESTORE_INT(pmm.scrubLock, flags);
     }
+
+    if (rv != 0) return rv;
 
 
     //

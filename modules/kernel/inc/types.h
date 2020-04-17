@@ -196,6 +196,12 @@ typedef uint8_t byte_t;
 
 
 //
+// -- This is the type of a key used for the IPC calls
+//    ------------------------------------------------
+typedef int32_t key_t;
+
+
+//
 // -- The current PID
 //    ---------------
 EXTERN volatile KERNEL_BSS

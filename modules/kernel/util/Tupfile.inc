@@ -32,6 +32,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 ## -- Now, go compile all the source files for this binary
 ##    ----------------------------------------------------
 : foreach  $(WS)/modules/kernel/src/*.cc                    |> !cc |>
+: foreach  $(WS)/modules/kernel/src/butler/*.cc             |> !cc |>
 : foreach  $(WS)/modules/kernel/src/cpu/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/debugger/*.cc           |> !cc |>
 : foreach  $(WS)/modules/kernel/src/frame-buffer/*.cc       |> !cc |>
@@ -41,6 +42,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 : foreach  $(WS)/modules/kernel/src/ipi/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/loader/*.cc             |> !cc |>
 : foreach  $(WS)/modules/kernel/src/mmu/*.cc                |> !cc |>
+: foreach  $(WS)/modules/kernel/src/msgq/*.cc               |> !cc |>
 : foreach  $(WS)/modules/kernel/src/pmm/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/process/*.cc            |> !cc |>
 : foreach  $(WS)/modules/kernel/src/spinlock/*.cc           |> !cc |>

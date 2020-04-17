@@ -46,6 +46,7 @@ void kInitAp(void)
 
     kprintf("CPU %x running...\n", thisCpu->cpuNum);
     Process_t *proc = NEW(Process_t);
+    kMemSetB(proc, 0, sizeof(Process_t));
     assert(proc != NULL);
 
     proc->pid = scheduler.nextPID ++;
@@ -65,6 +66,7 @@ void kInitAp(void)
     proc->timeUsed = 0;
     proc->wakeAtMicros = 0;
     ListInit(&proc->stsQueue);
+    ListInit(&proc->references.list);
 
     kprintf("kInitAp() established the current process at %p for CPU%d\n", proc, thisCpu->cpuNum);
 
