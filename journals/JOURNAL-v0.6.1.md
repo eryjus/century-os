@@ -653,4 +653,4 @@ void ProcessEnd(void)
 
 When the call to `MessageQueueSend()` is commented out the kernel works; when I call it the kernel deadlocks.  In short, this is because `MessageQueueSend()` tries to lock the scheduler as well, which is a recursive lock.
 
-
+This is working now on both archs.  I am going to commit this version.
