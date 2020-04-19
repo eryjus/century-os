@@ -1,0 +1,28 @@
+#####################################################################################################################
+##
+##  Tupfile -- An alternative to 'make` build system -- populate the include files
+##
+##        Copyright (c)  2017-2020 -- Adam Clark
+##
+## -----------------------------------------------------------------------------------------------------------------
+##
+##     Date      Tracker  Version  Pgmr  Description
+##  -----------  -------  -------  ----  ---------------------------------------------------------------------------
+##  2020-Apr-18  Initial  v0.7.0a  ADCL  Initial version
+##
+#####################################################################################################################
+
+
+
+##
+## -- Go get some additional information for building the targets
+##    -----------------------------------------------------------
+include ../../../Tupfile.inc
+
+
+##
+## -- The rules to populate the include files
+##    ---------------------------------------
+: $(WS)/modules/kernel/inc/errno.h |> cp %f %o |> errno.h
+: $(WS)/modules/libc/inc/stdlib.h |> cp %f %o |> stdlib.h
+

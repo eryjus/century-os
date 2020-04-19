@@ -26,23 +26,11 @@
 
 
 //
-// -- This is a static function to make sure there is always a function to call
-//    -------------------------------------------------------------------------
-EXTERN_C HIDDEN SYSCALL
-void SyscallNullHandler(isrRegs_t *regs)
-{
-    SYSCALL_RETURN(regs) = -ENOSYS;
-}
-
-
-//
 // -- The ISR Handler Table
 //    ---------------------
 HIDDEN SYSCALL_DATA
-isrFunc_t syscallHandlers[] = {
-    SyscallNullHandler,                 // Function 0; trivial call
-    SyscallReceiveMessage,              // Function 1: receive a message
-    SyscallSendMessage,                 // Function 2: send a message
+SyscallFunc_t syscallHandlers[] = {
+    SyscallExit,                        // Function 0: self-terminate the process (does not return)
 };
 
 
@@ -53,11 +41,13 @@ EXTERN_C EXPORT SYSCALL
 void SyscallHandler(isrRegs_t *regs)
 {
     if ((uint32_t)SYSCALL_FUNC_NO(regs) >= sizeof(syscallHandlers) / sizeof(isrFunc_t)) {
-        SyscallNullHandler(regs);
+        SYSCALL_RETURN(regs) = -ENOSYS;
         return;
     }
 
-    isrFunc_t handler = syscallHandlers[SYSCALL_FUNC_NO(regs)];
-    handler(regs);
+    // -- TODO: Here we need to map the kernel
+    SyscallFunc_t handler = syscallHandlers[SYSCALL_FUNC_NO(regs)];
+    SYSCALL_RETURN(regs) = handler(regs);
+    // -- TODO: Before we exit, unmap the kernel
 }
 
