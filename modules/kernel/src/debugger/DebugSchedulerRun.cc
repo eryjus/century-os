@@ -84,7 +84,7 @@ void PrintProcess(int cpu, volatile Process_t *proc)
     kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%d", proc->pid)); kprintf("|\n");
     kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%s", proc->command)); kprintf("|\n");
     kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%x", proc->virtAddrSpace)); kprintf("|\n");
-    kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%x", proc->ssAddr)); kprintf("|\n");
+    kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%x", proc->ssProcFrame)); kprintf("|\n");
     kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%s", ProcStatusStr(proc->status))); kprintf("|\n");
     kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%s", ProcPriorityStr(proc->priority))); kprintf("|\n");
     kprintf("\x1b[%dC| ", fwd); DbgSpace(17, kprintf("%d", AtomicRead(&proc->quantumLeft))); kprintf("|\n");

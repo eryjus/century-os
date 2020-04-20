@@ -208,6 +208,8 @@ void Mb1Parse(void)
     if (CHECK_FLAG(3)) {
         uint32_t i;
         Mb1Mods_t *m;
+        extern archsize_t stabPhys;
+        extern archsize_t stabSize;
 
         kprintf("Module information present\n");
 
@@ -219,6 +221,9 @@ void Mb1Parse(void)
 
             AddModule(m[i].modStart, m[i].modEnd, m[i].modIdent);
         }
+
+        kprintf("   The highest frame is: %p\n", localHwDisc->modHighestFrame);
+        kprintf("   The kernel endpoint is %p\n", stabPhys + stabSize);
     }
 
 

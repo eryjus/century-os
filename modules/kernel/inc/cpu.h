@@ -179,6 +179,13 @@ void EmptyFunction(void);
 
 
 //
+// -- Set the top-level MMU Structure
+//    -------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t ArchSetMmu(archsize_t top);
+
+
+//
 // -- This structure defines all the data for all the cpus on the system
 //    ------------------------------------------------------------------
 typedef struct Cpu_t {

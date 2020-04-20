@@ -24,6 +24,8 @@
 #include "heap.h"
 #include "pic.h"
 #include "entry.h"
+#include "stacks.h"
+#include "pmm.h"
 #include "serial.h"
 
 
@@ -50,7 +52,13 @@ void kInitAp(void)
     assert(proc != NULL);
 
     proc->pid = scheduler.nextPID ++;
-    proc->ssAddr = thisCpu->stackFrame;
+    proc->ssProcFrame = thisCpu->stackFrame;
+
+    archsize_t kStack = StackFind();
+    proc->tosKernel = kStack + STACK_SIZE;
+    proc->ssKernFrame = PmmAllocateFrame();
+    MmuMapToFrame(kStack, proc->ssKernFrame, PG_KRN | PG_WRT);
+
     proc->virtAddrSpace = mmuLvl1Table;
 
     // -- set the process name

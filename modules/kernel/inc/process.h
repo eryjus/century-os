@@ -167,13 +167,18 @@ const char *ProcPriorityStr(ProcPriority_t p) {
 // -- This is a process structure
 //    ---------------------------
 typedef struct Process_t {
-    archsize_t topOfStack;              // This is the process current esp value (when not executing)
+    archsize_t tosProcessSwap;          // This is the process current esp value (when not executing)
+    archsize_t tosKernel;               // This is the stack used when changing to the kernel (interrupts/syscalls)
+    archsize_t tosInterrupted;          // This is the stack as it was then it was interrupted by fault, IRQ or syscall
     archsize_t virtAddrSpace;           // This is the process top level page table
     ProcStatus_t status;                // This is the process status
     ProcPriority_t priority;            // This is the process priority
     volatile AtomicInt_t quantumLeft;   // This is the quantum remaining for the process (may be more than priority)
+
+// -- Anything about this line is referenced from ASM and therefore can any changes need to be checked
     PID_t pid;                          // This is the PID of this process
-    archsize_t ssAddr;                  // This is the address of the process stack
+    archsize_t ssProcFrame;             // This is the frame of the process stack
+    archsize_t ssKernFrame;             // This is the frame of the kernel stack
     char *command;                      // The identifying command, includes the terminating null
     ProcPolicy_t policy;                // This is the scheduling policy
     uint64_t timeUsed;                  // This is the relative amount of CPU used

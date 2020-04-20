@@ -21,6 +21,8 @@
 #include "cpu.h"
 #include "heap.h"
 #include "timer.h"
+#include "stacks.h"
+#include "pmm.h"
 #include "process.h"
 
 
@@ -46,10 +48,16 @@ void ProcessInit(void)
 
     kMemSetB(proc, 0, sizeof(Process_t));
 
-    proc->topOfStack = 0;
+    proc->tosProcessSwap = 0;
     proc->virtAddrSpace = mmuLvl1Table;
     proc->pid = scheduler.nextPID ++;          // -- this is the butler process ID
-    proc->ssAddr = STACK_LOCATION;
+    proc->ssProcFrame = STACK_LOCATION >> 12;
+
+    archsize_t kStack = StackFind();
+    proc->tosKernel = kStack + STACK_SIZE;
+    proc->ssKernFrame = PmmAllocateFrame();
+    MmuMapToFrame(kStack, proc->ssKernFrame, PG_KRN | PG_WRT);
+
 
     // -- set the process name
     proc->command = (char *)HeapAlloc(20, false);

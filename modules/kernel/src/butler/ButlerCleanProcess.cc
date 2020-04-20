@@ -76,10 +76,12 @@ void ButlerCleanProcess(void)
     // -- TODO: Implement this
 
 
-    // -- Clean up the stack
-    if (dlt->topOfStack > STACK_BASE) {
-        PmmReleaseFrame(MmuUnmapPage(dlt->topOfStack & ~(STACK_SIZE - 1)));
+    // -- Clean up the stacks
+    if (dlt->tosProcessSwap > STACK_BASE) {
+        PmmReleaseFrame(MmuUnmapPage((dlt->tosProcessSwap - 1) & ~(STACK_SIZE - 1)));
     }
+
+    PmmReleaseFrame(MmuUnmapPage(dlt->tosKernel - STACK_SIZE));
 
     // -- Finally, free up the process memory
     FREE(dlt);

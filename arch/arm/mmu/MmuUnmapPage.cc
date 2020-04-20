@@ -57,8 +57,12 @@ exit:
         AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
-        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
-            ProcessMilliSleep(150);
+        if (picControl->ipiReady) {
+            while (AtomicRead(&tlbFlush.count) != 0) {
+                WriteDCCMVAC((archsize_t)&tlbFlush.count);
+                InvalidatePage((archsize_t)&tlbFlush.count);
+//                ProcessMilliSleep(150);
+            }
         }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);

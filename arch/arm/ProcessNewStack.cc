@@ -62,7 +62,7 @@ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 
     archsize_t stackLoc = StackFind();    // get a new stack
     assert(stackLoc != 0);
-    proc->topOfStack = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
+    proc->tosProcessSwap = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
     MmuMapToFrame(stackLoc, rv, PG_KRN | PG_WRT);
     kprintf("the new process stack is located at %p (frame %p)\n", stackLoc, rv);
 

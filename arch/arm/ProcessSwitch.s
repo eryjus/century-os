@@ -43,11 +43,13 @@
 @@
 @@ -- Some local equates for use with access structure elements
 @@    ---------------------------------------------------------
-    .equ        PROC_TOP_OF_STACK,0
-    .equ        PROC_VIRT_ADDR_SPACE,4
-    .equ        PROC_STATUS,8
-    .equ        PROC_PRIORITY,9
-    .equ        PROC_QUANTUM_LEFT,0x0c
+    .equ        PROC_TOS_PROCESS_SWAP,0
+    .equ        PROC_TOS_KERNEL,4
+    .equ        PROC_TOS_INTERRUPTED,8
+    .equ        PROC_VIRT_ADDR_SPACE,0x0c
+    .equ        PROC_STATUS,0x10
+    .equ        PROC_PRIORITY,0x11
+    .equ        PROC_QUANTUM_LEFT,0x14
 
 
 @@
@@ -122,7 +124,7 @@ ProcessSwitch:
     pop     {r0,r1,r2,r3}                   @@ restore the vlobber registers
 
 
-    str     sp,[r2,#PROC_TOP_OF_STACK]      @@ save the current stack pointer
+    str     sp,[r2,#PROC_TOS_PROCESS_SWAP]       @@ save the current stack pointer
     mrc     p15,0,r3,c2,c0,0                @@ get the address of the current address space
 
 
@@ -133,7 +135,7 @@ ProcessSwitch:
     mrc     p15,0,r1,c13,c0,4               @@ get the current CPU structure
     str     r0,[r1,#0x20]                   @@ save the new process address
 
-    ldr     sp,[r0,#PROC_TOP_OF_STACK]      @@ restore the top of the stack (scheduler.currentProcess->topOfStack)
+    ldr     sp,[r0,#PROC_TOS_PROCESS_SWAP]       @@ restore the top of the stack (scheduler.currentProcess->topOfStack)
     mov     r4,#PROC_STS_RUNNING            @@ load the status into a register (value 1)
     strb    r4,[r0,#PROC_STATUS]            @@ ... and set the status (scheduler.currentProcess->status = 1)
     ldr     r2,[r0,#PROC_VIRT_ADDR_SPACE]   @@ get addr spc of new tsk (r2 = scheduler.currentProcess->virtAddrSpace)

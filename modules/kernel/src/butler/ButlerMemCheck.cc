@@ -19,6 +19,7 @@
 
 #include "types.h"
 #include "pmm.h"
+#include "hw-disc.h"
 #include "butler.h"
 
 
@@ -30,10 +31,9 @@ bool ButlerMemCheck(frame_t frame)
 {
     archsize_t addr = frame << 12;
     archsize_t krnBeg = 0x100000;
-    archsize_t krnEnd = krnStabPhys + krnStabSize;
 
     if (frame < 0x100) return LowMemCheck(frame);
-    if (addr >= krnBeg && addr < krnEnd) return false;
+    if (addr >= krnBeg && frame < localHwDisc->modHighestFrame) return false;
 
     return true;
 }

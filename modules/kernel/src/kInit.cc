@@ -178,7 +178,7 @@ void kInit(void)
     TimerInit(timerControl, 1000);
 
     kprintf("Reporting interesting Process_t offsets:\n");
-    kprintf("  Top of Stack: %x\n", offsetof(Process_t, topOfStack));
+    kprintf("  Top of Stack: %x\n", offsetof(Process_t, tosProcessSwap));
     kprintf("  Virtual Address Space: %x\n", offsetof(Process_t, virtAddrSpace));
     kprintf("  Process Status: %x\n", offsetof(Process_t, status));
     kprintf("  Process Priority: %x\n", offsetof(Process_t, priority));
