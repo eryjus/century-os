@@ -79,3 +79,9 @@ void MmuDumpTables(archsize_t addr);
 #define MMU_TTL2_ENTRY(addr)    (&(((Ttl2_t *)ARMV7_TTL2_TABLE_VADDR)[addr >> 12]))
 
 
+//
+// -- No need to make a user table -- this is already cleared
+//    -------------------------------------------------------
+EXTERN_C INLINE
+void MmuMakeTopUserTable(frame_t frame) {}
+

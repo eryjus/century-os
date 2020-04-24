@@ -20,6 +20,7 @@
 @@ -- Expose labels to fucntions that the linker can pick up
 @@    ------------------------------------------------------
     .global     SuperTarget
+    .global     ProcessStartEpilogue
 
 
 @@
@@ -60,5 +61,6 @@ SuperTarget:
 
     pop         {r0-r12}                                    @@ restore all the working registers
 
+ProcessStartEpilogue:
     rfeia       sp!                                         @@ return from the exception
 

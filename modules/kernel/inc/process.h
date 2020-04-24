@@ -69,6 +69,7 @@
 #include "lists.h"
 #include "cpu.h"
 #include "timer.h"
+#include "elf.h"
 #include "spinlock.h"
 
 
@@ -301,6 +302,9 @@ void ProcessBlock(ProcStatus_t reason) {
 EXTERN_C EXPORT KERNEL
 void ProcessStart(void);
 
+EXTERN_C EXPORT KERNEL
+void ProcessStartEpilogue(void);
+
 
 //
 // -- Create a new process
@@ -317,10 +321,13 @@ void ProcessSwitch(Process_t *proc);
 
 
 //
-// -- Create a new stack for a new process, and populate its contents
-//    ---------------------------------------------------------------
+// -- Create a new stack for a new process, and populate its contents (kernel and then user varieties)
+//    ------------------------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
 frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
+
+EXTERN_C EXPORT KERNEL
+frame_t ProcessNewUserStack(Process_t *proc, void (*startingAddr)(void));
 
 
 //
@@ -448,4 +455,10 @@ void ProcessAddGlobal(Process_t *proc) {
     ProcessUnlockAndSchedule();
 }
 
+
+//
+// -- Create a new process and get it ready to be scheduled
+//    -----------------------------------------------------
+EXTERN_C EXPORT KERNEL
+Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, const char *name);
 

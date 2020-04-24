@@ -38,6 +38,10 @@ X86_TRAMPOLINE                  0x8000
 ##
 ## -- These are constants related to the x86 MMU
 ##    --------------------------------------------
+MMU_TOP_TABLE_COUNT             1
+MMU_TOP_TABLE_FROM              0xff402000
+MMU_TOP_TABLE_TO                0xff403000
+
 
 ## -- Present (<<0)
 X86_MMU_PRESENT_FALSE           0
@@ -70,5 +74,15 @@ X86_MMU_KERNEL                  (1<<9)
 X86_MMU_BASE                    ((X86_MMU_PRESENT_TRUE<<0)|(X86_MMU_WRITE<<1)|(X86_MMU_SUPERVISOR<<2))
 X86_MMU_KRN_CODE                ((X86_MMU_PRESENT_TRUE<<0)|(X86_MMU_SUPERVISOR<<2)|(X86_MMU_READ<<1)|X86_MMU_KERNEL)
 X86_MMU_KRN_DATA                ((X86_MMU_PRESENT_TRUE<<0)|(X86_MMU_SUPERVISOR<<2)|(X86_MMU_WRITE<<1)|X86_MMU_KERNEL)
+
+
+
+
+
+##
+## -- User Process constants
+##    ----------------------
+USER_STACK                      0x0803c000
+KERNEL_STACK                    0x08034000
 
 

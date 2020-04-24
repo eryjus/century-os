@@ -43,7 +43,7 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 #endif
 
     // -- refuse to map frame 0 for security reasons
-    if (!frame || !addr) {
+    if (!assert(frame) || !assert(addr)) {
         return;
     }
 
@@ -53,7 +53,14 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
 
     PageEntry_t *pde = PD_ENTRY(addr);
 
+#if DEBUG_ENABLED(MmuMapToFrame)
+        kprintf(".. Checking the Page Directory Entry at %p (%p)\n", pde, *pde);
+#endif
+
     if (!pde->p) {
+#if DEBUG_ENABLED(MmuMapToFrame)
+        kprintf(".. Making a new PageDirectory\n");
+#endif
         frame_t fr = PmmAllocateFrame();
         MmuClearFrame(fr);
         pde->frame = fr;
@@ -65,6 +72,9 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
     PageEntry_t *pte = PT_ENTRY(addr);
 
     if (pte->p) {
+#if DEBUG_ENABLED(MmuMapToFrame)
+        kprintf(".. !!!! Page Already Mapped\n");
+#endif
         return;
     }
 

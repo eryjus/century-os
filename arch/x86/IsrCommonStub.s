@@ -22,6 +22,12 @@
 
 
 ;;
+;; -- expose some additional globals
+;;    ------------------------------
+    global  ProcessStartEpilogue
+
+
+;;
 ;; -- Now, we need some things from other functions imported
 ;;    ------------------------------------------------------
 extern    IsrHandler
@@ -233,4 +239,18 @@ IsrCommonStub:
     pop         eax
 
     add         esp,12                  ;; skip past the parameters
+
+ProcessStartEpilogue2:
     iret                                ;; pop flags and return
+
+
+ProcessStartEpilogue:
+    mov         eax,0x23
+    mov         ds,ax
+    mov         es,ax
+    mov         fs,ax
+    mov         ax,gs
+    or          ax,3
+    mov         gs,ax
+    jmp         ProcessStartEpilogue2
+

@@ -211,6 +211,21 @@ void kInit(void)
     // -- Phase 4: Full interrupts enabled, user space prepared
     //             Includes loading and starting device drivers
     //      -----------------------------------------------------
+    for (int i = 0; i < GetModCount(); i ++) {
+        kprintf("Parsing ELF module %s\n", GetAvailModuleIdent(i));
+        ElfImage_t *img = NEW(ElfImage_t);
+        img->frameCount = 0;
+        archsize_t start = (archsize_t)GetAvailModuleStart(i) >> 12;
+        archsize_t end = (archsize_t)GetAvailModuleEnd(i) >> 12;
+
+        for (archsize_t j = start; j <= end; j ++) {
+            img->frame[img->frameCount ++] = j;
+        }
+
+        ElfInit(img, GetAvailModuleIdent(i));
+    }
+
+
     q1 = MessageQueueCreate();
     q2 = MessageQueueCreate();
     kprintf("Starting drivers and other kernel processes\n");

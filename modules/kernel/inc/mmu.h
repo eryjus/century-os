@@ -107,6 +107,20 @@ archsize_t MmuVirtToPhys(void *addr);
 
 
 //
+// -- Get the current MMU top user table
+//    ----------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t MmuGetTopUserTable(void);
+
+
+//
+// -- Set the current MMU top user table
+//    ----------------------------------
+EXTERN_C EXPORT KERNEL
+void MmuSetTopUserTable(archsize_t tbl);
+
+
+//
 // -- Check a structure to see if it is fully mapped
 //    ----------------------------------------------
 #define IS_MAPPED(a,z) ({                                                                                       \
@@ -123,4 +137,10 @@ archsize_t MmuVirtToPhys(void *addr);
 EXTERN EXPORT KERNEL_DATA
 Spinlock_t frameClearLock;
 
+
+//
+// -- This is the lock used for MMU_TOP_TABLE_FROM and MMU_TOP_TABLE_TO
+//    -----------------------------------------------------------------
+EXTERN EXPORT KERNEL_BSS
+Spinlock_t mmuCopyLock;
 

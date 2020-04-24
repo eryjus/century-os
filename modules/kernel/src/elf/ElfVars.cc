@@ -1,6 +1,6 @@
 //===================================================================================================================
 //
-//  MmuVars.cc -- Common variables for the MMU
+//  ElfVars.cc -- Variables used to load an ELF image
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
@@ -10,35 +10,19 @@
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Dec-22  Initial  v0.5.0b  ADCL  Initial Version
+//  2020-Apr-20  Initial  v0.7.0a  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "cpu.h"
 #include "spinlock.h"
-#include "mmu.h"
+#include "elf.h"
 
 
 //
-// -- This spinlock is used to control access to the address space to clear the frame
-//    -------------------------------------------------------------------------------
+// -- This is the spinlock required to access ELF_TEMP_HEADER
+//    -------------------------------------------------------
 EXPORT KERNEL_BSS
-Spinlock_t frameClearLock;
-
-
-//
-// -- This is used to control the flushes for the TLB buffer
-//    ------------------------------------------------------
-EXPORT KERNEL_BSS
-TlbFlush_t tlbFlush;
-
-
-//
-// -- This is the lock used for MMU_TOP_TABLE_FROM and MMU_TOP_TABLE_TO
-//    -----------------------------------------------------------------
-EXPORT KERNEL_BSS
-Spinlock_t mmuCopyLock;
-
+Spinlock_t elfHdrLock = {0};
 

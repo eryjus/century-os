@@ -27,6 +27,7 @@
 //
 // -- Pop a node off the stack; stack must be locked to call this function
 //    --------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void PmmPop(PmmFrameInfo_t *stack)
 {
 //    kprintf("Popping a node off the stack at %p\n", stack);

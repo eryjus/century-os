@@ -27,6 +27,7 @@
 //
 // -- Push a new node onto the stack; stack must be locked to call this function
 //    --------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void PmmPush(PmmFrameInfo_t *stack, frame_t frame, size_t count)
 {
 //    kprintf("Pushing a node onto the stack at %p (frame: %x; size: %d)\n", stack, frame, count);

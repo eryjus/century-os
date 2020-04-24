@@ -82,3 +82,10 @@ void InvalidatePage(archsize_t addr);
 EXTERN_C EXPORT KERNEL
 void MmuDumpTables(archsize_t addr);
 
+
+//
+// -- Make a top-level MMU table for user space
+//    -----------------------------------------
+EXTERN_C EXPORT KERNEL
+void MmuMakeTopUserTable(frame_t frame);
+

@@ -65,6 +65,7 @@ void CoresStart(void)
     kprintf("Memory remapped\n");
 
     cpus.perCpuData[0].location = ArchCpuLocation();
+    cpus.perCpuData[0].tss.esp0 = currentThread->tosKernel;
 
     for (int i = 1; i < cpus.cpusDiscovered; i ++) {
         cpus.cpuStarting = i;

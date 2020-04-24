@@ -85,6 +85,10 @@ FONT_WIDTH                      8
 EXCEPT_VECTOR_TABLE             0xff401000
 
 
+##
+## -- ELF-related loading
+##    -------------------
+ELF_TEMP_HEADER                 0xff409000
 
 
 ##
@@ -98,3 +102,7 @@ DEBUG_COMMAND_LEN               256
 ## -- Message queue constants
 ##    -----------------------
 MSGMNI                          500
+
+
+
+

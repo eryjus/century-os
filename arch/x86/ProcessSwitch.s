@@ -136,6 +136,14 @@ ProcessSwitch:
         mov     dword [edi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running
         mov     eax,dword [edi+PROC_PRIORITY]   ;; get the priority, which becomes the next quantum
         add     dword [edi+PROC_QUANTUM_LEFT],eax   ;; add it to the amount left to overcome "overdrawn" procs
+
+;;
+;; -- Here we redecorate the TSS
+;;    --------------------------
+        mov     ecx,[edi+PROC_TOS_KERNEL]   ;; get the TOS for the kernel
+        mov     eax,[gs:4]                  ;; get the cpu struct address
+        mov     [eax+60],ecx                ;; and set the new kernel stack
+
         mov     eax,[edi+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
         mov     ecx,cr3                     ;; get the current paging tables
 
