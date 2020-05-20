@@ -19,43 +19,75 @@
 #include "types.h"
 #include "printf.h"
 #include "cpu.h"
+#include "mmu.h"
 #include "interrupt.h"
 
 
 EXPORT KERNEL_DATA
 const char *causes[] = {
-    "Unknown",                                                                      // 0b00000
-    "Alignment Fault (fault on first lookup)",                                      // 0b00001
-    "Debug event",                                                                  // 0b00010
-    "Access Flag fault (First level)",                                              // 0b00011
-    "Fault on instruction cache maintenance",                                       // 0b00100
-    "Translation fault (First level)",                                              // 0b00101
-    "Access Flag fault (Second level)",                                             // 0b00110
-    "Translation fault (Second level)",                                             // 0b00111
-    "Synchronous external abort",                                                   // 0b01000
-    "Domain fault (First level)",                                                   // 0b01001
-    "Unknown",                                                                      // 0b01010
-    "Domain fault (Second level)",                                                  // 0b01011
-    "Synchronous external abort on translation table walk (First level)",           // 0b01100
-    "Permission fault (First level)",                                               // 0b01101
-    "Synchronous external abort on translation table walk (Second level)",          // 0b01110
-    "Permission fault (Second level)",                                              // 0b01111
-    "TLB conflict abort",                                                           // 0b10000
-    "Unknown",                                                                      // 0b10001
-    "Unknown",                                                                      // 0b10010
-    "Unknown",                                                                      // 0b10011
-    "Implementation Defined Lockdown",                                              // 0b10100
-    "Unknown",                                                                      // 0b10101
-    "Asynchronous external abort",                                                  // 0b10110
-    "Unknown",                                                                      // 0b10111
-    "Asynchronous parity error on memory access",                                   // 0b11000
-    "Synchronous parity error on memory access",                                    // 0b11001
-    "Implementation Defined coprocessor",                                           // 0b11010
-    "Unknown",                                                                      // 0b11011
-    "Synchronous parity error on translation table walk (First level)",             // 0b11100
-    "Unknown",                                                                      // 0b11101
-    "Synchronous parity error on translation table walk (Second level)",            // 0b11110
-    "Unknown",                                                                      // 0b11111
+    "Unknown",                                                                          // 0b000000
+    "Unknown",                                                                          // 0b000001
+    "Unknown",                                                                          // 0b000010
+    "Unknown",                                                                          // 0b000011
+    "Unknown",                                                                          // 0b000100
+    "Translation Fault -- Level 1",                                                     // 0b000101
+    "Translation Fault -- Level 2",                                                     // 0b000110
+    "Translation Fault -- Level 3",                                                     // 0b000111
+    "Unknown",                                                                          // 0b001000
+    "Access Flag Fault -- Level 1",                                                     // 0b001001
+    "Access Flag Fault -- Level 2",                                                     // 0b001010
+    "Access Flag Fault -- Level 3",                                                     // 0b001011
+    "Unknown",                                                                          // 0b001100
+    "Permission Flag Fault -- Level 1",                                                 // 0b001101
+    "Permission Flag Fault -- Level 2",                                                 // 0b001110
+    "Permission Flag Fault -- Level 3",                                                 // 0b001111
+    "Synchronous External Abort",                                                       // 0b010000
+    "Asynchronous External Abort",                                                      // 0b010001
+    "Unknown",                                                                          // 0b010011
+    "Unknown",                                                                          // 0b010100
+    "Synchronous External Abort on Translation Table Walk -- Level 1",                  // 0b010101
+    "Synchronous External Abort on Translation Table Walk -- Level 2",                  // 0b010110
+    "Synchronous External Abort on Translation Table Walk -- Level 3",                  // 0b010111
+    "Unknown",                                                                          // 0b011000
+    "Asynchronous Parity Error on Memory Access",                                       // 0b011001
+    "Unknown",                                                                          // 0b011010
+    "Unknown",                                                                          // 0b011011
+    "Unknown",                                                                          // 0b011100
+    "Synchronous Parity Error on Memory Access on Translation Table Walk -- Level 1",   // 0b011101
+    "Synchronous Parity Error on Memory Access on Translation Table Walk -- Level 2",   // 0b011110
+    "Synchronous Parity Error on Memory Access on Translation Table Walk -- Level 3",   // 0b011111
+    "Unknown",                                                                          // 0b100000
+    "Alignment Fault",                                                                  // 0b100001
+    "Debug Event",                                                                      // 0b100010
+    "Unknown",                                                                          // 0b100011
+    "Unknown",                                                                          // 0b100100
+    "Unknown",                                                                          // 0b100101
+    "Unknown",                                                                          // 0b100110
+    "Unknown",                                                                          // 0b100111
+    "Unknown",                                                                          // 0b101000
+    "Unknown",                                                                          // 0b101001
+    "Unknown",                                                                          // 0b101010
+    "Unknown",                                                                          // 0b101011
+    "Unknown",                                                                          // 0b101100
+    "Unknown",                                                                          // 0b101101
+    "Unknown",                                                                          // 0b101110
+    "Unknown",                                                                          // 0b101111
+    "TLB Conflict Abort",                                                               // 0b110000
+    "Unknown",                                                                          // 0b110001
+    "Unknown",                                                                          // 0b110010
+    "Unknown",                                                                          // 0b110011
+    "Implementation Defined",                                                           // 0b110100
+    "Unknown",                                                                          // 0b110101
+    "Unknown",                                                                          // 0b110110
+    "Unknown",                                                                          // 0b110111
+    "Unknown",                                                                          // 0b111000
+    "Unknown",                                                                          // 0b111001
+    "Implementation Defined",                                                           // 0b111010
+    "Unknown",                                                                          // 0b111011
+    "Unknown",                                                                          // 0b111100
+    "Domain Fault -- Level 1",                                                          // 0b111101
+    "Domain Fault -- Level 2",                                                          // 0b111110
+    "Domain Fault -- Level 3",                                                          // 0b111111
 };
 
 
@@ -67,13 +99,18 @@ EXTERN_C EXPORT KERNEL
 void DataAbortHandler(isrRegs_t *regs)
 {
     archsize_t dfsr = ReadDFSR();
-    int cause = ((dfsr & (1 << 10)) >> 6) | (dfsr & 0xf);
+    int cause = (dfsr & 0x3f);
 
     kprintf("Data Exception:\n");
     kprintf(".. Data Fault Address: %p\n", ReadDFAR());
+    if (dfsr & (1<<13)) kprintf(".. Cache Maintenance Fault\n");
+    if (dfsr & (1<<12)) kprintf(".. External Abort\n");
+    kprintf(".. Fault occurred because of a %s\n", (dfsr&(1<<11)?"write":"read"));
+    kprintf(".. LPAE is %s\n", dfsr & (1<<9) ? "enabled" : "disabled");
     kprintf(".. Data Fault Status Register: %p\n", dfsr);
     kprintf(".. Fault status %x: %s\n", cause, causes[cause]);
-    kprintf(".. Fault occurred because of a %s\n", (dfsr&(1<<11)?"write":"read"));
+
+    MmuDumpTables(ReadDFAR());
 
     IsrDumpState(regs);
 }

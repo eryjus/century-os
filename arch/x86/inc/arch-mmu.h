@@ -89,3 +89,10 @@ void MmuDumpTables(archsize_t addr);
 EXTERN_C EXPORT KERNEL
 void MmuMakeTopUserTable(frame_t frame);
 
+//
+// -- Get the current MMU top user table
+//    ----------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t MmuGetTopTable(archsize_t addr);
+
+

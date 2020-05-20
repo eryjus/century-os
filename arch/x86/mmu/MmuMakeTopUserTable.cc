@@ -26,7 +26,7 @@ EXTERN_C EXPORT KERNEL
 void MmuMakeTopUserTable(archsize_t frame)
 {
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(mmuCopyLock) {
-        MmuMapToFrame(MMU_TOP_TABLE_FROM, MmuGetTopUserTable() >> 12, PG_KRN | PG_WRT);
+        MmuMapToFrame(MMU_TOP_TABLE_FROM, MmuGetTopTable(0) >> 12, PG_KRN | PG_WRT);
         MmuMapToFrame(MMU_TOP_TABLE_TO, frame, PG_KRN | PG_WRT);
 
         PageEntry_t *from = (PageEntry_t *)MMU_TOP_TABLE_FROM;

@@ -11,6 +11,7 @@
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2020-Jan-12  Initial  v0.5.0e  ADCL  Initial version
+//  2020-Apr-30  Initial  v0.7.0a  ADCL  Rewrite the MMU code
 //
 //===================================================================================================================
 
@@ -21,22 +22,31 @@
 #include "mmu.h"
 
 
+
 //
-// -- Check for the page and unmap if it is mapped.
+// -- Convert the virtual address to a physical one
 //    ---------------------------------------------
 EXTERN_C EXPORT KERNEL
-archsize_t MmuVirtToPhys(void *addr)
+archsize_t MmuVirtToPhys(archsize_t addr)
 {
-    archsize_t a = (archsize_t)addr;
+    LongDescriptor_t *lvl2;
+    LongDescriptor_t *lvl3;
 
-    Ttl1_t *ttl1Table = (Ttl1_t *)(ARMV7_TTL1_TABLE_VADDR);
-    Ttl1_t *ttl1Entry = &ttl1Table[a >> 20];
-    Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
-    Ttl2_t *ttl2Entry = &ttl2Tables[a >> 12];
+    if (addr & 0x80000000) {
+        lvl2 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL2;
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL3;
+    } else {
+        lvl2 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL2;
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL3;
+    }
 
-    if (ttl1Entry->fault == ARMV7_MMU_FAULT) return -1;
-    if (ttl2Entry->fault == ARMV7_MMU_FAULT) return -1;
+    LongDescriptor_t *entry = &lvl2[LEVEL2ENT(addr)];
 
-    // -- apply the proper offset to the physical frame!
-    return (ttl2Entry->frame << 12) | (a & 0xfff);
+    if (entry->present == 0) return -1;
+
+    entry = &lvl3[LEVEL3ENT(addr)];
+
+    if (entry->present == 0) return -1;
+
+    return (entry->physAddress << 12) | (addr & (PAGE_SIZE - 1));
 }

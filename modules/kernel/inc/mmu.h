@@ -92,25 +92,11 @@ bool MmuIsMapped(archsize_t addr);
 
 
 //
-// -- Create a new set of paging tables for a new process
-//    ---------------------------------------------------
-EXTERN_C EXPORT KERNEL
-frame_t MmuNewVirtualSpace(frame_t stack);
-
-
-//
 // -- Convert a virtual address to physical for the current paging tables
 //    returns -1 if not mapped, which should be an invalid (unaligned) address for most archs
 //    ---------------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
-archsize_t MmuVirtToPhys(void *addr);
-
-
-//
-// -- Get the current MMU top user table
-//    ----------------------------------
-EXTERN_C EXPORT KERNEL
-archsize_t MmuGetTopUserTable(void);
+archsize_t MmuVirtToPhys(archsize_t addr);
 
 
 //

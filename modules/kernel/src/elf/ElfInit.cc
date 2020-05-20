@@ -72,6 +72,6 @@ exit:
         MmuUnmapPage(ELF_TEMP_HEADER);
         SPINLOCK_RLS_RESTORE_INT(elfHdrLock, flags);
 
-        if (proc) ProcessReady(proc);
+//        if (proc) ProcessReady(proc);
     }
 }

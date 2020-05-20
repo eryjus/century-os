@@ -34,119 +34,74 @@
 
 
 //
-// -- Helper function to create and map a new table
-//    ----------------------------------------------------------------------------------------------
-EXTERN_C HIDDEN KERNEL
-frame_t MmuMakeTtl2Table(archsize_t addr, int flags)
-{
-    //
-    // -- We have been asked to create a new TTL2 table.  We got here, so we know we need a frame.
-    //    Go get it.
-    //    ----------------------------------------------------------------------------------------
-    frame_t frame = PmmAllocateFrame();
-    MmuClearFrame(frame);
-
-
-    //
-    // -- The next order of business is to map this into the Management table.  This needs to be done for
-    //    every new table, so there is nothing to check -- we know we need to do this.
-    //    -----------------------------------------------------------------------------------------------
-    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
-
-    WriteDCCMVAC((uint32_t)ttl2Entry);
-    InvalidatePage(addr);
-
-    ttl2Entry = KRN_TTL2_MGMT(addr);
-    ttl2Entry->frame = frame;
-    ttl2Entry->s = ARMV7_SHARABLE_TRUE;
-    ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
-    ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
-    ttl2Entry->tex = ARMV7_MMU_TEX_NORMAL;
-    ttl2Entry->c = ARMV7_MMU_CACHED;
-    ttl2Entry->b = ARMV7_MMU_BUFFERED;
-    ttl2Entry->nG = ARMV7_MMU_GLOBAL;
-    ttl2Entry->fault = ARMV7_MMU_DATA_PAGE;
-
-    WriteDCCMVAC((uint32_t)ttl2Entry);
-    InvalidatePage(addr);
-
-
-    //
-    // -- Note that we will not actually map this into the TTL1 table.  The calling function holds that
-    //    responsibility.  Therefore, the only thing left to do is to return the frame we have allocated
-    //    and prepared to be a TTL2 table.
-    //    ----------------------------------------------------------------------------------------------
-    WriteBPIALLIS();
-    MemoryBarrier();
-
-    return frame;
-}
-
-
-
-//==================================================================================================================
-
-
-//
 // -- Map a page to a frame
 //    ---------------------
 EXTERN_C EXPORT KERNEL
-void MmuMapToFrame(archsize_t addr, frame_t frame, int flags)
+void MmuMapToFrame(archsize_t addr, frame_t frame, int pgFlags)
 {
-    // -- refuse to map frame 0 for security reasons
+    // -- refuse to map addr/frame 0 for security reasons
     if (!frame || !addr) {
         return;
     }
 
+    LongDescriptor_t *lvl2;
+    LongDescriptor_t *lvl3;
 
-    //
-    // -- The first order of business is to check if we have a TTL2 table for this address.  We will know this
-    //    by checking the TTL1 Entry and checking the fault field.
-    //    ----------------------------------------------------------------------------------------------------
-//    kprintf("Checking for TTL1 entry (%p; %x)....\n", addr, TTL1_ENTRY(addr, flags)->fault);
-    if (KRN_TTL1_ENTRY(addr)->fault == ARMV7_MMU_FAULT) {
-//        kprintf("TTL1 entry is not mapped to a TTL2 table; creating\n");
-        frame_t ttl2 = MmuMakeTtl2Table(addr, flags);
-        Ttl1_t *ttl1Entry = KRN_TTL1_ENTRY4(addr);
-
-        for (int i = 0; i < 4; i ++) {
-            ttl1Entry[i].ttl2 = (ttl2 << 2) + i;
-            ttl1Entry[i].fault = ARMV7_MMU_TTL2;
-
-            WriteDCCMVAC((uint32_t)&ttl1Entry[i]);
-            InvalidatePage((uint32_t)&ttl1Entry[i]);
-            MemoryBarrier();
-        }
+    if (addr & 0x80000000) {
+        lvl2 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL2;
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL3;
+    } else {
+        lvl2 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL2;
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL3;
     }
 
+    LongDescriptor_t *entry = &lvl2[LEVEL2ENT(addr)];
 
-    //
-    // -- At this point, we know we have a ttl2 table and the management entries are all set up properly.  It
-    //    is just a matter of mapping the address.
-    //    ---------------------------------------------------------------------------------------------------
-//    kprintf("Checking for TTL2 entry....\n");
-    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(addr);
-//    kprintf("ttl2Entry has been set: %p\n", ttl2Entry);
+    if (entry->present == 0) {
+        entry->physAddress = PmmAllocateFrame();
+        MmuClearFrame(entry->physAddress);
+        entry->xn = 1;
+        entry->pxn = 1;
+        entry->software = 0;
+        entry->contiguous = 0;
+        entry->nG = 0;
+        entry->af = 1;
+        entry->sh = 0b11;
+        entry->ap = 0b01;
+        entry->ns = 1;
+        entry->attrIndex = 0b000;
+        entry->flag = 1;
+        entry->present = 1;
 
-    if (ttl2Entry->fault != ARMV7_MMU_FAULT) return;
+        WriteDCCMVAC((uint32_t)entry);
+        InvalidatePage(addr);
+        MemoryResynchronization();
+    }
 
-//    kprintf("mapping the page\n");
+    entry = &lvl3[LEVEL3ENT(addr)];
+    InvalidatePage((archsize_t)entry);
+    MemoryResynchronization();
 
-    WriteDCCMVAC((uint32_t)ttl2Entry);
+    if (!assert_msg(entry->present == 0, "Refusing to remap already mapped page")) {
+        return;
+    }
+
+    entry->physAddress = frame;
+    entry->xn = (pgFlags & PG_WRT ? 1 : 0);
+    entry->pxn = (pgFlags & PG_WRT ? 1 : 0);
+    entry->software = 0;
+    entry->contiguous = 0;
+    entry->nG = 0;
+    entry->af = 1;
+    entry->sh = 0b11;
+    entry->ap = (pgFlags & PG_KRN ? 0b00 : 0b01);
+    entry->ns = 0;
+    entry->attrIndex = (pgFlags & PG_DEVICE ? 0b010 : 0b000);
+    entry->flag = 1;
+    entry->present = 1;
+
+    WriteDCCMVAC((uint32_t)entry);
     InvalidatePage(addr);
-
-    ttl2Entry->frame = frame;
-    ttl2Entry->s = ARMV7_SHARABLE_TRUE;
-    ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
-    ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
-    ttl2Entry->tex = (flags&PG_DEVICE?ARMV7_MMU_TEX_DEVICE:ARMV7_MMU_TEX_NORMAL);
-    ttl2Entry->c = (flags&PG_DEVICE?ARMV7_MMU_UNCACHED:ARMV7_MMU_CACHED);
-    ttl2Entry->b = (flags&PG_DEVICE?ARMV7_MMU_UNBUFFERED:ARMV7_MMU_BUFFERED);
-    ttl2Entry->nG = ARMV7_MMU_GLOBAL;
-    ttl2Entry->fault = ARMV7_MMU_CODE_PAGE;
-
-    WriteDCCMVAC((uint32_t)ttl2Entry);
-    InvalidatePage(addr);
-    MemoryBarrier();
+    MemoryResynchronization();
 }
 

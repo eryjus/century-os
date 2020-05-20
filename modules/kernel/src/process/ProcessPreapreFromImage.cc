@@ -29,8 +29,8 @@
 EXTERN_C EXPORT KERNEL
 Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, const char *name)
 {
-    archsize_t save = MmuGetTopUserTable();
-    archsize_t newMmu = PmmAllocAlignedFrames(MMU_TOP_TABLE_COUNT, 14);     // if count is 1, alignment is ignored
+    archsize_t save = MmuGetTopTable(0);
+    archsize_t newMmu = PmmAllocateFrame();
 
     kprintf("The temporary top level paging tables will be %p\n", newMmu);
 

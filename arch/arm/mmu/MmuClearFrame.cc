@@ -37,24 +37,8 @@ void MmuClearFrame(frame_t frame)
     //    it is a critical section and needs to be synchronized.  Therefore, obtain a lock before
     //    attempting to use that address.  This will always be done in kernel space.
     //    -----------------------------------------------------------------------------------------------
-    Ttl2_t *ttl2Entry = KRN_TTL2_ENTRY(MMU_CLEAR_FRAME);
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(frameClearLock) {
-        WriteDCCMVAC((uint32_t)ttl2Entry);
-        InvalidatePage(MMU_CLEAR_FRAME);
-
-        ttl2Entry->frame = frame;
-        ttl2Entry->s = ARMV7_SHARABLE_TRUE;
-        ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
-        ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
-        ttl2Entry->tex = ARMV7_MMU_TEX_NORMAL;
-        ttl2Entry->c = ARMV7_MMU_CACHED;
-        ttl2Entry->b = ARMV7_MMU_BUFFERED;
-        ttl2Entry->nG = ARMV7_MMU_GLOBAL;
-        ttl2Entry->fault = ARMV7_MMU_DATA_PAGE;
-
-        WriteDCCMVAC((uint32_t)ttl2Entry);
-        InvalidatePage(MMU_CLEAR_FRAME);
-
+        MmuMapToFrame(MMU_CLEAR_FRAME, frame, PG_KRN | PG_WRT);
         kMemSetB((void *)MMU_CLEAR_FRAME, 0, FRAME_SIZE);
         MmuUnmapPage(MMU_CLEAR_FRAME);
         SPINLOCK_RLS_RESTORE_INT(frameClearLock, flags);

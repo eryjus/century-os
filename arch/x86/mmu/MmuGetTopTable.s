@@ -1,6 +1,6 @@
 ;;===================================================================================================================
 ;;
-;;  MmuGetTopUserTable.s -- Return the top-level user MMU table value
+;;  MmuGetTopTable.s -- Return the top-level user MMU table value
 ;;
 ;;        Copyright (c)  2017-2020 -- Adam Clark
 ;;        Licensed under "THE BEER-WARE LICENSE"
@@ -18,7 +18,7 @@
 ;;
 ;; -- Expose labels to fucntions that the linker can pick up
 ;;    ------------------------------------------------------
-    global MmuGetTopUserTable
+    global MmuGetTopTable
 
 
 ;;
@@ -29,9 +29,9 @@
 
 
 ;;
-;; -- MmuGetTopUserTable -- get the CR3
+;; -- MmuGetTopTable -- get the CR3
 ;;    ---------------------------------
-MmuGetTopUserTable:
+MmuGetTopTable:
     mov     eax,cr3
     ret
 

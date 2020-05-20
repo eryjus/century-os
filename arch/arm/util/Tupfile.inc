@@ -29,7 +29,8 @@ OC = arm-none-eabi-objcopy
 ##    -----------------------------
 CFLAGS += -mlittle-endian
 CFLAGS += -mcpu=cortex-a7
-CFLAGS += -mfpu=neon-vfpv4
-CFLAGS += -mfloat-abi=hard
 
+## -- dumb this down for qemu
+CFLAGS += -mfpu=vfpv2
+CFLAGS += -mfloat-abi=hard
 

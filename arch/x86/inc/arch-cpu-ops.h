@@ -58,7 +58,7 @@ void WRMSR(uint32_t r, uint64_t v) {
 #define MemoryBarrier() __sync_synchronize()
 #define EntireSystemMemoryBarrier() __asm volatile("wbinvd":::"memory")
 #define MemoryResynchronization() __asm volatile("wbinvd":::"memory")
-#define ClearInsutructionPipeline() __asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")
+#define ClearInstructionPipeline() __asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")
 
 
 //

@@ -12,6 +12,7 @@
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Nov-21  Initial   0.2.0   ADCL  Initial version
 //  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-30  Initial  v0.7.0a  ADCL  Rewrite the MMU code
 //
 //===================================================================================================================
 
@@ -29,27 +30,22 @@
 EXTERN_C EXPORT KERNEL
 frame_t MmuUnmapPage(archsize_t addr)
 {
+    LongDescriptor_t *lvl3;
     frame_t rv = 0;
+
+    if (addr & 0x80000000) {
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL3;
+    } else {
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL3;
+    }
 
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
         tlbFlush.addr = -1;
         PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
 
-        Ttl1_t *ttl1Table = (Ttl1_t *)(ARMV7_TTL1_TABLE_VADDR);
-        Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];
-        Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
-        Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
-
-        if (ttl1Entry->fault == ARMV7_MMU_FAULT) goto exit;
-        if (ttl2Entry->fault == ARMV7_MMU_FAULT) goto exit;
-
-        rv = ttl2Entry->frame;
-        *(uint32_t *)ttl2Entry = 0;
-
-exit:
-        WriteDCCMVAC((uint32_t)ttl2Entry);
+        rv = lvl3[LEVEL3ENT(addr)].physAddress;
+        *(uint64_t *)&lvl3[LEVEL3ENT(addr)] = 0;
         InvalidatePage(addr);
-
 
         //
         // -- Finally, wait for all the CPUs to complete the flush before continuing
@@ -57,12 +53,8 @@ exit:
         AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
-        if (picControl->ipiReady) {
-            while (AtomicRead(&tlbFlush.count) != 0) {
-                WriteDCCMVAC((archsize_t)&tlbFlush.count);
-                InvalidatePage((archsize_t)&tlbFlush.count);
-//                ProcessMilliSleep(150);
-            }
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
+//            ProcessMilliSleep(20);
         }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);

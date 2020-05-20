@@ -222,7 +222,7 @@ void kInit(void)
             img->frame[img->frameCount ++] = j;
         }
 
-        ElfInit(img, GetAvailModuleIdent(i));
+        //ElfInit(img, GetAvailModuleIdent(i));
     }
 
 

@@ -923,3 +923,1577 @@ So the problem here is that I need to clean up a user process, but I am using th
 
 This completes the setup for x86.  I am now able to launch a user-space process.  Now to debug the rpi2b.   This ought to be fun, since I do not have the ability to get execution logs like I do for x86!
 
+Again, let the faults begin!!!!!
+
+```
+Data Exception:
+.. Data Fault Address: 0xff404000
+.. Data Fault Status Register: 0x00000085
+.. Fault status 0x5: Translation fault (First level)
+.. Fault occurred because of a read
+At address: 0xff800f20
+ R0: 0x00008000   R1: 0x000001e7   R2: 0x00000000
+ R3: 0xff404000   R4: 0x00000000   R5: 0x00008000
+ R6: 0x00000000   R7: 0x000001e7   R8: 0x90000614
+ R9: 0x3fd01000  R10: 0x00000001  R11: 0xff409000
+R12: 0x00000000   SP: 0x80806470   LR_ret: 0x8080405c
+SPSR_ret: 0x200001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xfffbd6bf  User SP: 0xffefead3
+Svc LR: 0xff800f30
+```
+
+This first fault is in `MmuMapToFrame()`.  This makes me wonder if I properly have the user- and kernel- `TTBRn`s set properly.
+
+So, I think I have a few things to work out here:
+1. Get the `TTBR0` populated properly
+1. Set the bits to properly split the `TTBRn` registers
+1. Make sure `PmmAllocAlignedFrames()` will allocate aligned frames (likely not complete from the PMM rewrite)
+
+So, for clarification:
+
+> If N == 0 then use `TTBR0`. Setting `TTBCR.N` to zero disables use of a second set of translation tables.
+> if N > 0 then:
+> — if bits[31:32-N] of the input VA are all zero then use `TTBR0`
+> — otherwise use `TTBR1`
+
+So, either the `TTBR0` is used.  Or, if the `TTBCR` has been prepared, the `TTBR0` contains the user Virtual Address and the TTBR1 contains the kernel virtual address.  So, let's check what is set up.  A quick search indicates I am not setting this value.
+
+Well, crap!  it looks like I have confused the `TTBCR` with the TTBR0 in `ProcessSwitch()` and in `MmuGetTopUserTables()`.  How the hell was this working!!??
+
+For the record, the registers are:
+* `TTBCR`: p15,0,r?,c2,c0,2
+* `TTBR0`: p15,0,r?,c2,c0,0
+* `TTBR1`: p15,0,R?,c2,c0,1
+
+OK, I take it back.....  All 3 registers are being set properly in `entry` and `entryAp`.  The other functions are correct as well.
+
+OK, now I am deadlocking (or infinite faulting).  This is most likely because of some bad memory mapping.
+
+---
+
+After spending some time thinking about this, I am not certain I have the armv7 user-mode tables properly implemented in code for mapping and unmapping.  I think it is all going in the kernel tables.  This will have to be my task for tomorrow.
+
+---
+
+### 2020-Apr-25
+
+OK, checking in on armv7's `MmuMapToFrame()`, there is no code to handle a split between user-space tables and kernel-space tables.  So that will need to be cleaned up.
+
+On the other hand, `PmmAllocAlignedFrames()` appears to have the proper code to handle the alignment.  I don't recall working on that, but I must have.
+
+So, the problem with arm is that there is no cute recursive mapping trick that can be done -- it is all done by brute force.  This means that on a process change, I need to remap the TTL1 tables for maintenance (pages `0xff404000` and `0xff405000`) and the TTL2 tables for maintenance (for addresses from `0xffc00000` to `0xffdfffff`).  That's 2MB + 8KB that all need to be maintained on every task change.  That is *not* going to be efficient!  So, the question then becomes -- Should I create the system so that the user-space TTL2 tables are *only* mapped when we are about to do maintenance?  This would certainly reduce the overhead, but I would also need to disable interrupts during this maintenance.  It would be fussy for sure.  But, that may have to be the way to go.
+
+This will be a complete rewrite of the MMU for arm.
+
+So, I think I can map the user-TTL1 tables on process change (only 2 pages to map).  This should not create any performance problems.  However, when I need to map an actual page, I think I will need to map the proper TTL2 table page to a work frame.  Also, since the mapping is only temporary and will be specific to the CPU (1 page per for maintenance), so there is only need to flush the specific core when unmapping.  Having 1 address per CPU will reduce contention, but will also limit the number of CPUs that can be supported in the future....  I am planning on having this in the same space as the GDT for x86 (the requirements are mututally exclusive so there will be no conflict).  If need be, I can move this up to address `0xffc00000` where there is nothing.
+
+I am struggling (again) to be able to articulate what I functions and addresses I need to maintain and what is mapped where.  This will likely need to be done on a piece of paper.
+
+---
+
+So, after some time with the paper, I am left wondering if I even need to go farther back in the design....  I had taken a frame and mapped all 4 TTL2 tables in that page.  Well, perhaps I need to map more on demand than I am at the moment.  More to the point, maybe when I need a TTL2 table, I map just 1K of the frame and wait for the next request to map the next one (likely somewhere else in memory).
+
+I asked on `freenode#osdev`:
+
+> [20:34:10] <eryjus> i uncovered a fatal flaw with mmu code for armv7.  It requires a total rewrite -- very little can be salvaged, so everything is on the table to change.  With that (and unrelated to the fatal flaw), I am wondering how the 1K TTL2 tables are usually implemented.  are they usually kept contiguous as a 4K block and mapped into 4 consecutive aligned TTL1 entries, or are they usually scattered around and leveraged as needed?  I'm
+> [20:34:10] <eryjus> considering the latter and wondering how far out there my thinking is.
+> [20:43:29] <geist> yeah that's what i'd do
+> [20:43:39] <geist> if you're using 4K pages then that would be my suggestion
+> [20:43:50] <eryjus> and I am
+> [20:43:54] <geist> note with arm64 they went to a much more straightforward 4K/4K level
+> [20:44:03] <geist> the old 1K pages tables was finally retired
+> [20:44:17] <geist> also double check if you enabled LPAE if it doesn't switch to the 4K model
+> [20:44:32] <geist> depending on which v7 you have it may have LPAE feature, which iirc looks a lot closer to arm64 model
+> [20:44:57] <eryjus> its an rpi2b, and so I'm assuming not likely
+> [20:45:10] <geist> dont assume, that's a cortex-a7. may have LPAE
+> [20:45:35] <geist> yah cortex-a7 has LPAE
+> [20:45:53] <geist> so then look in the manual and see what that looks like. may be smipler to implement that
+> [20:46:12] <geist> iirc LPAE is much like how PAE is on x86: it's a 64bit physical 32bit virtual page table extension, but it also rearranges thigns a bit
+> [20:47:45] <geist> i have never actually programmed LPAE on 32bit arm, but i think at the back of my mind i remember it being different enough, and then maybe the 64bit stuff just picked it up and went with it? i forget
+> [20:48:53] <eryjus> yeah, I have never done PAE either, so not quite sure what I would be getting into.  I will have some reading to do for sure.
+> [20:49:15] <eryjus> s/either/at all/
+> [20:50:15] <geist> trouble is even if you treat 4 consequetive 1K pages you still have to contend with the top level 16KB page
+> [20:50:18] <geist> which is annoying as heck
+> [20:50:24] <geist> if you have a 4K PMM
+> [20:52:18] <eryjus> that how i currently do it and the PMM was written to handle aligned allocations from the start; it wasn't quite that annoying
+
+---
+
+### 2020-Apr-26
+
+So, with some additional reading last night before bed, I realize that LPAE is really still 32-bit addressing, but you have access fo 40-bits of physical memory to back that.  For some reason I thought that was backwards -- larger virtual space with smaller phyiscal, but then that makes no sense at all now that I am writing it down.
+
+So, the top level has 4 entries in it only.  Moreover, in my setup, `TTBR0` hold entries `{0, 1}` whereas `TTBR1` hold entries `{2, 3}`.  On entry, both the `TTBR0` and `TTBR1` will be set to the same level 1 table, and all 4 level 2 tables will be allocated/initialized.  I will save that for a Butler initialization task to clean up the first 2 level 2 tables (and should be able to confirm that nothing remains mapped).
+
+Now, there is this whole thing about mapping and unmapping addresses.  Instead of keeping everything mapped (like I do for x86), I will have a block of dedicated addresses for each CPU.  These addresses will be used for temporarily mapping each table for maintenance.  This means there will be some timing and contention among processes and task swaps and the addresses will have to be protected by disabling interrupts (since there is 1 block per CPU, there is no need for a spinlock).  At the moment, I think I can get all my management into a single address, so we are talking about a block of 1 address.  To make sure I do not run out, I will dedicate 4 pages per CPU.
+
+So....
+* Addresses `0xffc00000` - `0xffc0000c` will be used for CPU0
+* Addresses `0xffc00010` - `0xffc0001c` will be used for CPU1
+* Addresses `0xffc00020` - `0xffc0002c` will be used for CPU2
+* Addresses `0xffc00030` - `0xffc0003c` will be used for CPU3
+
+That said, I currently support only 4 CPUs, so this is reasonable.
+
+Finally, there has to be something I need to do to get the MMU into lpae mode....  I think that is in the `TTBCR`....  `TTBCR.EAE` is the bit to enable the lpae.
+
+The first task here is to break everything.
+
+I also need to set the MAIR values that will be used for my memory.  There are 2 registers which need values: `MAIR0` and `MAIR1`.  Right now, I only see the need for 2 types of memory: Device and Normal.  There are 8 buckets, so this is what I am thinking:
+
+* `Attr0`: value `0000 0000` for device memory
+* `Attr1`: value `0100 1011` for Normal memory (Normal memory, Outer Non-cacheable; Normal memory, Inner Write-Through Cacheable, Non-transient)
+* `Attr2`: Unused value `0000 0000`
+* `Attr3`: Unused value `0000 0000`
+* `Attr4`: Unused value `0000 0000`
+* `Attr5`: Unused value `0000 0000`
+* `Attr6`: Unused value `0000 0000`
+* `Attr7`: Unused value `0000 0000`
+
+This, then, means that `MAIR0` is written with a value of `0x00004b00` and `MAIR1` is written with a value of `0x00000000`.  Those changes were 1-time setup which was easy to add to the `entry` and `entryAp` sources.
+
+The next step is to map all the minimal structures in the `entry` source.  This will be a *major* overhaul of this source file.
+
+---
+
+### 2020-Apr-27
+
+Today I was able to start by getting the `entry` code all cleaned up.  `entryAp` should be good as well.  I also have a couple of additional functions I was able to move back into place.
+
+So, I can see 2 major functions I am missing: `MmuMapToFrame()` and `MmuUnmapPage()`.  I know there is at least one additional function, but let's get the big dogs out of the way.
+
+Well, shit.  As I get into the work for any of the actual mapping, in order to map a page I need a page mapped where I can change these table entries.  In order words, I need to map a table into an address before I can map a table into an address.
+
+So, maybe a little bit of rethinking is required.  Well, no 'maybe'.
+
+---
+
+OK, so I need to have a page mapped to the level 3 table for `0xffc00000`.  This page will be updated directly by the MMU functions, since this will be where the actual temporary mappings will take place.  I think I will use address `0xfffff000` for this purpose.  This also means I need to map that in `entry`.
+
+---
+
+### 2020-Apr-28
+
+I'm not quite feeling this today....  Too many issues at work.
+
+But, I am going to try to get the `MmuVirtToPhys()` function rewritten.  Let's see how I do....  Not gonna happen.  There is too much thinking required and I just do not have it in me today.
+
+The problem is that I am mapping mappings and I cannot keep them all straight today.
+
+---
+
+OK, so if I want to use address `0xffc00000` to manage the MMU tables, with the intent to map some frame with some structure therein.  That address is at level 1 index `3`, level 2 index `0x1fe`, and level 3 index `0`.  Therefore, I need to have the table for level 3 (level 2 index `0x1fe`) mapped to `0xfffff000`.  At that point, all I will need to do is update the mapping at `((uint64_t *)0xfffff000)[0]` and invalidate the page for `0xffc00000` and do the maintenance.
+
+I am saving the frame for address `0xffc00000` level 2 table in the variable `mmuMgmtTable` and also mapping that to `0xfffff000`, so that is not required.  The only thing that is necessary is to to the update to entry `0` and flush the TLB.
+
+In writing this, I have decided I need a more generic `MmuGetTopTable()` function that is responsible on the arm to determine what that correct value should be.  Now for that to work, I will need to be able to pass in an address for that table.  That piece I will work on tormorrow.  So far, the only thing that will have problems with that logic will be `ProcessPrepareFromImage()`, which should be able to work with a user-space address -- the kernel address will not need to change.
+
+---
+
+### 2020-Apr-30
+
+Well, I wasn't feeling it yesterday again.  I have a project going on for my day job that is taking a lot of my concentration and troubleshooting allotment for the day....
+
+---
+
+### 2020-May-01
+
+I was able to get through a good compile last night.  There is a ton of repitition in the code.  I hace not executed this code yet.  So that will be the first order of business today, but I also need to stop before I get too deep into the code and chech my work.  The first milestone is going to be to get to `LoaderMain()`.  And, of course, nothing.  See, the thing is I had all this debugging code already built into the arm `entry.s` and I removed it rather than retrofit it.
+
+So, I have to now go put it back in.
+
+So, with some simple character output, I have the following output:
+
+```
+Booting...
+ABC.
+```
+
+So, I get through the first `MakePageTable` call and set the global variable.  Then I get to the next `MakePageTable` call and it gets lost.  Hmmm.... am I clobbering state by overwriting `r0`?
+
+With this code:
+
+```S
+    push    {r0}
+    mov     r0,#'G'
+    bl      OutputChar
+    pop     {r0}
+
+    str     r1,[r0,r3]                          @@ load the upper record bits
+
+    push    {r0}
+    mov     r0,#'H'
+    bl      OutputChar
+    pop     {r0}
+```
+
+I have been able to narrow this down:
+
+```
+Sending the Entry point as 100060
+Waiting for the rpi to boot
+Booting...
+ABC....DEFG
+```
+
+to this instruction:
+
+```S
+    str     r1,[r0,r3]                          @@ load the upper record bits
+```
+
+So, what the hell is really going on here??  This looks right:
+
+
+```s
+1002ac:       e7801003        str     r1, [r0, r3]
+```
+
+But it's not.  `r0` is supposed to contain the value to load.  I gotta look at this again.  And I found it:
+
+```s
+    str     r1,[r5,r3]                          @@ load the upper record bits
+
+    add     r3,#4                               @@ move to the next word
+    str     r0,[r5,r3]                          @@ load the lower record bits
+```
+
+Notice the change of `r0` into `r5`...  This code was copied all over the place, so it's all suspect.
+
+With that change, I am able to get all the way to the point where I am about to enable paging.  So the next step here is to be able to dump some tables.
+
+```
+Booting...
+ABC....DEFGHIY
+```
+
+If I were getting paging properly enabled, I would also see `'Z'` printed.
+
+---
+
+### 2020-May-02
+
+I need a function to dump the tables for an address, before we turn paging on.  This will be in 100% assemply, of course.
+
+---
+
+Haha!!!  With this code:
+
+```s
+@@ -- Print some debugging information
+    push    {r0}
+    ldr     r0,=.paging
+    bl      OutputAddrTables
+    pop     {r0}
+
+
+
+@@ -- now we enable paging
+    mrc     p15,0,r1,c1,c0,0                    @@ This gets the cp15 register 1 and puts it in r0
+    orr     r1,#1                               @@ set bit 0
+    mcr     p15,0,r1,c1,c0,0                    @@ Put the cp15 register 1 back, with the MMU enabled
+.paging:
+```
+
+I am getting the following output:
+
+```
+Booting...
+ABC....DEFGHIY
+
+Before Paging Dump MMU Tables: Walking the page tables for address 0x001007bc
+
+Level  Tabl-Addr     Index        Entry Addr    Next PAddr    fault
+-----  ----------    ----------   ----------    ----------    ----------
+  1    0x01002000    0x00000000   0x01002000    0x01003000    0x00000003
+  2    0x01003000    0x00000000   0x01003000    0x01008000    0x00000003
+  3    0x01008000    0x00000100   0x01008400    0x00000000    0x00000000
+```
+
+So, the page is really not mapped (or not mapped properly).
+
+I now know what is wrong...  so, why is it wrong?  It turns out my calculations were wrong:
+
+```s
+@@ -- now we can get into the process of mapping the kernel; starting with the multiboot code/data at 1MB...
+@@    Again, this can be statically calculated:
+@@    level 1 index: 0x00100000 >> 30 or 0x00 (so use the table in r6)
+@@    level 2 index: 0x00100000 >> 21 & 0x1ff or index 0x000 or offset 0x000 (so we want to update address [r6,#4])
+@@    level 3 index: 0x00100000 >> 12 & 0x1ff or index 0x100 or offset 0x800 (so we want to update addr [r5,#0x800])
+```
+
+That offset should be `0x400`!
+
+ok, so now:
+
+```
+Booting...
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x00100714
+
+Level  Tabl-Addr     Index        Entry Addr    Next PAddr    Attr Bits
+-----  ----------    ----------   ----------    ----------    ---------------------
+  1    0x01002000    0x00000000   0x01002000    0x01003000    0x00000000 0x00000003
+  2    0x01003000    0x00000000   0x01003000    0x01008000    0x00000000 0x00000003
+  3    0x01008000    0x00000100   0x01008400    0x00100000    0x00000000 0x00000027
+```
+
+Are the bits set correctly at level 3?  Not quite sure...   We have:
+* `present`
+* `pageFlag`
+* `attrIndex` == `0b001`
+* `ns`
+* and the rest are set to `0`.  How were these flags set before?  Well, an actual mapping looked like this:
+
+```c++
+    ttl2Entry->frame = frame;
+    ttl2Entry->s = ARMV7_SHARABLE_TRUE;
+    ttl2Entry->apx = ARMV7_MMU_APX_FULL_ACCESS;
+    ttl2Entry->ap = ARMV7_MMU_AP_FULL_ACCESS;
+    ttl2Entry->tex = (flags&PG_DEVICE?ARMV7_MMU_TEX_DEVICE:ARMV7_MMU_TEX_NORMAL);
+    ttl2Entry->c = (flags&PG_DEVICE?ARMV7_MMU_UNCACHED:ARMV7_MMU_CACHED);
+    ttl2Entry->b = (flags&PG_DEVICE?ARMV7_MMU_UNBUFFERED:ARMV7_MMU_BUFFERED);
+    ttl2Entry->nG = ARMV7_MMU_GLOBAL;
+    ttl2Entry->fault = ARMV7_MMU_CODE_PAGE;
+```
+
+I know I am missing setting the `LongPageDescriptor_t.sh` to `0b11`.  Also, I believe I should be setting `LongPageDescriptor_t.ap` to `0b01`.
+
+I believe that these bits should also be set for the page mapping.  It turns out that my bit handling was incorrect, as bits 8-11 were shifted over bits 0-3, so I was just `orr`ing the same bits.
+
+That fixed, I am now getting all the bits set properly.  But I am still not getting my `'Z'` char to print.
+
+It also looks like I had my `MAIR` nibbles backwards....  But that did not help either.
+
+Hmmm....
+
+```S
+@@ -- now we enable paging
+    mrc     p15,0,r1,c1,c0,0                    @@ This gets the cp15 register 1 and puts it in r0
+    orr     r1,#1                               @@ set bit 0
+    mcr     p15,0,r1,c1,c0,0                    @@ Put the cp15 register 1 back, with the MMU enabled
+.paging:
+
+
+    push    {r0}
+    mov     r0,#'Z'
+    bl      OutputChar
+    pop     {r0}
+```
+
+Maybe I am getting there and the stack is not set right, so I am faulting on the `push` to the stack.
+
+Well, while that was true, it was not *the* problem.  I think I am going to have to walk away for a bit and maybe resort to QEMU for some debugging.
+
+---
+
+```
+R00=00000327 R01=ffffffff R02=00000000 R03=00000ffc
+R04=0100f000 R05=0100e000 R06=01003000 R07=01004000
+R08=01005000 R09=01006000 R10=0002830f R11=000254cc
+R12=00000264 R13=01000ffc R14=00100100 R15=00100708
+PSR=200001d3 --C- A NS svc32
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x86000005
+...with IFSR 0x205 IFAR 0x100718
+```
+
+So, this tells me that I am genuinely faulting on the instruction page mapping.  Based on my prior analysis, I believe it to be mapped properly.
+
+Let's pick apart the `IFSR`.   But `0b10101` (or before adjusting the bits, `0x205`) is not defined by the ARM ARM.
+
+OK, I was looking at the wrong place....
+
+So, the `2` in `0x205` indicates that I am in lpae mode.  This is good.  So what is left is the `0x5` part of the status register.
+
+Bits 5:2 indicates that this is a Translation Fault and bit 1:0 show that this is at Level 1.  So, the Level 1 entry is not mapped.  But my output disagrees.
+
+Wait a minute!!  Could this be related to getting to the Level 1 table?  Probably!
+
+And in fact, with lpae enabled, the `TTBR0` and `TTBR1` registers become 64-bit (and the address I loaded into the 32-bit register is probably banked away)....
+
+---
+
+OK, I am wondering if the root of this is related to the `TTBCR` register....Currently, I am only setting bits 31 and 0.  Coult my problems be related to the `T0SZ` and `T1SZ` fields in the `TTBCR`???
+
+---
+
+### 2020-May-03
+
+OK, so let's map out how the `TTBCR` should look:
+
+|  Bits  |  Name  |  Desired Value |
+|:------:|:------:|:---------------|
+|   31   | EAE    | 1: Extended Address Enable |
+|   30   | ---    | 0: Impl Defnied |
+| 28-29  | SH1    | 11: Inner Sharable for `TTBR1` |
+| 26-27  | ORGN1  | 01: Outer Write-back Wite-allocate |
+| 24-25  | IRGN1  | 01: Inner Write-back Wite-allocate |
+|   23   | EPD1   | 0: Translation Table Walk Disable |
+|   22   | A1     | 0: ASID encoded in `TTBR0` |
+| 19-21  | ---    | 000: Ignored |
+| 16-18  | T1SZ   | 001: 2^31 sized memory region for `TTBR1` |
+| 14-15  | ---    | 00: Ignored |
+| 12-13  | SH0    | 11: Inner Sharable for `TTBR0` |
+| 10-11  | ORGN0  | 01: Outer Write-back Wite-allocate |
+|  8-9   | IRGN0  | 01: Inner Write-back Wite-allocate |
+|   7    | EPD0   | 0: Translation Table Walk Disable |
+|  3-6   | ---    | 0000: Ignored |
+|  0-2   | T0SZ   | 001: 2^31 size memory region for `TTBR0` |
+
+So, with this table, the bits to set are: `0b1011 0101 0000 0001 0011 0101 0000 0001`, or `0xb5013501`.
+
+Let's give that a try.
+
+---
+
+OK, maybe it is working and I'm trying to print something to the serial port when that address is no longer mapped....  Nope -- still nothing...
+
+So, let me see if I can articulate the problem for a gist before I ask for help:
+
+---
+
+I am getting a Pre-fetch Abort on the next instruction after I enable paging.  This pre-fetch abort reports a Level 1 Translation error for address `0x1007ac`.  That address is the instruction immediately after enabling paging.
+
+The pre-fetch abort looks like this:
+
+```
+IN:
+0x0010079c:  e49d0004  pop      {r0}
+0x001007a0:  ee111f10  mrc      p15, #0, r1, c1, c0, #0
+0x001007a4:  e3811001  orr      r1, r1, #1
+0x001007a8:  ee011f10  mcr      p15, #0, r1, c1, c0, #0
+
+R00=00000327 R01=ffffffff R02=00000000 R03=00000ffc
+R04=0100f000 R05=0100e000 R06=01003000 R07=01004000
+R08=01005000 R09=01006000 R10=0002830f R11=000254cc
+R12=00000264 R13=01000ffc R14=00100100 R15=0010079c
+PSR=200001d3 --C- A NS svc32
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x86000005
+...with IFSR 0x205 IFAR 0x1007ac
+```
+
+The value `0x205` in the `IFSR` indicates that:
+* LPAE is indeed enabled
+* This is a translation fault
+* The level of the translation fault is 1
+
+I am dumping critical tables and entries just before enabling paging, with the following results:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x001007b8
+
+.. TTBR0 entry is 0x00000000 0x01002000
+.. TTBR1 entry is 0x00000000 0x01002000
+.. TTBCR is 0xb5013501
+
+Level  Tabl-Addr     Index        Entry Addr    Next PAddr    Attr Bits
+-----  ----------    ----------   ----------    ----------    ---------------------
+  1    0x01002000    0x00000000   0x01002000    0x01003000    0x00000000 0x00000003
+  2    0x01003000    0x00000000   0x01003000    0x01008000    0x00000000 0x00000003
+  3    0x01008000    0x00000100   0x01008400    0x00100000    0x00000000 0x00000327
+```
+
+The TTBCR bits have the following meanings:
+
+|  Bits  |  Name  |  Desired Value |  Description  |
+|:------:|:------:|:--------------:|:--------------|
+|   31   | EAE    | 1 | Extended Address Enable |
+|   30   | ---    | 0 | Impl Defnied |
+| 28-29  | SH1    | 11 | Inner Sharable for `TTBR1` |
+| 26-27  | ORGN1  | 01 | Outer Write-back Wite-allocate |
+| 24-25  | IRGN1  | 01 | Inner Write-back Wite-allocate |
+|   23   | EPD1   | 0 | Translation Table Walk Disable |
+|   22   | A1     | 0 | ASID encoded in `TTBR0` |
+| 19-21  | ---    | 000 | Ignored |
+| 16-18  | T1SZ   | 001 | 2^31 sized memory region for `TTBR1` |
+| 14-15  | ---    | 00 | Ignored |
+| 12-13  | SH0    | 11 | Inner Sharable for `TTBR0` |
+| 10-11  | ORGN0  | 01 | Outer Write-back Wite-allocate |
+|  8-9   | IRGN0  | 01 | Inner Write-back Wite-allocate |
+|   7    | EPD0   | 0 | Translation Table Walk Disable |
+|  3-6   | ---    | 0000 | Ignored |
+|  0-2   | T0SZ   | 001 | 2^31 size memory region for `TTBR0` |
+
+This all looks reasonable to me, but I am still unable to determine a cause.
+
+For the moment, I am only making use of `MAIR` entries 0 and 1, so the value of the MAIR0 gets set to `0x0000bb00`.
+
+MAIR1 has the following meaning:
+* `0b1011` -- Normal memory, Outer Write-Through Cacheable, Non-transient, Outer Read-Allocate, Outer Write-Allocate.
+* `0b1011` -- Normal memory, Inner Write-Through Cacheable, Non-transient, Inner Read-Allocate, Inner Write-Allocate.
+
+MAIR0 has the following meaning:
+* `0b0000` -- Strongly-ordered or Device memory.
+* `0b0000` -- Strongly-ordered memory.
+
+I am not making use of `ASID`, so those values are 0.
+
+---
+
+Hmmm....
+
+> For a Translation fault, the lookup level of the translation table that gave the fault. If a fault occurs because an MMU is disabled, or because the input address is outside the range specified by the appropriate base address register or registers, the fault is reported as a First level fault.
+
+Am I setting this separation properly????
+
+Hmmm....  section B3.6.4 of the ARM ARM may hold a clue:
+
+| T0SZ  | T1SZ  | TTBR0 | TTBR1 |
+|:-----:|:-----:|:-----:|:-----:|
+| 0b000 | 0b000 | All addresses | Not used |
+| M     | 0b000 | Zero to (2 ^ (32-M) - 1) | 2 ^ 32-M to maximum input address |
+| 0b000 | N     | Zero to (2 ^ 32 - 2 ^ (32-N) - 1) | 2 ^ 32-2 ^ (32-N) to maximum input address |
+| M     | N     | Zero to (2 ^ (32-M) - 1) | 2 ^ 32 - 2 ^ (32-N) to maximum input address |
+
+---
+
+### 2020-May-04
+
+May the fourth be with you!
+
+So, I am getting a little farther along here.  I am seeing that the low 32-bits of the 64-bit sturcture are actually in the low 4 bytes of memory, not the top 4 bytes of memory.  It was out of sheer depsiarion that I tried flipping them and I got farther.
+
+So, this conversation covers the problem pretty clearly:
+
+> [15:57:06] <eryjus> ok, what the actual @&^%!&$@
+> [15:57:54] <eryjus> the long descriptors for lpae are not 64-bit structures but 2 married 32-bit structures, where the low 32-bits are in the low addresses.
+> [15:58:11] <eryjus> i cannot find anywhere in the documentation where it states that fact.
+> [16:03:56] <geist> well, it might just be kinda implicit in how it's written out
+> [16:05:28] <geist> hmm, i dont see that. the v7 manual pretty clearly just points it out as a 64bit thing
+> [16:05:39] <geist> but what you described actually sounds exactly like a little endian 64bit value
+> [16:05:49] <eryjus> The TTBR0 and R1 registers are the only explicit thing I could find
+> [16:06:13] <geist> oh i'm looking at ir gith here. page B3-1340 in the armv7 manual
+> [16:06:18] <geist> ARM DDI 0406C.c
+> [16:06:35] <eryjus> where the mrcc instruction is explicit that it is counter-intuitive...
+> [16:06:44] <geist> B3.6 is all about the Long-descriptor translation table format
+> [16:06:57] <geist> well, mrcc is a different thing all togetierh
+> [16:07:04] <geist> what you were describing was the translation table structures
+> [16:07:11] <eryjus> that is true
+> [16:07:15] <geist> and i see no reason to believe what you said is true at all
+> [16:07:28] <eryjus> so, I was expecting a 64-bit little endian structure
+> [16:07:39] <geist> and that sounds right
+> [16:07:43] <eryjus> not 2 X 32-bit little endian structures
+> [16:07:52] <geist> how are the two different?
+> [16:07:57] <eryjus> so my lowest 8 bits are in offset 4
+> [16:08:12] <geist> thats simply not right
+> [16:08:13] <eryjus> sorry offset3
+> [16:08:18] <eryjus> then 2, 1, 0, 7!
+> [16:08:23] <geist> incorrect
+> [16:09:08] <eryjus> well...  you are expecting what I am expecting then...  i flipped them out of desperation and got better results
+> [16:09:19] <geist> well, then you probably have something else wrong
+> [16:09:26] <geist> and you're correcting it
+> [16:09:32] <geist> by undoing what you did wrong in the first place
+> [16:10:03] <geist> i'm lookin right at the manual and it clearly describes it as a 64bit value, with even bit numbers
+> [16:10:13] <eryjus> it's possible im too close to it, and I will triple triple quadruple check....
+> [16:10:43] <geist> and sure enough that's the same format as arm64. so LPAE is very much like x86 PAE
+> [16:10:43] <eryjus> i yeah, its up on my screen too
+> [16:13:35] <eryjus> geist, this works: 1002000:       01003003;     1002004:       00000000
+> [16:13:48] <eryjus> the low 32-bits that contain the frame are in the low 4 bytes.
+> [16:14:15] <eryjus> thus, the expletive
+> [16:23:52] <geist> yeah what's wrong with that?
+> [16:23:58] <geist> that's precisely little endian
+> [16:24:34] <geist> 03 30 00 01 00 00 00 00
+> [16:25:12] * eryjus was expecting the values to be swapped so 0x01003003 at address 0x01002004
+> [16:26:04] <geist> nope. think of little endian as streaming from lower bytes to higher
+> [16:26:19] <eryjus> yeah...  getting my head around that...
+> [16:26:26] <geist> depending on how you visualize it it can be confusing, but if you go back to that thinking it is clear
+> [16:26:46] <geist> your printf showing the two 32bit values is also little endian swapping within it, so you're getting a half swizzle
+> [16:27:00] <geist> if you print it as a bunch of 8 bit values i think it'll be more obvious
+> [16:27:52] <eryjus> well, now that I understand my flaw....
+> [16:27:59] <eryjus> may the fourth be with you!
+
+So, I need to redo my table print a little bit, since I need to be able to print this is a better order to be clear about it.
+
+This is something I need to get my head around better.....  When I write the 32-bit values the perspective is different than when I dump the values.  I need to be clear about each.
+
+---
+
+OK, so let's recap a bit here....
+* I had the 64-bit entry backward by 32-bit word.
+* I was multiplying by 4 to adjust an index to offset, rather than multiplying by 8.
+* I was not setting the access flag.  This should be hardware managed, not software managed.  [`SCTLR.HA` needs to be set to allow hardware-managed access flags](http://eryjus.ddns.net:3000/issues/476).
+
+That said, I am now getting past into the loader (`0x80000000`) before faulting.
+
+OK, I am finally getting somewhere.  But I'm exhausted.  I'm off to bed and I will continue tomorrow.
+
+---
+
+### 2020-May-05
+
+So, it looks like the stack has some mapping problem:
+
+```
+IN:
+0x800007b0:  e92d4010  push     {r4, lr}
+0x800007b4:  ebffffeb  bl       #0x80000768
+
+R00=01002000 R01=00c5187d R02=00000000 R03=00000028
+R04=0100f000 R05=0100e000 R06=01003000 R07=01004000
+R08=01005000 R09=01006000 R10=0002830f R11=000254cc
+R12=00000264 R13=ff801000 R14=001001b4 R15=800007b0
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000047
+...with DFSR 0xa07 DFAR 0xff800ff8
+```
+
+Aith a `DFSR` of `0xa07`, this means the following:
+
+* A Level 3 translation fault
+* LPAE is enabled
+* The problem occurred on a write
+
+Ahhhh...  backwards still:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xff80 0000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01fc   0x0100 6fe0    0x0100 d000    0x0000 0000 0000 0003
+  3    0x0100 d000    0x0000 0000   0x0100 d000    0x0000 0000    0x0100 0747 0000 0000
+```
+
+Still getting a data fault, but.... from the execution log:
+
+```s
+0x800007f8:  e34f6904  movt     r6, #0xf904
+0x800007fc:  eb200df8  bl       #0x80803fe4
+```
+
+That branch/link instruction should land here:
+
+```s
+80803fe4 <MmuMapToFrame>:
+80803fe4:       e3500000        cmp     r0, #0
+80803fe8:       13510000        cmpne   r1, #0
+80803fec:       012fff1e        bxeq    lr
+80803ff0:       e92d47f0        push    {r4, r5, r6, r7, r8, r9, sl, lr}
+```
+
+But instead, the execution log shows:
+
+```s
+0x80803fe4:  e3091030  movw     r1, #0x9030
+0x80803fe8:  e3000768  movw     r0, #0x768
+0x80803fec:  e3481080  movt     r1, #0x8080
+0x80803ff0:  e3480100  movt     r0, #0x8100
+0x80803ff4:  eb001c3c  bl       #0x8080b0ec
+```
+
+That's not right, and the page is mapped to the wrong physical frame.
+
+And in fact, I find this code here in the binary:
+
+```s
+80800fe4:       e3091030        movw    r1, #36912      ; 0x9030
+80800fe8:       e3000768        movw    r0, #1896       ; 0x768
+80800fec:       e3481080        movt    r1, #32896      ; 0x8080
+80800ff0:       e3480100        movt    r0, #33024      ; 0x8100
+80800ff4:       eb001c3c        bl      808080ec <kStrCmp>
+```
+
+So, I am off by 3 frames.  Why?  To check a theory, I added the following:
+
+```s
+    mov     r0,#0
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0x1000
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0x2000
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0x3000
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+```
+
+and it is confirmed....
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xff80 0000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01fc   0x0100 6fe0    0x0100 d000    0x0000 0000 0000 0003
+  3    0x0100 d000    0x0000 0000   0x0100 d000    0x0100 0000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8100 0000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0003
+  2    0x0100 5000    0x0000 0008   0x0100 5040    0x0100 c000    0x0000 0000 0000 0003
+  3    0x0100 c000    0x0000 0000   0x0100 c000    0x0011 2000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8080 0000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0003
+  2    0x0100 5000    0x0000 0004   0x0100 5020    0x0100 b000    0x0000 0000 0000 0003
+  3    0x0100 b000    0x0000 0000   0x0100 b000    0x0010 5000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8080 1000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0003
+  2    0x0100 5000    0x0000 0004   0x0100 5020    0x0100 b000    0x0000 0000 0000 0003
+  3    0x0100 b000    0x0000 0001   0x0100 b008    0x0010 5000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8080 2000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0003
+  2    0x0100 5000    0x0000 0004   0x0100 5020    0x0100 b000    0x0000 0000 0000 0003
+  3    0x0100 b000    0x0000 0002   0x0100 b010    0x0010 5000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8080 3000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0003
+  2    0x0100 5000    0x0000 0004   0x0100 5020    0x0100 b000    0x0000 0000 0000 0003
+  3    0x0100 b000    0x0000 0003   0x0100 b018    0x0010 5000    0x0000 0000 0000 0747
+```
+
+Notice that all 4 pages map to the same frame.  A quick change cleaned that up, but I am still faulting with something.  Back to QEMU....
+
+Hmmm....
+
+```
+IN:
+0x80804000:  e1a0af26  lsr      sl, r6, #0x1e
+0x80804004:  e1a05000  mov      r5, r0
+0x80804008:  ee1d3f90  mrc      p15, #0, r3, c13, c0, #4
+0x8080400c:  e5934000  ldr      r4, [r3]
+0x80804010:  e7e84454  ubfx     r4, r4, #8, #9
+0x80804014:  ee1d3f90  mrc      p15, #0, r3, c13, c0, #4
+0x80804018:  e5939000  ldr      sb, [r3]
+0x8080401c:  e3560000  cmp      r6, #0
+0x80804020:  e1a09209  lsl      sb, sb, #4
+0x80804024:  e2499501  sub      sb, sb, #0x400000
+0x80804028:  ba000062  blt      #0x808041b8
+
+R00=000000c0 R01=01001000 R02=00000003 R03=00100024
+R04=f8000000 R05=0003f000 R06=ff401000 R07=01004000
+R08=01001000 R09=01006000 R10=0002830f R11=000254cc
+R12=00000264 R13=ff800fc8 R14=80804000 R15=80804000
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000007
+...with DFSR 0x207 DFAR 0x0
+```
+
+Could this be a straight-up NULL pointer dereference?  It certainly could be: this exception starts from `MmuMapToFrame()`.  However, I think I am more concerned with the fact I am not getting any fault dumps.  And, in fact, that fault looks like this:
+
+```
+Taking exception 3 [Prefetch Abort]
+...from EL1 to EL1
+...with ESR 0x21/0x86000006
+...with IFSR 0x206 IFAR 0x1001010
+```
+
+So, I expect that 'exception 4' refers to offset `0x10` into the VBAR.  I was mapping the wrong address into the MMU, and I was setting the VBAR incorrectly.  Now, I am getting a fault and the handler is taking it, but there is no output.  This is because the MMIO addresses are not mapped yet.
+
+It turns out that the first call is from `MmuInit()`.  Now, that is the VBAR mapping, which I now have taken care of in `entry.s`.
+
+OK, this fault is because the `TPIDRPRW` register is not populated when I am executing `MmuInit()`.  A quick check for a NULL address fixed that.  But now, address `0xfffff000` is not mapped.
+
+```
+IN:
+0x808040ac:  e3800003  orr      r0, r0, #3
+0x808040b0:  e3a03000  mov      r3, #0
+0x808040b4:  e8840009  stm      r4, {r0, r3}
+0x808040b8:  f57ff05b  dmb      ish
+0x808040bc:  ee08af77  mcr      p15, #0, sl, c8, c7, #3
+
+R00=01002000 R01=0003f000 R02=80000003 R03=00000000
+R04=fffff000 R05=00000003 R06=f8000000 R07=ffc00000
+R08=000000c0 R09=0003f000 R10=ffc00000 R11=000254cc
+R12=00000264 R13=ff800fc8 R14=80804234 R15=808040ac
+PSR=a00001d3 N-C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000047
+...with DFSR 0xa07 DFAR 0xfffff000
+```
+
+This needs to be handled in `entry.s`.  And this is where it gets complicated since this is a double mapping.  So, what I need is the physical address for the level 2 table for address `0xffc00000`.  I think I have that already....  I do, and I should have already taken care of this mapping.  So, I need to dump the tables for that address, as well as for `0xffc00000`.
+
+So, the physical address I am looking for is `0x0f00e000`:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffc0 0000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01fe   0x0100 6ff0    0x0100 e000    0x0000 0000 0000 0003
+  3    0x0100 e000    0x0000 0000   0x0100 e000    0x0000 0000    0x0000 0000 0000 0000
+```
+
+And it is almost completely mapped:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffff f000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 f000    0x0000 0000 0000 0003
+  3    0x0100 f000    0x0000 01ff   0x0100 fff8    0x0100 e000    0x0000 0000 0000 0000
+```
+
+The fault looks like this:
+
+```
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x9600000b
+...with DFSR 0x20b DFAR 0xffc00024
+```
+
+This is an access problem, not a mapping problem.
+
+---
+
+### 2020-May-06
+
+OK, back into debugging....  I am currently working on this:
+
+```
+IN:
+0x80804134:  e7e82ad6  ubfx     r2, r6, #0x15, #9
+0x80804138:  e3a0300c  mov      r3, #0xc
+0x8080413c:  e0030293  mul      r3, r3, r2
+0x80804140:  e7d32007  ldrb     r2, [r3, r7]
+0x80804144:  e0835007  add      r5, r3, r7
+0x80804148:  e2023003  and      r3, r2, #3
+0x8080414c:  e3530003  cmp      r3, #3
+0x80804150:  1a00003e  bne      #0x80804250
+
+R00=01010403 R01=0010000c R02=00000000 R03=00000403
+R04=fffff000 R05=ffc00024 R06=f8000000 R07=ffc00000
+R08=000000c0 R09=0003f000 R10=ffc00000 R11=000254cc
+R12=00000264 R13=ff800fc8 R14=808053b4 R15=80804134
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000007
+...with DFSR 0x207 DFAR 0xffc01500
+```
+
+The `DFAR` is indicating an address that is not expected.  Let me see if I can trace this down....
+
+Well, a well (lucky) placed call to `kprintf("")` revealed that the problem happens when dealing with the level 3 table.
+
+OK, with some well-places calls, I have been able to narrow this down a bit (the problem occurs between the 2 calls to `kprintf("")`):
+
+```s
+8080414c:       eb00105e        bl      808082cc <kprintf>
+80804150:       e7d53007        ldrb    r3, [r5, r7]
+80804154:       e2033003        and     r3, r3, #3
+80804158:       e3530003        cmp     r3, #3
+8080415c:       059b0004        ldreq   r0, [fp, #4]
+80804160:       07fb0050        ubfxeq  r0, r0, #0, #28
+80804164:       0a000007        beq     80804188 <MmuMapToFrame+0x15c>
+80804168:       e3080abc        movw    r0, #35516      ; 0x8abc
+8080416c:       e3480080        movt    r0, #32896      ; 0x8080
+80804170:       eb001055        bl      808082cc <kprintf>
+```
+
+Now, from the debug log, I can narrow this down a little further:
+
+```s
+0x80804150:  e7d53007  ldrb     r3, [r5, r7]
+0x80804154:  e2033003  and      r3, r3, #3
+0x80804158:  e3530003  cmp      r3, #3
+0x8080415c:  059b0004  ldreq    r0, [fp, #4]
+0x80804160:  07fb0050  ubfxeq   r0, r0, #0, #0x1c
+0x80804164:  0a000007  beq      #0x80804188
+```
+
+And it is not happening on the branch.  In fact, this will happen on either of the 2 load statements.  So the offending line of code?
+
+```c++
+    if (likely(!table->present || !table->tableFlag)) {
+```
+(and the `likely` tag was added to locate the lines in source)
+
+So, the problem is that `table` is not mapped.
+
+---
+
+### 2020-May-09
+
+I have a couple of hours this morning to work on the debugging.
+
+So, let's start by confirming that I am having the problems where I think I am having the problems...  I believe I am having an issue with `MmuInit()`.  So the following loop should not have a problem:
+
+```c++
+//
+// -- The actual loader main function
+//    -------------------------------
+EXTERN_C EXPORT LOADER NORETURN
+void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
+{
+    LoaderFunctionInit();               // go and initialize all the function locations
+while (true){}
+    MmuInit();                          // Complete the MMU initialization for the loader
+    PlatformEarlyInit();
+    kprintf("Welcome\n");
+while (true){}
+```
+
+and that confirms that `LoaderFunctionInit()` does not generate the fault (meaning it is not calling `MmuMapToPage()` and I forgot).
+
+So, moving that breakpoint past `MmuInit()`, I expect to have problems.  And I do.
+
+So, what am I trying to do in `MmuInit()`?  Well, I am trying to map virtual address `0xf8000000` to physical address `0x3f000000`.  I do believe that this is failing on the first call.  Let's confirm that.  Confirmed.
+
+So, let's break this down....  Level 1 Entry is `0xf8000000 >> 30` or entry #3.  This table will be mapped as I guarnteed it during `entry.s` initialization.  This table from entry 3 is at `0x0100 6000` based on the debugging output above.
+
+The Level 2 entry is `(0xf8000000 >> 21) & 0x1ff` or entry `0x1c0`.  This would be at offset `0xe00`, and this entry would not exist.
+
+I'm a dumbass!!!  I was supposed to be mapping a new table here:
+
+```c++
+    if (!table->present || !table->tableFlag) {
+        table->tableAddress = PmmAllocateFrame();
+        uint64_t ent = *((uint64_t *)table);
+        ent |= tableBits;
+    }
+```
+
+but the `ent` variable is a value, not a reference.  So, I really am never mapping this table.  A quick test shows a change (not sure if this is good or bad):
+
+```
+IN:
+0x808041f4:  f2c00010  vmov.i32 d16, #0
+
+R00=00000403 R01=ffc00024 R02=00000403 R03=fffff000
+R04=fffff000 R05=f8000000 R06=0003f000 R07=000000c0
+R08=ffc00000 R09=ffc00000 R10=00000403 R11=00000000
+R12=00000264 R13=ff800fb8 R14=808053f0 R15=808041f4
+PSR=600001d3 -ZC- A NS svc32
+Taking exception 1 [Undefined Instruction]
+...from EL1 to EL1
+...with ESR 0x7/0x1fe00020
+```
+
+So, I am executing off the face of the earth....  Or am I??
+
+```S
+808041f4:       f2c00010        vmov.i32        d16, #0 ; 0x00000000
+```
+
+I'm betting this will work on real hardware, but I am not willing to test that.  I need to figure out what in creating that insruction -- it appears to be using a FPU register.
+
+So I asked on chat:
+
+> [07:27:52] <eryjus> some time ago, someone (zid, i think) offered a gcc command line options that would force the codegen to use only core cpu registers...  what was that option?
+> [07:28:09] <zid> -mgeneral-regs-only
+> [07:28:48] <eryjus> ahhh..., zid, thank you
+
+Crap, but it is not available for this cross-.  OK, I guess I need to check real hardware...  `vmov` is used all other the place.
+
+OK, maybe there is a parameter I can pass into qemu...??
+
+---
+
+### 2020-May-13
+
+Hmmmm...
+
+```c++
+/* If adding a feature bit which corresponds to a Linux ELF
+ * HWCAP bit, remember to update the feature-bit-to-hwcap
+ * mapping in linux-user/elfload.c:get_elf_hwcap().
+ */
+```
+
+I found this looking at the QEMU for arm source....
+
+And checking:
+
+```
+[adam@adamlt2 century-os]$ readelf -A targets/rpi2b/bin/boot/kernel.elf
+Attribute Section: aeabi
+File Attributes
+  Tag_CPU_name: "7VE"
+  Tag_CPU_arch: v7
+  Tag_CPU_arch_profile: Application
+  Tag_ARM_ISA_use: Yes
+  Tag_THUMB_ISA_use: Thumb-2
+  Tag_FP_arch: VFPv4
+  Tag_Advanced_SIMD_arch: NEONv1 with Fused-MAC
+  Tag_ABI_PCS_wchar_t: 4
+  Tag_ABI_FP_denormal: Needed
+  Tag_ABI_FP_exceptions: Needed
+  Tag_ABI_FP_number_model: IEEE 754
+  Tag_ABI_align_needed: 8-byte
+  Tag_ABI_enum_size: small
+  Tag_ABI_VFP_args: VFP registers
+  Tag_ABI_optimization_goals: Aggressive Speed
+  Tag_CPU_unaligned_access: v6
+  Tag_MPextension_use: Allowed
+  Tag_DIV_use: Allowed in v7-A with integer division extension
+  Tag_Virtualization_use: TrustZone and Virtualization Extensions
+```
+
+Perhaps this will work?
+
+```
+##
+## -- Add some options to the build
+##    -----------------------------
+CFLAGS += -mlittle-endian
+CFLAGS += -mcpu=cortex-a7
+CFLAGS += -mfpu=vfpv2                   ## dumb this down for qemu?
+CFLAGS += -mfloat-abi=hard
+```
+
+It appears to be better for qemu.  For the real hardware?  Well, it boots, but the loader is still not getting control.  But, I am still getting a data fault in qemu:
+
+```
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000046
+...with DFSR 0xa06 DFAR 0xf8215004
+```
+
+OK, so `0xf82150004` I believe is the new MMIO address for the serial port.  And it is:
+
+```c++
+#define KRN_SERIAL_BASE (MMIO_VADDR+0x215000)
+```
+
+So, I am getting to where I should be outputting a character, but there is something wrong with the mapping.
+
+Let's dig into the `DFSR` meaning:
+* This was a fault on a Write
+* LPAE is enabled
+* This was a level 2 translation fault
+
+So, I end up back at `MmuMapToFrame()`....
+
+---
+
+### 2020-May-15
+
+OK, I was thinking about this: https://wiki.osdev.org/ARM_Paging#Recursive_Table_Mapping
+
+I was wondering what it would take to make that work.  I was close, but forgot I really needed to map 2 or 4 entries at the end.
+
+So, what are we really talking about here?  Let's talk about the kernel space first:
+* The Level-1 table will be fixed and allocated from the start, so there will be no need to touch the Level-1 table after the MMU is up and running.  So, there is no need to map it -- I just need to know the physical address of this table.
+* There are 4 Level-2 tables and each will need to be mapped.  This means that the final 4 entries will need to be allocated to this space:
+    * Index `0x1fc` to entry 0 (offset `0xfe0`)
+    * Index `0x1fd` to entry 1 (offset `0xfe8`)
+    * Index `0x1fe` to entry 2 (offset `0xff0`)
+    * Index `0x1ff` to entry 3 (offset `0xff8`)
+* This, then, means that virtual addresses from `((3<<30) | 1fc<<21)` or `(c0000000 | 3f800000)` or `0xff800000` will be lost to recursive mappings.  This is 8MB (compared to x86 4MB at `0xffc00000`) and conflicts currently with the MMIO addresses.
+* That said, the kernel space should only be concerned about the top 2 pages/frames, so this can really be cut in half (and results in `0xffc00000` and up)
+* That said, the user space will also need a block of memory for recursive mapping (thinking `0x7fc00000` up to `0x80000000`), which would also be 4MB.  The key for the initial kernel memory map would be to map these addresses as well.
+
+This leaves me at 8MB of virtual address space used total for arm, and a separation between kernel and user address space.
+
+What sucks is that I have to scrap all the code I've written (and re-written) to write it all again.  Isn't this iteration 4 for arm??
+
+So, let's start with the entry code....  I currently have 4 frames allocated and set into the registers `r6` to `r9`.  To complete the recurisve mappings, I only need to execute the following instuctions (cleaning up the immediate sizes of course):
+
+```s
+    str     r6,[r7,#0xff0]
+    str     r7,[r7,#0xff8]
+    str     r8,[r9,#0xff0]
+    str     r9,[r9,#0xff8]
+```
+
+... of course, there are some additional bit twiddling to do, so the actual implementation will not quite be that simple.
+
+---
+
+So, let's talk about what the addresses are for each "side".  First the kernel.  We have an address range from `0xffc00000` and up.  2 frames are set aside for the recursive mappings.  These are going to end up being 2 2MB blocks and they will be at the top of the address range.  But here is where things get a bit trciky: address `0xffdff000` is going to map to the lower table (in index 2) whereas address `0xfffff000` is going to map to the upper table (the one in index 3).  This (not so) simple fact makes the management a bit tricky.  What we really need to do is break the address space up into 4 blocks, not 2.
+
+To manage the Level-2 table for index 2, the math looks something like this:
+* `0xc0000000 + (0x1ff << 21) + (0x1fe << 12)`
+* `0xc0000000 + 0x3fe00000 + 0x001fe000`
+* `0xffffe000`
+
+To contrast, the address to manage the Level-2 table for index 3, the math looks like this:
+* `0xc0000000 + (0x1ff << 21) + (0x1ff << 12)`
+* `0xc0000000 + 0x3fe00000 + 0x001ff000`
+* `0xfffff000`
+
+So, I guess it's not as tricky as I thought....
+
+I have a diagram in front of me and I will work on some ASCII art tomorrow.
+
+---
+
+### 2020-May-16
+
+OK, for that ASCII art:
+
+```
+
+                             (Table A)
+                +-----+-----+-----+-----+--------------+
+                |  0  |  1  |  2  |  3  |  ...         |
+                +-----+-----+-----+-----+--------------+
+                               |     |
++------------------------------+     +--- +
+|                                         |                     +----------+
+V         (Table B)                       V    (Table C)        V          |
++--+--+--+--+--+--+----------+--+--+      +--+--+--+--+--+--+----------+--+--+
+|  |  |  |  |  |  |  ...     |  |  |      |  |  |  |  |  |  |  ...     |  |  |
++--+--+--+--+--+--+----------+--+--+      +--+--+--+--+--+--+----------+--+--+
+                      ^                                                 |
+                      +-------------------------------------------------+
+
+```
+
+So, if I wanted to maintain the Level-2 Table located at Index Level-1[2] (meaning TableB), I would take TableA[3], TableC[0x1ff], TableC[0x1fe].  This would turn into address `0xffffe000`.
+
+So, if I have a base address for managing the kernel space (`0xffffe000`) Level-2 table and the same for the user spcace (`0x7fffe000`) Level-2 table, how to I decide which entry to look at?  Well, each entry looks at 2MB of address space....  My first thought is that it the mask should be `0x7fe00000`.  Shifting these bits to the right, we end up with `0x3ff`, or 1024 possible entries.  This is accurate.  Notice, I am trimming off the most significant digit here, which is used to determine user vs. kernel space.  So, the macro to get this index would be `(addr & 0x7fe00000) >> 21`.
+
+Now for the Level-3 table, these addresses start at `0xffc00000` and `0x7fc00000`.  This mask should be `0x001ff000`.  This results in 512 entries and is alignment with a single table.  This marcro would look like `(addr & 0x001ff000) >> 12`.
+
+Note that both macros work perfectly well for user and kernel space.  The difference there is that the address of the table changes.
+
+---
+
+### 2020-May-17
+
+I was able to figure out the bug for real hardware what was preventing the boot.  Having that fixed, I am now able to work on getting the mappings correct before getting out of `entry.s`.  At the moment, I am seeing some problems.
+
+So, let's start with the fundamentals first: I'm going to debug the mapping for address `0xfffff000`.  This should be the top table, the value in `r9` for level-2, and the value in `r9` in level 3, and then the mapping to the value in `r9` yet again for the final physical address.  Lots of looping here.  I do not know the value of `r9`, but that should not really matter much.  It should be the value of the level 1 table plus 4 pages.
+
+My starting point for this work is:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffff f000
+
+.. TTBR0 entry is 0x0000 0000 0100 2000
+.. TTBR1 entry is 0x0000 0000 0100 2000
+.. TTBCR is 0xb500 3501
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 f000    0x0000 0000 0000 0003
+  3    0x0100 f000    0x0000 01ff   0x0100 fff8    0x0100 e000    0x0000 0000 0000 0747
+```
+
+And, of course, this is wrong.  Level 1 does appear to be correct.  But, I expect level 2 next address to be `0x01006000` and I expect the level 3 next address to be `0x01006000`.
+
+So, the first question to be answered is whether this is set right to begin with and updated to be wrong or if it is set wrong from the beginning.  A simple jump should be enough to determine....
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffff f000
+
+.. TTBR0 entry is 0x0094 0097 bb98 3b52
+.. TTBR1 entry is 0x00f1 0064 dfed 60c1
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 6000    0x0000 0000 0000 0003
+  3    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 6000    0x0000 0000 0000 0003
+```
+
+So this is correct originally.  The only problem here is that the page flags are not correct.  Ok, let's look at address `0xffffe000`:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffff e000
+
+.. TTBR0 entry is 0x008d 00dd 79f4 295b
+.. TTBR1 entry is 0x008a 00c1 beda 5cb0
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0003
+  2    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 6000    0x0000 0000 0000 0003
+  3    0x0100 6000    0x0000 01fe   0x0100 6ff0    0x0100 5000    0x0000 0000 0000 0003
+```
+
+Again, this looks correct, except for the page flags.
+
+So, the next step is to clean up the page flags:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffff f000
+
+.. TTBR0 entry is 0x008c 00dd f9f6 295b
+.. TTBR1 entry is 0x008a 00c1 befa 4cb0
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0747
+  2    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 6000    0x0000 0000 0000 0747
+  3    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 6000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xffff e000
+
+.. TTBR0 entry is 0x008c 00dd f9f6 295b
+.. TTBR1 entry is 0x008a 00c1 befa 4cb0
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0747
+  2    0x0100 6000    0x0000 01ff   0x0100 6ff8    0x0100 6000    0x0000 0000 0000 0747
+  3    0x0100 6000    0x0000 01fe   0x0100 6ff0    0x0100 5000    0x0000 0000 0000 0747
+```
+
+This looks better.  Now to check the user space mappings:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x7fff f000
+
+.. TTBR0 entry is 0x008d 00dd f9f6 295b
+.. TTBR1 entry is 0x008e 00c1 beda 4c90
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0001   0x0100 2008    0x0100 4000    0x0000 0000 0000 0747
+  2    0x0100 4000    0x0000 01ff   0x0100 4ff8    0x0100 4000    0x0000 0000 0000 0747
+  3    0x0100 4000    0x0000 01ff   0x0100 4ff8    0x0100 4000    0x0000 0000 0000 0747
+
+
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x7fff e000
+
+.. TTBR0 entry is 0x008d 00dd f9f6 295b
+.. TTBR1 entry is 0x008e 00c1 beda 4c90
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0001   0x0100 2008    0x0100 4000    0x0000 0000 0000 0747
+  2    0x0100 4000    0x0000 01ff   0x0100 4ff8    0x0100 4000    0x0000 0000 0000 0747
+  3    0x0100 4000    0x0000 01fe   0x0100 4ff0    0x0100 3000    0x0000 0000 0000 0747
+```
+
+This looks right.
+
+---
+
+### 2020-May-18
+
+The next address mapped in sequence is `0xff400000`, which is used for the interrupt vector table.
+
+This looks reasonable, except for the flags:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0xff40 1000
+
+.. TTBR0 entry is 0x008c 00dd f9f4 295b
+.. TTBR1 entry is 0x008a 00c1 beda 4cb2
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0747
+  2    0x0100 6000    0x0000 01fa   0x0100 6fd0    0x0100 7000    0x0000 0000 0000 0003
+  3    0x0100 7000    0x0000 0001   0x0100 7008    0x0100 1000    0x0000 0000 0000 0747
+```
+
+And the other mappings appear to not have changed as well.
+
+Next up is the `.mboot` section, which is mapped to 1MB....  Again, this looks good except for the page attributes.
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x0010 08fc
+
+.. TTBR0 entry is 0x008c 00dd f9f6 295b
+.. TTBR1 entry is 0x008a 00c1 bed2 4c90
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0000   0x0100 2000    0x0100 3000    0x0000 0000 0000 0747
+  2    0x0100 3000    0x0000 0000   0x0100 3000    0x0100 8000    0x0000 0000 0000 0003
+  3    0x0100 8000    0x0000 0100   0x0100 8800    0x0010 0000    0x0000 0000 0000 0747
+```
+
+Next up is the loader code at `0x80000000`:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8000 0000
+
+.. TTBR0 entry is 0x008c 00dd f9f4 295b
+.. TTBR1 entry is 0x008a 00c1 bed2 4c90
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0747
+  2    0x0100 5000    0x0000 0000   0x0100 5000    0x0100 9000    0x0000 0000 0000 0747
+  3    0x0100 9000    0x0000 0000   0x0100 9000    0x0010 1000    0x0000 0000 0000 0747
+```
+
+This also looks reasonable, and the earlier mappings are still clean.  Now for the syscall locations, at `0x80400000`:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8040 0000
+
+.. TTBR0 entry is 0x008c 00dd f9f6 295b
+.. TTBR1 entry is 0x009e 00c1 beda 4c90
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0747
+  2    0x0100 5000    0x0000 0002   0x0100 5010    0x0100 a000    0x0000 0000 0000 0747
+  3    0x0100 a000    0x0000 0000   0x0100 a000    0x0010 4000    0x0000 0000 0000 0747
+```
+
+Again, reasonable.  Still not stepping on anything.  Next is the kernel proper, at `0x80800000`:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8080 0000
+
+.. TTBR0 entry is 0x008c 00dd f9f4 295b
+.. TTBR1 entry is 0x009a 00c1 bed2 4c90
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0747
+  2    0x0100 5000    0x0000 0004   0x0100 5020    0x0100 b000    0x0000 0000 0000 0747
+  3    0x0100 b000    0x0000 0000   0x0100 b000    0x0010 5000    0x0000 0000 0000 0747
+```
+
+Now, checking data:
+
+```
+Pre-Paging MMU Tables Dump: Walking the page tables for address 0x8100 0000
+
+.. TTBR0 entry is 0x008c 00dd f9f4 295b
+.. TTBR1 entry is 0x008a 00c1 bed2 4890
+.. TTBCR is 0x0000 0000
+
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0002   0x0100 2010    0x0100 5000    0x0000 0000 0000 0747
+  2    0x0100 5000    0x0000 0008   0x0100 5040    0x0100 c000    0x0000 0000 0000 0747
+  3    0x0100 c000    0x0000 0000   0x0100 c000    0x0011 2000    0x0000 0000 0000 0747
+```
+
+This looks reasonable, but I need to check the frame to be sure.  It's good:
+
+```
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x00100000 0x00100000 0x01000 0x01000 R E 0x1000
+  LOAD           0x002000 0x80000000 0x00101000 0x03000 0x03000 RWE 0x1000
+  LOAD           0x005000 0x80400000 0x00104000 0x01000 0x01000 RWE 0x1000
+  LOAD           0x006000 0x80800000 0x00105000 0x0d000 0x0d000 R E 0x1000
+  LOAD           0x013000 0x81000000 0x00112000 0xd0000 0xd0000 RW  0x1000
+```
+
+Next up is the stack at `0xff800000`, which was good as well.
+
+So, now back to qemu for the logs, and I get the following:
+
+```
+IN:
+0x80803d9c:  e92d47f0  push     {r4, r5, r6, r7, r8, sb, sl, lr}
+0x80803da0:  e3a05a0e  mov      r5, #0xe000
+0x80803da4:  e7e92ad0  ubfx     r2, r0, #0x15, #0xa
+0x80803da8:  e1a03005  mov      r3, r5
+0x80803dac:  e34f3fff  movt     r3, #0xffff
+0x80803db0:  e1a06001  mov      r6, r1
+0x80803db4:  e3475fff  movt     r5, #0x7fff
+0x80803db8:  e2001502  and      r1, r0, #0x800000
+0x80803dbc:  e3510000  cmp      r1, #0
+0x80803dc0:  e3a0700c  mov      r7, #0xc
+0x80803dc4:  01a05003  moveq    r5, r3
+0x80803dc8:  e3a03000  mov      r3, #0
+0x80803dcc:  e0070297  mul      r7, r7, r2
+0x80803dd0:  e34f3fc0  movt     r3, #0xffc0
+0x80803dd4:  e3a02000  mov      r2, #0
+0x80803dd8:  e7d51007  ldrb     r1, [r5, r7]
+0x80803ddc:  01a08003  moveq    r8, r3
+0x80803de0:  e3472fc0  movt     r2, #0x7fc0
+0x80803de4:  e1a04000  mov      r4, r0
+0x80803de8:  e0859007  add      sb, r5, r7
+0x80803dec:  11a08002  movne    r8, r2
+0x80803df0:  e3110001  tst      r1, #1
+0x80803df4:  0a00001f  beq      #0x80803e78
+
+R00=f8000000 R01=0003f000 R02=80000003 R03=80001628
+R04=f8001000 R05=0003f001 R06=f9040000 R07=01004000
+R08=01005000 R09=01006000 R10=0002830f R11=000254cc
+R12=00000264 R13=ff800fe8 R14=800007fc R15=80803d9c
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000007
+...with DFSR 0x207 DFAR 0xd00
+```
+
+But this is a straight bug: `DFAR 0xd00`.
+
+---
+
+OK, now I am getting the first letter of `"Welcome"`.  After that, the next letter does not write.  This is most likely because I do not have the memory set to device memory for the MAIR settings.  Let me work on setting that up.
+
+qemu says I am getting a data fault, on some odd address.  This is likely in the `kprintf()` function, or even in the `SerialPutChar()`.  I do get 1 character to write....  but that's it.
+
+---
+
+### 2020-May-19
+
+So, I have been debugging a ghost!!!  Here is what is going on:
+* I boot
+* I print a welcome message
+* I start into `PlatformEarlyInit()`, which in turn maps and unmaps pages in to memory space
+* Unmapping pages is not supported yet
+
+When I loop indefinitely after printing the welcome message, it works properly.  This is only as far as I can reasonably expect the kernel to work so far since the rest of the functions are not implemented.
+
+Sooooo....., now that I am no longer debugging the wrong problem....  the correct problem is:
+
+```
+Welcome to CenturyOS -- a hobby operating system
+    (initializing...)
+Attempting the clear the monitor screen at address 0xfb000000
+.. Done!
+Data Exception:
+.. Data Fault Address: 0x90000020
+.. Data Fault Status Register: 0x00001210
+.. Fault status 0x0: Unknown
+.. Fault occurred because of a read
+At address: 0xff800f88
+ R0: 0x90000088   R1: 0x8080b232   R2: 0x0000001e
+ R3: 0x90000020   R4: 0x9000000c   R5: 0x81000530
+ R6: 0x00000000   R7: 0xff804000   R8: 0x01005000
+ R9: 0x01006000  R10: 0x440e359f  R11: 0xf580abfe
+R12: 0x0000ff50   SP: 0x80000bac   LR_ret: 0x80000bc4
+SPSR_ret: 0x600001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xafefcdfe  User SP: 0xe7fb68f9
+Svc LR: 0xff800f98
+```
+
+A couple of things to take away from this fault:
+1. The DFSR is no longer being interpreted properly
+1. The fault is in `ProcessInit()`
+1. The faulting address appears to be a heap address
+
+I started by cleaning up the DFSR interpretation.
+
+I missed catching the updates, but.... This turned out to be related to the attr settings.  Changing from Strongly Ordered memory to Normal memory helped.
+
+The conversation about this:
+> [17:17:35] <eryjus> hmmm....  this is from my first heap allocation and worked properly until I changed mmu to the long descriptors...  no change in login with the heap init.
+> [17:17:42] <geist> probably not, ARM is in UK
+> [17:18:08] <geist> eryjus: possibly bad physical address in a page table
+> [17:17:35] <eryjus> hmmm....  this is from my first heap allocation and worked properly until I changed mmu to the long descriptors...  no change in login with the heap init.
+> [17:17:42] <geist> probably not, ARM is in UK
+> [17:18:08] <geist> eryjus: possibly bad physical address in a page table
+> [18:04:18] <eryjus> geist, any thoughts for option b?  0x0101b000 should be a valid address.
+> [18:09:15] <geist> eryjus: what is option b?
+> [18:09:18] <geist> also are you on real hardware?
+> [18:09:36] <geist> also dunno, is that a valid address?
+> [18:09:58] <eryjus> i am on real hardware...  i'm curious if something more than an invalid address would cause the problem -- it is valid
+> [18:10:28] <eryjus> or i cannot imagine is it invalid -- it's an rpi2b
+> [18:12:48] <eryjus> even more interesting is that this is happening after i have initialized my heap and I have already written to that page.
+> [18:41:30] <geist> eryjus: is that within the usual dram range on a rpi2?
+> [18:42:02] <geist> it's also possible the memory is marked off limits in secure mode. fairly common on many arm platforms, though i dunno if any of the raspberry pis do that
+> [18:44:14] <eryjus> 1GB dram....
+> [18:48:11] <geist> eryjus: indeed. i guess what i was asking was dram on rpi2 goes from 0 + right? not all do
+> [18:49:22] <eryjus> turned out that when I changed the Attr from strongly ordered memory to normal memory it worked...  though I cannot imagine it should have made a difference, or there is something else wrong
+> [18:53:19] <geist> yah possible that it'll just fail a bit later
+> [18:53:35] <geist> because if it's normal memory then it's in the cache and it's only until the cache is written out (if it was a write that triggered it)
+> [19:05:36] <eryjus> anyway, changed the attributes on the memory and I am getting much farther along.  you think there may still be an underlying problem?
+> [19:07:15] <geist> yeah i bet there is
+> [19:07:25] <geist> also what kind of memory is it? is that dram? io?
+> [19:07:40] <eryjus> dram
+> [19:07:45] <geist> was there a reason ou had it set to strongly ordered before?
+> [19:07:56] <eryjus> not really
+> [19:08:10] <geist> that's pretty strange to have dram mapped SO, so it's possible the memory controller balked at you
+> [19:08:30] <geist> SO is above and beyond usual uncached modes, since it basically forces a full sync every access
+> [19:10:00] <eryjus> ok....  will keep it in mind...  gonna bookmark this conversation in case something comes back up again.
+> [19:10:18] <geist> butr yeah, general rule map dram as normal memory. that's full cached, what you generally want
+> [19:10:39] <geist> mmio regions you should map as 'device memory' which is uncached, but allows posted writes (ie, write and then move on)
+> [19:11:20] <eryjus> which was my earlier questions which turned out to be me looking in the wrong spot
+> [19:11:28] <geist> SO is mega synchronized, since it does what gungoman said and runs the cpu one load/store at a time
+> [19:12:00] <eryjus> missed that...
+
+Anyway, I am now getting to where the other cores are trying to start.  This means that `entryAp.s` is in play.
+
+That cleaned up, I am back to where I was beore I started trying to set up a user process.  So, I am going to commit this code now (and keep the same version). since I have such a good spot to stop.  I still need to get a user-space process running on the rpi2b target.
+
+
+
+
+
