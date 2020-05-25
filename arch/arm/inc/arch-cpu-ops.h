@@ -279,4 +279,14 @@ void InvalidatePage(archsize_t vma) {
 
 
 
+//
+// -- Read the CPSR
+//    -------------
+EXTERN_C INLINE
+archsize_t ReadCpsr(void) {
+    archsize_t _val;
+    __asm__ volatile("mrs %0,cpsr" : "=r" (_val));
+    return _val;
+}
+
 

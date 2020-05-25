@@ -70,11 +70,14 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 : foreach  $(WS)/arch/$(ARCH)/*.cc                          |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/*.s                           |> !as |>
 
-: foreach  $(WS)/arch/$(ARCH)/common/*.cc                      |> !cc |>
-: foreach  $(WS)/arch/$(ARCH)/common/*.s                       |> !as |>
+: foreach  $(WS)/arch/$(ARCH)/common/*.cc                   |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/common/*.s                    |> !as |>
 
 : foreach  $(WS)/arch/$(ARCH)/cpu/*.cc                      |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/cpu/*.s                       |> !as |>
+
+: foreach  $(WS)/arch/$(ARCH)/debug/*.cc                    |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/debug/*.s                     |> !as |>
 
 : foreach  $(WS)/arch/$(ARCH)/mmu/*.cc                      |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/mmu/*.s                       |> !as |>

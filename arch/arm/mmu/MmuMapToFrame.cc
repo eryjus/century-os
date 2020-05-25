@@ -58,23 +58,28 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int pgFlags)
     LongDescriptor_t *entry = &lvl2[LEVEL2ENT(addr)];
 
     if (entry->present == 0) {
-        entry->physAddress = PmmAllocateFrame();
-        MmuClearFrame(entry->physAddress);
-        entry->xn = 1;
-        entry->pxn = 1;
-        entry->software = 0;
-        entry->contiguous = 0;
-        entry->nG = 0;
-        entry->af = 1;
-        entry->sh = 0b11;
-        entry->ap = 0b01;
-        entry->ns = 1;
-        entry->attrIndex = 0b000;
-        entry->flag = 1;
         entry->present = 1;
+        entry->flag = 1;
+        entry->attrIndex = 0b010;
+        entry->ns = 1;
+        entry->ap = 0b01;
+        entry->sh = 0b11;
+        entry->af = 1;
+        entry->nG = 0;
+        entry->physAddress = PmmAllocateFrame();
+        entry->contiguous = 0;
+        entry->pxn = 1;
+        entry->xn = 1;
+        entry->software = 0;
+        entry->tblPxn = 0;
+        entry->tblXn = 0;
+        entry->tblAp = 0b00;
+        entry->tblNs = 1;
+
+        MmuClearFrame(entry->physAddress);
 
         WriteDCCMVAC((uint32_t)entry);
-        InvalidatePage(addr);
+        InvalidatePage((archsize_t)entry);
         MemoryResynchronization();
     }
 
@@ -86,21 +91,25 @@ void MmuMapToFrame(archsize_t addr, frame_t frame, int pgFlags)
         return;
     }
 
-    entry->physAddress = frame;
-    entry->xn = (pgFlags & PG_WRT ? 1 : 0);
-    entry->pxn = (pgFlags & PG_WRT ? 1 : 0);
-    entry->software = 0;
-    entry->contiguous = 0;
-    entry->nG = 0;
-    entry->af = 1;
-    entry->sh = 0b11;
-    entry->ap = (pgFlags & PG_KRN ? 0b00 : 0b01);
-    entry->ns = 0;
-    entry->attrIndex = (pgFlags & PG_DEVICE ? 0b010 : 0b000);
-    entry->flag = 1;
     entry->present = 1;
+    entry->flag = 1;
+    entry->attrIndex = (pgFlags & PG_DEVICE ? 0b010 : 0b000);
+    entry->ns = 1;
+    entry->ap = 0b01;
+    entry->sh = 0b11;
+    entry->af = 1;
+    entry->nG = 0;
+    entry->physAddress = frame;
+    entry->contiguous = 0;
+    entry->pxn = (pgFlags & PG_WRT ? 1 : 0);
+    entry->xn = (pgFlags & PG_WRT ? 1 : 0);
+    entry->software = 0;
+    entry->tblPxn = 0;
+    entry->tblXn = 0;
+    entry->tblAp = 0b00;
+    entry->tblNs = 1;
 
-    WriteDCCMVAC((uint32_t)entry);
+    WriteDCCMVAC((uint32_t)addr);
     InvalidatePage(addr);
     MemoryResynchronization();
 }

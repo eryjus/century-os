@@ -88,7 +88,7 @@ void kInitAp(void)
     kprintf("Cpus running is %d\n", cpus.cpusRunning);
     ProcessAddGlobal(proc);         // lock required
     EnableInterrupts();
-//BOCHS_TOGGLE_INSTR;
+
     kprintf("Interrupts enabled on CPU %d\n",  thisCpu->cpuNum);
     NextCpu(cpus.cpuStarting);
     kprintf("CPU%d signalled the next CPU to start\n",  thisCpu->cpuNum);

@@ -44,10 +44,10 @@ typedef struct LongDescriptor_t { // Used at:  Pg : Tbl :
     uint32_t pxn : 1;                       // Y  :  N  : Privileged eXecute Never
     uint32_t xn : 1;                        // Y  :  N  : eXecute Never (set to 1 when _PG_WRT == 0)
     uint32_t software : 4;                  // Y  :  N  : available for kernel use (will set to 0000)
-    uint32_t dftpxn : 1;                    // N  :  Y  : Privileged eXecute Never (set to 0, control at page)
-    uint32_t dftxn : 1;                     // N  :  Y  : eXecute Never (set to 0, control at page)
-    uint32_t dftap : 2;                     // N  :  Y  : Access Permissions Limit (set to 00, control at page)
-    uint32_t dftns : 1;                     // N  :  Y  : Not Secured (set to 0, control at page)
+    uint32_t tblPxn : 1;                    // N  :  Y  : Privileged eXecute Never (set to 0, control at page)
+    uint32_t tblXn : 1;                     // N  :  Y  : eXecute Never (set to 0, control at page)
+    uint32_t tblAp : 2;                     // N  :  Y  : Access Permissions Limit (set to 00, control at page)
+    uint32_t tblNs : 1;                     // N  :  Y  : Not Secured (set to 1, control at page)
 } __attribute((packed)) LongDescriptor_t;
 
 
@@ -67,10 +67,10 @@ void MmuDumpTables(archsize_t addr);
 
 
 //
-// -- No need to make a user table -- this is already cleared
-//    -------------------------------------------------------
-EXTERN_C INLINE
-void MmuMakeTopUserTable(frame_t frame) {}
+// -- Create a user-space table
+//    -------------------------
+EXTERN_C EXPORT KERNEL
+void MmuMakeTopUserTable(frame_t frame);
 
 
 //

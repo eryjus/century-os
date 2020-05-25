@@ -51,7 +51,7 @@ void CoresStart(void)
         SEV();
         kprintf("..  waiting for core to start...\n");
 
-        while (AtomicRead(&cpus.perCpuData[cpus.cpuStarting].state) == CPU_STARTING) { ProcessMilliSleep(1); }
+        while (AtomicRead(&cpus.perCpuData[cpus.cpuStarting].state) == CPU_STARTING) { DMB(); }
     }
 }
 

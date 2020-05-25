@@ -67,7 +67,7 @@ void CpuInit(void)
 
     ArchLateCpuInit(0);
 
-    kprintf("Done with CPU setup!!  CPU numer is %d\n", thisCpu->cpuNum);
+    kprintf("Done with CPU setup!!  CPU number is %d\n", thisCpu->cpuNum);
 }
 
 

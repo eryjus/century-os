@@ -2493,7 +2493,638 @@ Anyway, I am now getting to where the other cores are trying to start.  This mea
 
 That cleaned up, I am back to where I was beore I started trying to set up a user process.  So, I am going to commit this code now (and keep the same version). since I have such a good spot to stop.  I still need to get a user-space process running on the rpi2b target.
 
+---
 
+That done, I address the user-space process.
 
+---
+
+### 2020-May-20
+
+To start my day, I need to prepare a new user-process paging table.  So, this is controlled from `ProcessPrepareFromImage()`, which is very x86-centric.
+
+That cleaned up, I am still getting a data fault when I try to map a user-space page.
+
+```
+Data Exception:
+.. Data Fault Address: 0x7fc00040
+.. Fault occurred because of a read
+.. LPAE is enabled
+.. Data Fault Status Register: 0x00000207
+.. Fault status 0x7: Translation Fault -- Level 3
+
+MMU Tables Dump: Walking the page tables for address 0x7fc00040
+
+.. TTBR0 entry is 0x3eff3000
+.. TTBR1 entry is 0x01002000
+
+Level  Tabl-Addr     Index        Entry Addr    Next Frame    Attr Bits
+-----  ----------    ----------   ----------    ----------    ---------------------
+  2    0x7ffff000    0x000003fe   0x7ffffff0    0x00001003    0x00000000 0x00000743
+  3    0x7fffe000    0x00000000   0x7fffe000    0x00001008    0x00000000 0x00000743
+
+At address: 0xff800f10
+ R0: 0x00008000   R1: 0x000001e6   R2: 0x00000000
+ R3: 0x00000008   R4: 0x7fc00040   R5: 0x00008000
+ R6: 0x00000000   R7: 0x000001e6   R8: 0x7fc00000
+ R9: 0x00000001  R10: 0x00000000  R11: 0x00000000
+R12: 0xf8215000   SP: 0x80806568   LR_ret: 0x80804144
+SPSR_ret: 0x200001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xafef8dff  User SP: 0xe7fa68f9
+Svc LR: 0xff800f20
+```
+
+One thing that stands out is that the frames are not from the newly allocated ones for the user space.  In other words, I am still looking at the previous TTBR0 register -- the user space has not been recognized (it exists properly in the TTBR0 register).
+
+Shooting down the entire TLB worked (half the address space makes this reasonable).  I also did the same thing with `ProcessSwitch()`, but I still have problems:
+
+```
++---------------------------+--------+----------+----------+------------+-----------------------+--------------+
+| Command                   | PID    | Priority | Status   | Address    | Time Used             | Kernel Stack |
++---------------------------+--------+----------+----------+------------+-----------------------+--------------+
+| Butler                    | 0      | LOW      | MSGW     | 0x9000000c | 0x00000000 0x0044aba2 | 0xff805000   |
+| Idle Process              | 1      | IDLE     | RUNNING  | 0x900000bc | 0x00000000 0x00c858de | 0xff806000   |
+| Idle Process              | 2      | IDLE     | RUNNING  | 0x9000016c | 0x00000000 0x00c6271f | 0xff808000   |
+| Idle Process              | 3      | IDLE     | READY    | 0x9000021c | 0x00000000 0x00c3ee7e | 0xff80a000   |
+| Idle Process              | 4      | IDLE     | RUNNING  | 0x900002cc | 0x00000000 0x00c83293 | 0xff80c000   |
+| test.elf                  | 8      | NORMAL   | INIT     | 0x90000644 | 0x00000000 0x00000000 | 0x00007000   |
+| Process A                 | 9      | OS       | MSGW     | 0x900007fc | 0x00000000 0x0000c84a | 0xff811000   |
+| Process B                 | 10     | OS       | DLYW     | 0x900008ac | 0x00000000 0x0000f971 | 0xff813000   |
+| Kernel Debugger           | 11     | OS       | RUNNING  | 0x9000095c | 0x00000000 0x011e7a8e | 0xff815000   |
++---------------------------+--------+----------+----------+------------+-----------------------+--------------+
+sched :>
+ (allowed: show,status,run,ready,list,exit)
+```
+
+The process is still in an `INIT` state.
+
+---
+
+### 2020-May-21
+
+Today I take on why the new `test.elf` process is still in the `INIT` state.  Turns out I had a line commented out which readies the process.  Now, once the process is ready to be scheduled, the rpi2b locks.  So, something is not working properly with the user process.  I am going to start by commenting out the extra bits compared to the kernel process start.  This process should, then, run at privilege.
+
+```
+Welcome to the Century-OS kernel debugger
+- :> Prefetch Abort:
+At address: 0x00002f70imer,msgq)
+ R0: 0x00000001   R1: 0x00000000   R2: 0x00000000
+ R3: 0x00000000   R4: 0x00000000   R5: 0x00000000
+ R6: 0x00000000   R7: 0x000080e4   R8: 0x00000000
+ R9: 0x00000000  R10: 0x00000000  R11: 0x00000000
+R12: 0x00000000   SP: 0x00008030   LR_ret: 0x010d8e18
+SPSR_ret: 0x800001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0xcf99df8d  User SP: 0xba5defbd
+Svc LR: 0x00002f80
+```
+
+Even cleaned up, I am not sure what is really going on here.  And I am going to need to code some more details:
+
+```c++
+void PrefetchHandler(isrRegs_t *regs)
+{
+    kprintf("Prefetch Abort:\n");
+    IsrDumpState(regs);
+}
+```
+
+Making that more like the `DataAbortHandler()` and re-running -- I am back to a lock-up.  So I have some damned race condition.  OK, now I have a Data Abort!
+
+```
+Data Exception:
+.. Data Fault Address: 0x7fc086c0
+.. Fault occurred because of a read
+.. LPAE is enabled
+.. Data Fault Status Register: 0x00000207
+.. Fault status 0x7: Translation Fault -- Level 3
+
+MMU Tables Dump: Walking the page tables for address 0x7fc086c0
+
+.. TTBR0 entry is 0x3eff3000
+.. TTBR1 entry is 0x01002000
+
+Level  Tabl-Addr     Index        Entry Addr    Next Frame    Attr Bits
+-----  ----------    ----------   ----------    ----------    ---------------------
+  2    0x7ffff000    0x000003fe   0x7ffffff0    0x0003eff2    0x00600000 0x00000763
+  3    0x7fffe000    0x00000008   0x7fffe040    0x00000000    0x00000000 0x00000000
+
+At address: 0x00002ee0
+ R0: 0x8080b064   R1: 0x00000000   R2: 0x000010d8
+ R3: 0x000010d8   R4: 0x7fc086c0   R5: 0xfffff000
+ R6: 0x7fc00000   R7: 0x00000000   R8: 0xffffffff
+ R9: 0xffffffff  R10: 0x00000000  R11: 0x00000000
+R12: 0xf8215000   SP: 0x80803ee4   LR_ret: 0x80803ef8
+SPSR_ret: 0x600001d3     type: 0x17
+
+Additional Data Points:
+User LR: 0x9e5ffe3e  User SP: 0xe7f6e7bf
+Svc LR: 0x00002ef0
+```
+
+All the mapping should be completed, and this is occurring in `MmuMapToFrame()`.  So, I am going to turn off the `ProcessReady()` again and try to get to the bottom of this problem.  It's obviously in the MMU code.
+
+OK, that does not appear to be the problem....  Maybe comment the cleanup?  That had no effect.
+
+---
+
+### 2020-May-22
+
+OK, so let's see here....  How to debug this issue?
+
+I guess I first need to see if it can be duplicated on qemu....  No, that is not going to help.
+
+So, I guess the next step here will be to comment out the debugger for the moment (it steps on debug output) and see if I can narrow down the problem in the elf loader.
+
+---
+
+OK, so after some debugging with the rpi2b (which will not emit a complete boot!) and a reboot of this host computer, I think I need to hard-power the computer to force a hard-reset on the USB hardware.  No matter what I do, I cannot get a full and complete boot on either rpi2b or rpi3b hardware even thought I should.
+
+So, I am taking updates and I am going to hard reboot the PC.  Should take an hour to get that complete.  Fun, fun, fun!!!
+
+---
+
+OK, I think I see what is going on here...  I am not jumping to the `LoaderMain()` code and getting the memory mapped properly.  This should be easy enough to check.  And that is confirmed:
+
+```
+Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits
+-----  -----------    -----------   -----------    -----------    ---------------------
+  1    0x0100 2000    0x0000 0003   0x0100 2018    0x0100 6000    0x0000 0000 0000 0743
+  2    0x0100 6000    0x0000 01fe   0x0100 6ff0    0x0100 5000    0x0000 0000 0000 0743
+  3    0x0100 5000    0x0000 0000   0x0100 5000    0x0100 9000    0x0000 0000 0000 0743
+Enabling Paging...
+```
+
+No clue what happened.  This was working reasonably well last night...  well 2 nights ago.  Let me change from the pi3 back to the pi2 and confirm I am in the same spot.  And I am faulting in the same spots.
+
+So, where am I faulting really?  This is clearly happening between where I enable paging and I am able to map the MMIO memory space (so `kprintf()` will work again).  So, I am going to have to go back to QEMU and do some checking.
+
+QEMU confirms:
+
+```
+IN:
+0x001008e4:  e59fd0d8  ldr      sp, [pc, #0xd8]
+0x001008e8:  ee070fd5  mcr      p15, #0, r0, c7, c5, #6
+0x001008ec:  ee070f11  mcr      p15, #0, r0, c7, c1, #0
+0x001008f0:  e59f00d0  ldr      r0, [pc, #0xd0]
+0x001008f4:  ebfffe19  bl       #0x100160
+
+R00=01002000 R01=00c5187d R02=00000000 R03=00000028
+R04=00000040 R05=0100d000 R06=01003000 R07=01004000
+R08=01005000 R09=01006000 R10=0002830f R11=000254cc
+R12=00000264 R13=01001000 R14=001001b4 R15=001008e4
+PSR=200001d3 --C- A NS svc32
+Taking exception 4 [Data Abort]
+...from EL1 to EL1
+...with ESR 0x25/0x96000006
+...with DFSR 0x206 DFAR 0x3f215054
+```
+
+So for some reason, I have lost the mapping of the MMIO mappings...  wait!  This is the extra output I added after enabling paging.  I need to clean that up first, obviously.
+
+---
+
+### 2020-May-23
+
+At this point, I believe I have a bad FTDI cable, or I am losing the USB controller on the laptop.  I am going to order a new cable (or 3).  However, in the meantime, I am completely unable to debug the rpi code.  So, let's see...  what are my options?
+* refit for a qemi-rpi2b target so I can debug using qemu
+* start an x86_64 target to start to support 64-bit
+* change gears altogether and work on an emulator of my own
+* walk away until this is resolved
+
+Well, I think the first option is the best.  Or at least figure out how to get the serial working for qemu.
+
+---
+
+OK, I think I have qemu working now.  I am at least getting my serial debug output!!  I'm happy about that.
+
+The problem was that I have 2 available serial devices, and I was only mapping one.  I needed to redirect the UART0 (the PL011 UART) to `/dev/null`, and then use a second `-serial` option for the AUX UART.  I can now see the output.
+
+And I now have much better visibility into where the system is failing.  And it is failing trying to read the Multiboot structure.  If I recall correctly, this is mapped prior to trying to read it.
+
+I'm wondering: did I finally reach a critical kernel size?  Nope -- it just turns out that the multiboot information in the MB1 structure for qemu is not like the standard states -- and the bootloader name is in an invalid location.  A quick change to validate that is all that was required.
+
+So, I feel like I am back on track here.
+
+I have now made it to the point where the other CPUs are trying to start.  It looks like CPU0 is able to start CPU1 and CPU1 confirmed it is started, but it appears that CPU0 does not recognize that the data has changed.  This means I have problems with the atomics again.
+
+I have been able to trace the lock-up down to the `MmuUnmapPage()` function where the function tries to obtain the spinlock for the TLB Flush IPI.
+
+```
+Preparing to unmap address 0xff40a000
+.. kernel-space
+Locking the TLB Flush IPI mechanism; its current state is unlocked at 0x81004d18
+```
+
+Let me confirm I am not getting this lock.  No, that is good:
+
+```
+Locking the TLB Flush IPI mechanism; its current state is unlocked at 0x81004d18
+.. lock obtained
+```
+
+```c++
+    archsize_t flags = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
+        kprintf(".. lock obtained\n");
+        tlbFlush.addr = -1;
+        PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
+
+        kprintf("Completed IPI Broadcast\n");
+```
+
+So, the problem is in `PicBroadcastIpi()`....  And this goes back to a problem with the atomics.
+
+I believe the problem is going to boil down to the new MMU implementation and the caching that I have set up versus the caching that used to be set up using the old short-descriptor.
+
+So, let me go collect the settings us used to use with the old short-descriptor.
+* s (sharable) which was set to `1` for all pages
+* apx (access permissions extension bit) is `0` (and indicated for all access)
+* ap (access permissions) is `11` and also indivated for all access
+    * the first `01` means all access from any privilege
+    * the final `1` means the page can be accessed
+* tex is going to be either classified as a device or normal memory, depending on the `PG_DEVICE` flag
+    * tex device is defined as `010`
+    * tex normal is defined as `000`
+* c is for cached and is defined depending on the `PG_DEVICE` flag
+    * c device is defined as `0`
+    * c normal is defined as `1`
+* b is for buffered memory and is dependent on the `PG_DEVICE` flag
+    * b device is defined as `0`
+    * b normal is defined as `1`
+* nG is defined as global or a value of `0` for all pages
+
+Now, mapping this to the new long-descriptor format, the following should be set:
+* attrIndex will be set to an `MAIR` index based on the `PG_DEVICE` flag (it replaces the existing "c b tex s" combinations)
+    * `MAIR` value `0000 0100` when the `PG-DEVICE` flag is  (MAIR index 2)
+    * `MAIR` value `1011 1011` for normal memory (may want to change this to `1000 1000`...) -- MAIR index 0
+* ns is set to `1`, meaning that this page is not secured
+* tblNs is set to `1` meaning that this table is not secured
+* ap is set to `01`, in alignment to the short-descriptor
+* TblAp will be set to `00` to drive access permissions to the page
+* sh is set to `11` to indicate that the page is inner sharable
+* af will be set to `1` to allow access
+* nG will be set to `0` in alignment to the short-descriptor
+* pxn will be set:
+    * `0` when PG_WRT is clear
+    * `1` when PG_WRT is set
+* tblPxn will be set to `0` to push the lookups to the page level
+* xn will be set:
+    * `0` when PG_WRT is clear
+    * `1` when PG_WRT is set
+* tblXn will be set to `0` to push the lookups to the page level
+
+So this now results in the following bits for the long-descriptor flags `1000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0111 0110 0011` or in hex `8000 0000 0000 0763` for code.  The value becomes `8040 0000 0000 0763` for data.
+
+---
+
+OK, I am now working on an MMU problems with `SerialPutChar()` where it is looping waiting for room to be available.  I need to see if I can check the mappings.  So lets see here.... `0xf8215040` is the address we check for the status.  That is level 2 table `0x00106000` so that would be offset `0xe08` into that table.
+
+All fixed up, I am back where I was with no change in behavior.  OK, looking at this page mapping, the bits are `8060 0000 3f21 576b`.  And this looks correct.  In particular, `6b` turns into `0110 1011` and masking out the attr bits, we are looking at `010` or `MAIR` index 2.  These bits are `04` and is device memory.  Let's try `00` for strongly ordered memory.
+
+---
+
+### 2020-May-25
+
+OK, getting into `gdb` and attaching to `qemu`...  for CPU0 (that's a lot of shit in the CPU!):
+
+```
+(gdb) info reg
+r0             0xc0                192
+r1             0x81000664          -2130704796
+r2             0xf8215054          -132034476
+r3             0x60                96
+r4             0x81000660          -2130704800
+r5             0x20                32
+r6             0x1                 1
+r7             0x2                 2
+r8             0xff800f74          -8384652
+r9             0xff40a000          -12541952
+r10            0xffc00000          -4194304
+r11            0x8080c788          -2139043960
+r12            0xf8215000          -132034560
+sp             0xff800ef8          0xff800ef8
+lr             0x808070bc          -2139066180
+pc             0x808070fc          0x808070fc
+cpsr           0x200001d3          536871379
+fpscr          0x0                 0
+fpsid          0x41023075          1090662517
+fpexc          0x40000000          1073741824
+MAIR0_S        0x0                 0
+MAIR1_S        0x0                 0
+CNTP_CTL_S     0x0                 0
+MAIR0          0x400bb             262331
+MAIR1          0x0                 0
+CNTP_CTL       0x5                 5
+DBGBVR_S       0x0                 0
+DBGBCR_S       0x0                 0
+DBGBVR         0x0                 0
+DBGBCR         0x0                 0
+DUMMY          0x0                 0
+DUMMY_S        0x0                 0
+MAIR_EL2_S     0x0                 0
+HMAIR1_S       0x0                 0
+CNTHP_CTL_EL2_S 0x0                0
+MAIR_EL2       0x0                 0
+HMAIR1         0x0                 0
+CNTHP_CTL_EL2  0x0                 0
+OSLSR_EL1_S    0xa                 10
+OSLSR_EL1      0xa                 10
+SCR_S          0x131               305
+SDER_S         0x0                 0
+AFSR0_EL1_S    0x0                 0
+NSACR_S        0x0                 0
+AFSR1_EL1_S    0x0                 0
+SCR            0x131               305
+AFSR0_EL1      0x0                 0
+SDER           0x0                 0
+NSACR          0x0                 0
+AFSR1_EL1      0x0                 0
+PAR_S          0x0                 0
+PAR            0x0                 0
+HCR_S          0x0                 0
+MDCR_EL2_S     0x0                 0
+AFSR0_EL2_S    0x0                 0
+AFSR1_EL2_S    0x0                 0
+CPTR_EL2_S     0x0                 0
+HCR            0x0                 0
+HSTR_EL2_S     0x0                 0
+MDCR_EL2       0x0                 0
+AFSR0_EL2      0x0                 0
+CPTR_EL2       0x0                 0
+AFSR1_EL2      0x0                 0
+HSTR_EL2       0x0                 0
+PMCCNTR_S      0x0                 0
+AFSR0_EL3_S    0x0                 0
+DBGDIDR_S      0x3515f005          890630149
+AFSR1_EL3_S    0x0                 0
+PMXEVCNTR_S    0x0                 0
+PMCCNTR        0x0                 0
+AFSR0_EL3      0x0                 0
+DBGDIDR        0x3515f005          890630149
+AFSR1_EL3      0x0                 0
+PMXEVCNTR      0x0                 0
+DBGBVR_S       0x0                 0
+DBGBCR_S       0x0                 0
+DBGWVR_S       0x0                 0
+DBGBVR         0x0                 0
+DBGWCR_S       0x0                 0
+DBGBCR         0x0                 0
+MIDR_S         0x410fc075          1091551349
+DBGWVR         0x0                 0
+CTR_S          0x84448003          -2075885565
+DBGWCR         0x0                 0
+TCMTR_S        0x0                 0
+MIDR           0x410fc075          1091551349
+TLBTR_S        0x0                 0
+VBAR_S         0x0                 0
+MVBAR_S        0x400               1024
+CTR            0x84448003          -2075885565
+TCMTR          0x0                 0
+TLBTR          0x0                 0
+MVBAR          0x400               1024
+CLIDR_S        0xa200023           169869347
+CLIDR          0xa200023           169869347
+AMAIR0_S       0x0                 0
+AIDR_S         0x0                 0
+CSSELR_S       0x0                 0
+AMAIR1_S       0x0                 0
+CNTV_CTL_S     0x0                 0
+AIDR           0x0                 0
+CSSELR         0x0                 0
+CNTV_CTL       0x0                 0
+VBAR           0xff401000          -12578816
+AMAIR0         0x0                 0
+AMAIR1         0x0                 0
+DUMMY_S        0x0                 0
+DUMMY          0x0                 0
+VPIDR_S        0x410fc075          1091551349
+VPIDR          0x410fc075          1091551349
+VBAR_EL2_S     0x0                 0
+VMPIDR_S       0x80000f00          -2147479808
+VBAR_EL2       0x0                 0
+VMPIDR         0x80000f00          -2147479808
+TEECR_S        0x0                 0
+TEECR          0x0                 0
+AMAIR_EL2_S    0x0                 0
+HAMAIR1_S      0x0                 0
+AMAIR_EL2      0x0                 0
+HAMAIR1        0x0                 0
+ESR_EL2_S      0x0                 0
+ESR_EL2        0x0                 0
+PMUSERENR_S    0x0                 0
+PMINTENSET_S   0x0                 0
+MDCCSR_EL0_S   0x0                 0
+PMINTENCLR_S   0x0                 0
+PMUSERENR      0x0                 0
+PMINTENSET     0x0                 0
+MDCCSR_EL0     0x0                 0
+PMINTENCLR     0x0                 0
+DBGBVR_S       0x0                 0
+DBGDRAR_S      0x0                 0
+DBGBCR_S       0x0                 0
+DBGWVR_S       0x0                 0
+DBGBVR         0x0                 0
+DBGDRAR        0x0                 0
+DBGWCR_S       0x0                 0
+DBGBCR         0x0                 0
+ID_PFR0_S      0x1131              4401
+DBGWVR         0x0                 0
+DBGWCR         0x0                 0
+ID_DFR0_S      0x2010555           33621333
+ID_PFR0        0x1131              4401
+ID_AFR0_S      0x0                 0
+ID_MMFR0_S     0x10101105          269488389
+ID_DFR0        0x2010555           33621333
+ID_MMFR1_S     0x40000000          1073741824
+ID_AFR0        0x0                 0
+ID_MMFR2_S     0x1240000           19136512
+ID_MMFR0       0x10101105          269488389
+ID_MMFR3_S     0x2102211           34611729
+ID_MMFR1       0x40000000          1073741824
+ID_MMFR2       0x1240000           19136512
+ID_MMFR3       0x2102211           34611729
+DUMMY_S        0x0                 0
+DUMMY          0x0                 0
+PAR_S          0x0                 0
+PAR            0x0                 0
+DACR_S         0x0                 0
+DACR           0xffffffff          -1
+CBAR_S         0x3f000000          1056964608
+CBAR           0x3f000000          1056964608
+MDSCR_EL1_S    0x0                 0
+DBGBVR_S       0x0                 0
+MDSCR_EL1      0x0                 0
+DBGDSAR_S      0x0                 0
+DBGBCR_S       0x0                 0
+DBGWVR_S       0x0                 0
+DBGBVR         0x0                 0
+DBGDSAR        0x0                 0
+DBGWCR_S       0x0                 0
+DBGBCR         0x0                 0
+ID_ISAR0_S     0x2101110           34607376
+DBGWVR         0x0                 0
+ID_ISAR1_S     0x13112111          319889681
+DBGWCR         0x0                 0
+ID_ISAR2_S     0x21232041          555950145
+ID_ISAR0       0x2101110           34607376
+ID_ISAR3_S     0x11112131          286335281
+ID_ISAR1       0x13112111          319889681
+ID_ISAR4_S     0x10011142          268505410
+ID_ISAR2       0x21232041          555950145
+ID_ISAR5_S     0x0                 0
+ID_ISAR3       0x11112131          286335281
+ID_MMFR4_S     0x0                 0
+ID_ISAR4       0x10011142          268505410
+ID_ISAR6_S     0x0                 0
+ID_ISAR5       0x0                 0
+ID_MMFR4       0x0                 0
+ID_ISAR6       0x0                 0
+TTBR0          0x1002000           16785408
+TTBR1_S        0x0                 0
+TTBR1          0x1002000           16785408
+TTBR0_S        0x0                 0
+HTTBR_S        0x0                 0
+HTTBR          0x0                 0
+VTTBR_S        0x0                 0
+VTTBR          0x0                 0
+CNTP_CVAL_S    0x0                 0
+CNTP_CVAL      0x167aa25c          377135708
+CNTV_CVAL_S    0x0                 0
+CNTV_CVAL      0x0                 0
+CNTVOFF_S      0x0                 0
+CNTVOFF        0x0                 0
+CNTHP_CVAL_S   0x0                 0
+CNTHP_CVAL     0x0                 0
+DBGDSAR_S      0x0                 0
+DBGDSAR        0x0                 0
+TTBR0_EL1_S    0x0                 0
+TTBR1_EL1_S    0x0                 0
+DFAR_S         0x0                 0
+TTBR0_EL1      0x1002000           16785408
+WFAR_S         0x0                 0
+CNTFRQ_S       0x3b9aca0           62500000
+TTBR1_EL1      0x1002000           16785408
+DFAR           0x0                 0
+IFAR_S         0x0                 0
+WFAR           0x0                 0
+TTBCR          0xb5003501          -1258277631
+IFAR           0x0                 0
+CNTFRQ         0x3b9aca0           62500000
+DBGBVR_S       0x0                 0
+DBGBCR_S       0x0                 0
+DBGBVR         0x0                 0
+DBGWVR_S       0x0                 0
+DBGBCR         0x0                 0
+DBGWCR_S       0x0                 0
+DBGWVR         0x0                 0
+TTBCR_S        0x0                 0
+DBGWCR         0x0                 0
+DUMMY          0x0                 0
+FAR_EL2_S      0x0                 0
+TCR_EL2_S      0x0                 0
+HIFAR_S        0x0                 0
+FAR_EL2        0x0                 0
+TCR_EL2        0x0                 0
+HPFAR_S        0x0                 0
+HIFAR          0x0                 0
+DUMMY_S        0x0                 0
+HPFAR          0x0                 0
+CNTKCTL_S      0x0                 0
+DBGBVR_S       0x0                 0
+DBGBCR_S       0x0                 0
+DBGBVR         0x0                 0
+DBGBCR         0x0                 0
+CNTKCTL        0x0                 0
+DUMMY          0x0                 0
+VTCR_S         0x0                 0
+CNTHCTL_EL2_S  0x3                 3
+VTCR           0x0                 0
+CNTHCTL_EL2    0x3                 3
+DUMMY_S        0x0                 0
+DBGDRAR_S      0x0                 0
+DBGDRAR        0x0                 0
+SCTLR_S        0xc50078            12910712
+DFSR_S         0x0                 0
+ACTLR_EL1_S    0x0                 0
+CPACR_S        0xf00000            15728640
+IFSR_S         0x0                 0
+SCTLR          0xc5187d            12916861
+FCSEIDR_S      0x0                 0
+DFSR           0x0                 0
+ACTLR_EL1      0x0                 0
+CONTEXTIDR_S   0x0                 0
+CPACR          0xf00000            15728640
+IFSR           0x0                 0
+TPIDRURW_S     0x0                 0
+FCSEIDR        0x0                 0
+TPIDRURO_S     0x0                 0
+CONTEXTIDR_EL1 0x0                 0
+TPIDRPRW_S     0x0                 0
+TPIDRURW       0x0                 0
+TPIDRURO       0x9000000c          -1879048180
+TPIDRPRW       0x81000018          -2130706408
+L2CTLR_S       0x3800000           58720256
+L2ECTLR_S      0x0                 0
+L2CTLR         0x3800000           58720256
+L2ECTLR        0x0                 0
+SCTLR_EL2_S    0x0                 0
+ACTLR_EL2_S    0x0                 0
+SCTLR_EL2      0x0                 0
+ACTLR_EL2      0x0                 0
+TPIDR_EL2_S    0x0                 0
+TEEHBR_S       0x0                 0
+TPIDR_EL2      0x0                 0
+TEEHBR         0x0                 0
+PMCR_S         0x41000000          1090519040
+PMCNTENSET_S   0x0                 0
+PMCNTENCLR_S   0x0                 0
+PMCR           0x41000000          1090519040
+PMOVSR_S       0x0                 0
+PMCNTENSET     0x0                 0
+PMCNTENCLR     0x0                 0
+PMSELR_S       0x0                 0
+PMOVSR         0x0                 0
+PMSELR         0x0                 0
+```
+
+But, in particular, `cpsr 0x200001d3` shows that AIF are all masked.
+
+For CPU1:
+
+```
+(gdb) thread 1
+[Switching to thread 1 (Thread 1)]
+#0  0x808070fc in ?? ()
+(gdb) info reg
+[snip]
+sp             0xff800ef8          0xff800ef8
+lr             0x808070bc          -2139066180
+pc             0x808070fc          0x808070fc
+cpsr           0x200001d3          536871379
+```
+
+This CPU is trying to output a character to the serial port.  This is done with interrupts disabled.
+
+```
+sp             0xff801fe0          0xff801fe0
+lr             0x80807f08          -2139062520
+pc             0x80807f10          0x80807f10
+cpsr           0x60000113          1610613011
+```
+
+CPU2 is waiting at the synchronization barrier, and interrupts are enabled!  And CPU3 is in the same state as CPU2.
+
+So, OK, where is CPU0?  I thought this was running on CPU0, but I may be wrong.  That CPU is in the same state as CPU2 and CPU3.
+
+After disabling the other CPUs, it looks like the timer is not being programmed properly and it is not generating a signal.
+
+I think the best thing to do at this point is to go back to the beginning and confirm that all my code is working.  Something is happening before the kernel that is preventing the arch from working.  This is likely to involved a large dump of registers and MMIO addresses.
+
+---
+
+OK, I think I am going to have to write a purpose-built system to check out what is going on with the system.  Before I go there, I want to commit my changes and try v0.6.1 again to see if I can get it to boot (I need to rule out hardware as a problem).
 
 

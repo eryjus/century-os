@@ -29,6 +29,7 @@
 EXTERN_C EXPORT KERNEL
 archsize_t _MailboxReceive(MailboxDevice_t *dev, uint32_t mailbox)
 {
+    kprintf("Checking dev..\n");
     if (!dev) return -1;
     if ((mailbox & 0xfffffff0) != 0) return -1;
 

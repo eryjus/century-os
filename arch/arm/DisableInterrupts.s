@@ -37,8 +37,8 @@ DisableInterrupts:
     push    {r1}                                    @@ be nice and save r1 even though we are not required to
     mrs     r1,cpsr                                 @@ Get the Current Program Status Register
     mov     r0,r1                                   @@ return the previous state
-    and     r0,#0x000000c0                          @@ Mask out the interrupt flags
-    orr     r1,#0x000000c0                          @@ Set the bits that disable interrupts
+    and     r0,#0x000001c0                          @@ Mask out the interrupt flags
+    orr     r1,#0x000001c0                          @@ Set the bits that disable interrupts
     msr     cpsr,r1                                 @@ store the Current Program Status Register again
     pop     {r1}                                    @@ restore r1 since we saved it
     mov     pc,lr                                   @@ return

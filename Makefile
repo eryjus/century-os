@@ -173,7 +173,7 @@ run-rpi2b: rpi2b
 ##    ------------------------------------------------------
 .PHONY: debug-rpi2b
 debug-rpi2b: rpi2b
-	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img -S -s
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial /dev/null -serial mon:stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img -S -s
 
 
 ##
@@ -181,7 +181,7 @@ debug-rpi2b: rpi2b
 ##    -----------------------------------------------
 .PHONY: qemu-rpi2b
 qemu-rpi2b: rpi2b
-	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img
+	qemu-system-arm -m 1024 -machine raspi2 -cpu cortex-a7 -smp 4 -dtb util/bcm2709-rpi-2-b.dtb -serial /dev/null -serial stdio -kernel ~/bin/kernel-qemu.img --hda img/rpi2b.img
 
 
 ## ==================================================================================================================

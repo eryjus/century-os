@@ -45,7 +45,7 @@ void Butler(void)
             break;
 
         case BUTLER_CLEAN_PROCESS:
-            ButlerCleanProcess();
+//            ButlerCleanProcess();
             break;
 
         default:

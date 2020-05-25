@@ -149,6 +149,7 @@ ProcessSwitch:
 
     cmp     r2,r3                           @@ are they the same virtual address space?
     mcrne   p15,0,r2,c2,c0,0                @@ replace the top level mmu tables
+    mcrne   p15,0,r0,c8,c7,0                @@ shoot down the entire TLB
 
 .if ENABLE_BRANCH_PREDICTOR
     mcrne   p15,0,r0,c7,c5,6                @@ invalidate the branch predictor (required maintenance when enabled)

@@ -281,6 +281,9 @@ bssLoop:
     orr     r0,r1
     str     r0,[r5,#0]                          @@ populate the entry, little endian
 
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#4]
+
 @@ -- get a new table for entry 1
     bl      MakePageTable                       @@ we have a new table
     mov     r7,r0                               @@ r7 will contain the table 1 for mapping
@@ -288,10 +291,18 @@ bssLoop:
     orr     r0,r1
     str     r0,[r5,#0x08]                       @@ populate the entry, little endian
 
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#0x0c]
+
 @@ -- fix up some recursive mappings
+    ldr     r0,[r5,#8]                          @@ get the lower half of the table
     str     r0,[r7,#0xff8]                      @@ recursively map this table
     ldr     r0,[r5,#0]                          @@ get the lower half of the table
     str     r0,[r7,#0xff0]                      @@ and recursively map that as well
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r7,#0xff4]                      @@ and recursively map that as well
+    str     r0,[r7,#0xffc]                      @@ and recursively map that as well
 
 @@ -- get a new table for entry 2
     bl      MakePageTable                       @@ we have a new table
@@ -299,6 +310,9 @@ bssLoop:
     mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA     @@ set the low bits to be a table (upper bits will still be 0)
     orr     r0,r1
     str     r0,[r5,#0x10]                       @@ populate the entry, little endian
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#0x14]
 
 
 @@ -- get a new table for entry 3
@@ -308,10 +322,19 @@ bssLoop:
     orr     r0,r1
     str     r0,[r5,#0x18]                       @@ populate the entry, little endian
 
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#0x1c]
+
 @@ -- fix up some recursive mappings
+    ldr     r0,[r5,#0x18]                       @@ get the lower half of the table
     str     r0,[r9,#0xff8]                      @@ recursively map this table
     ldr     r0,[r5,#0x10]                       @@ get the lower half of the table
     str     r0,[r9,#0xff0]                      @@ and recursively map that as well
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r9,#0xff4]                      @@ and recursively map that as well
+    str     r0,[r9,#0xffc]                      @@ and recursively map that as well
+
 
 @@
 @@ -- now, we have the level 1 table, and the level 2 tables.  The level 3 tables will be created on demand
@@ -326,6 +349,10 @@ bssLoop:
     mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ this is a table record
     str     r0,[r9,#0xfd0]                      @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r9,#0xfd4]
+
 
 @@ -- we need a starting point
     ldr     r0,=intTableAddr                    @@ get address of the exception vector table
@@ -352,6 +379,10 @@ bssLoop:
     mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ this is a table record
     str     r0,[r6,#0]                          @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r6,#4]
+
 
 @@ -- we need a starting point
     ldr     r0,=mbPhys                          @@ get the mboot physical address starting point
@@ -393,8 +424,11 @@ bssLoop:
     mov     r5,r0                               @@ save this location in to r5 for use below
     mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ this is a table record
-    mov     r4,#0x0000                          @@ ...  offset too big
-    str     r0,[r8,r4]                          @@ store this table entry
+    str     r0,[r8,#0]                          @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,#4]
+
 
 @@ -- we need a starting point
     ldr     r0,=ldrPhys                         @@ get the loader physical address starting point
@@ -436,8 +470,11 @@ bssLoop:
     mov     r5,r0                               @@ save this location in to r5 for use below
     mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ this is a table record
-    mov     r4,#0x0010                          @@ ...  offset too big
-    str     r0,[r8,r4]                          @@ store this table entry
+    str     r0,[r8,#0x10]                       @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,#0x14]
+
 
 @@ -- we need a starting point
     ldr     r0,=sysPhys                         @@ get the syscall physical address starting point
@@ -479,8 +516,11 @@ bssLoop:
     mov     r5,r0                               @@ save this location in to r5 for use below
     mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ this is a table record
-    mov     r4,#0x0020                          @@ ...  offset too big
-    str     r0,[r8,r4]                          @@ store this table entry
+    str     r0,[r8,#0x20]                       @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,#0x24]
+
 
 @@ -- we need a starting point
     ldr     r0,=txtPhys                         @@ get the kernel text physical address starting point
@@ -525,13 +565,18 @@ bssLoop:
     mov     r4,#0x0040                          @@ ...  offset too big
     str     r0,[r8,r4]                          @@ store this table entry
 
+    add     r4,#4
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,r4]
+
+
 @@ -- we need a starting point
     ldr     r0,=dataPhys                        @@ get the kernel data physical address starting point
     ldr     r0,[r0]
-    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ convert that the the low 32-bits
 
-    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+    ldr     r1,=ARMV7_PAGE_UPPER_ATTRS_DATA     @@ get the upper 32 bits
 
 @@ -- and we need a number of frames
     ldr     r2,=dataSize                        @@ get the size of the kernel data
@@ -566,13 +611,17 @@ bssLoop:
     orr     r0,r1                               @@ this is a table record
     str     r0,[r9,#0xfe0]                      @@ store this table entry
 
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r9,#0xfe4]
+
+
 @@ -- we need a starting point
     ldr     r0,=ldrStackFrame                   @@ get the kernel data physical address starting point
     ldr     r0,[r0]
-    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
     orr     r0,r1                               @@ convert that the the low 32-bits
 
-    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+    ldr     r1,=ARMV7_PAGE_UPPER_ATTRS_DATA     @@ get the upper 32 bits
 
 @@ -- Perform the mapping
     str     r0,[r5]                             @@ load the upper record bits
@@ -600,6 +649,7 @@ bssLoop:
     ldr     r0,[r0]
     mov     r1,#0
 
+@@ -- set the paging tables
     mcrr    p15,0,r0,r1,c2                      @@ write the ttl1 table to the TTBR0 register
     mcrr    p15,1,r0,r1,c2                      @@ write the ttl1 table to the TTBR1 register; will use later
     dsb
@@ -611,7 +661,6 @@ bssLoop:
     mcr     p15,0,r1,c2,c0,2                    @@ write these to the TTBCR
     dsb
     isb
-
 
 @@ -- set the DACR register
     mov     r1,#0xffffffff                      @@ All domains can manage all things by default
@@ -679,6 +728,10 @@ bssLoop:
     mov     r0,#0x0000
     movt    r0,#0xffc0
     bl      OutputAddrTables
+
+    ldr     r0,=pagingEnable
+    bl      OutputString
+    bl      OutputNewline
 
     pop     {r0}
 
@@ -1174,7 +1227,6 @@ line6a:
     .asciz      "  3    "
 
 
-
-
-
-
+    .align 4
+pagingEnable:
+    .asciz      "Enabling Paging..."

@@ -17,6 +17,7 @@
 
 #include "types.h"
 #include "printf.h"
+#include "process.h"
 #include "pic.h"
 
 
@@ -44,7 +45,9 @@ void _PicBroadcastIpi(PicDevice_t *dev, int ipi)
         }
     }
 
-    while (AtomicRead(&mb0Resp) != cpus.cpusRunning) {}
+    while (AtomicRead(&mb0Resp) != cpus.cpusRunning) {
+        kprintf(" ... %d CPUs have checked in...\r", AtomicRead(&mb0Resp));
+    }
 
 #if DEBUG_ENABLED(PicBroadcastIpi)
     kprintf(".. Completed on CPU %d\n", thisCpu->cpuNum);

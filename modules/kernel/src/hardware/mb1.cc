@@ -198,6 +198,8 @@ void Mb1Parse(void)
     // -- Check for the command line -- we might have parameters to the loader
     //    --------------------------------------------------------------------
     if (CHECK_FLAG(2)) {
+        kprintf("Command line info is located at %p\n", mb1Data->cmdLine);
+        kprintf("..  and this address is %smapped", MmuIsMapped(mb1Data->cmdLine) ? "" : "not ");
         kprintf("Identifying command line information: %s\n", mb1Data->cmdLine);
     }
 
@@ -285,7 +287,13 @@ void Mb1Parse(void)
     // -- Check for the boot loader name
     //    ------------------------------
     if (CHECK_FLAG(9)) {
-        kprintf("Identifying bootloader: %s\n", mb1Data->bootLoaderName);
+        kprintf("Bootloader info is located at %p\n", mb1Data->bootLoaderName);
+        if (MmuIsMapped(mb1Data->bootLoaderName)) {
+            kprintf("..  and this address is mapped\n");
+            kprintf("Identifying bootloader: %s\n", mb1Data->bootLoaderName);
+        } else {
+            kprintf("Boot loader info is located at an unmapped location\n");
+        }
     }
 
 

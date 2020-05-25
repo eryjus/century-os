@@ -39,6 +39,8 @@ Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, co
 
     kprintf("New top level paging tables set\n");
 
+    MmuDumpTables(0x7ffff000);
+    MmuDumpTables(0x7fc00000);
 
     // -- create the process structure
     Process_t *rv = NEW(Process_t);
@@ -68,6 +70,7 @@ Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, co
     // -- Put this process on the queue to execute
     //    ----------------------------------------
     ProcessAddGlobal(rv);
+    kprintf("Process has been created and loaded into the global Process table\n");
 
 
     // -- read the elf header and perform the mappings here
@@ -77,9 +80,12 @@ Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, co
 
     // -- loop through all the load instructions
     for (int pSeg = 0; pSeg < hdr->ePhNum; pSeg ++) {
+        kprintf("Setting up Program Segment %d\n", pSeg);
         size_t offsetStart = pgmHdr32[pSeg].pOffset >> 12;
         size_t offsetEnd = offsetStart + ((pgmHdr32[pSeg].pMemSz + (PAGE_SIZE - 1)) >> 12) - 1;
         size_t offsetFEnd = offsetStart + ((pgmHdr32[pSeg].pFileSz + (PAGE_SIZE - 1)) >> 12) - 1;
+
+        kprintf("Loading frames from offsets %p to %p\n", offsetStart, offsetEnd);
 
         // -- Now, loop through each page to be mapped for each program header
 
@@ -96,6 +102,7 @@ Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, co
             //    indented.
             //    -----------------------------------------------------------------------------------------------------
 
+            kprintf("... Mapping address %p\n", vAddr);
 
             //
             // -- Ok Start with scenario 1, clearly when offset < offsetFEnd

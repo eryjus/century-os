@@ -39,10 +39,10 @@ frame_t ProcessNewUserStack(Process_t *proc, void (*startingAddr)(void))
     // -- OK, these 2 are backwards.  See arm `ProcessSwitch()` for more info.  I need to restore `startingAddr()`
     //    into `lr` before calling `ProcessStart()` so that I get returns in the right order.
     //    --------------------------------------------------------------------------------------------------------
-    *--stack = (archsize_t)0x10;                    // -- cpsr
+//    *--stack = (archsize_t)0x10;                    // -- cpsr
     *--stack = (archsize_t)startingAddr;            // -- final IP
     *--stack = (archsize_t)ProcessStart;            // -- initialize a new process (pops into pc)
-    *--stack = (archsize_t)ProcessStartEpilogue;    // -- this is the process starting point (pops into lr)
+//    *--stack = (archsize_t)ProcessStartEpilogue;    // -- this is the process starting point (pops into lr)
     *--stack = 0;                                   // -- ip
     *--stack = 0;                                   // -- r11
     *--stack = 0;                                   // -- r10

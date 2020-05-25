@@ -17,6 +17,14 @@
 
 
 @@
+@@ -- make sure that if the required symbols are defined
+@@    --------------------------------------------------
+.ifndef ENABLE_BRANCH_PREDICTOR
+    .equ        ENABLE_BRANCH_PREDICTOR,0
+.endif
+
+
+@@
 @@ -- Expose labels to fucntions that the linker can pick up
 @@    ------------------------------------------------------
     .globl MmuSetTopUserTable
@@ -32,6 +40,14 @@
 @@ -- MmuSetTopUserTable -- set the TTBR0
 @@    -----------------------------------
 MmuSetTopUserTable:
-    mcr     p15,0,r0,c2,c0,0
+    mov     r1,#0
+
+    mcrr    p15,0,r0,r1,c2                      @@ write the ttl1 table to the TTBR0 register
+    mcr     p15,0,r0,c8,c7,0                    @@ shoot down the entire TLB
+
+.if ENABLE_BRANCH_PREDICTOR
+    mcrne   p15,0,r0,c7,c5,6                @@ invalidate the branch predictor (required maintenance when enabled)
+.endif
+
     mov     pc,lr
 
