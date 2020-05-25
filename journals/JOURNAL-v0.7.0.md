@@ -3127,4 +3127,7 @@ I think the best thing to do at this point is to go back to the beginning and co
 
 OK, I think I am going to have to write a purpose-built system to check out what is going on with the system.  Before I go there, I want to commit my changes and try v0.6.1 again to see if I can get it to boot (I need to rule out hardware as a problem).
 
+---
+
+So, I had problems with that version for a while as well.  I ended up reloading a different microSD card with the same `pi-bootloader` software and I was able to get it to load far more regularly.  I was also having problems with the `ftdi-sio` module on my host system.  So, that said, I still do not have a root cause for all my problems.  The only thing I think I can do regularly to resolve my problems is to exit the shell and launch a new one.  And even at that, it is not consistent.  I honestly believe it is the rpi at this point.
 
