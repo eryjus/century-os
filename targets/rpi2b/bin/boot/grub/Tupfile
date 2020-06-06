@@ -24,8 +24,9 @@ include ../../../Tupfile.inc
 ##
 ## -- Create the grub.cfg file
 ##    ------------------------
-:   |>  echo   "multiboot /boot/kernel.elf"                          > %o;      \
-        echo   "boot"                                               >> %o;      \
+:   |>  echo   "multiboot /boot/kernel.elf"                              > %o;      \
+        echo   "module /boot/test.elf test.elf"                         >> %o;      \
+        echo   "boot"                                                   >> %o;      \
     |> grub.cfg
 
 
@@ -33,5 +34,6 @@ include ../../../Tupfile.inc
 ## -- create the cfg-file for pi-bootloader
 ##    -------------------------------------
 :   |>  echo   "kernel targets/rpi2b/bin/boot/kernel.elf"                > %o;      \
+        echo   "module targets/rpi2b/bin/boot/test.elf"                 >> %o;      \
     |> cfg-file
 

@@ -29,6 +29,7 @@
 EXTERN_C EXPORT KERNEL
 frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
 {
+    kprintf("Creating a new stack for process at %p\n", proc);
     archsize_t *stack;
     frame_t rv = PmmAllocAlignedFrames(STACK_SIZE / FRAME_SIZE, 12);
 
@@ -55,14 +56,18 @@ frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void))
         *--stack = 0;                          // -- r5
         *--stack = 0;                          // -- r4
 
+        kprintf("Unmapping the new stack\n");
 
         MmuUnmapPage(MMU_STACK_INIT_VADDR);
+
+        kprintf(".. unmapped\n");
+
         SPINLOCK_RLS_RESTORE_INT(mmuStackInitLock, flags);
     }
 
     archsize_t stackLoc = StackFind();    // get a new stack
     assert(stackLoc != 0);
-    proc->topOfStack = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
+    proc->tosProcessSwap = ((archsize_t)stack - MMU_STACK_INIT_VADDR) + stackLoc;
     MmuMapToFrame(stackLoc, rv, PG_KRN | PG_WRT);
     kprintf("the new process stack is located at %p (frame %p)\n", stackLoc, rv);
 

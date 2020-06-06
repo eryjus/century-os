@@ -12,6 +12,7 @@
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Nov-19  Initial   0.2.0   ADCL  Initial version
 //  2019-Dec-31  Initial  v0.5.0c  ADCL  Recover from the old rpi2b loader and refactor for the kernel
+//  2020-Apr-27  Initial  v0.7.0a  ADCL  Rewrite the MMU code
 //
 //===================================================================================================================
 
@@ -28,18 +29,39 @@
 EXTERN_C EXPORT KERNEL
 void MmuDumpTables(archsize_t addr)
 {
-    kprintf("\nMmuDumpTables: Walking the page tables for address %p\n", addr);
-    kprintf("Level  Tabl-Addr     Index        Entry Addr    Next PAddr    fault\n");
-    kprintf("-----  ----------    ----------   ----------    ----------    -----\n");
+    kprintf("\n");
+    kprintf("MMU Tables Dump: Walking the page tables for address %p\n", addr);
+    kprintf("\n");
+    kprintf(".. TTBR0 entry is %p\n", MmuGetTopUserTable());
+    kprintf(".. TTBR1 entry is %p\n", MmuGetTopKernelTable());
+    kprintf("\n");
+    kprintf("Level  Tabl-Addr     Index        Entry Addr    Next Frame    Attr Bits\n");
+    kprintf("-----  ----------    ----------   ----------    ----------    ---------------------\n");
 
-    Ttl1_t *t1 = MMU_TTL1_ENTRY(addr);
+    LongDescriptor_t *lvl2;
+    LongDescriptor_t *lvl3;
 
-    kprintf("TTL1   %p    %d         %p    %p     %x\n", mmuLvl1Table, addr >> 20, t1, t1->ttl2 << 10, t1->fault);
+    if (addr & 0x80000000) {
+        lvl2 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL2;
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL3;
+    } else {
+        lvl2 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL2;
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL3;
+    }
 
-    if (!t1->fault) return;
-    archsize_t t2tab = (t1->ttl2 << 10);
-    int i = (addr >> 12) & 0xff;
-    Ttl2_t *t2 = MMU_TTL2_ENTRY(addr);
+    LongDescriptor_t *entry = &lvl2[LEVEL2ENT(addr)];
+    uint64_t entBits = *(uint64_t *)entry;
+    entBits &= ~(entry->physAddress << 12);
 
-    kprintf("TTL2   %p    %d         %p    %p     %x\n", t2tab, i, t2, t2->frame, t2->fault);
+    kprintf("  2    %p    %p   %p    %p    %p %p\n", ((archsize_t)entry) & ~(PAGE_SIZE - 1), LEVEL2ENT(addr),
+            entry, entry->physAddress, (uint32_t)(entBits >> 32), (uint32_t)entBits);
+
+    entry = &lvl3[LEVEL3ENT(addr)];
+    entBits = *(uint64_t *)entry;
+    entBits &= ~(entry->physAddress << 12);
+
+    kprintf("  3    %p    %p   %p    %p    %p %p\n", ((archsize_t)entry) & ~(PAGE_SIZE - 1),
+            LEVEL3ENT(addr) & 0x1ff, entry, entry->physAddress, (uint32_t)(entBits >> 32), (uint32_t)entBits);
+
+    kprintf("\n");
 }

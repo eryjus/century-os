@@ -34,3 +34,11 @@ Spinlock_t frameClearLock;
 EXPORT KERNEL_BSS
 TlbFlush_t tlbFlush;
 
+
+//
+// -- This is the lock used for MMU_TOP_TABLE_FROM and MMU_TOP_TABLE_TO
+//    -----------------------------------------------------------------
+EXPORT KERNEL_BSS
+Spinlock_t mmuCopyLock;
+
+

@@ -69,6 +69,7 @@
 #include "lists.h"
 #include "cpu.h"
 #include "timer.h"
+#include "elf.h"
 #include "spinlock.h"
 
 
@@ -167,13 +168,18 @@ const char *ProcPriorityStr(ProcPriority_t p) {
 // -- This is a process structure
 //    ---------------------------
 typedef struct Process_t {
-    archsize_t topOfStack;              // This is the process current esp value (when not executing)
+    archsize_t tosProcessSwap;          // This is the process current esp value (when not executing)
+    archsize_t tosKernel;               // This is the stack used when changing to the kernel (interrupts/syscalls)
+    archsize_t tosInterrupted;          // This is the stack as it was then it was interrupted by fault, IRQ or syscall
     archsize_t virtAddrSpace;           // This is the process top level page table
     ProcStatus_t status;                // This is the process status
     ProcPriority_t priority;            // This is the process priority
     volatile AtomicInt_t quantumLeft;   // This is the quantum remaining for the process (may be more than priority)
+
+// -- Anything about this line is referenced from ASM and therefore can any changes need to be checked
     PID_t pid;                          // This is the PID of this process
-    archsize_t ssAddr;                  // This is the address of the process stack
+    archsize_t ssProcFrame;             // This is the frame of the process stack
+    archsize_t ssKernFrame;             // This is the frame of the kernel stack
     char *command;                      // The identifying command, includes the terminating null
     ProcPolicy_t policy;                // This is the scheduling policy
     uint64_t timeUsed;                  // This is the relative amount of CPU used
@@ -296,6 +302,9 @@ void ProcessBlock(ProcStatus_t reason) {
 EXTERN_C EXPORT KERNEL
 void ProcessStart(void);
 
+EXTERN_C EXPORT KERNEL
+void ProcessStartEpilogue(void);
+
 
 //
 // -- Create a new process
@@ -312,10 +321,13 @@ void ProcessSwitch(Process_t *proc);
 
 
 //
-// -- Create a new stack for a new process, and populate its contents
-//    ---------------------------------------------------------------
+// -- Create a new stack for a new process, and populate its contents (kernel and then user varieties)
+//    ------------------------------------------------------------------------------------------------
 EXTERN_C EXPORT KERNEL
 frame_t ProcessNewStack(Process_t *proc, void (*startingAddr)(void));
+
+EXTERN_C EXPORT KERNEL
+frame_t ProcessNewUserStack(Process_t *proc, void (*startingAddr)(void));
 
 
 //
@@ -443,4 +455,10 @@ void ProcessAddGlobal(Process_t *proc) {
     ProcessUnlockAndSchedule();
 }
 
+
+//
+// -- Create a new process and get it ready to be scheduled
+//    -----------------------------------------------------
+EXTERN_C EXPORT KERNEL
+Process_t *ProcessPrepareFromImage(ElfImage_t *img, ElfHdrCommon_t *hdrShort, const char *name);
 

@@ -125,6 +125,7 @@ CP_REG_WO(_DCCISW,p15,c7,0,c14,2)       // DCCISW Cache Maintenance
 // -- C8 :: TLB Maintenance Functions
 //    -------------------------------
 CP_REG_WO(TLBIMVAA,p15,c8,0,c7,3)       // TLB Invalidate by MVA ALL ASID
+CP_REG_WO(TLBIALL,p15,c8,0,c7,0)        // Invalidate the entire TLB
 
 
 //
@@ -181,7 +182,7 @@ CP_REG_RW(TPIDRPRW,p15,c13,0,c0,4)      // Privilege Read-Write Thread ID Regist
 #define MemoryBarrier() __sync_synchronize()
 #define EntireSystemMemoryBarrier() __asm volatile("dmb sy":::"memory")
 #define MemoryResynchronization() __asm volatile("dsb":::"memory")
-#define ClearInsutructionPipeline() __asm volatile("isb":::"memory")
+#define ClearInstructionPipeline() __asm volatile("isb":::"memory")
 
 
 EXTERN_C INLINE
@@ -260,7 +261,7 @@ void InvalidateCache(archsize_t mem, size_t len)
 #   define WriteICIMVAU(mem)
 
 #   define CleanCache(mem,len)
-#   define INVALIDATE_CACHE(mem,len)
+#   define InvalidateCache(mem,len)
 #endif
 
 
@@ -273,9 +274,19 @@ void InvalidatePage(archsize_t vma) {
     WriteTLBIMVAA(vma & 0xfffff000);
     WriteBPIALL();
     MemoryBarrier();
-    ClearInsutructionPipeline();
+    ClearInstructionPipeline();
 }
 
 
+
+//
+// -- Read the CPSR
+//    -------------
+EXTERN_C INLINE
+archsize_t ReadCpsr(void) {
+    archsize_t _val;
+    __asm__ volatile("mrs %0,cpsr" : "=r" (_val));
+    return _val;
+}
 
 

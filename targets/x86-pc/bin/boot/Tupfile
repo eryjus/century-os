@@ -30,6 +30,7 @@ OBJ = $(WS)/targets/$(TARGET)/obj
 ##    ----------------------------
 LDFLAGS += -L $(X86_LDFLAGS)
 LIB = -l gcc
+RTLIB = $(WS)/targets/$(TARGET)/bin/lib/libc.a
 
 
 ##
@@ -42,3 +43,5 @@ KERNEL_LS = $(WS)/modules/kernel/util/$(TARGET).ld
 ## -- The rules to make the bootable targets in this folder
 ##    -----------------------------------------------------
 : $(OBJ)/kernel/*.o | $(KERNEL_LS) |> $(LD) -T $(KERNEL_LS) $(LDFLAGS) -o %o %f $(LIB); |> kernel.elf
+: $(OBJ)/test/*.o | $(RTLIB) |> $(LD) $(LDFLAGS) -o %o %f $(RTLIB) |> test.elf
+

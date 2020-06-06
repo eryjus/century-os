@@ -19,6 +19,8 @@
 #include "heap.h"
 #include "mmu.h"
 #include "printf.h"
+#include "stacks.h"
+#include "pmm.h"
 #include "process.h"
 
 
@@ -54,11 +56,16 @@ Process_t *ProcessCreate(const char *name, void (*startingAddr)(void))
     ListInit(&rv->stsQueue);
     ListInit(&rv->references.list);
 
+    archsize_t kStack = StackFind();
+    rv->tosKernel = kStack + STACK_SIZE;
+    rv->ssKernFrame = PmmAllocateFrame();
+    MmuMapToFrame(kStack, rv->ssKernFrame, PG_KRN | PG_WRT);
+
 
     //
     // -- Construct the stack for the architecture
     //    ----------------------------------------
-    rv->ssAddr = ProcessNewStack(rv, startingAddr);
+    rv->ssProcFrame = ProcessNewStack(rv, startingAddr);
 
 
     //

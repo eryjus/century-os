@@ -129,23 +129,47 @@ cont:
 @@
 @@ -- before we can get a stack, we need to enable paging
 @@    ---------------------------------------------------
+@@ -- before we enable paging, we need to decorate the MAIR registers.
+    mov     r2,#(ARMV7_MAIR0_VAL & 0xffff)
+    movt    r2,#(ARMV7_MAIR0_VAL >> 16)
+    mcr     p15,0,r2,c10,c2,0
+
+    mov     r2,#(ARMV7_MAIR1_VAL & 0xffff)
+    movt    r2,#(ARMV7_MAIR1_VAL >> 16)
+    mcr     p15,0,r2,c10,c2,1
+    dsb
+    isb
+
+@@ -- set the TTBR0/1 registers
     ldr     r0,=mmuLvl1Table            @@ get the address of the frame variable
     ldr     r0,[r0]                     @@ and then get the frame address itself
+    mov     r1,#0
 
 @@ -- set the paging tables
-    mcr     p15,0,r0,c2,c0,0            @@ write the ttl1 table to the TTBR0 register
-    mcr     p15,0,r0,c2,c0,1            @@ write the ttl1 table to the TTBR1 register as well; will use later
+    mcrr    p15,0,r0,r1,c2              @@ write the ttl1 table to the TTBR0 register
+    mcrr    p15,1,r0,r1,c2              @@ write the ttl1 table to the TTBR1 register as well; will use later
+    dsb
+    isb
 
-    mov     r1,#0                       @@ This is the number of bits to use to determine which table; short format
-    mcr     p15,0,r1,c2,c0,2            @@ write these to the TTBCR0
+@@ -- Updage the TTBCR
+    mov     r1,#0x3501                          @@ the low bits for the TTBCR
+    movt    r1,#0xb500                          @@ set the long descriptor format
+    mcr     p15,0,r1,c2,c0,2                    @@ write these to the TTBCR
+    dsb
+    isb
 
+@@ -- set the DACR register
     mov     r1,#0xffffffff              @@ All domains can manage all things by default
     mcr     p15,0,r1,c3,c0,0            @@ write these to the domain access register
+    dsb
+    isb
 
 @@ -- now we enable paging
     mrc     p15,0,r1,c1,c0,0            @@ This gets the cp15 register 1 and puts it in r0
     orr     r1,#1                       @@ set bit 0
     mcr     p15,0,r1,c1,c0,0            @@ Put the cp15 register 1 back, with the MMU enabled
+    dsb
+    isb
 
 .if ENABLE_BRANCH_PREDICTOR
     mcr     p15,0,r0,c7,c5,6            @@ invalidate the branch predictor (required maintenance when enabled)

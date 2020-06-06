@@ -30,6 +30,7 @@ void ButlerCleanProcess(void)
 //    kprintf("Starting to clean a process up\n");
     Process_t *dlt = NULL;
 
+//    kprintf(".. Removing the process from the terminated list\n");
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(schedulerLock) {
         if (!IsListEmpty(&scheduler.listTerminated)) {
             dlt = FIND_PARENT(scheduler.listTerminated.list.next, Process_t, stsQueue);
@@ -45,6 +46,7 @@ void ButlerCleanProcess(void)
 
     // -- from here, there is a process to clean up; since it is not on any queue, we own the structure
     //    we are starting by cleaning up all references
+//    kprintf(".. Cleaning up any referenced resources\n");
     while (!IsListEmpty(&dlt->references)) {
         Reference_t *ref = FIND_PARENT(dlt->references.list.next, Reference_t, procRefList);
         ListRemoveInit(&ref->procRefList);
@@ -52,6 +54,7 @@ void ButlerCleanProcess(void)
         // -- now, we can remove the reference from the resource once we know what it is
         switch (ref->type) {
         case REF_MSGQ: {
+//            kprintf(".... Message Queue\n");
             MessageQueue_t *msgq = (MessageQueue_t *)ref->resAddr;
             archsize_t flags = SPINLOCK_BLOCK_NO_INT(msgq->procList.lock) {
                 ListRemoveInit(&ref->resourceRefBy);
@@ -76,10 +79,14 @@ void ButlerCleanProcess(void)
     // -- TODO: Implement this
 
 
-    // -- Clean up the stack
-    if (dlt->topOfStack > STACK_BASE) {
-        PmmReleaseFrame(MmuUnmapPage(dlt->topOfStack & ~(STACK_SIZE - 1)));
+    // -- Clean up the stacks
+//    kprintf(".. Process Stack\n");
+    if (dlt->tosProcessSwap > STACK_BASE) {
+        PmmReleaseFrame(dlt->ssProcFrame);
     }
+
+//    kprintf(".. Kernel Stack\n");
+    PmmReleaseFrame(dlt->ssKernFrame);
 
     // -- Finally, free up the process memory
     FREE(dlt);

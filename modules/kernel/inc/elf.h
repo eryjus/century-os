@@ -201,3 +201,41 @@ typedef struct Elf64PHdr_t {
 } __attribute__((packed)) Elf64PHdr_t;
 
 
+//
+// -- This structure has the image of the elf, loaded as a list of frames (unmapped in memory)
+//    ----------------------------------------------------------------------------------------
+typedef struct ElfImage_t {
+    size_t frameCount;          // The number of frames taken by the raw image
+    frame_t frame[0];           // This is the list of frames
+} ElfImage_t;
+
+
+//
+// -- Create an initialize but unpopulated ElfImage_t structure
+//    NOTE: do not forget to FREE this structure!!!
+//    ---------------------------------------------------------
+EXTERN_C EXPORT KERNEL
+ElfImage_t *ElfCreateImg(size_t frameCount);
+
+
+//
+// -- Add a frame to the Image
+//    ------------------------
+EXTERN_C INLINE
+void ElfAddFrame(ElfImage_t *img, frame_t fr) { img->frame[img->frameCount ++] = fr; }
+
+
+//
+// -- Process the load of an ELF executable into memory
+//    -------------------------------------------------
+EXTERN_C EXPORT KERNEL
+void ElfInit(ElfImage_t *img, const char *name);
+
+
+//
+// -- This is the spinlock required to access ELF_TEMP_HEADER
+//    -------------------------------------------------------
+EXTERN EXPORT KERNEL_BSS
+Spinlock_t elfHdrLock;
+
+

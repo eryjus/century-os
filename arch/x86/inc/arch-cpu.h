@@ -167,7 +167,7 @@ typedef struct Descriptor_t {
     .baseMid = 0,                       \
     .type = 0x0a,                       \
     .s = 1,                             \
-    .dpl = 0,                           \
+    .dpl = 3,                           \
     .p = 1,                             \
     .limitHi = 0xf,                     \
     .avl = 0,                           \
@@ -188,7 +188,7 @@ typedef struct Descriptor_t {
     .baseMid = 0,                       \
     .type = 0x02,                       \
     .s = 1,                             \
-    .dpl = 0,                           \
+    .dpl = 3,                           \
     .p = 1,                             \
     .limitHi = 0xf,                     \
     .avl = 0,                           \
@@ -208,7 +208,7 @@ typedef struct Descriptor_t {
     .baseMid = (((locn) >> 16) & 0xff), \
     .type = 0x02,                       \
     .s = 1,                             \
-    .dpl = 0,                           \
+    .dpl = 3,                           \
     .p = 1,                             \
     .limitHi = 0,                       \
     .avl = 0,                           \
@@ -345,6 +345,10 @@ void ArchTssLoad(archsize_t sel);
 #define ArchCpuLocation()   MmioRead(LAPIC_MMIO + LAPIC_ID)
 
 
+//
+// -- Set the esp0 stack value in the TSS
+//    -----------------------------------
+#define SetTssStack()       cpus.perCpuData[thisCpu->cpuNum].tss.esp0 = currentThread->tosKernel
 
 
 

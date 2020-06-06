@@ -52,7 +52,7 @@ frame_t MmuUnmapPage(archsize_t addr)
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
         while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
-            ProcessMilliSleep(150);
+//            ProcessMilliSleep(20);
         }
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);

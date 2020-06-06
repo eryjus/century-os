@@ -174,11 +174,12 @@ void kInit(void)
     //
     // -- Phase 2: Required OS Structure Initialization
     //    ---------------------------------------------
+    kprintf("Starting OS Structure Initialization\n");
     ProcessInit();
     TimerInit(timerControl, 1000);
 
     kprintf("Reporting interesting Process_t offsets:\n");
-    kprintf("  Top of Stack: %x\n", offsetof(Process_t, topOfStack));
+    kprintf("  Top of Stack: %x\n", offsetof(Process_t, tosProcessSwap));
     kprintf("  Virtual Address Space: %x\n", offsetof(Process_t, virtAddrSpace));
     kprintf("  Process Status: %x\n", offsetof(Process_t, status));
     kprintf("  Process Priority: %x\n", offsetof(Process_t, priority));
@@ -196,7 +197,7 @@ void kInit(void)
 
     kprintf("Enabling interrupts now\n");
     EnableInterrupts();
-//BOCHS_TOGGLE_INSTR;
+
     CoresStart();
     picControl->ipiReady = true;
 
@@ -211,18 +212,39 @@ void kInit(void)
     // -- Phase 4: Full interrupts enabled, user space prepared
     //             Includes loading and starting device drivers
     //      -----------------------------------------------------
+//    for (int i = 0; i < GetModCount(); i ++) {
+//        kprintf("Parsing ELF module %s\n", GetAvailModuleIdent(i));
+//        ElfImage_t *img = NEW(ElfImage_t);
+//        img->frameCount = 0;
+//        archsize_t start = (archsize_t)GetAvailModuleStart(i) >> 12;
+//        archsize_t end = (archsize_t)GetAvailModuleEnd(i) >> 12;
+//
+//        for (archsize_t j = start; j <= end; j ++) {
+//            img->frame[img->frameCount ++] = j;
+//        }
+
+//        ElfInit(img, GetAvailModuleIdent(i));
+//    }
+
+
     q1 = MessageQueueCreate();
     q2 = MessageQueueCreate();
     kprintf("Starting drivers and other kernel processes\n");
-    ProcessCreate("Process A", StartA);
-    ProcessCreate("Process B", StartB);
-    debugger = ProcessCreate("Kernel Debugger", DebugStart);
 
+    debugger = ProcessCreate("Kernel Debugger", DebugStart);
+    kprintf("Debugger created\n");
+
+    ProcessCreate("Process A", StartA);
+    kprintf("Process A created\n");
+
+    ProcessCreate("Process B", StartB);
+    kprintf("Process B created\n");
 
 
     //
     // -- Phase 5: Assume the butler process role
     //      ---------------------------------------
+    kprintf("Assuming the Butler role\n");
     startCleanup = true;
     Butler();
 }

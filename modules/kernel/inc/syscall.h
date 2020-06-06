@@ -22,15 +22,16 @@
 
 
 //
-// -- System function 1: Receive a message
-//    ------------------------------------
-EXTERN_C EXPORT SYSCALL
-void SyscallReceiveMessage(isrRegs_t *regs);
+// -- This is the prototype for all the system call functions
+//    -------------------------------------------------------
+typedef int(*SyscallFunc_t)(isrRegs_t *);
 
 
 //
-// -- System function 2: Send a message
-//    ------------------------------------
+// -- Self-terminate the calling process
+//    ----------------------------------
 EXTERN_C EXPORT SYSCALL
-void SyscallSendMessage(isrRegs_t *regs);
+int SyscallExit(isrRegs_t *regs);
+
+
 

@@ -26,14 +26,6 @@
 
 
 @@
-@@ -- make sure we have a value for whether we include debug code
-@@    -----------------------------------------------------------
-.ifndef ENABLE_DEBUG_ENTRY
-    .equ        ENABLE_DEBUG_ENTRY,0
-.endif
-
-
-@@
 @@ -- make sure that if the required symbols are defined; Branch Predictor
 @@    --------------------------------------------------------------------
 .ifndef ENABLE_BRANCH_PREDICTOR
@@ -207,25 +199,11 @@ bssLoop:
     cmp     r4,r9
     blo     bssLoop
 
-@@
-@@ -- The first thing we need it the TTB1 table -- which must be 16K aligned
-@@    ----------------------------------------------------------------------
-
-@@ -- first a little housekeeping -- we need to allocate the ttb1 table (see below)
-    bl      MakePageTable                       @@ call 4 times to get 4 frames!  need 16K
-    ldr     r1,=mmuLvl1Table                    @@ get the location we will share the ttb1 frame
-    str     r0,[r1]                             @@ save that value
-    bl      MakePageTable
-    bl      MakePageTable
-    bl      MakePageTable
-
-
 @@ -- now, we can get the stack
     bl      NextEarlyFrame                      @@ -- get a stack frame
     add     sp,r0,#STACK_SIZE                   @@ -- and set the new stack
     ldr     r1,=ldrStackFrame                   @@ -- get the address to store the stack
     str     r0,[r1]                             @@ -- and save that for later
-
 
 @@ -- get a frame and initialize the Vector Table
     bl      NextEarlyFrame
@@ -276,457 +254,501 @@ bssLoop:
     and     r1,r1,#(~(1<<13))
     mcr     p15,0,r1,c1,c0,0
 
-    mcr     p15,0,r0,c12,c0,0                   @@ !!! physical addr (identity mapped); need to chg in kernel mmu
+    ldr     r0,=EXCEPT_VECTOR_TABLE             @@ load the address of the actual table location in virtual memory
+    mcr     p15,0,r0,c12,c0,0                   @@ and set the VBAR
 
 
 @@===================================================================================================================
 
-    ldr     r0,=mmuLvl1Count                    @@ get our frame
-    mov     r1,#4                               @@ calculate the size of the
-    str     r1,[r0]                             @@ set the frame count
-
 
 @@
-@@ -- Now we want to set up paging.  The first order of business here is to map the TTL1 table for managing
-@@    entries.  This requires a new page to be allocated and mapped into the TTL1 table itself.
-@@
-@@    +-------//-------++-------//-------++-------//-------++---------------------//---------------------------+
-@@    |                ||                ||                ||                              |.|F|F|F|F|.|F|F|F|F|
-@@    |   0xff404000   ||   0xff405000   ||   0xff406000   ||       0xff407000             |.|F|F|F|F|.|F|F|F|F|
-@@    |                ||                ||                ||                              |.|4|5|6|7|.|C|D|E|F|
-@@    +-------//-------++-------//-------++-------//-------++---------------------//---------------------------+
-@@
-@@    So, the first order of business here is to allocate 2 TTL2 tables and map them into `0xff4`-`0xff7` and into
-@@    `0xffc`-`0xfff`.
-@@
-@@    r10 -- the address of the TTL1 table
-@@    r11 -- the address of the TTL2 table for `0xffc` - `0xfff`
-@@    r12 -- the adddres of the TTL2 table for `0xff4` - `0xff7`
-@@
-@@    ------------------------------------------------------------------------------------------------------------
-@@
-@@    First order of business: create a TTL2 table for the TTL1 table pages
-@@    ---------------------------------------------------------------------
-    bl      MakePageTable                       @@ get a new TTL2 table
-    mov     r12,r0                              @@ save this in r12
-
-
-@@
-@@ -- insert this into the TTL1 table for 4 pages
-@@    -------------------------------------------
-    ldr     r1,=mmuLvl1Table                    @@ get the ttl1 table address
-    ldr     r1,[r1]
-    mov     r10,r1                              @@ save this in the proper register
-
-    mov     r2,#0xff4                           @@ this is the index where we need to add the ttl2 table
-    lsl     r2,#2                               @@ convert this into an offset
-    add     r2,r1                               @@ r2 now contains the address of the TTL1 Entry
-
-    mov     r9,#(ARMV7_MMU_TTL1_ENTRY)          @@ set the flags we will use to set the TTL1 entry
-    orr     r9,r12                              @@ r9 now contains the value to place in the TTL1 entry
-
-    mov     r8,#0                               @@ start a counter
-
-.iter1:
-    str     r9,[r2]                             @@ complete the mapping
-
-    add     r9,#1024                            @@ next TTL2 Table
-    add     r2,#4                               @@ next TTL1 Entry
-    add     r8,#1                               @@ next iter
-
-    cmp     r8,#4                               @@ are we done?
-    blo     .iter1
-
-
-@@
-@@ -- Next we need to do the same thing for the TTL2 managment table space
-@@    --------------------------------------------------------------------
-    bl      MakePageTable                       @@ get a new TTL2 table
-    mov     r11,r0                              @@ save this in r11
-
-
-@@
-@@ -- insert this into the TTL1 table for 4 pages
-@@    -------------------------------------------
-    mov     r1,r10                              @@ get the TTL1 table location
-
-    mov     r2,#0xffc                           @@ this is the index where we need to add the ttl2 table
-    lsl     r2,#2                               @@ convert this into an offset
-    add     r2,r1                               @@ r2 now contains the address of the TTL1 Entry
-
-    mov     r9,#(ARMV7_MMU_TTL1_ENTRY)          @@ set the flags we will use to set the TTL1 entry
-    orr     r9,r11                              @@ r9 now contains the value to place in the TTL1 entry
-
-    mov     r8,#0                               @@ start a counter
-
-.iter2:
-    str     r9,[r2]                             @@ complete the mapping
-
-    add     r9,#1024                            @@ next TTL2 Table
-    add     r2,#4                               @@ next TTL1 Entry
-    add     r8,#1                               @@ next iter
-
-    cmp     r8,#4                               @@ are we done?
-    blo     .iter2
-
-
-@@
-@@ -- Next we go back and map the individual entries in the TTL2 table for the TTL1 table pages to their final
-@@    location.
-@@
-@@    0xff400000:
-@@    ff4___________________ ff5___ ff6___ ff7___
-@@    +-------------------//-+--//--+--//--+--//--+      * Entry 04 will point to the frame for 0xff404000
-@@    |-|-|-|-|0|0|0|0|.|    |      |      |      |      * Entry 05 will point to the frame for 0xff405000
-@@    |-|-|-|-|4|5|6|7|.|    |      |      |      |      * Entry 06 will point to the frame for 0xff406000
-@@    +-------------------//-+--//--+--//--+--//--+      * Entry 07 will point to the frame for 0xff407000
-@@
-@@    Now, we need to go back and update the TTL1 table entries to the TTL2 tables for the TTL1Entry management
-@@    space.  This will involved updating the address in r10 to point to the correct addresses in r12
-@@    ---------------------------------------------------------------------------------------------------------
-    mov     r0,r12                              @@ r0 holds the base address for the ttl2 table
-    mov     r1,r10                              @@ r1 holds the base address for the ttl1 table frames
-    mov     r2,#4                               @@ r2 is the index of the ttl2 entry we need
-    lsl     r2,#2                               @@ ... and make that into an offset
-
-    add     r0,r2                               @@ r0 now holds the address of the entry to set
-    mov     r8,#0                               @@ start a counter
-
-    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ set the flags we will use to set the TTL1 entry
-    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)        @@ ... part 2
-    orr     r1,r9                               @@ r1 now holds the value to map
-
-.l3:
-    str     r1,[r0]                             @@ perform the mapping
-
-    add     r8,#1                               @@ increment the counter
-    add     r0,#4                               @@ next TTL2 entry
-    add     r1,#4096                            @@ next TTL1 page
-
-    cmp     r8,#4                               @@ are we done?
-    blo     .l3                                 @@ loop if not
-
-
-@@
-@@ -- finally we need a TTL2 table for the address `0xff401000` for use in clearing frames.  We will add that
-@@    though we do not need to actually map anything therein.  We do, however, need to map that in the management
-@@    tables.
-@@    -----------------------------------------------------------------------------------------------------------
-    bl      MakePageTable                       @@ gp get a new page table; r0 holds this address
-    mov     r7,r0                               @@ save that value for later
-    mov     r2,#0xff0                           @@ r2 is the index of the ttl1 entry we need
-    lsl     r2,#2                               @@ ... and make that into an offset
-
-    add     r2,r10                              @@ r2 now holds the address of the entry to set
-    mov     r8,#0                               @@ start a counter
-
-    mov     r9,#ARMV7_MMU_TTL1_ENTRY            @@ set the flags we will use to set the TTL1 entry
-    orr     r0,r9                               @@ r1 now holds the value to map
-
-.l4:
-    str     r0,[r2]                             @@ perform the mapping
-
-    add     r8,#1                               @@ increment the counter
-    add     r2,#4                               @@ next TTL1 entry
-    add     r0,#1024                            @@ next TTL2 page
-
-    cmp     r8,#4                               @@ are we done?
-    blo     .l4                                 @@ loop if not
-
-
-@@
-@@ -- At this point we can use a full-featured function to complete the mappings.
-@@    ... and we have a lot of them to do.
-@@
-@@                             3322222222221111111111
-@@                             10987654321098765432109876543210
-@@                             --------------------------------
-@@    This value needs to be 0b00000000000000010001110000001110 for regular normal memory
-@@    This value needs to be 0b00000000000000010000110000000110 for devices (MMIO memory)
-@@                             +----------+|||||+-+++|+--+|||++
-@@                                   |     ||||| | | N  | ||| |
-@@              The 1MB frame addr --+     ||||| | | o  | ||| +-------- Section/Supersection entry
-@@              Non Secure ----------------+|||| | | t  | |||
-@@              Indicates super section ----+||| | |    | |||
-@@              Not Global ------------------+|| | | U  | ||+---------- B (set to 1)
-@@              Sharable ---------------------+| | | s  | |+----------- C (set to 1)
-@@              Access Permissions no wrt [2] -+ | | e  | +------------ Execute Never
-@@              Memory Region -------------------+ | d  |
-@@              Access Permissions any priv [1:0] -+    +--------------- Domain (use 0 for now)
-@@
-@@    Identity map the mboot section at 1MB
-@@
-@@    Measureable results:
-@@    * 0x1000000 maps to TTL2 table (expect 0x1008000)
-@@    * 0x1000004 maps to TTL2 table 0x1008400
-@@    * 0x1000008 maps to TTL2 table 0x1008800
-@@    * 0x100000c maps to TTL2 table 0x1008c00
-@@    * 0x1008400 maps to frame 0x100000
-@@    * 0x1008404 maps to frame 0x101000
-@@    ---------------------------------------------------------------------------------------------------------
-    ldr     r0,=mbPhys                          @@ get the mboot physical address
-    ldr     r0,[r0]
-
-    ldr     r3,=mbSize                          @@ get the size of the mboot
-    ldr     r3,[r3]
-    lsr     r3,#12                              @@ number of pages to write
-
-    mov     r2,#(ARMV7_MMU_KRN_ANY&0xffff)      @@ load the flags
-    movt    r2,#(ARMV7_MMU_KRN_ANY>>16)         @@ load the flags
-
-    mov     r8,#0                               @@ start the counter
-
-@@ -- perform the mapping
-.loop2:
-    mov     r1,r0                               @@ identity map
-    bl      MapPageFull                         @@ map the page
-.if ENABLE_DEBUG_ENTRY
-    bl      DumpMmuTables
-.endif
-    add     r8,#1
-    add     r0,#4096
-
-    cmp     r8,r3                               @@ are we done
-    blo     .loop2
-
-@@
-@@ -- now map the loader code/data section (0x80000000)
-@@    -------------------------------------------------
-    ldr     r0,=ldrVirt                         @@ get the virtual address of the loader
-    ldr     r0,[r0]
-
-    ldr     r1,=ldrPhys                         @@ get the physical address of the loader
-    ldr     r1,[r1]
-
-    ldr     r3,=ldrSize                         @@ get the size of the loader
-    ldr     r3,[r3]
-    lsr     r3,#12
-
-    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ load the flags
-    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)        @@ load the flags
-
-    mov     r8,#0                               @@ start a counter
-
-.loop3:
-    bl      MapPageFull                         @@ map the page
-    add     r8,#1
-    add     r0,#4096
-    add     r1,#4096
-
-    cmp     r8,r3                               @@ are we done?
-    blo     .loop3
-
-
-@@
-@@ -- now map the pergatory code/data section (0x80400000)
-@@    ----------------------------------------------------
-    ldr     r0,=sysVirt                         @@ get the virtual address of the syscall section
-    ldr     r0,[r0]
-
-    ldr     r1,=sysPhys                         @@ get the physical address of the syscall section
-    ldr     r1,[r1]
-
-    ldr     r3,=sysSize                         @@ get the size of the syscall section
-    ldr     r3,[r3]
-    lsr     r3,#12
-
-    mov     r2,#(ARMV7_MMU_KRN_ANY&0xffff)      @@ load the flags
-    movt    r2,#(ARMV7_MMU_KRN_ANY>>16)         @@ load the flags
-
-    mov     r8,#0                               @@ start a counter
-
-.loop4:
-    bl      MapPageFull                         @@ map the page
-    add     r8,#1
-    add     r0,#4096
-    add     r1,#4096
-
-    cmp     r8,r3                               @@ are we done?
-    blo     .loop4
-
-
-@@
-@@ -- now map the kernel code section (0x80800000)
-@@    --------------------------------------------
-    ldr     r0,=txtVirt                         @@ get the virtual address of the kernel code
-    ldr     r0,[r0]
-
-    ldr     r1,=txtPhys                         @@ get the physical address of the kernel code
-    ldr     r1,[r1]
-
-    ldr     r3,=txtSize                         @@ get the size of the kernel code
-    ldr     r3,[r3]
-    lsr     r3,#12
-
-    mov     r2,#(ARMV7_MMU_KRN_CODE&0xffff)     @@ load the flags
-    movt    r2,#(ARMV7_MMU_KRN_CODE>>16)        @@ load the flags
-
-    mov     r8,#0                               @@ start a counter
-
-.loop5:
-    bl      MapPageFull                         @@ map the page
-    add     r8,#1
-    add     r0,#4096
-    add     r1,#4096
-
-    cmp     r8,r3                               @@ are we done?
-    blo     .loop5
-
-
-@@
-@@ -- now map the kernel data section (0x81000000)
-@@    --------------------------------------------
-    ldr     r0,=dataVirt                        @@ get the virtual address of the kernel data
-    ldr     r0,[r0]
-
-    ldr     r1,=dataPhys                        @@ get the physical address of the kernel data
-    ldr     r1,[r1]
-
-    ldr     r3,=dataSize                        @@ get the size of the kernel data
-    ldr     r3,[r3]
-    lsr     r3,#12
-
-    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ load the flags
-    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)        @@ load the flags
-
-    mov     r8,#0                               @@ start a counter
-
-.loop6:
-    bl      MapPageFull                         @@ map the page
-    add     r8,#1
-    add     r0,#4096
-    add     r1,#4096
-
-    cmp     r8,r3                               @@ are we done?
-    blo     .loop6
-
-
-@@
-@@ -- map the stack
-@@    -------------
-    mov     r0,#(STACK_BASE&0xffff)             @@ stack location
-    movt    r0,#(STACK_BASE>>16)                @@ stack location
-    mov     r7,r0                               @@ save the stack, we wll replace it in a bit
-    add     r7,#STACK_SIZE                      @@ and calculate the proper top of stack
-    mov     r1,sp                               @@ current stack
-    mov     r9,#0xf000
-    movt    r9,#0xffff
-    and     r1,r9                               @@ mask out the the base physical address
-    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)
-    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)
-    bl      MapPageFull
-
-
-@@
-@@ -- finally map the Exception Vector Table
-@@    --------------------------------------
-    mov     r0,#(EXCEPT_VECTOR_TABLE&0xffff)
-    movt    r0,#(EXCEPT_VECTOR_TABLE>>16)
-
-    ldr     r1,=intTableAddr
-    ldr     r1,[r1]
-    mov     r0,r1                               @@ this needs to be fixed later (identity mapped; see MmuInit.c)
-
-    mov     r2,#(ARMV7_MMU_KRN_DATA&0xffff)
-    movt    r2,#(ARMV7_MMU_KRN_DATA>>16)
-
-    bl      MapPageFull
-
-
-@@
-@@ -- The last thing to do here is to loop through the TTL1 table for TTL1 Entries that are mapped (every 4th
-@@    index where i % 4 == 0) and map that frame into the TTL2 management table.
+@@ -- Now, we can start to build out the MMU tables (now the long-descriptor format); get the top level table
 @@    -------------------------------------------------------------------------------------------------------
-    mov     r0,r10                              @@ get the address of the TTL2 table
-    mov     r1,#0                               @@ this is the address for which we are checking
-    mov     r8,#0                               @@ start a counter
+    bl      MakePageTable                       @@ get a 4K aligned level 1 table (only 4 64bit entries are used)
+    ldr     r1,=mmuLvl1Table                    @@ get the location of the top level table addres (used elsewhere)
+    str     r0,[r1]                             @@ save that value for use later
 
-.iter4:
-    ldr     r2,[r0]                             @@ get the TTL1 Entry
-    and     r3,r2,#3                            @@ get the fault bits
-    cmp     r3,#0                               @@ is it unmapped?
-    beq     .next                               @@ if so, we skip the mapping
+@@
+@@ -- Now, get 4 table tables for each of the level 1 entries that are possible (VA address bits 31:30)
+@@    Note that this is a 64-bit value and the major element (the table address) is split between 2 words
+@@    ---------------------------------------------------------------------------------------------------
+    mov     r5,r0                               @@ save off the root of the tree to r8
 
-    lsr     r4,r1,#22                           @@ move the index into the TTL2 table
-    lsl     r4,#2                               @@ convert that to an offset
-    add     r4,r11                              @@ get the address of the TTL2 Entry
+@@ -- get a new table for entry 0
+    bl      MakePageTable                       @@ we have a new table
+    mov     r6,r0                               @@ r6 will contain the table 0 for mapping
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA     @@ set the low bits to be a table (upper bits will still be 0)
+    orr     r0,r1
+    str     r0,[r5,#0]                          @@ populate the entry, little endian
 
-    mov     r9,#0xfff                           @@ the mask to be inverted (and not)
-    bic     r3,r2,r9                            @@ mask out the frame address
-    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ set the flags we will use to set the TTL1 entry
-    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)        @@ ... part 2
-    orr     r3,r9                               @@ r3 now holds the value to map
-    str     r3,[r4]                             @@ complete the mapping
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#4]
 
-.if ENABLE_DEBUG_ENTRY
-    push    {r0}
-    mov     r0,r8
-    bl      OutputHex           @@ iteration count
-    mov     r0,#':'
-    bl      OutputChar
-    mov     r0,#' '
-    bl      OutputChar
-    pop     {r0}
-    push    {r0}
-    bl      OutputHex           @@ TTL1 Entry address
-    mov     r0,#' '
-    bl      OutputChar
-    mov     r0,r1
-    bl      OutputHex           @@ Virtual address
-    mov     r0,#' '
-    bl      OutputChar
-    mov     r0,r2
-    bl      OutputHex           @@ TTL1 entry value
-    mov     r0,#' '
-    bl      OutputChar
-    mov     r0,r4
-    bl      OutputHex           @@ TTL2 entry address
-    mov     r0,#' '
-    bl      OutputChar
-    mov     r0,r3
-    bl      OutputHex           @@ TTL2 entry value
-    bl      OutputNewline
-    pop     {r0}
-.endif
+@@ -- get a new table for entry 1
+    bl      MakePageTable                       @@ we have a new table
+    mov     r7,r0                               @@ r7 will contain the table 1 for mapping
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA     @@ set the low bits to be a table (upper bits will still be 0)
+    orr     r0,r1
+    str     r0,[r5,#0x08]                       @@ populate the entry, little endian
 
-.next:
-    add     r0,#16                              @@ next TTL1 entry (skip 3 entries)
-    add     r8,#1                               @@ next iteration
-    mov     r9,#0x0000                          @@ the iteration value
-    movt    r9,#0x0040                          @@ the iteration value upper bits
-    add     r1,r9                               @@ the next TTL1 base address
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#0x0c]
 
-    cmp     r8,#1024                            @@ are we done yet?
-    blo     .iter4
+@@ -- fix up some recursive mappings
+    ldr     r0,[r5,#8]                          @@ get the lower half of the table
+    str     r0,[r7,#0xff8]                      @@ recursively map this table
+    ldr     r0,[r5,#0]                          @@ get the lower half of the table
+    str     r0,[r7,#0xff0]                      @@ and recursively map that as well
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r7,#0xff4]                      @@ and recursively map that as well
+    str     r0,[r7,#0xffc]                      @@ and recursively map that as well
+
+@@ -- get a new table for entry 2
+    bl      MakePageTable                       @@ we have a new table
+    mov     r8,r0                               @@ r8 will contain the table 2 for mapping
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA     @@ set the low bits to be a table (upper bits will still be 0)
+    orr     r0,r1
+    str     r0,[r5,#0x10]                       @@ populate the entry, little endian
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#0x14]
 
 
-@@ -- now we enable caches
+@@ -- get a new table for entry 3
+    bl      MakePageTable                       @@ we have a new table
+    mov     r9,r0                               @@ r9 will contain the table 3 for mapping
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA     @@ set the low bits to be a table (upper bits will still be 0)
+    orr     r0,r1
+    str     r0,[r5,#0x18]                       @@ populate the entry, little endian
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r5,#0x1c]
+
+@@ -- fix up some recursive mappings
+    ldr     r0,[r5,#0x18]                       @@ get the lower half of the table
+    str     r0,[r9,#0xff8]                      @@ recursively map this table
+    ldr     r0,[r5,#0x10]                       @@ get the lower half of the table
+    str     r0,[r9,#0xff0]                      @@ and recursively map that as well
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r9,#0xff4]                      @@ and recursively map that as well
+    str     r0,[r9,#0xffc]                      @@ and recursively map that as well
+
+
+@@
+@@ -- now, we have the level 1 table, and the level 2 tables.  The level 3 tables will be created on demand
+@@    start by creating the level 3 table for exception vectors, and clearing frames, which is at `0xff401000`.
+@@    This can be statically calculated:
+@@    level 1 index: 0xff401000 >> 30 or 0x03 (so we will use the table in r9)
+@@    level 2 index: 0xff401000 >> 21 & 0x1ff or index 0x1da or offset 0xfd0 (so we want to update address [r9,#fd0])
+@@    level 3 index: 0xff401000 >> 12 & 0x1ff or index 1 (update [r5,#8])
+@@    ---------------------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    str     r0,[r9,#0xfd0]                      @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r9,#0xfd4]
+
+
+@@ -- we need a starting point
+    ldr     r0,=intTableAddr                    @@ get address of the exception vector table
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+
+@@ -- Complete the mapping
+    str     r0,[r5,#8]                          @@ load the upper record bits
+    str     r1,[r5,#0x0c]                       @@ load the lower record bits
+
+
+@@
+@@ -- now we can get into the process of mapping the kernel; starting with the multiboot code/data at 1MB...
+@@    Again, this can be statically calculated:
+@@    level 1 index: 0x00100000 >> 30 or 0x00 (so use the table in r6)
+@@    level 2 index: 0x00100000 >> 21 & 0x1ff or index 0x000 or offset 0x000 (so we want to update address [r6,#0])
+@@    level 3 index: 0x00100000 >> 12 & 0x1ff or index 0x100 or offset 0x800 (so we want to update addr [r5,#0x800])
+@@    --------------------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    str     r0,[r6,#0]                          @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r6,#4]
+
+
+@@ -- we need a starting point
+    ldr     r0,=mbPhys                          @@ get the mboot physical address starting point
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+
+@@ -- and we need a number of frames
+    ldr     r2,=mbSize                          @@ get the size of the mboot
+    ldr     r2,[r2]
+    lsr     r2,#12                              @@ number of pages to write into the table
+
+    mov     r3,#0x800                           @@ this is the offset we are loading
+
+
+@@ -- now perform the mappings
+.mbLoop:
+    str     r0,[r5,r3]                          @@ load the upper record bits
+    add     r3,#4                               @@ move to the next word
+    str     r1,[r5,r3]                          @@ load the lower record bits
+
+    add     r0,#PAGE_SIZE                       @@ move to the next page
+    add     r3,#4                               @@ move to the next entry
+    sub     r2,#1                               @@ one fewer mapping to do
+    cmp     r2,#0                               @@ are we done?
+    bhi     .mbLoop                             @@ loop if we have more to do
+
+
+@@
+@@ -- now we can get into the process of mapping the loader; starting with the loader code/data at 2GB...
+@@    Again, this can be statically calculated:
+@@    level 1 index: 0x80000000 >> 30 or 0x02 (so use the table in r8)
+@@    level 2 index: 0x80000000 >> 21 & 0x1ff or index 0x000 or offset 0x0000 (so we want to upd addr [r8,#0x0000])
+@@    level 3 index: 0x80000000 >> 12 & 0x1ff or index 0x000 or oddset 0x0000 (so we want to update addr [r5,#0x000])
+@@    ---------------------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    str     r0,[r8,#0]                          @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,#4]
+
+
+@@ -- we need a starting point
+    ldr     r0,=ldrPhys                         @@ get the loader physical address starting point
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+
+@@ -- and we need a number of frames
+    ldr     r2,=ldrSize                         @@ get the size of the loader
+    ldr     r2,[r2]
+    lsr     r2,#12                              @@ number of pages to write into the table
+
+    mov     r3,#0x000                           @@ this is the offset we are loading
+
+
+@@ -- now perform the mappings
+.ldrLoop:
+    str     r0,[r5,r3]                          @@ load the upper record bits
+    add     r3,#4                               @@ move to the next word
+    str     r1,[r5,r3]                          @@ load the lower record bits
+
+    add     r0,#PAGE_SIZE                       @@ move to the next page
+    add     r3,#4                               @@ move to the next entry
+    sub     r2,#1                               @@ one fewer mapping to do
+    cmp     r2,#0                               @@ are there any left?
+    bhi     .ldrLoop                            @@ loop if we have more to do
+
+
+@@
+@@ -- now we can get into the process of mapping the system call pages
+@@    Again, this can be statically calculated:
+@@    level 1 index: 0x80400000 >> 30 or 0x02 (so use the table in r8)
+@@    level 2 index: 0x80400000 >> 21 & 0x1ff or index 0x002 or offset 0x0010 (so we want to upd addr [r8,#0x0010])
+@@    level 3 index: 0x80400000 >> 12 & 0x1ff or index 0x000 or oddset 0x0000 (so we want to update addr [r5,#0x000])
+@@    ---------------------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    str     r0,[r8,#0x10]                       @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,#0x14]
+
+
+@@ -- we need a starting point
+    ldr     r0,=sysPhys                         @@ get the syscall physical address starting point
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+
+@@ -- and we need a number of frames
+    ldr     r2,=sysSize                         @@ get the size of the syscall section
+    ldr     r2,[r2]
+    lsr     r2,#12                              @@ number of pages to write into the table
+
+    mov     r3,#0x000                           @@ this is the offset we are loading
+
+
+@@ -- now perform the mappings
+.sysLoop:
+    str     r0,[r5,r3]                          @@ load the upper record bits
+    add     r3,#4                               @@ move to the next word
+    str     r1,[r5,r3]                          @@ load the lower record bits
+
+    add     r0,#PAGE_SIZE                       @@ move to the next page
+    add     r3,#4                               @@ move to the next entry
+    sub     r2,#1                               @@ one fewer mapping to do
+    cmp     r2,#0                               @@ are there any left?
+    bhi     .sysLoop                            @@ loop if we have more to do
+
+
+@@
+@@ -- now we can get into the process of mapping the kernel
+@@    Again, this can be statically calculated:
+@@    level 1 index: 0x80800000 >> 30 or 0x02 (so use the table in r8)
+@@    level 2 index: 0x80800000 >> 21 & 0x1ff or index 0x004 or offset 0x0020 (so we want to upd addr [r8,#0x0020])
+@@    level 3 index: 0x80800000 >> 12 & 0x1ff or index 0x000 or oddset 0x0000 (so we want to update addr [r5,#0x000])
+@@    ---------------------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    str     r0,[r8,#0x20]                       @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,#0x24]
+
+
+@@ -- we need a starting point
+    ldr     r0,=txtPhys                         @@ get the kernel text physical address starting point
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_EXEC
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    mov     r1,#ARMV7_PAGE_UPPER_ATTRS_EXEC     @@ get the upper 32 bits
+
+@@ -- and we need a number of frames
+    ldr     r2,=txtSize                         @@ get the size of the kernel text
+    ldr     r2,[r2]
+    lsr     r2,#12                              @@ number of pages to write into the table
+
+    mov     r3,#0x000                           @@ this is the offset we are loading
+
+
+@@ -- now perform the mappings
+.txtLoop:
+    str     r0,[r5,r3]                          @@ load the upper record bits
+    add     r3,#4                               @@ move to the next word
+    str     r1,[r5,r3]                          @@ load the lower record bits
+
+    add     r0,#PAGE_SIZE                       @@ move to the next page
+    add     r3,#4                               @@ move to the next entry
+    sub     r2,#1                               @@ one fewer mapping to do
+    cmp     r2,#0                               @@ are there any left?
+    bhi     .txtLoop                            @@ loop if we have more to do
+
+
+@@
+@@ -- now we can get into the process of mapping the kernel data
+@@    Again, this can be statically calculated:
+@@    level 1 index: 0x81000000 >> 30 or 0x02 (so use the table in r8)
+@@    level 2 index: 0x81000000 >> 21 & 0x1ff or index 0x008 or offset 0x0040 (so we want to upd addr [r8,#0x0040])
+@@    level 3 index: 0x81000000 >> 12 & 0x1ff or index 0x000 or oddset 0x0000 (so we want to update addr [r5,#0x000])
+@@    ---------------------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    mov     r4,#0x0040                          @@ ...  offset too big
+    str     r0,[r8,r4]                          @@ store this table entry
+
+    add     r4,#4
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r8,r4]
+
+
+@@ -- we need a starting point
+    ldr     r0,=dataPhys                        @@ get the kernel data physical address starting point
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    ldr     r1,=ARMV7_PAGE_UPPER_ATTRS_DATA     @@ get the upper 32 bits
+
+@@ -- and we need a number of frames
+    ldr     r2,=dataSize                        @@ get the size of the kernel data
+    ldr     r2,[r2]
+    lsr     r2,#12                              @@ number of pages to write into the table
+
+    mov     r3,#0x000                           @@ this is the offset we are loading
+
+
+@@ -- now perform the mappings
+.dataLoop:
+    str     r0,[r5,r3]                          @@ load the upper record bits
+    add     r3,#4                               @@ move to the next word
+    str     r1,[r5,r3]                          @@ load the lower record bits
+
+    add     r0,#PAGE_SIZE                       @@ move to the next page
+    add     r3,#4                               @@ move to the next entry
+    sub     r2,#1                               @@ one fewer mapping to do
+    cmp     r2,#0                               @@ are there any left?
+    bhi     .dataLoop                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @@ loop if we have more to do
+
+
+@@
+@@ -- map the stack:
+@@    level 1 index: 0xff800000 >> 30 or 0x03 (so use the table in r9)
+@@    level 2 index: 0xff800000 >> 21 & 0x1ff or index 0x1fc or offset 0xfe0 (so update address [r9,#fe0])
+@@    level 3 index: 0xff800000 >> 12 & 0x1ff or index 0x00 (so update address [r5,#0])
+@@    ----------------------------------------------------------------------------------------------------
+    bl      MakePageTable                       @@ get a new frame
+    mov     r5,r0                               @@ save this location in to r5 for use below
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ this is a table record
+    str     r0,[r9,#0xfe0]                      @@ store this table entry
+
+    ldr     r0,=ARMV7_PAGE_UPPER_ATTRS_DATA
+    str     r0,[r9,#0xfe4]
+
+
+@@ -- we need a starting point
+    ldr     r0,=ldrStackFrame                   @@ get the kernel data physical address starting point
+    ldr     r0,[r0]
+    mov     r1,#ARMV7_PAGE_LOWER_ATTRS_DATA
+    orr     r0,r1                               @@ convert that the the low 32-bits
+
+    ldr     r1,=ARMV7_PAGE_UPPER_ATTRS_DATA     @@ get the upper 32 bits
+
+@@ -- Perform the mapping
+    str     r0,[r5]                             @@ load the upper record bits
+    str     r1,[r5,#4]                          @@ load the lower record bits
+
+
+@@
+@@ -- The following appear to need to happen in a proper order
+@@    --------------------------------------------------------
+
+
+@@ -- before we enable paging, we need to decorate the MAIR registers.
+    mov     r2,#(ARMV7_MAIR0_VAL & 0xffff)
+    movt    r2,#(ARMV7_MAIR0_VAL >> 16)
+    mcr     p15,0,r2,c10,c2,0
+
+    mov     r2,#(ARMV7_MAIR1_VAL & 0xffff)
+    movt    r2,#(ARMV7_MAIR1_VAL >> 16)
+    mcr     p15,0,r2,c10,c2,1
+    dsb
+    isb
+
+@@ -- set the TTBR0/1 registers
     ldr     r0,=mmuLvl1Table
     ldr     r0,[r0]
+    mov     r1,#0
 
-    mcr     p15,0,r0,c2,c0,0                    @@ write the ttl1 table to the TTBR0 register
-    mcr     p15,0,r0,c2,c0,1                    @@ write the ttl1 table to the TTBR1 register; will use later
+@@ -- set the paging tables
+    mcrr    p15,0,r0,r1,c2                      @@ write the ttl1 table to the TTBR0 register
+    mcrr    p15,1,r0,r1,c2                      @@ write the ttl1 table to the TTBR1 register; will use later
+    dsb
+    isb
 
-    mov     r1,#0                               @@ The number of bits to use to determine which table; short format
-    mcr     p15,0,r1,c2,c0,2                    @@ write these to the TTBCR0
+@@ -- Updage the TTBCR
+    mov     r1,#0x3501                          @@ the low bits for the TTBCR
+    movt    r1,#0xb500                          @@ set the long descriptor format
+    mcr     p15,0,r1,c2,c0,2                    @@ write these to the TTBCR
+    dsb
+    isb
 
+@@ -- set the DACR register
     mov     r1,#0xffffffff                      @@ All domains can manage all things by default
     mcr     p15,0,r1,c3,c0,0                    @@ write these to the domain access register
+    dsb
+    isb
 
-.if ENABLE_DEBUG_ENTRY
-    ldr     r0,=pg
-    bl      DumpMmuTables
+@@ -- Print some debugging information
+    push    {r0}
 
-    mov     r0,#0x03f8
+    mov     r0,#0xf000
+    movt    r0,#0xffff
+    bl      OutputAddrTables
+
+    mov     r0,#0xe000
+    movt    r0,#0xffff
+    bl      OutputAddrTables
+
+    mov     r0,#0xf000
+    movt    r0,#0x7fff
+    bl      OutputAddrTables
+
+    mov     r0,#0xe000
+    movt    r0,#0x7fff
+    bl      OutputAddrTables
+
+    mov     r0,#0x1000
+    movt    r0,#0xff40
+    bl      OutputAddrTables
+
+    ldr     r0,=.paging
+    bl      OutputAddrTables
+
+    mov     r0,#0x80000000
+    bl      OutputAddrTables
+
+    mov     r0,#0
+    movt    r0,#0x8040
+    bl      OutputAddrTables
+
+    mov     r0,#0
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0x1000
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0x2000
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0x3000
+    movt    r0,#0x8080
+    bl      OutputAddrTables
+
+    mov     r0,#0
+    movt    r0,#0x8100
+    bl      OutputAddrTables
+
+    mov     r0,#0
+    movt    r0,#0xff80
+    bl      OutputAddrTables
+
+    mov     r0,#0x0000
     movt    r0,#0xffc0
-    bl      DumpMmuTables
-.endif
+    bl      OutputAddrTables
+
+    ldr     r0,=pagingEnable
+    bl      OutputString
+    bl      OutputNewline
+
+    pop     {r0}
+
 
 
 @@ -- now we enable paging
     mrc     p15,0,r1,c1,c0,0                    @@ This gets the cp15 register 1 and puts it in r0
     orr     r1,#1                               @@ set bit 0
     mcr     p15,0,r1,c1,c0,0                    @@ Put the cp15 register 1 back, with the MMU enabled
+    dsb
+    isb
+
+@@ -- fix the stack
+    ldr     sp,=STACK_LOCATION
+
+.paging:
+
 
 pg:
 .if ENABLE_BRANCH_PREDICTOR
@@ -738,7 +760,6 @@ pg:
 .endif
 
 @@ -- finally jump to the loader initialization function
-    mov     sp,r7                               @@ replace the stack
     b       LoaderMain                          @@ straight jump -- not a call
 
 
@@ -750,12 +771,13 @@ MakePageTable:
     bl      NextEarlyFrame                      @@ get a frame
 
     mov     r4,r0                               @@ this is the address to start clearing
-    add     r9,r4,#4096                         @@ get the end of the block
+    add     r9,r4,#PAGE_SIZE                    @@ get the end of the block
 
     mov     r5,#0
     mov     r6,#0
     mov     r7,#0
     mov     r8,#0
+
 
 .ptloop:
     stmia   r4!,{r5-r8}                         @@ clear the memory and increment r4
@@ -764,262 +786,6 @@ MakePageTable:
     blo     .ptloop                             @@ loop if not
 
     pop     {r1-r9,pc}
-
-
-@@
-@@ -- This function will make a new TTL2 table for the address given in r0.
-@@    This function operates only on the TTL1 table physical address.  It is assumed
-@@    that the TTL2 table does not exist and if it does will be overwritten.
-@@    The management tables are not maintained by this function.
-@@    ------------------------------------------------------------------------------
-NewTTL2Table:
-    push    {r1-r9,lr}                          @@ save a whole bunch of registers
-
-    mov     r5,r0                               @@ our address to map
-    bl      KrnTtl1Entry4                       @@ and get the address of the "mod 4" entry in r5
-    bl      MakePageTable                       @@ r0 will hold the physical address of the new table
-
-.if ENABLE_DEBUG_ENTRY
-    push    {r0}
-    ldr     r0,=mmu6
-    bl      OutputString
-    mov     r0,r5
-    bl      OutputHex
-    bl      OutputNewline
-    pop     {r0}
-.endif
-
-@@ -- finally, we need the value to load into the TTL1 table entry
-    mov     r9,#ARMV7_MMU_TTL1_ENTRY
-    orr     r4,r0,r9                            @@ r4 holds the value value to load
-
-    mov     r8,#0                               @@ this is the number of entries we loaded
-
-@@ -- we can now load the entries
-.ttl2loop:
-    str     r4,[r5]
-
-    add     r4,#0x400                           @@ move to the next TTL2 table of 4
-    add     r5,#4                               @@ move to the next TTL1 entry
-
-    add     r8,#1                               @@ one more done
-    cmp     r8,#4                               @@ are we done?
-    blo     .ttl2loop                           @@ loop
-
-@@ -- all done; exit
-    pop     {r1-r9,pc}                          @@ clean up our mess
-
-
-@@
-@@ -- This function will complete a page mapping in the physical table address.  It operates on a
-@@    4K aligned 4 X 1K group of TTL tables in physcial memory (not in virtual management space).
-@@    r0 -- the address of the TTL2 table in physcal memory
-@@    r1 -- the address to map (will be converted into an index to the TTL2 table)
-@@    r2 -- the address of the frame to complete the mapping OR'd with the flags (the value to store in the table)
-@@    r0 to r9 are all preserved.
-@@    ------------------------------------------------------------------------------------------------------------
-MapPage:
-    push    {r0-r2,r7,r9,lr}
-
-    mov     r7,r1                               @@ set the register for the call
-    bl      KrnTtl2EntryOffset                  @@ go get the offset into the r0 table
-
-    add     r0,r7                               @@ get the proper physicasl address
-    str     r2,[r0]                             @@ complete the mapping
-
-    pop     {r0-r2,r7,r9,pc}
-
-@@
-@@ -- This fucntion will perform a full mappng -- nap the page and if neessary make a new TTL2 table
-@@    with the necessary mgmt entry to go along with it.  This funtion is only available once the management
-@@    tables have been set up.  This function will read those tables to determine how to complete the
-@@    mappings.  This differs from the OS functions in that this reads physical addresses whereas the OS
-@@    will use the manaement tables to perfoem the same function.
-@@    r0 -- the address to map -- this does not need to be a "clean" address
-@@    r1 -- the frame to which to map the page (will also be cleaned up)
-@@    r2 -- the flags that will be used to decorate the page in the tables
-@@    returns a cleaned up virtual address
-@@    -------------------------------------------------------------------------------------------------------
-MapPageFull:
-    push    {r1-r9,lr}
-
-    mov     r9,#0xf000                          @@ establish the cleanup mask
-    movt    r9,#0xffff                          @@ establish the cleanup mask
-    and     r1,r9                               @@ clean frame
-    and     r0,r9                               @@ clean page
-    mov     r9,#0xfff
-    and     r2,r9                               @@ clean bits
-    orr     r1,r2                               @@ r1 holds the complete ttl2 entry
-    push    {r0}                                @@ save the return address
-
-
-@@
-@@ -- now, r0 has the address to map; r1 has the frame with its bits; r2-r9 are scratch regs
-@@    the first order of business is to determine if we need a new TTL2 table
-@@    ---------------------------------------------------------------------------------------
-    mov     r5,r0
-    bl      KrnTtl1Entry4                       @@ get the address of the TTL1 entry (r5)
-
-.if ENABLE_DEBUG_ENTRY
-    push    {r0}
-    mov     r0,r5
-    bl      OutputHex
-    bl      OutputNewline
-    pop     {r0}
-.endif
-
-    ldr     r3,[r5]                             @@ r3 has the ttl1 entry
-    mov     r9,r3                               @@ we need a copy
-    and     r9,#0x03                            @@ get the fault bits
-    cmp     r9,#(ARMV7_MMU_TTL1_ENTRY)          @@ is there a ttl2 table
-
-    beq     .haveTtl2                           @@ if we have one, no need to make a new one
-
-@@ -- we need to make a new ttl2 table
-    push    {r0}                                @@ save our work
-    bl      NewTTL2Table                        @@ go get a new table
-    mov     r3,r0                               @@ put that entry in the right register
-    mov     r4,r0                               @@ we need to save te physical address as well
-    pop     {r0}                                @@ restore the saved work
-
-@@ -- map the ttl2 management entry
-    push    {r0-r2}                             @@ save our work again
-    mov     r1,r3                               @@ get the address to map
-    mov     r2,r4                               @@ get the physical frame
-    bl      MapTtl2Mgmt                         @@ take care of manaement mapping
-    pop     {r0-r2}                             @@ restore our work
-
-@@ -- we now have a ttl2 address; r3 has the address of the TTL2 table
-.haveTtl2:
-.if ENABLE_DEBUG_ENTRY
-    push    {r0}
-    ldr     r0,=mmu5
-    bl      OutputString
-    bl      OutputNewline
-    pop     {r0}
-.endif
-
-    mov     r9,#0xf000                          @@ establish the cleanup mask
-    movt    r9,#0xffff                          @@ establish the cleanup mask
-    and     r4,r3,r9                            @@ r4 now holds the physical ttl2 frame address
-
-@@ -- now the ttl2 entry address
-    mov     r7,r0                               @@ the address to map
-    bl      KrnTtl2EntryOffset                  @@ get the offset into the physical table
-
-    add     r5,r7,r4                            @@ r5 now holds the address of the ttl2 entry
-
-@@ -- complete the mapping
-    str     r1,[r5]                             @@ after all that, this is it
-
-.if ENABLE_DEBUG_ENTRY
-    push    {r0}
-    mov     r0,r5
-    bl      OutputHex
-    bl      OutputNewline
-    pop     {r0}
-.endif
-
-    pop     {r0}                                @@ restore the return address
-    pop     {r1-r9,pc}
-
-
-
-
-@@
-@@ -- Map a TTL2 frame in Management space.  This function will map a 4K page into the
-@@    proper location in the TTL2 table management space (i.e. from 0xffc00000 on).  For this,
-@@    we need the top 12 bits of the address, which will put us to an index.   That will then
-@@    need to be converted to an offset.
-@@    r1 -- an address anywhere in the TTL2 table (will be cleaned up)
-@@    r2 -- the physical address of the TTL2 table as a frame of the page (bits will be added)
-@@    returns nothing of value
-@@    -----------------------------------------------------------------------------------------
-MapTtl2Mgmt:
-    push    {r2,r6,r9,lr}
-
-    mov     r6,r1                               @@ get the address to map
-    bl      KrnTtl2Mgmt                         @@ r6 will not contain the address
-
-    mov     r9,#(ARMV7_MMU_KRN_DATA&0xffff)     @@ get the flags we want to set
-    movt    r9,#(ARMV7_MMU_KRN_DATA>>16)
-    orr     r2,r9                               @@ r2 holds the value value to load with the extra bits
-
-    str     r2,[r6]                             @@ complete the mapping
-
-    pop     {r2,r6,r9,pc}
-
-
-@@
-@@ -- This function will calculate the Kernel TTL1 Entry address for a given address in r5.
-@@    The proper TTL1 Entry address will be returned in r5.  No other registers will be
-@@    changed.
-@@    -------------------------------------------------------------------------------------
-KrnTtl1Entry:
-    push    {r0, lr}
-
-    lsr     r5,#20                              @@ get the index of the entry
-    lsl     r5,#2                               @@ convert that to an offset
-
-    ldr     r0,=mmuLvl1Table                    @@ load the base address of the table
-    ldr     r0,[r0]
-
-    add     r5,r0                               @@ now, calculate the address
-
-    pop     {r0, pc}
-
-
-@@
-@@ -- This function will calculate the Kernel TTL1 Entry address for the first of a block
-@@    of 4 TTL2 tables.
-@@    -----------------------------------------------------------------------------------
-KrnTtl1Entry4:
-    push    {r9,lr}
-
-    bl      KrnTtl1Entry
-    mov     r9,#0xfff0
-    movt    r9,#0xffff
-    and     r5,r9
-
-    pop     {r9,pc}
-
-
-@@
-@@ -- This function will calculate the Management address for a TTL2 table for an address
-@@    provided in r6.  The address will be returned in r6.  All other registers are
-@@    unchanged.
-@@    -----------------------------------------------------------------------------------
-KrnTtl2Mgmt:
-    push    {r0, lr}
-
-    lsr     r6,#22                              @@ get the index of the entry
-    lsl     r6,#2                               @@ convert that to an offset
-
-    ldr     r0,=ttl2Mgmt                        @@ load the base address of the table
-    ldr     r0,[r0]
-
-    add     r6,r0                               @@ now, calculate the address
-
-    pop     {r0, pc}
-
-
-@@
-@@ -- This function will calculate the offset into a physical frame for a TTL2 entry.
-@@    The address to calculate is passed in r7 and the offset is returned in the same
-@@    register.  No other registers are changed.  Unlike the 3 above functions, this
-@@    merely returns an address offset, not the final address itself.
-@@    -------------------------------------------------------------------------------
-KrnTtl2EntryOffset:
-    push    {r0,lr}
-
-    lsr     r7,#12                              @@ get the index
-    mov     r0,#0x3ff                           @@ mask out the top bits
-    and     r7,r0
-    lsl     r7,#2                               @@ make that an offset
-
-
-    pop     {r0,pc}                             @@ return
-
 
 
 @@
@@ -1044,8 +810,30 @@ JumpKernel:
     mov     pc,r0                               @@ very simply set the new program counter; no fuss
 
 
+@@
+@@ -- we need a small stack for out first calls to get a stack
+@@    --------------------------------------------------------
+    .section    .data.entry
+    .align      4
+stack:
+    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+stack_top:
 
-.if ENABLE_DEBUG_ENTRY
+
+
+
+
+@@
+@@ == Debugging code
+@@    ==============
+
+
+    .section    .mboot,"ax"
+
+
+
 @@
 @@ -- Output a character
 @@    ------------------
@@ -1067,23 +855,6 @@ OutputChar.loop:
 
     pop     {r0,r1,pc}
 
-
-@@
-@@ -- Output a string
-@@    ---------------
-OutputString:
-    push    {r0,r1,lr}
-    mov     r1,r0                               @@ save the string
-
-OutputString.loop:
-    mov     r0,#0
-    ldrb    r0,[r1]                             @@ get the byte to output
-    add     r1,#1
-    cmp     r0,#0
-    popeq   {r0,r1,pc}                          @@ if NULL char we can exit
-
-    bl      OutputChar                          @@ output the char
-    b       OutputString.loop                   @@ loop to the end
 
 
 @@
@@ -1116,9 +887,117 @@ OutputHex.loop:
     cmp     r1,#0                               @@ was this the last nibble
     popeq   {r0-r4,pc}
 
+    tst     r1,#0x0f                            @@ is this an even digit
+    moveq   r0,#' '                             @@ output a space
+    bleq    OutputChar
+
     sub     r1,#4
+
     b       OutputHex.loop
 
+
+@@
+@@ -- Output a 64-bit hex number (r1 is high bits; r0 is low bits)
+@@    ------------------------------------------------------------
+OutputHex64:
+    push    {r0-r9,lr}
+
+    mov     r2,r1                               @@ r2 now holds the high bits
+    mov     r1,r0                               @@ r1 now holds the low bits
+
+    @@ -- output preamble.
+    mov     r0,#'0'
+    bl      OutputChar
+
+    mov     r0,#'x'
+    bl      OutputChar
+
+    mov     r3,#28                              @@ number of bits to shift
+
+OH64.loop1:
+    mov     r0,r2                               @@ get the nibble
+    lsr     r0,r3
+    and     r0,#0xf                             @@ and mask out the value
+
+    ldr     r4,=hex                             @@ get the hex offset
+    add     r4,r0
+    mov     r5,#0                               @@ zero out the reg that will hold the hex digit
+    ldrb    r5,[r4]                             @@ get the hex digit
+
+    mov     r0,r5                               @@ set the digit to print
+    bl      OutputChar
+
+    tst     r3,#0x0f                            @@ is this an even digit
+    moveq   r0,#' '                             @@ output a space
+    bleq    OutputChar
+
+    cmp     r3,#0                               @@ was this the last nibble
+    beq     OH64.next                           @@ go to the next byte
+
+    sub     r3,#4
+    b       OH64.loop1
+
+OH64.next:
+    mov     r2,r1                               @@ r2 now holds the low bits
+
+    mov     r3,#28                              @@ number of bits to shift
+
+OH64.loop2:
+    mov     r0,r2                               @@ get the nibble
+    lsr     r0,r3
+    and     r0,#0xf                             @@ and mask out the value
+
+    ldr     r4,=hex                             @@ get the hex offset
+    add     r4,r0
+    mov     r5,#0                               @@ zero out the reg that will hold the hex digit
+    ldrb    r5,[r4]                             @@ get the hex digit
+
+    mov     r0,r5                               @@ set the digit to print
+    bl      OutputChar
+
+    cmp     r3,#0                               @@ was this the last nibble
+    popeq   {r0-r9,pc}                          @@ all done
+
+    tst     r3,#0x0f                            @@ is this an even digit
+    moveq   r0,#' '                             @@ output a space
+    bleq    OutputChar
+
+    sub     r3,#4
+    b       OH64.loop2
+
+
+@@
+@@ -- Output a string
+@@    ---------------
+OutputString:
+    push    {r0,r1,lr}
+    mov     r1,r0                               @@ save the string
+
+OutputString.loop:
+    mov     r0,#0
+    ldrb    r0,[r1]                             @@ get the byte to output
+    add     r1,#1
+    cmp     r0,#0
+    popeq   {r0,r1,pc}                          @@ if NULL char we can exit
+
+    bl      OutputChar                          @@ output the char
+    b       OutputString.loop                   @@ loop to the end
+
+
+@@
+@@ -- Output a number of spaces
+@@    -------------------------
+OutputSpaces:
+    push    {r1,lr}
+    mov     r1,r0
+
+.loopSpaces:
+    mov     r0,#' '
+    bl      OutputChar
+    subs    r1,#1
+    bne     .loopSpaces
+
+    pop     {r1,pc}
 
 @@
 @@ -- Output New line
@@ -1135,123 +1014,219 @@ OutputNewline:
     pop     {r0,pc}
 
 
+
 @@
-@@ -- Dump the page tables for an address
-@@    -----------------------------------
-DumpMmuTables:
-    push    {r0-r10,lr}
+@@ -- Dump the MMU Tables for an address
+@@    ----------------------------------
+OutputAddrTables:
+    push    {r1-r11,lr}
+    mov     r11,r0                  @@ save the address to print...
 
-    mov     r10,r0                              @@ save off the address we are working with
+    @@ -- output the top line
+    bl      OutputNewline
+    bl      OutputNewline
+    ldr     r0,=line1
+    bl      OutputString
+    mov     r0,r11
+    bl      OutputHex
+    bl      OutputNewline
+    bl      OutputNewline
+
+    @@ -- output line1a
+    ldr     r0,=line1a
+    bl      OutputString
+    mrrc    p15,0,r0,r1,c2                      @@ write the ttl1 table to the TTBR0 register
+    bl      OutputHex64
+    mov     r0,#' '
+    bl      OutputNewline
+
+    @@ -- output line1aa
+    ldr     r0,=line1aa
+    bl      OutputString
+    mrrc    p15,1,r0,r1,c2                      @@ write the ttl1 table to the TTBR0 register
+    bl      OutputHex64
+    bl      OutputNewline
+
+    @@ -- output line1b
+    ldr     r0,=line1b
+    bl      OutputString
+    mrc     p15,0,r0,c2,c0,2                    @@ write the ttl1 table to the TTBR0 register
+    bl      OutputHex
+    bl      OutputNewline
+    bl      OutputNewline
 
 
-@@ -- Output the header
-    ldr     r0,=mmu1
+    @@ -- output line #2
+    ldr     r0,=line2
+    bl      OutputString
+    bl      OutputNewline
+
+    @@ -- output line #3
+    ldr     r0,=line3
+    bl      OutputString
+    bl      OutputNewline
+
+    @@ -- output line #4 or level 1 entry
+    ldr     r0,=line4a
+    bl      OutputString
+    ldr     r0,=mmuLvl1Table
+    ldr     r0,[r0]
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    mov     r0,r11,lsr #30      @@ get the index
+    mov     r9,r0,lsl #3        @@ and convert that to an address
+    bl      OutputHex
+    mov     r0,#3
+    bl      OutputSpaces
+    add     r0,r10,r9           @@ the address of the index
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    ldr     r0,[r10]            @@ get the low 32 bits
+    ldr     r8,[r10,#4]         @@ get the high 32 bits
+    mov     r9,#0xfff
+    and     r9,r0
+    bic     r0,r9
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    mov     r1,r8
+    mov     r0,r9
+    bl      OutputHex64
+    bl      OutputNewline
+
+
+    @@ -- output line #5 or level 2 entry
+    ldr     r0,=line5a
     bl      OutputString
     mov     r0,r10
     bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    mov     r0,r11,lsr #21      @@ get the index
+    mov     r1,#0x1ff
+    and     r0,r1
+    mov     r9,r0,lsl #3        @@ and convert that to an address
+    bl      OutputHex
+    mov     r0,#3
+    bl      OutputSpaces
+    add     r0,r10,r9           @@ the address of the index
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    ldr     r0,[r10]            @@ get the low 32 bits
+    ldr     r8,[r10,#4]         @@ get the high 32 bits
+    mov     r9,#0xfff
+    and     r9,r0
+    bic     r0,r9
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    mov     r1,r8
+    mov     r0,r9
+    bl      OutputHex64
     bl      OutputNewline
 
-    ldr     r0,=mmu2
+    @@ -- output line #6 or level 3 entry
+    ldr     r0,=line6a
     bl      OutputString
+    mov     r0,r10
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    mov     r0,r11,lsr #12      @@ get the index
+    mov     r1,#0x1ff
+    and     r0,r1
+    mov     r9,r0,lsl #3        @@ and convert that to an address
+    bl      OutputHex
+    mov     r0,#3
+    bl      OutputSpaces
+    add     r0,r10,r9           @@ the address of the index
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    ldr     r0,[r10]            @@ get the low 32 bits
+    ldr     r8,[r10,#4]         @@ get the high 32 bits
+    mov     r9,#0xfff
+    and     r9,r0
+    bic     r0,r9
+    mov     r10,r0
+    bl      OutputHex
+    mov     r0,#4
+    bl      OutputSpaces
+    mov     r1,r8
+    mov     r0,r9
+    bl      OutputHex64
     bl      OutputNewline
 
 
-@@ -- Now, get the TTL1 entry for the address
-    ldr     r0,=mmu3
-    bl      OutputString
-
-    mov     r0,r10,lsr #20
-    lsl     r0,#2                               @@ this is an offset
-
-    ldr     r1,=mmuLvl1Table
-    ldr     r1,[r1]
-
-    add     r0,r1                               @@ this is the address of the TTL1 entry
-    mov     r2,r0
-
-    bl      OutputHex
-    mov     r0,#' '
-    bl      OutputChar
-
-    ldr     r0,[r2]                             @@ ..  and now we have the entry
-    mov     r9,r0                               @@ save this value
-    bl      OutputHex
-    bl      OutputNewline
-
-    and     r0,#3                               @@ get the fault bits
-    cmp     r0,#0                               @@ and if they are 0, we can exit
-    popeq   {r0-r10,pc}
-
-@@ -- Now, get the TTL2 entry for the address
-    mov     r7,#0x3ff
-    bic     r8,r9,r7                            @@ mask off the table address
-
-    mov     r0,r10,lsr #12                      @@ adjust for the index
-    and     r0,#0xff                            @@ get the index
-    lsl     r0,#2                               @@ and convert that to an address
-    add     r8,r0                               @@ r8 now holds the TTL2 entry address
-
-    ldr     r0,=mmu4
-    bl      OutputString
+    pop     {r1-r11,pc}
 
 
-    mov     r0,r8                               @@ get the address of the entry
-    bl      OutputHex
-    mov     r0,#' '
-    bl      OutputChar
-
-    ldr     r0,[r8]                             @@ ..  and now we have the entry
-    bl      OutputHex
-    bl      OutputNewline
 
 
-    pop     {r0-r10,pc}
-.endif
-
-@@
-@@ -- we need a small stack for out first calls to get a stack
-@@    --------------------------------------------------------
     .section    .data.entry
-    .align      4
-stack:
-    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    .long       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-stack_top:
-
-
-.if ENABLE_DEBUG_ENTRY
     .align      4
 hex:
     .byte       '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
 
-    .align      4
-mmu1:
-    .asciz      "Dumping MMU tables for address "
 
-    .align      4
-mmu2:
-    .asciz      "-----------------------------------------"
+    .align 4
+line1:
+    .asciz      "Pre-Paging MMU Tables Dump: Walking the page tables for address "
 
-    .align      4
-mmu3:
-    .asciz      "TTL1 entry at address "
 
-    .align      4
-mmu4:
-    .asciz      "TTL2 entry at address "
+    .align 4
+line1a:
+    .asciz      ".. TTBR0 entry is "
 
-    .align      4
-mmu5:
-    .asciz      "Mapping a new TTL2 table.  "
 
-    .align      4
-mmu6:
-    .asciz      "New TTL2 table at entry "
+    .align 4
+line1aa:
+    .asciz      ".. TTBR1 entry is "
 
-    .align      4
-mmu7:
-    .asciz      "Jumping to Loader\r\n"
 
-.endif
+    .align 4
+line1b:
+    .asciz      ".. TTBCR is "
 
+
+    .align 4
+line2:
+    .asciz      "Level  Tabl-Addr      Index         Entry Addr     Next PAddr     Attr Bits"
+
+
+
+    .align 4
+line3:
+    .asciz      "-----  -----------    -----------   -----------    -----------    ---------------------"
+
+
+
+    .align 4
+line4a:
+    .asciz      "  1    "
+
+
+
+    .align 4
+line5a:
+    .asciz      "  2    "
+
+
+
+    .align 4
+line6a:
+    .asciz      "  3    "
+
+
+    .align 4
+pagingEnable:
+    .asciz      "Enabling Paging..."

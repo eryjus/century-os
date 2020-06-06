@@ -32,6 +32,8 @@ void Butler(void)
     ButlerInit();
 //    kprintf(".. Butler Initialization complete\n");
 
+//while (true) {}
+
     while (true) {
         // -- block until we have something to do
         MessageQueueReceive(butlerMsgq, &msgt, 0, 0, true);
@@ -43,7 +45,7 @@ void Butler(void)
             break;
 
         case BUTLER_CLEAN_PROCESS:
-            ButlerCleanProcess();
+//            ButlerCleanProcess();
             break;
 
         default:

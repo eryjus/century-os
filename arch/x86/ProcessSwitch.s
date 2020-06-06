@@ -54,17 +54,18 @@
 ;;
 ;; -- Some local equates for use with access structure elements
 ;;    ---------------------------------------------------------
-PROC_TOP_OF_STACK       EQU     0
-PROC_VIRT_ADDR_SPACE    EQU     4
-PROC_STATUS             EQU     8
-PROC_PRIORITY           EQU     12
-PROC_QUANTUM_LEFT       EQU     16
+PROC_TOS_PROCESS_SWAP   EQU     0
+PROC_TOS_KERNEL         EQU     4
+PROC_TOS_INTERRUPTED    EQU     8
+PROC_VIRT_ADDR_SPACE    EQU     12
+PROC_STATUS             EQU     16
+PROC_PRIORITY           EQU     20
+PROC_QUANTUM_LEFT       EQU     24
 
 
 ;;
 ;; -- some local equates for accessing the structure offsets
 ;;    ------------------------------------------------------
-;;SCH_CURRENT_PROCESS     EQU     0
 SCH_CHG_PENDING         EQU     0x0c
 SCH_LOCK_COUNT          EQU     0x14
 SCH_POSTPONE_COUNT      EQU     0x18
@@ -122,7 +123,7 @@ ProcessSwitch:
 .saveStack:
         call    ProcessUpdateTimeUsed
 
-        mov     [esi+PROC_TOP_OF_STACK],esp ;; save the top of the current stack
+        mov     [esi+PROC_TOS_PROCESS_SWAP],esp ;; save the top of the current stack
 
 
 ;;
@@ -131,10 +132,18 @@ ProcessSwitch:
         mov     edi,[esp+((4+1)*4)]         ;; get the new task's structure
         mov     [gs:4],edi                  ;; this is now the currnet task
 
-        mov     esp,[edi+PROC_TOP_OF_STACK] ;; get the stop of the next process stack
+        mov     esp,[edi+PROC_TOS_PROCESS_SWAP]  ;; get the stop of the next process stack
         mov     dword [edi+PROC_STATUS],PROC_STS_RUNNING    ;; set the new process to be running
         mov     eax,dword [edi+PROC_PRIORITY]   ;; get the priority, which becomes the next quantum
         add     dword [edi+PROC_QUANTUM_LEFT],eax   ;; add it to the amount left to overcome "overdrawn" procs
+
+;;
+;; -- Here we redecorate the TSS
+;;    --------------------------
+        mov     ecx,[edi+PROC_TOS_KERNEL]   ;; get the TOS for the kernel
+        mov     eax,[gs:4]                  ;; get the cpu struct address
+        mov     [eax+60],ecx                ;; and set the new kernel stack
+
         mov     eax,[edi+PROC_VIRT_ADDR_SPACE]  ;; get the paing tables address
         mov     ecx,cr3                     ;; get the current paging tables
 

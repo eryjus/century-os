@@ -12,6 +12,7 @@
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
 //  2018-Nov-21  Initial   0.2.0   ADCL  Initial version
 //  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-30  Initial  v0.7.0a  ADCL  Rewrite the MMU code
 //
 //===================================================================================================================
 
@@ -29,27 +30,34 @@
 EXTERN_C EXPORT KERNEL
 frame_t MmuUnmapPage(archsize_t addr)
 {
+    kprintf("Preparing to unmap address %p\n", addr);
+
+    LongDescriptor_t *lvl3;
     frame_t rv = 0;
 
+    if (addr & 0x80000000) {
+        kprintf(".. kernel-space\n");
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_KERNEL_LVL3;
+    } else {
+        kprintf(".. user-space\n");
+        lvl3 = (LongDescriptor_t *)ARMV7_LONG_USER_LVL3;
+    }
+
+    kprintf("Locking the TLB Flush IPI mechanism; its current state is %s at %p\n",
+            tlbFlush.lock.lock?"locked":"unlocked", &tlbFlush.lock);
+
     archsize_t flags = SPINLOCK_BLOCK_NO_INT(tlbFlush.lock) {
+        kprintf(".. lock obtained\n");
         tlbFlush.addr = -1;
         PicBroadcastIpi(picControl, IPI_TLB_FLUSH);
 
-        Ttl1_t *ttl1Table = (Ttl1_t *)(ARMV7_TTL1_TABLE_VADDR);
-        Ttl1_t *ttl1Entry = &ttl1Table[addr >> 20];
-        Ttl2_t *ttl2Tables = (Ttl2_t *)(ARMV7_TTL2_TABLE_VADDR);
-        Ttl2_t *ttl2Entry = &ttl2Tables[addr >> 12];
+        kprintf("Completed IPI Broadcast\n");
 
-        if (ttl1Entry->fault == ARMV7_MMU_FAULT) goto exit;
-        if (ttl2Entry->fault == ARMV7_MMU_FAULT) goto exit;
-
-        rv = ttl2Entry->frame;
-        *(uint32_t *)ttl2Entry = 0;
-
-exit:
-        WriteDCCMVAC((uint32_t)ttl2Entry);
+        rv = lvl3[LEVEL3ENT(addr)].physAddress;
+        *(uint64_t *)&lvl3[LEVEL3ENT(addr)] = 0;
         InvalidatePage(addr);
 
+        kprintf("The page us unmapped\n");
 
         //
         // -- Finally, wait for all the CPUs to complete the flush before continuing
@@ -57,9 +65,11 @@ exit:
         AtomicSet(&tlbFlush.count, cpus.cpusRunning - 1);
         tlbFlush.addr = addr & ~(PAGE_SIZE - 1);
 
-        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) {
-            ProcessMilliSleep(150);
-        }
+        kprintf("TLB Flush IPI...\n");
+
+        while (AtomicRead(&tlbFlush.count) != 0 && picControl->ipiReady) { DMB(); }
+
+        kprintf("... done\n");
 
         SPINLOCK_RLS_RESTORE_INT(tlbFlush.lock, flags);
     }

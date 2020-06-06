@@ -38,16 +38,16 @@ void LoaderMain(archsize_t arg0, archsize_t arg1, archsize_t arg2)
 {
     LoaderFunctionInit();               // go and initialize all the function locations
     MmuInit();                          // Complete the MMU initialization for the loader
-    PlatformEarlyInit();
     kprintf("Welcome\n");
+    PlatformEarlyInit();
 
     FrameBufferInit();
     HeapInit();
     PmmInit();
     PlatformInit();
 
-    if (!assert(stabEnd >= (4 * 1024 * 1024))) {
-        kprintf("The kernel is bigger than 4MB; time to add more page mappings!\n");
+    if (!assert_msg(stabEnd >= (4 * 1024 * 1024),
+            "The kernel is bigger than 4MB; time to add more page mappings!\n")) {
         Halt();
     }
 

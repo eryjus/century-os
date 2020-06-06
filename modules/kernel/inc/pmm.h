@@ -92,12 +92,14 @@ archsize_t earlyFrame;
 //
 // -- Pop a node off the stack; stack must be locked to call this function
 //    --------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void PmmPop(PmmFrameInfo_t *stack);
 
 
 //
 // -- Push a new node onto the stack; stack must be locked to call this function
 //    --------------------------------------------------------------------------
+EXTERN_C EXPORT KERNEL
 void PmmPush(PmmFrameInfo_t *stack, frame_t frame, size_t count);
 
 

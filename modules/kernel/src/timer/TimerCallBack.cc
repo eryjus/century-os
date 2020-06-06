@@ -66,7 +66,7 @@ void TimerCallBack(UNUSED(isrRegs_t *reg))
     ProcessLockAndPostpone();
 
 #if DEBUG_ENABLED(TimerCallBack)
-    kprintf("handling timer\n");
+    kprintf("handling timer (CPU%d)\n", thisCpu->cpuNum);
 #endif
 
     if (timerControl->TimerPlatformTick && thisCpu->cpuNum == 0) TimerPlatformTick(timerControl);

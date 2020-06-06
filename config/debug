@@ -57,8 +57,8 @@ DEBUG_ProcessUnlockAndSchedule          0
 ## -- PIC-related debugging
 ##    ---------------------
 DEBUG_LApicBroadcastIpi                 0
-DEBUG_IpiHandleTlbFlush                 0
-DEBUG_PicBroadcastIpi                   0
+DEBUG_IpiHandleTlbFlush                 1
+DEBUG_PicBroadcastIpi                   1
 DEBUG_PicMaskIrq                        0
 DEBUG_PicUnmaskIrq                      0
 
@@ -66,6 +66,6 @@ DEBUG_PicUnmaskIrq                      0
 ##
 ## -- Timer-related debugging
 ##    -----------------------
-DEBUG_TimerCallBack                     0
+DEBUG_TimerCallBack                     1
 
 

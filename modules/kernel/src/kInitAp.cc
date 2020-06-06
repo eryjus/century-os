@@ -24,6 +24,8 @@
 #include "heap.h"
 #include "pic.h"
 #include "entry.h"
+#include "stacks.h"
+#include "pmm.h"
 #include "serial.h"
 
 
@@ -50,7 +52,13 @@ void kInitAp(void)
     assert(proc != NULL);
 
     proc->pid = scheduler.nextPID ++;
-    proc->ssAddr = thisCpu->stackFrame;
+    proc->ssProcFrame = thisCpu->stackFrame;
+
+    archsize_t kStack = StackFind();
+    proc->tosKernel = kStack + STACK_SIZE;
+    proc->ssKernFrame = PmmAllocateFrame();
+    MmuMapToFrame(kStack, proc->ssKernFrame, PG_KRN | PG_WRT);
+
     proc->virtAddrSpace = mmuLvl1Table;
 
     // -- set the process name
@@ -73,12 +81,14 @@ void kInitAp(void)
     CurrentThreadAssign(proc);
     kprintf("Assigning the starting timer for CPU%d\n", thisCpu->cpuNum);
     thisCpu->lastTimer = TimerCurrentCount(timerControl);
+    SetTssStack();
 
     // -- Now we immediately self-terminate to give the scheduler to something else
     kprintf("Enabling interrupts on CPU %d\n",  thisCpu->cpuNum);
     kprintf("Cpus running is %d\n", cpus.cpusRunning);
     ProcessAddGlobal(proc);         // lock required
     EnableInterrupts();
+
     kprintf("Interrupts enabled on CPU %d\n",  thisCpu->cpuNum);
     NextCpu(cpus.cpuStarting);
     kprintf("CPU%d signalled the next CPU to start\n",  thisCpu->cpuNum);

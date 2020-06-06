@@ -6,11 +6,6 @@
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
-//  The ARM architecture is different than the x86-family architecture.  The MMU tables are called Translation
-//  Tables and there are 2 Levels: 1 and 2.  There is 1 TTL1 table that is 16K long and up to 4096 TTL2 tables
-//  that are 1K long each.  We are going to stuff 4 X 1K (consecutive) tables into a single 4K frame, mapping all
-//  4K as a single operation, and we will aggregate 4 X 4K frames into one 16K aligned TTL1 table.
-//
 // -----------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
@@ -18,6 +13,7 @@
 //  2018-Nov-11  Initial   0.2.0   ADCL  Initial version
 //  2018-Nov-14  Initial   0.2.0   ADCL  Copied the structures from century
 //  2019-Feb-08  Initial   0.3.0   ADCL  Relocated
+//  2020-Apr-26  Initial  v0.7.0a  ADCL  Replace the MMU code with Long Descriptors
 //
 //===================================================================================================================
 
@@ -27,55 +23,75 @@
 #endif
 
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
-
 #include "types.h"
 
 
 //
-// -- The Translation Table Level 1 structure (TTL1)
-//    ----------------------------------------------
-typedef struct Ttl1_t {
-    unsigned int fault : 2;             // 00=fault; 01=TTL2 table address; 01 and 11 unused
-    unsigned int sbz : 3;               // sbz = should be zero
-    unsigned int domain : 4;            // domain -- we will use 0b0000 for now
-    unsigned int p : 1;                 // unimplemented in the rpi2b arch; use 0
-    unsigned int ttl2 : 22;             // the frame address of the ttl2 table (notice aligned to 1K)
-} __attribute__((packed)) Ttl1_t;
-
-
-//
-// -- The Translation Table Level 2 structure (TTL2)
-//    ----------------------------------------------
-typedef struct Ttl2_t {
-    unsigned int fault : 2;             // 00=fault; 01=large page(not used); 1x=small page (x sets execute never)
-    unsigned int b : 1;                 // buffered
-    unsigned int c : 1;                 // cached
-    unsigned int ap : 2;                // access permissions
-    unsigned int tex : 3;               // Type Extension
-    unsigned int apx : 1;               // access permission extension
-    unsigned int s : 1;                 // sharable
-    unsigned int nG : 1;                // not Global
-    unsigned int frame : 20;            // this is the final 4K frame address
-} __attribute__((packed)) Ttl2_t;
-
-
-//
-// -- This is a function to create a new top-level paging structure
+// -- This combined structure is used for a table & page descriptor
 //    -------------------------------------------------------------
-EXTERN_C EXPORT KERNEL
-frame_t MmuMakeNewTtl1Table(void);
+typedef struct LongDescriptor_t { // Used at:  Pg : Tbl :
+    uint32_t present : 1;                   // Y  :  Y  : 1: the table is present; 0: the table is not present
+    uint32_t flag : 1;                      // Y  :  Y  : 1: table/page record (0 is not used)
+    uint32_t attrIndex : 3;                 // Y  :  N  : indicates the type of mem (device, strongly ordered, etc)
+    uint32_t ns : 1;                        // Y  :  N  : 1: non-secure bit (not secured)
+    uint32_t ap : 2;                        // Y  :  N  : 01: upper 2 AP bits: use 01 to be able to r/w at any priv
+    uint32_t sh : 2;                        // Y  :  N  : 11: inner sharable
+    uint32_t af : 1;                        // Y  :  N  : 1: access flag
+    uint32_t nG : 1;                        // Y  :  N  : 0: not Global bit
+    uint32_t physAddress : 28;              // Y  :  Y  : only the Least Significant 20 bits are used
+    uint32_t ignored : 12;                  // N  :  N  : these bits are ignored
+    uint32_t contiguous : 1;                // Y  :  N  : 0: part of a contiguous block of memory (only 4K pages)
+    uint32_t pxn : 1;                       // Y  :  N  : Privileged eXecute Never
+    uint32_t xn : 1;                        // Y  :  N  : eXecute Never (set to 1 when _PG_WRT == 0)
+    uint32_t software : 4;                  // Y  :  N  : available for kernel use (will set to 0000)
+    uint32_t tblPxn : 1;                    // N  :  Y  : Privileged eXecute Never (set to 0, control at page)
+    uint32_t tblXn : 1;                     // N  :  Y  : eXecute Never (set to 0, control at page)
+    uint32_t tblAp : 2;                     // N  :  Y  : Access Permissions Limit (set to 00, control at page)
+    uint32_t tblNs : 1;                     // N  :  Y  : Not Secured (set to 1, control at page)
+} __attribute((packed)) LongDescriptor_t;
 
+
+//
+// -- These macros will help with determining which entry to use
+//    ----------------------------------------------------------
+#define LEVEL2ENT(addr)         ((addr >> 21) & 0x3ff)
+#define LEVEL3ENT(addr)         ((addr >> 12) & 0x7ffff)
+
+
+
+//
+// -- Debugging function to dump the MMU Tables for an address
+//    --------------------------------------------------------
 EXTERN_C EXPORT KERNEL
 void MmuDumpTables(archsize_t addr);
 
 
 //
-// -- Several macros to help with debugging the MMU Tables
-//    ----------------------------------------------------
-#define MMU_TTL1_ENTRY(addr)    (&(((Ttl1_t *)ARMV7_TTL1_TABLE_VADDR)[addr >> 20]))
-#define MMU_TTL2_ENTRY(addr)    (&(((Ttl2_t *)ARMV7_TTL2_TABLE_VADDR)[addr >> 12]))
+// -- Create a user-space table
+//    -------------------------
+EXTERN_C EXPORT KERNEL
+void MmuMakeTopUserTable(frame_t frame);
 
+
+//
+// -- Get the current MMU top user table
+//    ----------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t MmuGetTopUserTable(void);
+
+
+//
+// -- Get the current MMU top kernel table
+//    ------------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t MmuGetTopKernelTable(void);
+
+
+//
+// -- Get the current MMU top mmu table
+//    ---------------------------------
+EXTERN_C INLINE
+archsize_t MmuGetTopTable(archsize_t addr) {
+    return ((addr & 0x80000000) == 0 ? MmuGetTopUserTable() : MmuGetTopKernelTable());
+}
 

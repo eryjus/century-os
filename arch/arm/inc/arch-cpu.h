@@ -54,6 +54,13 @@ void ArchLateCpuInit(int c);
 
 
 //
+// -- Set the esp0 stack value in the TSS (this is not part of this arch)
+//    -------------------------------------------------------------------
+#define SetTssStack()
+
+
+
+//
 // -- Arch Specific cpu location determination
 //    ----------------------------------------
 #define ArchCpuLocation()       ReadMPIDR()

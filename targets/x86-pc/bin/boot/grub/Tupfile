@@ -22,14 +22,16 @@ include ../../../Tupfile.inc
 #
 # -- Create the grub.cfg file
 #    ------------------------
-: |>    echo "set timeout=3"                                        >  %o;       \
-        echo "set default=0"                                        >> %o;       \
-        echo "menuentry \"Century (Multiboot)\" {"                  >> %o;       \
-        echo "  multiboot /boot/kernel.elf"                         >> %o;       \
-        echo "  boot"                                               >> %o;       \
-        echo "}"                                                    >> %o;       \
-        echo "menuentry \"Century (Multiboot2)\" {"                 >> %o;       \
-        echo "  multiboot2 /boot/kernel.elf"                        >> %o;       \
-        echo "  boot"                                               >> %o;       \
-        echo "}"                                                    >> %o;       \
+: |>    echo "set timeout=3"                                        >  %o;      \
+        echo "set default=0"                                        >> %o;      \
+        echo "menuentry \"Century (Multiboot)\" {"                  >> %o;      \
+        echo "  multiboot /boot/kernel.elf"                         >> %o;      \
+        echo "  module /boot/test.elf test.elf"                     >> %o;      \
+        echo "  boot"                                               >> %o;      \
+        echo "}"                                                    >> %o;      \
+        echo "menuentry \"Century (Multiboot2)\" {"                 >> %o;      \
+        echo "  multiboot2 /boot/kernel.elf"                        >> %o;      \
+        echo "  module /boot/test.elf test.elf"                     >> %o;      \
+        echo "  boot"                                               >> %o;      \
+        echo "}"                                                    >> %o;      \
 |> grub.cfg

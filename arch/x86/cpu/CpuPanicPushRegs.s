@@ -42,6 +42,8 @@ CpuPanicPushRegs:
     push        cs                      ;; cs
     push        dword [esp+(2*4)]       ;; eip
     push        dword 0                 ;; error code
+    push        dword 0                 ;; ack
+    push        dword 0                 ;; interrupt number
 
     push        eax
     push        ecx
@@ -79,6 +81,6 @@ CpuPanicPushRegs:
     mov         ss,ax                   ;; ... ss
 
     push        esp                     ;; the structure pointer
-    push        dword [esp+(22*4)]      ;; the message to print
+    push        dword [esp+(24*4)]      ;; the message to print
     call        CpuPanic
 

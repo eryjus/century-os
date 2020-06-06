@@ -1,33 +1,36 @@
 //===================================================================================================================
 //
-//  MmuNewVirtualSpace.cc -- For a new process, create the user virtual address space
+//  SyscallExit.cc -- Handler to self-terminate the calling process
 //
 //        Copyright (c)  2017-2020 -- Adam Clark
 //        Licensed under "THE BEER-WARE LICENSE"
 //        See License.md for details.
 //
+//  Note that at this moment, exit does not support passing the exit value on to the calling process
+//
 // ------------------------------------------------------------------------------------------------------------------
 //
 //     Date      Tracker  Version  Pgmr  Description
 //  -----------  -------  -------  ----  ---------------------------------------------------------------------------
-//  2019-Mar-16  Initial   0.3.2   ADCL  Initial version
+//  2020-Apr-18  Initial  v0.7.0a  ADCL  Initial version
 //
 //===================================================================================================================
 
 
 #include "types.h"
-#include "spinlock.h"
-#include "pmm.h"
-#include "mmu.h"
+#include "process.h"
+#include "syscall.h"
+
+#include <errno.h>
 
 
 //
-// -- for arm, all we need is a blank address space
-//    ---------------------------------------------
-EXTERN_C EXPORT KERNEL
-frame_t MmuNewVirtualSpace(frame_t stack)
+// -- Handle self-terminating the calling process
+//    -------------------------------------------
+EXTERN_C EXPORT SYSCALL
+int SyscallExit(isrRegs_t *reg)
 {
-    frame_t rv = PmmAllocAlignedFrames(4, 14);
-    for (int i = 0; i < 4; i ++) MmuClearFrame(rv + i);
-    return rv;
+    ProcessEnd();
+    return -EUNDEF;
 }
+

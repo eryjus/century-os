@@ -35,6 +35,7 @@ void PrintProcessRow(Process_t *proc)
     DbgSpace(10, kprintf("| %s ", ProcStatusStr(proc->status)));
     DbgSpace(12, kprintf("| %p ", proc));
     DbgSpace(20, kprintf("| %p %p ", (uint32_t)(proc->timeUsed >> 32), (uint32_t)proc->timeUsed));
+    DbgSpace(14, kprintf("| %p ", proc->tosKernel));
     kprintf("|\n");
 }
 
@@ -48,13 +49,13 @@ void DebugSchedulerShow(void)
     DebuggerEngage(DIPI_ENGAGE);
 
     kprintf(ANSI_CLEAR ANSI_SET_CURSOR(0,0));
-    kprintf("+---------------------------+--------+----------+----------+------------+-----------------------+\n");
+    kprintf("+---------------------------+--------+----------+----------+------------+-----------------------+--------------+\n");
     kprintf("| " ANSI_ATTR_BOLD ANSI_FG_BLUE "Command" ANSI_ATTR_NORMAL "                   | "
             ANSI_ATTR_BOLD ANSI_FG_BLUE "PID" ANSI_ATTR_NORMAL "    | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Priority"
             ANSI_ATTR_NORMAL " | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Status" ANSI_ATTR_NORMAL "   | "
             ANSI_ATTR_BOLD ANSI_FG_BLUE "Address" ANSI_ATTR_NORMAL "    | " ANSI_ATTR_BOLD ANSI_FG_BLUE
-            "Time Used" ANSI_ATTR_NORMAL "             |\n");
-    kprintf("+---------------------------+--------+----------+----------+------------+-----------------------+\n");
+            "Time Used" ANSI_ATTR_NORMAL "             | " ANSI_ATTR_BOLD ANSI_FG_BLUE "Kernel Stack" ANSI_ATTR_NORMAL " |\n");
+    kprintf("+---------------------------+--------+----------+----------+------------+-----------------------+--------------+\n");
 
     ListHead_t::List_t *wrk = scheduler.globalProcesses.list.next;
 
@@ -66,7 +67,7 @@ void DebugSchedulerShow(void)
         wrk = wrk->next;
     }
 
-    kprintf("+---------------------------+--------+----------+----------+------------+-----------------------+\n");
+    kprintf("+---------------------------+--------+----------+----------+------------+-----------------------+--------------+\n");
 
     DebuggerRelease();
 }

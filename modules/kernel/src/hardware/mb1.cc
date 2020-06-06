@@ -198,6 +198,8 @@ void Mb1Parse(void)
     // -- Check for the command line -- we might have parameters to the loader
     //    --------------------------------------------------------------------
     if (CHECK_FLAG(2)) {
+        kprintf("Command line info is located at %p\n", mb1Data->cmdLine);
+        kprintf("..  and this address is %smapped", MmuIsMapped(mb1Data->cmdLine) ? "" : "not ");
         kprintf("Identifying command line information: %s\n", mb1Data->cmdLine);
     }
 
@@ -208,6 +210,8 @@ void Mb1Parse(void)
     if (CHECK_FLAG(3)) {
         uint32_t i;
         Mb1Mods_t *m;
+        extern archsize_t stabPhys;
+        extern archsize_t stabSize;
 
         kprintf("Module information present\n");
 
@@ -219,6 +223,9 @@ void Mb1Parse(void)
 
             AddModule(m[i].modStart, m[i].modEnd, m[i].modIdent);
         }
+
+        kprintf("   The highest frame is: %p\n", localHwDisc->modHighestFrame);
+        kprintf("   The kernel endpoint is %p\n", stabPhys + stabSize);
     }
 
 
@@ -280,7 +287,13 @@ void Mb1Parse(void)
     // -- Check for the boot loader name
     //    ------------------------------
     if (CHECK_FLAG(9)) {
-        kprintf("Identifying bootloader: %s\n", mb1Data->bootLoaderName);
+        kprintf("Bootloader info is located at %p\n", mb1Data->bootLoaderName);
+        if (MmuIsMapped(mb1Data->bootLoaderName)) {
+            kprintf("..  and this address is mapped\n");
+            kprintf("Identifying bootloader: %s\n", mb1Data->bootLoaderName);
+        } else {
+            kprintf("Boot loader info is located at an unmapped location\n");
+        }
     }
 
 

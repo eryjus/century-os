@@ -179,6 +179,13 @@ void EmptyFunction(void);
 
 
 //
+// -- Set the top-level MMU Structure
+//    -------------------------------
+EXTERN_C EXPORT KERNEL
+archsize_t ArchSetMmu(archsize_t top);
+
+
+//
 // -- This structure defines all the data for all the cpus on the system
 //    ------------------------------------------------------------------
 typedef struct Cpu_t {
@@ -201,6 +208,36 @@ archsize_t CpuMyStruct(void);
 //    ----------------------------------------------
 EXTERN EXPORT KERNEL_BSS
 Cpu_t cpus;
+
+
+//
+// -- These are the different supported architecture dumps
+//    ----------------------------------------------------
+typedef enum {
+    DUMP_CPU        = 0x00000000,
+    DUMP_TIMER      = 0x00000001,
+    DUMP_PIC        = 0x00000002,
+    DUMP_STOP       = 0x80000000,               // stop processing after dumping the state
+} DumpStates_t;
+
+
+//
+// -- And the function to dump the arch states
+//    ----------------------------------------
+EXTERN_C EXPORT KERNEL
+void ArchDumpState(DumpStates_t states);
+
+
+//
+// -- Get the arch- and platform-specific debug functions
+//    ---------------------------------------------------
+#if __has_include("arch-debug.h")
+#   include "arch-debug.h"
+#endif
+
+#if __has_include("platform-debug.h")
+#   include "platform-debug.h"
+#endif
 
 
 #include "atomic.h"

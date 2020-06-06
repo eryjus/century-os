@@ -35,6 +35,7 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 : foreach  $(WS)/modules/kernel/src/butler/*.cc             |> !cc |>
 : foreach  $(WS)/modules/kernel/src/cpu/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/debugger/*.cc           |> !cc |>
+: foreach  $(WS)/modules/kernel/src/elf/*.cc                |> !cc |>
 : foreach  $(WS)/modules/kernel/src/frame-buffer/*.cc       |> !cc |>
 : foreach  $(WS)/modules/kernel/src/hardware/*.cc           |> !cc |>
 : foreach  $(WS)/modules/kernel/src/heap/*.cc               |> !cc |>
@@ -69,11 +70,14 @@ NFLAGS += -I$(WS)/modules/kernel/inc/
 : foreach  $(WS)/arch/$(ARCH)/*.cc                          |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/*.s                           |> !as |>
 
-: foreach  $(WS)/arch/$(ARCH)/common/*.cc                      |> !cc |>
-: foreach  $(WS)/arch/$(ARCH)/common/*.s                       |> !as |>
+: foreach  $(WS)/arch/$(ARCH)/common/*.cc                   |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/common/*.s                    |> !as |>
 
 : foreach  $(WS)/arch/$(ARCH)/cpu/*.cc                      |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/cpu/*.s                       |> !as |>
+
+: foreach  $(WS)/arch/$(ARCH)/debug/*.cc                    |> !cc |>
+: foreach  $(WS)/arch/$(ARCH)/debug/*.s                     |> !as |>
 
 : foreach  $(WS)/arch/$(ARCH)/mmu/*.cc                      |> !cc |>
 : foreach  $(WS)/arch/$(ARCH)/mmu/*.s                       |> !as |>

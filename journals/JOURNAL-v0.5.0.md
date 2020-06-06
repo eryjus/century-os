@@ -2097,7 +2097,7 @@ So, the things I think I need are these 5:
 | `MemoryBarrier()`                 | `__sync_synchronize()`              | `__sync_synchronize()` |
 | `EntireSystemMemoryBarrier()`     | `asm volatile("dmb sy":::"memory")` | `asm volatile("wbinvd":::"memory")` |
 | `MemoryResynchronization()`       | `asm volatile("dsb":::"memory")`    | `asm volatile("wbinvd":::"memory")` |
-| `ClearInsutructionPipeline()`     | `asm volatile("isb":::"memory")`    | `asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")` |
+| `ClearInstructionPipeline()`     | `asm volatile("isb":::"memory")`    | `asm volatile("mov %%cr3,%%eax\n mov %%eax,%%cr3":::"memory","%eax")` |
 
 So, it looks like I am going to have to spend a little time looking at different IPI requirements.  One will end up being page structure maintenance, which will need to understand when a private or shared page is updated and inform the other CPUs to flush TLB information.
 
@@ -2390,7 +2390,7 @@ void InvalidatePage(uint32_t ent, uint32_t vma) {
     WriteTLBIMVAA(vma & 0xfffff000);
     WriteBPIALL();
     MemoryBarrier();
-    ClearInsutructionPipeline();
+    ClearInstructionPipeline();
 }
 ```
 

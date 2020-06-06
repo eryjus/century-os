@@ -49,14 +49,14 @@ void MmioWrite64(archsize_t regLocation, uint64_t data) { (*((volatile uint64_t 
 // -- Read from a Memory Mapped I/O Register
 //    --------------------------------------
 EXPORT INLINE
-uint32_t MmioRead(archsize_t regLocation) { return (*((volatile uint32_t *)(regLocation))); }
+volatile uint32_t MmioRead(archsize_t regLocation) { return (*((volatile uint32_t *)(regLocation))); }
 
 
 //
 // -- Read from a 64-bit Memory Mapped I/O Register
 //    ---------------------------------------------
 EXPORT INLINE
-uint64_t MmioRead64(archsize_t regLocation) { return (*((volatile uint64_t *)(regLocation))); }
+volatile uint64_t MmioRead64(archsize_t regLocation) { return (*((volatile uint64_t *)(regLocation))); }
 
 
 //
