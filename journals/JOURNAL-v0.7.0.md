@@ -3131,3 +3131,14 @@ OK, I think I am going to have to write a purpose-built system to check out what
 
 So, I had problems with that version for a while as well.  I ended up reloading a different microSD card with the same `pi-bootloader` software and I was able to get it to load far more regularly.  I was also having problems with the `ftdi-sio` module on my host system.  So, that said, I still do not have a root cause for all my problems.  The only thing I think I can do regularly to resolve my problems is to exit the shell and launch a new one.  And even at that, it is not consistent.  I honestly believe it is the rpi at this point.
 
+---
+
+### 2020-Jun-06
+
+I have been away for a bit.  My dedicated test worked very well, and I have no problems with it.  It is working as expected.
+
+I ordered and received a new rpi2b.  The one I have been developing against was `'Rev 1.1'` whereas the new one that was delivered was `'Rev 1.2'`.  I looked it up and the difference is the SoC, where the 1.2 version has the BCM2837 SoC which is a Cortex-A53 CPU -- a 64-bit CPU.
+
+I think, with this, I am no longer going to be able to develop the ARM 32-bit OS and be able to test it on real hardware.  I believe it is going to be time to move on to the 64-bit OS for both ARM and x86.  I may come back around to these archs later, but for now I think it is time to move on.  I will, however, make an attempt to keep the 32-bit archs up to date if I find anything that would impact them.
+
+So, with this version being dedicated to revisiting User Mode (which I believe I have working on x86-pc), I am going to have to bookmark this and tickle the micro-version for the new archs.
